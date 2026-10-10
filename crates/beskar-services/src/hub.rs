@@ -1,7 +1,7 @@
 use crate::{audio::AudioService, battery::BatteryService, mpris::MprisService};
 use anyhow::Result;
 use beskar_core::events::ServiceEvent;
-use beskar_core::models::{AudioState, BatteryState, MediaState};
+use beskar_core::models::{AudioState, BatteryState, MediaState, TrayItem};
 use tokio::sync::{broadcast, mpsc};
 use tracing::info;
 
@@ -11,10 +11,11 @@ pub struct SystemSnapshot {
     pub audio: AudioState,
     pub battery: BatteryState,
     pub media: Option<MediaState>,
+    pub tray: Vec<TrayItem>,
 }
 
 /// Deep module providing a single reactive stream for all system states.
-/// Encapsulates PulseAudio sockets, UPower D-Bus connections, NetworkManager, BlueZ, and MPRIS bus queries.
+/// Encapsulates PulseAudio sockets, UPower D-Bus connections, NetworkManager, BlueZ, System Tray, and MPRIS bus queries.
 pub struct SystemHub {
     tx: broadcast::Sender<SystemSnapshot>,
 }
@@ -36,7 +37,7 @@ impl SystemHub {
         self.tx.subscribe()
     }
 
-    /// Spawns background listeners for Audio, Battery, MPRIS, Network, and Bluetooth into a single broadcast stream.
+    /// Spawns background listeners for Audio, Battery, MPRIS, Tray, Network, and Bluetooth into a single broadcast stream.
     pub async fn start(&self) -> Result<()> {
         let tx = self.tx.clone();
         let (event_tx, mut event_rx) = mpsc::channel::<ServiceEvent>(64);
@@ -51,6 +52,7 @@ impl SystemHub {
             audio: initial_audio,
             battery: initial_battery,
             media: initial_media,
+            tray: Vec::new(),
         };
         let _ = tx.send(initial_snapshot.clone());
 
@@ -73,6 +75,45 @@ impl SystemHub {
         tokio::spawn(async move {
             let _ = mpris_svc.start_listener(mpris_tx).await;
         });
+
+        // Spawn copied pleamar Tray service
+        let tray_tx = event_tx.clone();
+        crate::tray::service(Box::new(move |val| {
+            if let crate::sysvalue::SysValue::List(items) = val {
+                let mut tray_items = Vec::new();
+                for item in items {
+                    if let crate::sysvalue::SysValue::Map(m) = item {
+                        let find_str = |k: &str| {
+                            m.iter()
+                                .find(|(key, _)| key == k)
+                                .and_then(|(_, v)| match v {
+                                    crate::sysvalue::SysValue::Text(t) => Some(t.clone()),
+                                    _ => None,
+                                })
+                                .unwrap_or_default()
+                        };
+                        let find_bool = |k: &str| {
+                            m.iter()
+                                .find(|(key, _)| key == k)
+                                .and_then(|(_, v)| match v {
+                                    crate::sysvalue::SysValue::Bool(b) => Some(*b),
+                                    _ => None,
+                                })
+                                .unwrap_or(false)
+                        };
+                        tray_items.push(TrayItem {
+                            key: find_str("key"),
+                            id: find_str("id"),
+                            title: find_str("title"),
+                            icon: find_str("icon"),
+                            status: find_str("status"),
+                            has_menu: find_bool("menu"),
+                        });
+                    }
+                }
+                let _ = tray_tx.blocking_send(ServiceEvent::Tray(tray_items));
+            }
+        }));
 
         // Spawn copied pleamar NetworkManager service
         crate::networkmanager::service(Box::new(|_val| {
@@ -102,6 +143,9 @@ impl SystemHub {
                     }
                     ServiceEvent::Media(med) => {
                         state.media = Some(med);
+                    }
+                    ServiceEvent::Tray(tray) => {
+                        state.tray = tray;
                     }
                     _ => {}
                 }

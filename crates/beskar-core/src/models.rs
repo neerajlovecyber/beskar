@@ -80,3 +80,14 @@ pub struct BluetoothState {
     pub connected_devices: Vec<BluetoothDevice>,
 }
 
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+pub struct TrayItem {
+    pub key: String,
+    pub id: String,
+    pub title: String,
+    pub icon: String,
+    pub status: String,
+    pub has_menu: bool,
+}
+
+

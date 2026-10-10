@@ -60,10 +60,12 @@ impl BeskarBar {
         battery_percent: u8,
         is_charging: bool,
         animated_center_width: Option<f32>,
+        tray_items: Vec<beskar_core::models::TrayItem>,
         on_select_ws: Option<Arc<dyn Fn(u64) + Send + Sync>>,
         on_scroll_ws: Option<Arc<dyn Fn(i32) + Send + Sync>>,
         on_play_pause: Option<Arc<dyn Fn() + Send + Sync>>,
         on_volume_click: Option<Arc<dyn Fn() + Send + Sync>>,
+        on_volume_scroll: Option<Arc<dyn Fn(i32) + Send + Sync>>,
         on_power_click: Option<Arc<dyn Fn() + Send + Sync>>,
     ) -> Self {
         use crate::pill::IslandPill;
@@ -103,9 +105,13 @@ impl BeskarBar {
 
         let mut vitals_widget = VitalsWidget::new(volume_percent, battery_percent)
             .muted(is_muted)
-            .charging(is_charging);
+            .charging(is_charging)
+            .tray(tray_items);
         if let Some(handler) = on_volume_click {
             vitals_widget = vitals_widget.on_volume_click(move || (handler)());
+        }
+        if let Some(handler) = on_volume_scroll {
+            vitals_widget = vitals_widget.on_volume_scroll(move |delta| (handler)(delta));
         }
         if let Some(handler) = on_power_click {
             vitals_widget = vitals_widget.on_power_click(move || (handler)());
@@ -145,6 +151,8 @@ impl BeskarBar {
             false,
             88,
             false,
+            None,
+            Vec::new(),
             None,
             None,
             None,

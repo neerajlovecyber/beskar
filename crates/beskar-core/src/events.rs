@@ -16,6 +16,7 @@ pub enum ServiceEvent {
     Audio(AudioState),
     Network(NetworkState),
     Bluetooth(BluetoothState),
+    Tray(Vec<crate::models::TrayItem>),
     TrayChanged,
 }
 

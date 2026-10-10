@@ -27,6 +27,7 @@ struct DesktopBarView {
     is_muted: bool,
     media: Option<(String, String, bool)>,
     island_spring: beskar_ui::SpringValue,
+    tray_items: Vec<beskar_core::models::TrayItem>,
     compositor: Arc<dyn CompositorBackend>,
 }
 
@@ -106,6 +107,7 @@ impl DesktopBarView {
                     this.volume_percent = (snap.audio.volume * 100.0).round() as u8;
                     this.is_muted = snap.audio.is_muted;
                     this.media = media;
+                    this.tray_items = snap.tray;
                     this.island_spring.set_target(target_width);
                     cx.notify();
                 });
@@ -181,6 +183,7 @@ impl DesktopBarView {
             is_muted: aud.is_muted,
             media: initial_media,
             island_spring,
+            tray_items: Vec::new(),
             compositor,
         }
     }
@@ -204,6 +207,10 @@ impl Render for DesktopBarView {
             AudioService::toggle_mute();
         });
 
+        let on_volume_scroll = Arc::new(|delta: i32| {
+            beskar_services::AudioService::set_volume(delta);
+        });
+
         div()
             .size_full()
             .flex()
@@ -219,10 +226,12 @@ impl Render for DesktopBarView {
                 self.battery_percent,
                 self.is_charging,
                 Some(self.island_spring.current),
+                self.tray_items.clone(),
                 Some(on_select_ws),
                 None,
                 Some(on_play_pause),
                 Some(on_volume_click),
+                Some(on_volume_scroll),
                 None,
             ))
     }

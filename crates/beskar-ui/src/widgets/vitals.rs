@@ -20,7 +20,9 @@ pub struct VitalsWidget {
     battery_percent: u8,
     is_charging: bool,
     is_wifi_connected: bool,
+    tray_items: Vec<beskar_core::models::TrayItem>,
     on_volume_click: Option<Arc<dyn Fn() + Send + Sync>>,
+    on_volume_scroll: Option<Arc<dyn Fn(i32) + Send + Sync>>,
     on_power_click: Option<Arc<dyn Fn() + Send + Sync>>,
     on_control_center_click: Option<Arc<dyn Fn() + Send + Sync>>,
 }
@@ -34,10 +36,22 @@ impl VitalsWidget {
             battery_percent,
             is_charging: false,
             is_wifi_connected: true,
+            tray_items: Vec::new(),
             on_volume_click: None,
+            on_volume_scroll: None,
             on_power_click: None,
             on_control_center_click: None,
         }
+    }
+
+    pub fn tray(mut self, items: Vec<beskar_core::models::TrayItem>) -> Self {
+        self.tray_items = items;
+        self
+    }
+
+    pub fn on_volume_scroll(mut self, handler: impl Fn(i32) + Send + Sync + 'static) -> Self {
+        self.on_volume_scroll = Some(Arc::new(handler));
+        self
     }
 
     pub fn recording(mut self, time: Option<String>) -> Self {
@@ -108,10 +122,38 @@ impl RenderOnce for VitalsWidget {
             hsla(0.0, 0.0, 0.90, 1.0)
         };
 
+        let on_scroll = self.on_volume_scroll;
+
         div()
             .flex()
             .items_center()
             .gap(px(12.0))
+            // Render tray icons if any registered
+            .when(!self.tray_items.is_empty(), |this| {
+                let mut tray_row = div().flex().items_center().gap(px(6.0));
+                for _item in self.tray_items {
+                    tray_row = tray_row.child(
+                        div()
+                            .w(px(16.0))
+                            .h(px(16.0))
+                            .flex()
+                            .items_center()
+                            .justify_center()
+                            .hover(|s| s.cursor_pointer())
+                            .child(
+                                // Dot badge for registered tray items
+                                div()
+                                    .w(px(8.0))
+                                    .h(px(8.0))
+                                    .rounded_full()
+                                    .bg(hsla(45.0 / 360.0, 0.90, 0.60, 0.90))
+                                    .hover(|s| s.bg(hsla(45.0 / 360.0, 1.0, 0.75, 1.0))),
+                            ),
+                    );
+                }
+                this.child(tray_row)
+                    .child(div().w(px(1.0)).h(px(12.0)).bg(hsla(0.0, 0.0, 1.0, 0.12)))
+            })
             // Recording badge: green pulsing dot + timer
             .when(is_recording, |this| {
                 this.child(
@@ -158,7 +200,7 @@ impl RenderOnce for VitalsWidget {
                             .text_color(hsla(0.0, 0.0, 0.80, 1.0)),
                     ),
             )
-            // Volume icon & indicator
+            // Volume icon & indicator with scroll-to-step volume support
             .child(
                 div()
                     .flex()
@@ -168,6 +210,12 @@ impl RenderOnce for VitalsWidget {
                     .hover(|style| style.text_color(hsla(0.0, 0.0, 1.0, 1.0)).cursor_pointer())
                     .when_some(on_vol, |el, cb| {
                         el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
+                    })
+                    .when_some(on_scroll, |el, cb| {
+                        el.on_scroll_wheel(move |event, _, _| {
+                            let delta = if event.delta.pixel_delta(px(1.0)).y > px(0.0) { 2 } else { -2 };
+                            (cb)(delta);
+                        })
                     })
                     .child(Icon::new(volume_icon).size(px(14.0)).text_color(volume_color))
                     .child(
