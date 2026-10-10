@@ -8,7 +8,11 @@ use std::collections::BTreeMap;
 pub fn applications() -> SysValue {
     let home = std::env::var("HOME").unwrap_or_default();
     let data_dirs = std::env::var("XDG_DATA_DIRS").unwrap_or_else(|_| "/usr/local/share:/usr/share".into());
-    let mut folders = vec![format!("{home}/.local/share/applications")];
+    let mut folders = vec![
+        format!("{home}/.local/share/applications"),
+        format!("{home}/.local/share/flatpak/exports/share/applications"),
+        "/var/lib/flatpak/exports/share/applications".to_string(),
+    ];
     folders.extend(data_dirs.split(':').map(|d| format!("{d}/applications")));
     // By name, and the first folder wins: the user's overrides the system's.
     // Name → (command, icon, the file's id, the X11 class it says it has,

@@ -14,12 +14,16 @@ This document establishes the architecture, deep exploration protocol, and execu
   - [x] Wire Real Process Execution (`systemctl`, `loginctl`, `niri`)
   - [x] Integrate into `beskar-shell` with centered LayerShell geometry & exclusive focus grab
   - [x] Verify compilation cleanly across all workspace crates
-- [ ] **Phase 2: App Discovery Engine & Full App Launcher (`launcher`)** `[NEXT UP]`
-  - [ ] Deep Exploration of `LauncherContent.qml`, `scripts/` and `.desktop` parsers
-  - [ ] Full Sub-plan & Architecture Specification
-  - [ ] Implementation & Check-off
-- [ ] **Phase 3: Dynamic Bar Host & Bar Styles (`Convex`, `Island`, `Gaming`)** `[PENDING]`
-  - [ ] Deep Exploration of `BarStyleConfig.qml`, `BarWidgetLoader.qml`, `ConvexShape.qml`
+- [x] **Phase 2: App Discovery Engine & Full App Launcher (`launcher`)** `[COMPLETED]`
+  - [x] Deep Exploration of `LauncherContent.qml`, `LauncherItemDelegate.qml`, `scripts/get_apps.py`
+  - [x] Scan Flatpak export applications (`~/.local/share/flatpak/exports/...` and `/var/lib/flatpak/...`) in `beskar-services`
+  - [x] Implement Minflair obsidian glass `LauncherWidget` with live prefix/contains/category scoring
+  - [x] Add windowed list display (max 8 visible items matching Minflair)
+  - [x] Category-based Lucide icons and active `↵ Open` action pill
+  - [x] Wire keyboard navigation & live typing event loop in `LauncherView` (letters, backspace, space, up/down arrows, enter, escape, readline shortcuts)
+  - [x] Centered LayerShell window geometry (640×460px, top margin 100px, exclusive focus)
+- [ ] **Phase 3: Dynamic Bar Host & Bar Styles (`Convex`, `Island`, `Gaming`)** `[NEXT UP]`
+  - [ ] Deep Exploration of `BarStyleConfig.qml`, `BarWidgetLoader.qml`, `ConvexShape.qml`, `IslandBar.qml`, `GamingBar.qml`
   - [ ] Full Sub-plan & Architecture Specification
   - [ ] Implementation & Check-off
 - [ ] **Phase 4: Multi-Page Control Center (`controlCenter`) & Hardware D-Bus** `[PENDING]`
@@ -140,6 +144,61 @@ This document establishes the architecture, deep exploration protocol, and execu
    - App Name: Primary font (`14px`), bold accent color when selected.
    - Category Badge: Subtitle badge on right edge indicating category (e.g., `Utility`, `Development`, `Internet`).
    - Active highlight: Glowing accent outline / background pill (`Theme.accent`).
-5. **Execution Plan**:
-   - `crates/beskar-ui/src/widgets/launcher.rs`: Implement `LauncherWidget` with live search bar, query rendering, list delegate rendering, and category badges.
-   - `crates/beskar-shell/src/overlays.rs`: Upgrade `LauncherView` to manage `query: String`, `selected_idx: usize`, full keyboard text input event loop, and app execution.
+5. **Execution Results (Status: COMPLETED)**:
+   - `crates/beskar-services/src/desktop.rs`: Added Flatpak desktop exports paths (`~/.local/share/flatpak/exports/...` and `/var/lib/flatpak/...`).
+   - `crates/beskar-ui/src/widgets/launcher.rs`: Implemented `LauncherWidget` with live search bar, dynamic prefix/word/contains/category scoring, 8-item windowed list view, category Lucide icons, and obsidian styling.
+   - `crates/beskar-shell/src/overlays.rs`: Wired `LauncherView` with dedicated message channel, typing input, readline shortcuts (`Ctrl+N`, `Ctrl+P`, `Ctrl+U`, `Ctrl+C`), Up/Down arrows, Enter key app execution via `beskar_services::launch_app`, and ESC key clearing/dismissal. Centered LayerShell window geometry (640×460px, top margin 100px, exclusive focus).
+
+---
+
+## 4. Phase 3 Deep Exploration & Technical Specification: Dynamic Bar Host & Bar Styles (`Convex`, `Island`, `Gaming`)
+
+### Upstream References Inspected
+- `references/minflair/config/quickshell/Modules/Bar/Bar.qml`
+- `references/minflair/config/quickshell/Modules/Bar/BarStyleConfig.qml`
+- `references/minflair/config/quickshell/Modules/Bar/Styles/Convex/ConvexBar.qml`
+- `references/minflair/config/quickshell/Modules/Bar/Styles/Convex/ConvexShape.qml`
+- `references/minflair/config/quickshell/Modules/Bar/Styles/Island/IslandBar.qml`
+- `references/minflair/config/quickshell/Modules/Bar/Styles/Gaming/GamingBar.qml`
+- `references/minflair/config/quickshell/Modules/Bar/Components/BarWidgetLoader.qml`
+- `references/minflair/config/quickshell/Modules/Bar/Components/Workspaces.qml`
+- `references/minflair/config/quickshell/Modules/Bar/Components/SystemTrayGroup.qml`
+
+### Visual & Behavioral Mechanics from Minflair
+1. **Bar Style Modes**:
+   - `BarStyle::Convex`:
+     - Continuous top bar running across screen width.
+     - Signature center Convex Notch dipping downward (`width: 380px`, `notch_height: 38px`, `fillet_radius: 16px`).
+     - Uses inverse Bézier curves (`ConvexShape.qml`) connecting top wings to the center notch smoothly without harsh sharp angles.
+     - Center notch hosts Dynamic Clock, Date, and Audio Cava / Vitals mini bars.
+     - Left wing hosts Workspaces pill (`Workspaces.qml`) and Minflair app launcher button.
+     - Right wing hosts System Tray (`SystemTrayGroup.qml`), Control Center toggle, and Power button.
+   - `BarStyle::Island`:
+     - 3 detached floating pills over the wallpaper (matching `IslandBar.qml`):
+       - **Left Island**: Workspaces pill (active workspace indicator, urgent indicator, click to switch workspace).
+       - **Center Island**: Dynamic Island pill (Clock / Date with hover reveal for music player & cava).
+       - **Right Island**: Status & System Tray pill (Network, Volume, Battery, System Tray icons, Control Center trigger, Power button).
+     - Margin: `8px` from top screen edge.
+   - `BarStyle::Gaming`:
+     - High-contrast cyber telemetry bar with compact stats and latency counters.
+2. **Dynamic Slot Loader Architecture (`BarWidgetLoader`)**:
+   - Left Slot: `[MinflairButton, Workspaces]`
+   - Center Slot: `[Clock, Media, DynamicCenter]`
+   - Right Slot: `[SystemTray, Vitals, ControlCenterButton, PowerButton]`
+   - Each widget is an independent Pure-Rust GPUI component implementing the `RenderOnce` contract.
+3. **Persistent Settings & Real-Time Switching**:
+   - `SettingsService` stores `bar_style: BarStyle` (`Convex`, `Island`, `Gaming`).
+   - The shell can hot-swap bar layouts or adjust bar height and padding instantaneously without restarting.
+
+### Phase 3 Execution Plan
+1. **Crate Layering**:
+   - `crates/beskar-theme/src/tokens.rs`: Define `BarStyle` enum (`Convex`, `Island`, `Gaming`).
+   - `crates/beskar-ui/src/bar/`:
+     - `convex.rs`: `ConvexBarWidget` with SVG Bézier path / smooth fillet notch.
+     - `island.rs`: `IslandBarWidget` with 3 detached floating islands.
+     - `gaming.rs`: `GamingBarWidget` cyber layout.
+     - `loader.rs`: `BarWidgetLoader` dispatching to slots (`Left`, `Center`, `Right`).
+   - `crates/beskar-shell/src/bar.rs`: Update main top bar LayerShell window to render the active `BarStyle` dynamically.
+2. **Interactive Testing & Build**:
+   - Verify all 3 bar styles render cleanly in Pure Rust without layout errors or clipping.
+

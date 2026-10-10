@@ -58,7 +58,7 @@ pub fn toggle_launcher(cx: &mut App) {
         titlebar: None,
         window_bounds: Some(WindowBounds::Windowed(Bounds {
             origin: point(px(0.), px(0.)),
-            size: Size::new(px(580.), px(460.)),
+            size: Size::new(px(640.), px(460.)),
         })),
         app_id: Some("beskar-launcher".to_string()),
         window_background: WindowBackgroundAppearance::Transparent,
@@ -67,7 +67,7 @@ pub fn toggle_launcher(cx: &mut App) {
             layer: Layer::Overlay,
             anchor: LayerAnchor::TOP,
             exclusive_zone: None,
-            margin: Some((px(48.), px(0.), px(0.), px(0.))),
+            margin: Some((px(100.), px(0.), px(0.), px(0.))),
             keyboard_interactivity: KeyboardInteractivity::Exclusive,
             ..Default::default()
         }),
@@ -189,60 +189,182 @@ pub fn toggle_lockscreen(cx: &mut App) {
 }
 
 
-/// Dedicated View for App Launcher
-pub struct LauncherView {
-    apps: Vec<AppItem>,
-    focus_handle: FocusHandle,
-    close_tx: tokio::sync::mpsc::UnboundedSender<()>,
+#[derive(Debug, Clone)]
+enum LauncherMsg {
+    ClearQuery,
+    Select(usize),
+    Launch(String),
+    Close,
 }
 
+/// Dedicated View for App Launcher
+pub struct LauncherView {
+    query: String,
+    selected_idx: usize,
+    apps: Vec<AppItem>,
+    focus_handle: FocusHandle,
+    msg_tx: tokio::sync::mpsc::UnboundedSender<LauncherMsg>,
+}
 
 impl LauncherView {
     pub fn new(cx: &mut Context<Self>) -> Self {
         let apps = beskar_services::list_apps();
         let focus_handle = cx.focus_handle();
-        let (close_tx, mut close_rx) = tokio::sync::mpsc::unbounded_channel::<()>();
+        let (msg_tx, mut msg_rx) = tokio::sync::mpsc::unbounded_channel::<LauncherMsg>();
 
-        cx.spawn(async move |_this, cx| {
-            while let Some(()) = close_rx.recv().await {
-                let _ = cx.update(|cx| {
-                    close_active_overlay(cx);
+        cx.spawn(async move |this, cx| {
+            while let Some(msg) = msg_rx.recv().await {
+                let _ = this.update(cx, |this, cx| match msg {
+                    LauncherMsg::ClearQuery => {
+                        this.query.clear();
+                        this.selected_idx = 0;
+                        cx.notify();
+                    }
+                    LauncherMsg::Select(idx) => {
+                        this.selected_idx = idx;
+                        cx.notify();
+                    }
+                    LauncherMsg::Launch(cmd) => {
+                        let _ = beskar_services::launch_app(&cmd);
+                        close_active_overlay(cx);
+                    }
+                    LauncherMsg::Close => {
+                        close_active_overlay(cx);
+                    }
                 });
             }
         })
         .detach();
 
         Self {
+            query: String::new(),
+            selected_idx: 0,
             apps,
             focus_handle,
-            close_tx,
+            msg_tx,
         }
     }
 }
 
 impl Render for LauncherView {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let close_tx = self.close_tx.clone();
-        let launch_tx = self.close_tx.clone();
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        if window.focused(cx).as_ref() != Some(&self.focus_handle) {
+            window.focus(&self.focus_handle, cx);
+        }
+
+        let tx_sel = self.msg_tx.clone();
+        let tx_launch = self.msg_tx.clone();
+        let tx_clear = self.msg_tx.clone();
+        let tx_close = self.msg_tx.clone();
 
         div()
             .size_full()
             .track_focus(&self.focus_handle)
-            .on_key_down(cx.listener(|_, event: &KeyDownEvent, window, cx| {
-                if event.keystroke.key == "escape" {
-                    forget_overlay(OverlayKind::Launcher);
-                    window.remove_window();
-                    cx.stop_propagation();
+            .on_key_down(cx.listener(move |this, event: &KeyDownEvent, window, cx| {
+                let key = event.keystroke.key.as_str();
+                let mods = &event.keystroke.modifiers;
+
+                match key {
+                    "escape" => {
+                        if !this.query.is_empty() {
+                            this.query.clear();
+                            this.selected_idx = 0;
+                            cx.notify();
+                        } else {
+                            forget_overlay(OverlayKind::Launcher);
+                            window.remove_window();
+                        }
+                        cx.stop_propagation();
+                    }
+                    "up" => {
+                        this.selected_idx = this.selected_idx.saturating_sub(1);
+                        cx.notify();
+                        cx.stop_propagation();
+                    }
+                    "down" => {
+                        let filtered = LauncherWidget::filter_and_rank(&this.apps, &this.query);
+                        this.selected_idx =
+                            (this.selected_idx + 1).min(filtered.len().saturating_sub(1));
+                        cx.notify();
+                        cx.stop_propagation();
+                    }
+                    "enter" | "return" => {
+                        let filtered = LauncherWidget::filter_and_rank(&this.apps, &this.query);
+                        if let Some(app) = filtered.get(this.selected_idx) {
+                            let _ = beskar_services::launch_app(&app.exec);
+                            forget_overlay(OverlayKind::Launcher);
+                            window.remove_window();
+                        }
+                        cx.stop_propagation();
+                    }
+                    "backspace" => {
+                        this.query.pop();
+                        this.selected_idx = 0;
+                        cx.notify();
+                        cx.stop_propagation();
+                    }
+                    "space" if !mods.control && !mods.alt && !mods.platform => {
+                        this.query.push(' ');
+                        this.selected_idx = 0;
+                        cx.notify();
+                        cx.stop_propagation();
+                    }
+                    _ => {
+                        if mods.control {
+                            match key {
+                                "n" => {
+                                    let filtered =
+                                        LauncherWidget::filter_and_rank(&this.apps, &this.query);
+                                    this.selected_idx = (this.selected_idx + 1)
+                                        .min(filtered.len().saturating_sub(1));
+                                    cx.notify();
+                                    cx.stop_propagation();
+                                }
+                                "p" => {
+                                    this.selected_idx = this.selected_idx.saturating_sub(1);
+                                    cx.notify();
+                                    cx.stop_propagation();
+                                }
+                                "u" => {
+                                    this.query.clear();
+                                    this.selected_idx = 0;
+                                    cx.notify();
+                                    cx.stop_propagation();
+                                }
+                                "c" => {
+                                    forget_overlay(OverlayKind::Launcher);
+                                    window.remove_window();
+                                    cx.stop_propagation();
+                                }
+                                _ => {}
+                            }
+                        } else if !mods.alt && !mods.platform {
+                            if event.keystroke.key.chars().count() == 1 {
+                                let ch = event.keystroke.key.chars().next().unwrap();
+                                this.query.push(ch);
+                                this.selected_idx = 0;
+                                cx.notify();
+                                cx.stop_propagation();
+                            }
+                        }
+                    }
                 }
             }))
             .child(
                 LauncherWidget::new(self.apps.clone())
+                    .query(self.query.clone())
+                    .selected_idx(self.selected_idx)
+                    .on_select(move |idx| {
+                        let _ = tx_sel.send(LauncherMsg::Select(idx));
+                    })
                     .on_launch(move |cmd| {
-                        let _ = beskar_services::launch_app(&cmd);
-                        let _ = launch_tx.send(());
+                        let _ = tx_launch.send(LauncherMsg::Launch(cmd));
+                    })
+                    .on_clear(move || {
+                        let _ = tx_clear.send(LauncherMsg::ClearQuery);
                     })
                     .on_close(move || {
-                        let _ = close_tx.send(());
+                        let _ = tx_close.send(LauncherMsg::Close);
                     }),
             )
     }
