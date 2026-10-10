@@ -37,21 +37,37 @@ impl IslandPill {
 impl RenderOnce for IslandPill {
     fn render(self, _window: &mut Window, _cx: &mut App) -> impl IntoElement {
         div()
+            .relative()
             .flex()
             .items_center()
             .px(self.padding_x)
             .py(self.padding_y)
             .rounded(px(18.0))
-            // Obsidian dark acrylic background with 1px border
-            .bg(hsla(240.0 / 360.0, 0.12, 0.08, 0.82))
+            // Deep obsidian acrylic core: 84% opacity with subtle blue/gray undertone
+            .bg(hsla(240.0 / 360.0, 0.14, 0.07, 0.84))
+            // Outer 1px perimeter boundary with ultra-subtle sheen
             .border_1()
-            .border_color(hsla(240.0 / 360.0, 0.08, 1.0, 0.10))
-            .shadow_sm()
+            .border_color(hsla(240.0 / 360.0, 0.10, 1.0, 0.12))
+            // Soft atmospheric drop shadow (elevation depth)
+            .shadow_md()
+            // Specular top highlight simulating acrylic glass light catching
+            .child(
+                div()
+                    .absolute()
+                    .top_0()
+                    .left(px(14.0))
+                    .right(px(14.0))
+                    .h(px(1.0))
+                    .bg(hsla(0.0, 0.0, 1.0, 0.18)),
+            )
             .when(self.is_interactive, |this| {
                 this.hover(|style| {
                     style
-                        .bg(hsla(240.0 / 360.0, 0.12, 0.14, 0.92))
-                        .border_color(hsla(45.0 / 360.0, 0.85, 0.65, 0.25))
+                        // Elevated surface luminance on cursor hover
+                        .bg(hsla(240.0 / 360.0, 0.14, 0.13, 0.94))
+                        // Warm amber edge reflection from iRiS design language
+                        .border_color(hsla(45.0 / 360.0, 0.85, 0.65, 0.35))
+                        .shadow_lg()
                 })
             })
             .children(self.content)
