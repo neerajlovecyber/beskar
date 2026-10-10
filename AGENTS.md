@@ -20,6 +20,7 @@ When implementing or extending any module in Beskar, directly extract logic from
 | **System Tray & D-Bus Streams** | `references/icebar` | `src/modules/tray.rs`, `src/subscription.rs` (StatusNotifierWatcher, D-Bus menu streaming, zbus) |
 | **Settings GUI & IPC** | `references/wayle` | `crates/wayle-settings/`, `crates/wayle-ipc/` (macOS/GTK style preferences app layout) |
 | **GPUI Component Catalog (75+ Primitives)** | `references/gpui-kit` / crates.io `gpui-kit` | `crates/component/src/` (Button, Switch, Slider, Popover, Dialog, Tooltip, Input, Menu, Tabs) |
+| **Shell Runtime, WGPU Shaders & Protocols** | `references/pleamar` | `src/gpu.rs`, `src/render.rs`, `src/shape.wgsl`, `src/platform/` (Wayland layer-shell, Pure-Rust audio/PulseAudio, wgpu/wgsl rendering pipeline) |
 
 ---
 
