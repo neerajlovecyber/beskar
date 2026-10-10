@@ -1,7 +1,9 @@
 use beskar_core::models::AppItem;
 use beskar_services::audio::AudioService;
 use beskar_services::battery::BatteryService;
-use beskar_ui::{ControlCenterWidget, LauncherWidget, LockScreenWidget, PowerMenuWidget};
+use beskar_ui::{
+    ControlCenterWidget, LauncherWidget, LockScreenWidget, PowerAction, PowerMenuWidget,
+};
 use gpui_kit::layer_shell::{
     Anchor as LayerAnchor, KeyboardInteractivity, Layer, LayerShellOptions,
 };
@@ -92,17 +94,17 @@ pub fn toggle_power_menu(cx: &mut App) {
         titlebar: None,
         window_bounds: Some(WindowBounds::Windowed(Bounds {
             origin: point(px(0.), px(0.)),
-            size: Size::new(px(240.), px(290.)),
+            size: Size::new(px(356.), px(64.)),
         })),
         app_id: Some("beskar-power-menu".to_string()),
         window_background: WindowBackgroundAppearance::Transparent,
         kind: WindowKind::LayerShell(LayerShellOptions {
             namespace: "beskar-power-menu".to_string(),
             layer: Layer::Overlay,
-            anchor: LayerAnchor::TOP | LayerAnchor::RIGHT,
+            anchor: LayerAnchor::TOP,
             exclusive_zone: None,
-            margin: Some((px(48.), px(12.), px(0.), px(0.))),
-            keyboard_interactivity: KeyboardInteractivity::OnDemand,
+            margin: Some((px(64.), px(0.), px(0.), px(0.))),
+            keyboard_interactivity: KeyboardInteractivity::Exclusive,
             ..Default::default()
         }),
         focus: true,
@@ -117,6 +119,7 @@ pub fn toggle_power_menu(cx: &mut App) {
         info!("Opened dedicated LayerShell Power Menu overlay window");
     }
 }
+
 
 /// Toggle the Control Center / Quick Settings window.
 pub fn toggle_control_center(cx: &mut App) {
@@ -245,57 +248,164 @@ impl Render for LauncherView {
     }
 }
 
+#[derive(Debug, Clone)]
+enum PowerMenuMsg {
+    Select(usize),
+    RequestConfirm(PowerAction),
+    CancelConfirm,
+    ConfirmSelect(usize),
+    Action(PowerAction),
+    Close,
+}
+
 /// Dedicated View for Power Menu
 pub struct PowerMenuView {
+    selected_index: usize,
+    pending_action: Option<PowerAction>,
+    confirm_index: usize,
     focus_handle: FocusHandle,
-    close_tx: tokio::sync::mpsc::UnboundedSender<()>,
+    msg_tx: tokio::sync::mpsc::UnboundedSender<PowerMenuMsg>,
 }
 
 impl PowerMenuView {
     pub fn new(cx: &mut Context<Self>) -> Self {
         let focus_handle = cx.focus_handle();
-        let (close_tx, mut close_rx) = tokio::sync::mpsc::unbounded_channel::<()>();
+        let (msg_tx, mut msg_rx) = tokio::sync::mpsc::unbounded_channel::<PowerMenuMsg>();
 
-        cx.spawn(async move |_this, cx| {
-            while let Some(()) = close_rx.recv().await {
-                let _ = cx.update(|cx| {
-                    close_active_overlay(cx);
+        cx.spawn(async move |this, cx| {
+            while let Some(msg) = msg_rx.recv().await {
+                let _ = this.update(cx, |this, cx| {
+                    match msg {
+                        PowerMenuMsg::Select(idx) => {
+                            this.selected_index = idx;
+                            cx.notify();
+                        }
+                        PowerMenuMsg::RequestConfirm(action) => {
+                            this.pending_action = Some(action);
+                            this.confirm_index = 1;
+                            cx.notify();
+                        }
+                        PowerMenuMsg::CancelConfirm => {
+                            this.pending_action = None;
+                            cx.notify();
+                        }
+                        PowerMenuMsg::ConfirmSelect(idx) => {
+                            this.confirm_index = idx;
+                            cx.notify();
+                        }
+                        PowerMenuMsg::Action(action) => {
+                            let cmd = action.default_command();
+                            let _ = std::process::Command::new("sh").args(["-c", cmd]).spawn();
+                            close_active_overlay(cx);
+                        }
+                        PowerMenuMsg::Close => {
+                            close_active_overlay(cx);
+                        }
+                    }
                 });
             }
         })
         .detach();
 
         Self {
+            selected_index: 0,
+            pending_action: None,
+            confirm_index: 1,
             focus_handle,
-            close_tx,
+            msg_tx,
         }
     }
 }
 
 impl Render for PowerMenuView {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let tx = self.close_tx.clone();
-        let action_tx = self.close_tx.clone();
+        let tx_sel = self.msg_tx.clone();
+        let tx_req = self.msg_tx.clone();
+        let tx_cancel = self.msg_tx.clone();
+        let tx_conf_sel = self.msg_tx.clone();
+        let tx_act = self.msg_tx.clone();
+        let tx_close = self.msg_tx.clone();
+        let msg_tx = self.msg_tx.clone();
 
         div()
             .size_full()
             .track_focus(&self.focus_handle)
-            .on_key_down(cx.listener(|_, event: &KeyDownEvent, window, cx| {
-                if event.keystroke.key == "escape" {
-                    forget_overlay(OverlayKind::PowerMenu);
-                    window.remove_window();
-                    cx.stop_propagation();
+            .on_key_down(cx.listener(move |this, event: &KeyDownEvent, window, cx| {
+                match event.keystroke.key.as_str() {
+                    "escape" => {
+                        if this.pending_action.is_some() {
+                            this.pending_action = None;
+                            cx.notify();
+                        } else {
+                            forget_overlay(OverlayKind::PowerMenu);
+                            window.remove_window();
+                        }
+                        cx.stop_propagation();
+                    }
+                    "left" => {
+                        if this.pending_action.is_some() {
+                            this.confirm_index = 0;
+                        } else {
+                            this.selected_index = this.selected_index.saturating_sub(1);
+                        }
+                        cx.notify();
+                        cx.stop_propagation();
+                    }
+                    "right" => {
+                        if this.pending_action.is_some() {
+                            this.confirm_index = 1;
+                        } else {
+                            this.selected_index = (this.selected_index + 1)
+                                .min(PowerAction::ALL.len().saturating_sub(1));
+                        }
+                        cx.notify();
+                        cx.stop_propagation();
+                    }
+                    "enter" | "return" | "space" => {
+                        if let Some(pending) = this.pending_action {
+                            if this.confirm_index == 1 {
+                                let _ = msg_tx.send(PowerMenuMsg::Action(pending));
+                            } else {
+                                this.pending_action = None;
+                                cx.notify();
+                            }
+                        } else {
+                            let action = PowerAction::ALL[this.selected_index];
+                            if action.requires_confirmation() {
+                                this.pending_action = Some(action);
+                                this.confirm_index = 1;
+                                cx.notify();
+                            } else {
+                                let _ = msg_tx.send(PowerMenuMsg::Action(action));
+                            }
+                        }
+                        cx.stop_propagation();
+                    }
+                    _ => {}
                 }
             }))
             .child(
                 PowerMenuWidget::new()
+                    .selected_index(self.selected_index)
+                    .pending_action(self.pending_action)
+                    .confirm_index(self.confirm_index)
+                    .on_select(move |idx| {
+                        let _ = tx_sel.send(PowerMenuMsg::Select(idx));
+                    })
+                    .on_request_confirm(move |action| {
+                        let _ = tx_req.send(PowerMenuMsg::RequestConfirm(action));
+                    })
+                    .on_cancel_confirm(move || {
+                        let _ = tx_cancel.send(PowerMenuMsg::CancelConfirm);
+                    })
+                    .on_confirm_select(move |idx| {
+                        let _ = tx_conf_sel.send(PowerMenuMsg::ConfirmSelect(idx));
+                    })
                     .on_action(move |action| {
-                        let cmd = action.default_command();
-                        let _ = std::process::Command::new("sh").args(["-c", cmd]).spawn();
-                        let _ = action_tx.send(());
+                        let _ = tx_act.send(PowerMenuMsg::Action(action));
                     })
                     .on_close(move || {
-                        let _ = tx.send(());
+                        let _ = tx_close.send(PowerMenuMsg::Close);
                     }),
             )
     }

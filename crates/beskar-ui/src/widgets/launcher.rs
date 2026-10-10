@@ -80,13 +80,6 @@ impl RenderOnce for LauncherWidget {
             .border_color(hsla(0.0, 0.0, 1.0, 0.16))
             .shadow_xl()
             .overflow_hidden()
-            // Specular top highlight line
-            .child(
-                div()
-                    .w_full()
-                    .h(px(1.0))
-                    .bg(hsla(0.0, 0.0, 1.0, 0.25)),
-            )
             // Search Input Header
             .child(
                 div()

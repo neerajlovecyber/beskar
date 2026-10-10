@@ -1,6 +1,5 @@
 use gpui_kit::assets::IconName;
 use gpui_kit::component::Icon;
-use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 use std::sync::Arc;
 
@@ -8,29 +7,37 @@ use std::sync::Arc;
 pub enum PowerAction {
     Lock,
     Suspend,
+    Logout,
     Restart,
     Shutdown,
-    Logout,
 }
 
 impl PowerAction {
+    pub const ALL: [Self; 5] = [
+        Self::Lock,
+        Self::Suspend,
+        Self::Logout,
+        Self::Restart,
+        Self::Shutdown,
+    ];
+
     pub fn label(&self) -> &'static str {
         match self {
             Self::Lock => "Lock",
             Self::Suspend => "Suspend",
-            Self::Restart => "Restart",
-            Self::Shutdown => "Shutdown",
             Self::Logout => "Logout",
+            Self::Restart => "Reboot",
+            Self::Shutdown => "Shutdown",
         }
     }
 
     pub fn description(&self) -> &'static str {
         match self {
-            Self::Lock => "Lock current session",
-            Self::Suspend => "Sleep device",
-            Self::Restart => "Reboot operating system",
-            Self::Shutdown => "Power off device",
+            Self::Lock => "Lock active desktop session",
+            Self::Suspend => "Put system into low-power sleep",
             Self::Logout => "Exit compositor session",
+            Self::Restart => "Reboot the system",
+            Self::Shutdown => "Power off the computer",
         }
     }
 
@@ -38,9 +45,16 @@ impl PowerAction {
         match self {
             Self::Lock => IconName::Lock,
             Self::Suspend => IconName::Moon,
+            Self::Logout => IconName::LogOut,
             Self::Restart => IconName::RotateCw,
             Self::Shutdown => IconName::Power,
-            Self::Logout => IconName::LogOut,
+        }
+    }
+
+    pub fn requires_confirmation(&self) -> bool {
+        match self {
+            Self::Lock => false,
+            Self::Suspend | Self::Logout | Self::Restart | Self::Shutdown => true,
         }
     }
 
@@ -48,18 +62,26 @@ impl PowerAction {
         match self {
             Self::Lock => "loginctl lock-session",
             Self::Suspend => "systemctl suspend",
+            Self::Logout => "niri msg action quit --skip-confirmation",
             Self::Restart => "systemctl reboot",
             Self::Shutdown => "systemctl poweroff",
-            Self::Logout => "niri msg action quit --skip-confirmation",
         }
     }
 }
 
-/// A desktop Power Menu overlay widget styled with dark glassmorphism,
-/// smooth hover transitions, and emergency red glow on shutdown.
+/// A desktop Power Menu overlay widget matching Minflair's ActionMenu architecture.
+/// Features a horizontal 5-action strip with two-stage confirmation prompt,
+/// keyboard arrow selection, and smooth obsidian glass styling.
 #[derive(IntoElement)]
 pub struct PowerMenuWidget {
+    selected_index: usize,
+    pending_action: Option<PowerAction>,
+    confirm_index: usize,
     on_action: Option<Arc<dyn Fn(PowerAction) + Send + Sync>>,
+    on_request_confirm: Option<Arc<dyn Fn(PowerAction) + Send + Sync>>,
+    on_cancel_confirm: Option<Arc<dyn Fn() + Send + Sync>>,
+    on_select: Option<Arc<dyn Fn(usize) + Send + Sync>>,
+    on_confirm_select: Option<Arc<dyn Fn(usize) + Send + Sync>>,
     on_close: Option<Arc<dyn Fn() + Send + Sync>>,
 }
 
@@ -72,13 +94,58 @@ impl Default for PowerMenuWidget {
 impl PowerMenuWidget {
     pub fn new() -> Self {
         Self {
+            selected_index: 0,
+            pending_action: None,
+            confirm_index: 1, // Default confirm button highlighted
             on_action: None,
+            on_request_confirm: None,
+            on_cancel_confirm: None,
+            on_select: None,
+            on_confirm_select: None,
             on_close: None,
         }
     }
 
+    pub fn selected_index(mut self, idx: usize) -> Self {
+        self.selected_index = idx.min(PowerAction::ALL.len().saturating_sub(1));
+        self
+    }
+
+    pub fn pending_action(mut self, action: Option<PowerAction>) -> Self {
+        self.pending_action = action;
+        self
+    }
+
+    pub fn confirm_index(mut self, idx: usize) -> Self {
+        self.confirm_index = idx.min(1);
+        self
+    }
+
     pub fn on_action(mut self, handler: impl Fn(PowerAction) + Send + Sync + 'static) -> Self {
         self.on_action = Some(Arc::new(handler));
+        self
+    }
+
+    pub fn on_request_confirm(
+        mut self,
+        handler: impl Fn(PowerAction) + Send + Sync + 'static,
+    ) -> Self {
+        self.on_request_confirm = Some(Arc::new(handler));
+        self
+    }
+
+    pub fn on_cancel_confirm(mut self, handler: impl Fn() + Send + Sync + 'static) -> Self {
+        self.on_cancel_confirm = Some(Arc::new(handler));
+        self
+    }
+
+    pub fn on_select(mut self, handler: impl Fn(usize) + Send + Sync + 'static) -> Self {
+        self.on_select = Some(Arc::new(handler));
+        self
+    }
+
+    pub fn on_confirm_select(mut self, handler: impl Fn(usize) + Send + Sync + 'static) -> Self {
+        self.on_confirm_select = Some(Arc::new(handler));
         self
     }
 
@@ -91,163 +158,275 @@ impl PowerMenuWidget {
 impl RenderOnce for PowerMenuWidget {
     fn render(self, _window: &mut Window, _cx: &mut App) -> impl IntoElement {
         let on_action = self.on_action;
-        let on_close = self.on_close;
-
-        let actions = [
-            PowerAction::Lock,
-            PowerAction::Suspend,
-            PowerAction::Logout,
-            PowerAction::Restart,
-            PowerAction::Shutdown,
-        ];
+        let on_req = self.on_request_confirm;
+        let on_cancel = self.on_cancel_confirm;
+        let on_select = self.on_select;
+        let on_confirm_select = self.on_confirm_select;
+        let _ = self.on_close;
 
         div()
             .relative()
-            .w(px(240.0))
-            .p(px(12.0))
+            .p(px(6.0))
             .rounded(px(16.0))
-            // Deep obsidian backdrop with 95% opacity
-            .bg(hsla(240.0 / 360.0, 0.16, 0.08, 0.95))
+            // Minflair Deep Obsidian Glass (Theme.bg)
+            .bg(hsla(268.0 / 360.0, 0.40, 0.05, 0.95))
             .border_1()
-            .border_color(hsla(240.0 / 360.0, 0.12, 1.0, 0.14))
-            .shadow_lg()
-            // Top specular edge highlight
-            .child(
-                div()
-                    .absolute()
-                    .top_0()
-                    .left(px(16.0))
-                    .right(px(16.0))
-                    .h(px(1.0))
-                    .bg(hsla(0.0, 0.0, 1.0, 0.20)),
-            )
-            // Header
-            .child(
+            .border_color(hsla(0.0, 0.0, 1.0, 0.12))
+            .shadow_xl()
+            .child(if let Some(pending) = self.pending_action {
+                // ── Stage 2: Confirmation Prompt ──
+                let is_critical = matches!(pending, PowerAction::Shutdown | PowerAction::Restart);
+                let action_cb = on_action.clone();
+                let cancel_cb = on_cancel.clone();
+                let confirm_sel_cb1 = on_confirm_select.clone();
+                let confirm_sel_cb2 = on_confirm_select.clone();
+
                 div()
                     .flex()
                     .items_center()
                     .justify_between()
-                    .pb(px(8.0))
-                    .mb(px(6.0))
-                    .border_b_1()
-                    .border_color(hsla(0.0, 0.0, 1.0, 0.08))
+                    .w(px(336.0))
+                    .h(px(48.0))
+                    .px(px(10.0))
                     .child(
                         div()
-                            .text_xs()
-                            .font_weight(FontWeight::BOLD)
-                            .text_color(hsla(0.0, 0.0, 0.85, 1.0))
-                            .child("Power Menu"),
+                            .flex()
+                            .items_center()
+                            .gap(px(8.0))
+                            .child(
+                                div()
+                                    .w(px(24.0))
+                                    .h(px(24.0))
+                                    .rounded_full()
+                                    .flex()
+                                    .items_center()
+                                    .justify_center()
+                                    .bg(if is_critical {
+                                        hsla(350.0 / 360.0, 0.85, 0.50, 0.20)
+                                    } else {
+                                        hsla(261.0 / 360.0, 0.86, 0.73, 0.20)
+                                    })
+                                    .child(
+                                        Icon::new(pending.icon())
+                                            .size(px(13.0))
+                                            .text_color(if is_critical {
+                                                hsla(350.0 / 360.0, 0.90, 0.65, 1.0)
+                                            } else {
+                                                hsla(261.0 / 360.0, 0.90, 0.75, 1.0)
+                                            }),
+                                    ),
+                            )
+                            .child(
+                                div()
+                                    .text_sm()
+                                    .font_weight(FontWeight::BOLD)
+                                    .text_color(hsla(0.0, 0.0, 0.95, 1.0))
+                                    .child(format!("Confirm {}?", pending.label())),
+                            ),
                     )
                     .child(
                         div()
-                            .w(px(18.0))
-                            .h(px(18.0))
                             .flex()
                             .items_center()
-                            .justify_center()
-                            .rounded(px(4.0))
-                            .text_color(hsla(0.0, 0.0, 0.50, 1.0))
-                            .hover(|s| {
-                                s.bg(hsla(0.0, 0.0, 1.0, 0.10))
-                                    .text_color(hsla(0.0, 0.0, 0.90, 1.0))
-                                    .cursor_pointer()
-                            })
-                            .when_some(on_close, |el, cb| {
-                                el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
-                            })
-                            .child(Icon::new(IconName::X).size(px(12.0))),
-                    ),
-            )
-            // Actions list
-            .child(
-                div()
-                    .flex()
-                    .flex_col()
-                    .gap(px(4.0))
-                    .children(actions.into_iter().map(|action| {
-                        let is_shutdown = action == PowerAction::Shutdown;
-                        let cb = on_action.clone();
-
-                        let item = div()
-                            .flex()
-                            .items_center()
-                            .justify_between()
-                            .px(px(10.0))
-                            .py(px(8.0))
-                            .rounded(px(8.0))
-                            .hover(move |s| {
-                                if is_shutdown {
-                                    s.cursor_pointer()
-                                        .bg(hsla(350.0 / 360.0, 0.85, 0.45, 0.25))
-                                        .border_1()
-                                        .border_color(hsla(350.0 / 360.0, 0.85, 0.55, 0.50))
-                                } else {
-                                    s.cursor_pointer()
-                                        .bg(hsla(240.0 / 360.0, 0.14, 0.20, 0.50))
-                                        .border_1()
-                                        .border_color(hsla(0.0, 0.0, 1.0, 0.12))
-                                }
-                            })
-
-                            .on_mouse_down(MouseButton::Left, move |_, _, _| {
-                                if let Some(h) = cb.as_ref() {
-                                    h(action);
-                                }
-                            })
+                            .gap(px(6.0))
+                            // Cancel Button (index 0)
                             .child(
                                 div()
+                                    .px(px(10.0))
+                                    .h(px(34.0))
+                                    .rounded(px(8.0))
                                     .flex()
                                     .items_center()
-                                    .gap(px(10.0))
+                                    .gap(px(4.0))
+                                    .cursor_pointer()
+                                    .bg(if self.confirm_index == 0 {
+                                        hsla(0.0, 0.0, 1.0, 0.16)
+                                    } else {
+                                        hsla(0.0, 0.0, 1.0, 0.06)
+                                    })
+                                    .border_1()
+                                    .border_color(if self.confirm_index == 0 {
+                                        hsla(0.0, 0.0, 1.0, 0.25)
+                                    } else {
+                                        hsla(0.0, 0.0, 1.0, 0.08)
+                                    })
+                                    .hover(|s| s.bg(hsla(0.0, 0.0, 1.0, 0.20)))
+                                    .on_mouse_move(move |_, _, _| {
+                                        if let Some(ref cb) = confirm_sel_cb1 {
+                                            cb(0);
+                                        }
+                                    })
+                                    .on_mouse_down(MouseButton::Left, move |_, _, _| {
+                                        if let Some(ref cb) = cancel_cb {
+                                            cb();
+                                        }
+                                    })
+                                    .child(Icon::new(IconName::X).size(px(12.0)))
                                     .child(
                                         div()
-                                            .w(px(24.0))
-                                            .h(px(24.0))
-                                            .flex()
-                                            .items_center()
-                                            .justify_center()
-                                            .rounded(px(6.0))
-                                            .bg(if is_shutdown {
-                                                hsla(350.0 / 360.0, 0.70, 0.35, 0.30)
+                                            .text_xs()
+                                            .font_weight(FontWeight::MEDIUM)
+                                            .text_color(hsla(0.0, 0.0, 0.85, 1.0))
+                                            .child("Cancel"),
+                                    ),
+                            )
+                            // Confirm Button (index 1)
+                            .child(
+                                div()
+                                    .px(px(10.0))
+                                    .h(px(34.0))
+                                    .rounded(px(8.0))
+                                    .flex()
+                                    .items_center()
+                                    .gap(px(4.0))
+                                    .cursor_pointer()
+                                    .bg(if self.confirm_index == 1 {
+                                        if is_critical {
+                                            hsla(350.0 / 360.0, 0.85, 0.50, 1.0)
+                                        } else {
+                                            hsla(261.0 / 360.0, 0.86, 0.73, 1.0)
+                                        }
+                                    } else {
+                                        hsla(0.0, 0.0, 1.0, 0.08)
+                                    })
+                                    .hover(move |s| {
+                                        if is_critical {
+                                            s.bg(hsla(350.0 / 360.0, 0.90, 0.55, 1.0))
+                                        } else {
+                                            s.bg(hsla(261.0 / 360.0, 0.95, 0.78, 1.0))
+                                        }
+                                    })
+                                    .on_mouse_move(move |_, _, _| {
+                                        if let Some(ref cb) = confirm_sel_cb2 {
+                                            cb(1);
+                                        }
+                                    })
+                                    .on_mouse_down(MouseButton::Left, move |_, _, _| {
+                                        if let Some(ref cb) = action_cb {
+                                            cb(pending);
+                                        }
+                                    })
+                                    .child(
+                                        Icon::new(IconName::Check)
+                                            .size(px(12.0))
+                                            .text_color(if self.confirm_index == 1 {
+                                                if is_critical {
+                                                    hsla(0.0, 0.0, 1.0, 1.0)
+                                                } else {
+                                                    hsla(0.0, 0.0, 0.05, 1.0)
+                                                }
                                             } else {
-                                                hsla(240.0 / 360.0, 0.14, 0.20, 0.40)
-                                            })
-                                            .child(
-                                                Icon::new(action.icon())
-                                                    .size(px(13.0))
-                                                    .text_color(if is_shutdown {
-                                                        hsla(350.0 / 360.0, 0.90, 0.65, 1.0)
-                                                    } else {
-                                                        hsla(0.0, 0.0, 0.85, 1.0)
-                                                    }),
-                                            ),
+                                                hsla(0.0, 0.0, 0.85, 1.0)
+                                            }),
                                     )
                                     .child(
                                         div()
-                                            .flex()
-                                            .flex_col()
-                                            .child(
-                                                div()
-                                                    .text_xs()
-                                                    .font_weight(FontWeight::MEDIUM)
-                                                    .text_color(if is_shutdown {
-                                                        hsla(350.0 / 360.0, 0.95, 0.70, 1.0)
-                                                    } else {
-                                                        hsla(0.0, 0.0, 0.95, 1.0)
-                                                    })
-                                                    .child(action.label()),
-                                            )
-                                            .child(
-                                                div()
-                                                    .text_xs()
-                                                    .text_color(hsla(0.0, 0.0, 0.50, 1.0))
-                                                    .child(action.description()),
-                                            ),
+                                            .text_xs()
+                                            .font_weight(FontWeight::BOLD)
+                                            .text_color(if self.confirm_index == 1 {
+                                                if is_critical {
+                                                    hsla(0.0, 0.0, 1.0, 1.0)
+                                                } else {
+                                                    hsla(0.0, 0.0, 0.05, 1.0)
+                                                }
+                                            } else {
+                                                hsla(0.0, 0.0, 0.85, 1.0)
+                                            })
+                                            .child("Confirm"),
                                     ),
-                            );
+                            ),
+                    )
+            } else {
+                // ── Stage 1: Horizontal Action Menu Strip ──
+                let cur_selected = self.selected_index;
 
-                        item
-                    })),
-            )
+                div()
+                    .flex()
+                    .items_center()
+                    .gap(px(4.0))
+                    .children(PowerAction::ALL.into_iter().enumerate().map(|(idx, action)| {
+                        let is_sel = cur_selected == idx;
+                        let is_shutdown = action == PowerAction::Shutdown;
+                        let action_cb = on_action.clone();
+                        let req_cb = on_req.clone();
+                        let sel_cb = on_select.clone();
+
+                        div()
+                            .w(px(64.0))
+                            .h(px(48.0))
+                            .rounded(px(12.0))
+                            .flex()
+                            .flex_col()
+                            .items_center()
+                            .justify_center()
+                            .gap(px(2.0))
+                            .cursor_pointer()
+                            // Accent pill selection matching Minflair ActionMenu.qml
+                            .bg(if is_sel {
+                                if is_shutdown {
+                                    hsla(350.0 / 360.0, 0.85, 0.50, 1.0)
+                                } else {
+                                    hsla(261.0 / 360.0, 0.86, 0.73, 1.0)
+                                }
+                            } else {
+                                hsla(0.0, 0.0, 1.0, 0.0)
+                            })
+                            .hover(move |s| {
+                                if !is_sel {
+                                    s.bg(hsla(0.0, 0.0, 1.0, 0.08))
+                                } else {
+                                    s
+                                }
+                            })
+                            .on_mouse_move(move |_, _, _| {
+                                if let Some(ref cb) = sel_cb {
+                                    cb(idx);
+                                }
+                            })
+                            .on_mouse_down(MouseButton::Left, move |_, _, _| {
+                                if action.requires_confirmation() {
+                                    if let Some(ref cb) = req_cb {
+                                        cb(action);
+                                    }
+                                } else if let Some(ref cb) = action_cb {
+                                    cb(action);
+                                }
+                            })
+                            .child(
+                                Icon::new(action.icon())
+                                    .size(px(16.0))
+                                    .text_color(if is_sel {
+                                        if is_shutdown {
+                                            hsla(0.0, 0.0, 1.0, 1.0)
+                                        } else {
+                                            hsla(0.0, 0.0, 0.05, 1.0)
+                                        }
+                                    } else {
+                                        hsla(0.0, 0.0, 0.80, 1.0)
+                                    }),
+                            )
+                            .child(
+                                div()
+                                    .text_xs()
+                                    .font_weight(if is_sel {
+                                        FontWeight::BOLD
+                                    } else {
+                                        FontWeight::MEDIUM
+                                    })
+                                    .text_color(if is_sel {
+                                        if is_shutdown {
+                                            hsla(0.0, 0.0, 1.0, 1.0)
+                                        } else {
+                                            hsla(0.0, 0.0, 0.05, 1.0)
+                                        }
+                                    } else {
+                                        hsla(0.0, 0.0, 0.65, 1.0)
+                                    })
+                                    .child(action.label()),
+                            )
+                    }))
+            })
     }
 }
+
+

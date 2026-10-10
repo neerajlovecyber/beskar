@@ -59,18 +59,6 @@ impl RenderOnce for NotificationToastWidget {
                 hsla(0.0, 0.0, 1.0, 0.14)
             })
             .shadow_lg()
-            // Top specular highlight line
-            .child(
-                div()
-                    .w_full()
-                    .h(px(1.0))
-                    .bg(if is_critical {
-                        hsla(0.0, 0.85, 0.65, 0.60)
-                    } else {
-                        hsla(0.0, 0.0, 1.0, 0.22)
-                    })
-                    .mb(px(8.0)),
-            )
             // Header: App info + close button
             .child(
                 div()

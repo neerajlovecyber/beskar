@@ -65,17 +65,6 @@ impl RenderOnce for IslandPill {
             .border_color(hsla(240.0 / 360.0, 0.10, 1.0, 0.12))
             // Soft atmospheric drop shadow (elevation depth)
             .shadow_md()
-
-            // Specular top highlight simulating acrylic glass light catching
-            .child(
-                div()
-                    .absolute()
-                    .top_0()
-                    .left(px(14.0))
-                    .right(px(14.0))
-                    .h(px(1.0))
-                    .bg(hsla(0.0, 0.0, 1.0, 0.18)),
-            )
             .when(self.is_interactive, |this| {
                 this.hover(|style| {
                     style
