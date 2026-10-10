@@ -1,1 +1,7 @@
-/target
+# Target Build Outputs
+/target/
+Cargo.lock
+
+# Upstream Reference Banks (Ignore entire directory and nested repositories)
+/references/
+/references/*

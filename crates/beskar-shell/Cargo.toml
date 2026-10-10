@@ -1,0 +1,20 @@
+[package]
+name = "beskar-shell"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "beskar"
+path = "src/main.rs"
+
+[dependencies]
+beskar-core.workspace = true
+beskar-compositor.workspace = true
+beskar-services.workspace = true
+beskar-theme.workspace = true
+beskar-ui.workspace = true
+gpui.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+anyhow.workspace = true
