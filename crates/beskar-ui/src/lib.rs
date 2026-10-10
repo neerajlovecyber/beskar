@@ -8,5 +8,6 @@ pub use pill::IslandPill;
 pub use spring::{SpringConfig, SpringValue};
 pub use widgets::{
     ControlCenterWidget, DynamicCenterWidget, LauncherWidget, LockScreenWidget,
-    NotificationToastWidget, VitalsWidget, WorkspacesWidget,
+    NotificationToastWidget, PowerAction, PowerMenuWidget, VitalsWidget, WorkspacesWidget,
 };
+

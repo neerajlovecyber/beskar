@@ -115,11 +115,47 @@ impl RenderOnce for DynamicCenterWidget {
                 };
 
                 this.child(
-                    // Amber vertical divider
+                    // Subtle vertical divider hairline
                     div()
                         .w(px(1.0))
                         .h(px(12.0))
-                        .bg(hsla(45.0 / 360.0, 0.90, 0.60, 0.40)),
+                        .bg(hsla(0.0, 0.0, 1.0, 0.20)),
+                )
+                .child(
+                    // 4-bar dynamic audio equalizer matching reference screenshot
+                    div()
+                        .flex()
+                        .items_end()
+                        .gap(px(2.0))
+                        .h(px(12.0))
+                        .child(
+                            div()
+                                .w(px(2.0))
+                                .h(if self.is_playing { px(7.0) } else { px(3.0) })
+                                .rounded(px(1.0))
+                                .bg(hsla(185.0 / 360.0, 0.85, 0.60, 0.90)),
+                        )
+                        .child(
+                            div()
+                                .w(px(2.0))
+                                .h(if self.is_playing { px(12.0) } else { px(4.0) })
+                                .rounded(px(1.0))
+                                .bg(hsla(185.0 / 360.0, 0.85, 0.60, 0.90)),
+                        )
+                        .child(
+                            div()
+                                .w(px(2.0))
+                                .h(if self.is_playing { px(8.0) } else { px(3.0) })
+                                .rounded(px(1.0))
+                                .bg(hsla(185.0 / 360.0, 0.85, 0.60, 0.90)),
+                        )
+                        .child(
+                            div()
+                                .w(px(2.0))
+                                .h(if self.is_playing { px(10.0) } else { px(5.0) })
+                                .rounded(px(1.0))
+                                .bg(hsla(185.0 / 360.0, 0.85, 0.60, 0.90)),
+                        ),
                 )
                 .child(
                     // Media indicator with play/pause state
@@ -136,13 +172,14 @@ impl RenderOnce for DynamicCenterWidget {
                                 .flex()
                                 .items_center()
                                 .justify_center()
-                                .text_color(hsla(45.0 / 360.0, 0.90, 0.60, 1.0))
-                                .hover(|style| style.text_color(hsla(45.0 / 360.0, 1.0, 0.75, 1.0)).cursor_pointer())
+                                .text_color(hsla(185.0 / 360.0, 0.90, 0.60, 1.0))
+                                .hover(|style| style.text_color(hsla(185.0 / 360.0, 1.0, 0.75, 1.0)).cursor_pointer())
                                 .when_some(on_play_pause, |el, cb| {
                                     el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
                                 })
                                 .child(Icon::new(play_icon).size(px(11.0))),
                         )
+
                         .child(
                             div()
                                 .max_w(px(240.0))

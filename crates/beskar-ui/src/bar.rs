@@ -99,6 +99,7 @@ impl BeskarBar {
             .child("✦");
 
         let left_pill = IslandPill::new()
+            .convex(true)
             .child(star_badge)
             .child(ws_widget);
 
@@ -112,7 +113,7 @@ impl BeskarBar {
         if let Some(handler) = on_play_pause {
             center_widget = center_widget.on_play_pause(move || (handler)());
         }
-        let center_pill = IslandPill::new().child(center_widget);
+        let center_pill = IslandPill::new().convex(true).child(center_widget);
 
         let mut vitals_widget = VitalsWidget::new(volume_percent, battery_percent)
             .muted(is_muted)
@@ -130,7 +131,8 @@ impl BeskarBar {
         if let Some(handler) = on_power_click {
             vitals_widget = vitals_widget.on_power_click(move || (handler)());
         }
-        let right_pill = IslandPill::new().child(vitals_widget);
+        let right_pill = IslandPill::new().convex(true).child(vitals_widget);
+
 
         Self::new()
             .left([left_pill.into_any_element()])
@@ -182,36 +184,49 @@ impl BeskarBar {
 impl RenderOnce for BeskarBar {
     fn render(self, _window: &mut Window, _cx: &mut App) -> impl IntoElement {
         div()
+            .relative()
             .size_full()
             .flex()
-            .items_center()
+            .items_start()
             .px(self.padding_x)
-            .py(px(4.0))
-            // Left region: Left Island
+            // Continuous top bridge line connecting the notches across the top edge
+            .child(
+                div()
+                    .absolute()
+                    .top_0()
+                    .left_0()
+                    .right_0()
+                    .h(px(5.0))
+                    .bg(hsla(250.0 / 360.0, 0.16, 0.06, 0.96))
+                    .border_b_1()
+                    .border_color(hsla(240.0 / 360.0, 0.10, 1.0, 0.08)),
+            )
+            // Left region: Left Island Notch
             .child(
                 div()
                     .flex()
                     .flex_1()
-                    .items_center()
+                    .items_start()
                     .justify_start()
                     .children(self.left),
             )
-            // Center region: Dynamic Center Island
+            // Center region: Dynamic Center Island Notch
             .child(
                 div()
                     .flex()
-                    .items_center()
+                    .items_start()
                     .justify_center()
                     .children(self.center),
             )
-            // Right region: Right Island
+            // Right region: Right Island Notch
             .child(
                 div()
                     .flex()
                     .flex_1()
-                    .items_center()
+                    .items_start()
                     .justify_end()
                     .children(self.right),
             )
     }
 }
+

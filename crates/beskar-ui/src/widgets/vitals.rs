@@ -20,6 +20,7 @@ pub struct VitalsWidget {
     battery_percent: u8,
     is_charging: bool,
     is_wifi_connected: bool,
+    is_bluetooth_connected: bool,
     tray_items: Vec<beskar_core::models::TrayItem>,
     on_volume_click: Option<Arc<dyn Fn() + Send + Sync>>,
     on_volume_scroll: Option<Arc<dyn Fn(i32) + Send + Sync>>,
@@ -30,12 +31,13 @@ pub struct VitalsWidget {
 impl VitalsWidget {
     pub fn new(volume_percent: u8, battery_percent: u8) -> Self {
         Self {
-            recording_time: None,
+            recording_time: Some("0:00".to_string()),
             volume_percent,
             is_muted: false,
             battery_percent,
             is_charging: false,
             is_wifi_connected: true,
+            is_bluetooth_connected: true,
             tray_items: Vec::new(),
             on_volume_click: None,
             on_volume_scroll: None,
@@ -43,6 +45,7 @@ impl VitalsWidget {
             on_control_center_click: None,
         }
     }
+
 
     pub fn tray(mut self, items: Vec<beskar_core::models::TrayItem>) -> Self {
         self.tray_items = items;
@@ -66,6 +69,11 @@ impl VitalsWidget {
 
     pub fn charging(mut self, charging: bool) -> Self {
         self.is_charging = charging;
+        self
+    }
+
+    pub fn bluetooth(mut self, connected: bool) -> Self {
+        self.is_bluetooth_connected = connected;
         self
     }
 
@@ -251,6 +259,25 @@ impl RenderOnce for VitalsWidget {
                         }),
                     ),
             )
+            // Bluetooth icon matching screenshot
+            .child(
+                div()
+                    .w(px(16.0))
+                    .h(px(16.0))
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .child(
+                        Icon::new(IconName::Bluetooth)
+                            .size(px(14.0))
+                            .text_color(if self.is_bluetooth_connected {
+                                hsla(0.0, 0.0, 0.85, 1.0)
+                            } else {
+                                hsla(0.0, 0.0, 0.40, 1.0)
+                            }),
+                    ),
+            )
+
             // Battery icon & percentage
             .child(
                 div()
