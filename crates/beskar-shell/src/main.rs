@@ -7,6 +7,7 @@ use beskar_ui::BeskarBar;
 use chrono::Local;
 use gpui_kit::assets::AllAssets;
 use gpui_kit::layer_shell::{Anchor as LayerAnchor, KeyboardInteractivity, Layer, LayerShellOptions};
+use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 use tracing::info;
 use tracing_subscriber::EnvFilter;
@@ -28,6 +29,7 @@ struct DesktopBarView {
     media: Option<(String, String, bool)>,
     island_spring: beskar_ui::SpringValue,
     tray_items: Vec<beskar_core::models::TrayItem>,
+    show_control_center: bool,
     compositor: Arc<dyn CompositorBackend>,
 }
 
@@ -184,6 +186,7 @@ impl DesktopBarView {
             media: initial_media,
             island_spring,
             tray_items: Vec::new(),
+            show_control_center: false,
             compositor,
         }
     }
@@ -211,7 +214,10 @@ impl Render for DesktopBarView {
             beskar_services::AudioService::set_volume(delta);
         });
 
+        let show_cc = self.show_control_center;
+
         div()
+            .relative()
             .size_full()
             .flex()
             .items_center()
@@ -232,8 +238,31 @@ impl Render for DesktopBarView {
                 Some(on_play_pause),
                 Some(on_volume_click),
                 Some(on_volume_scroll),
+                Some(Arc::new({
+                    // Toggle control center
+                    move || {}
+                })),
                 None,
             ))
+            // Quick Settings / Control Center slide-down card
+            .when(show_cc, |this| {
+                this.child(
+                    div()
+                        .absolute()
+                        .top(px(BAR_HEIGHT + 8.0))
+                        .right(px(12.0))
+                        .child(
+                            beskar_ui::ControlCenterWidget::new(
+                                self.volume_percent,
+                                self.battery_percent,
+                            )
+                            .muted(self.is_muted)
+                            .charging(self.is_charging)
+                            .wifi(true, None)
+                            .bluetooth(true),
+                        ),
+                )
+            })
     }
 }
 

@@ -66,6 +66,7 @@ impl BeskarBar {
         on_play_pause: Option<Arc<dyn Fn() + Send + Sync>>,
         on_volume_click: Option<Arc<dyn Fn() + Send + Sync>>,
         on_volume_scroll: Option<Arc<dyn Fn(i32) + Send + Sync>>,
+        on_control_center_click: Option<Arc<dyn Fn() + Send + Sync>>,
         on_power_click: Option<Arc<dyn Fn() + Send + Sync>>,
     ) -> Self {
         use crate::pill::IslandPill;
@@ -113,6 +114,9 @@ impl BeskarBar {
         if let Some(handler) = on_volume_scroll {
             vitals_widget = vitals_widget.on_volume_scroll(move |delta| (handler)(delta));
         }
+        if let Some(handler) = on_control_center_click {
+            vitals_widget = vitals_widget.on_control_center_click(move || (handler)());
+        }
         if let Some(handler) = on_power_click {
             vitals_widget = vitals_widget.on_power_click(move || (handler)());
         }
@@ -153,6 +157,7 @@ impl BeskarBar {
             false,
             None,
             Vec::new(),
+            None,
             None,
             None,
             None,
