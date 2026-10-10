@@ -105,15 +105,53 @@ pub fn resolve_icon_path(icon_name: &str) -> Option<String> {
         return Some(icon_name.to_string());
     }
 
-    let bases = [
-        "/usr/share/pixmaps",
-        "/usr/share/icons/hicolor/scalable/apps",
-        "/usr/share/icons/hicolor/48x48/apps",
-        "/usr/share/icons/hicolor/128x128/apps",
-        "/usr/share/icons/hicolor/256x256/apps",
-        "/usr/share/icons/hicolor/512x512/apps",
+    let home = std::env::var("HOME").unwrap_or_default();
+    let bases: Vec<String> = vec![
+        format!("{home}/.local/share/icons/hicolor/scalable/apps"),
+        format!("{home}/.local/share/icons/hicolor/48x48/apps"),
+        format!("{home}/.local/share/icons/hicolor/64x64/apps"),
+        format!("{home}/.local/share/icons/hicolor/128x128/apps"),
+        format!("{home}/.local/share/icons/hicolor/256x256/apps"),
+        format!("{home}/.local/share/icons/FairyWren_Dark/apps/48"),
+        format!("{home}/.local/share/icons/FairyWren_Dark/apps/scalable"),
+        format!("{home}/.local/share/flatpak/exports/share/icons/hicolor/scalable/apps"),
+        format!("{home}/.local/share/flatpak/exports/share/icons/hicolor/48x48/apps"),
+        format!("{home}/.local/share/flatpak/exports/share/icons/hicolor/128x128/apps"),
+        format!("{home}/.local/share/flatpak/exports/share/icons/hicolor/256x256/apps"),
+        "/var/lib/flatpak/exports/share/icons/hicolor/scalable/apps".into(),
+        "/var/lib/flatpak/exports/share/icons/hicolor/48x48/apps".into(),
+        "/var/lib/flatpak/exports/share/icons/hicolor/128x128/apps".into(),
+        "/var/lib/flatpak/exports/share/icons/hicolor/256x256/apps".into(),
+        "/usr/share/pixmaps".into(),
+        "/usr/share/icons/hicolor/scalable/apps".into(),
+        "/usr/share/icons/hicolor/48x48/apps".into(),
+        "/usr/share/icons/hicolor/64x64/apps".into(),
+        "/usr/share/icons/hicolor/128x128/apps".into(),
+        "/usr/share/icons/hicolor/256x256/apps".into(),
+        "/usr/share/icons/hicolor/512x512/apps".into(),
+        "/usr/share/icons/Papirus/48x48/apps".into(),
+        "/usr/share/icons/Papirus/scalable/apps".into(),
+        "/usr/share/icons/Papirus-Dark/48x48/apps".into(),
+        "/usr/share/icons/Papirus-Dark/scalable/apps".into(),
+        "/usr/share/icons/breeze/apps/48".into(),
+        "/usr/share/icons/breeze/apps/scalable".into(),
+        "/usr/share/icons/breeze-dark/apps/48".into(),
+        "/usr/share/icons/breeze-dark/apps/scalable".into(),
+        "/usr/share/icons/Adwaita/48x48/apps".into(),
+        "/usr/share/icons/Adwaita/scalable/apps".into(),
     ];
-    let extensions = ["png", "svg", "xpm"];
+
+    // If icon_name already includes an extension
+    if icon_name.contains('.') {
+        for base in &bases {
+            let candidate = format!("{base}/{icon_name}");
+            if std::path::Path::new(&candidate).exists() {
+                return Some(candidate);
+            }
+        }
+    }
+
+    let extensions = ["svg", "png", "xpm"];
     for base in &bases {
         for ext in &extensions {
             let candidate = format!("{base}/{icon_name}.{ext}");

@@ -1,12 +1,14 @@
 use beskar_core::models::AppItem;
+use beskar_theme::Theme;
 use gpui_kit::assets::IconName;
 use gpui_kit::component::Icon;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-/// App launcher widget with live fuzzy/prefix search filtering, keyboard & mouse selection,
-/// categories metadata badge, and Minflair obsidian acrylic styling.
+/// Premium App Launcher Widget ported with 100% fidelity to Minflair:
+/// `LauncherContent.qml`, `LauncherItemDelegate.qml`, `ThemedSearchBar.qml`, and `FloatingOverlayStyle.qml`.
 #[derive(IntoElement)]
 pub struct LauncherWidget {
     query: String,
@@ -61,7 +63,7 @@ impl LauncherWidget {
         self
     }
 
-    /// Pure filtering and ranking function matching Minflair mechanics.
+    /// Pure filtering and ranking function matching Minflair filterApps mechanics.
     pub fn filter_and_rank(apps: &[AppItem], query: &str) -> Vec<AppItem> {
         let q = query.trim().to_lowercase();
         if q.is_empty() {
@@ -114,49 +116,6 @@ impl LauncherWidget {
     }
 }
 
-fn app_icon_for_category(categories: &str, name: &str) -> IconName {
-    let cat = categories.to_lowercase();
-    let name_l = name.to_lowercase();
-    if cat.contains("development")
-        || cat.contains("programming")
-        || name_l.contains("code")
-        || name_l.contains("rust")
-    {
-        IconName::Code
-    } else if cat.contains("terminal")
-        || name_l.contains("terminal")
-        || name_l.contains("kitty")
-        || name_l.contains("alacritty")
-    {
-        IconName::Terminal
-    } else if cat.contains("settings")
-        || cat.contains("preferences")
-        || cat.contains("configuration")
-    {
-        IconName::Settings
-    } else if cat.contains("network")
-        || cat.contains("webbrowser")
-        || cat.contains("internet")
-        || name_l.contains("browser")
-    {
-        IconName::Globe
-    } else if cat.contains("audio") || cat.contains("music") {
-        IconName::Music
-    } else if cat.contains("video") || cat.contains("player") || cat.contains("tv") {
-        IconName::Film
-    } else if cat.contains("graphics") || cat.contains("photo") || cat.contains("image") {
-        IconName::Image
-    } else if cat.contains("filemanager") || cat.contains("files") {
-        IconName::Folder
-    } else if cat.contains("office") || cat.contains("document") || cat.contains("texteditor") {
-        IconName::FileText
-    } else if cat.contains("utility") || cat.contains("system") {
-        IconName::Boxes
-    } else {
-        IconName::Rocket
-    }
-}
-
 impl RenderOnce for LauncherWidget {
     fn render(self, _window: &mut Window, _cx: &mut App) -> impl IntoElement {
         let filtered_apps = Self::filter_and_rank(&self.apps, &self.query);
@@ -166,14 +125,14 @@ impl RenderOnce for LauncherWidget {
         let on_select = self.on_select.clone();
         let on_launch = self.on_launch.clone();
         let on_clear = self.on_clear.clone();
-        let on_close = self.on_close.clone();
 
-        // Minflair obsidian theme tokens
-        let bg_obsidian = hsla(268.0 / 360.0, 0.40, 0.05, 0.95);
-        let border_subtle = hsla(0.0, 0.0, 1.0, 0.14);
-        let accent = hsla(261.0 / 360.0, 0.86, 0.73, 1.0);
-        let accent_glow = hsla(261.0 / 360.0, 0.86, 0.73, 0.22);
-        let accent_border = hsla(261.0 / 360.0, 0.86, 0.73, 0.45);
+        // Exact Minflair theme tokens
+        let theme_bg = Theme::bg();
+        let theme_fg = Theme::fg();
+        let theme_accent = Theme::accent();
+        let theme_muted = Theme::muted();
+        let theme_border = Theme::border();
+        let theme_bg_secondary = Theme::bg_secondary();
 
         // Windowed visible list (max 8 visible items matching Minflair)
         const WINDOW_SIZE: usize = 8;
@@ -189,74 +148,65 @@ impl RenderOnce for LauncherWidget {
             &[]
         };
 
+        // Minflair FloatingOverlayStyle container:
+        // preferredWidth = 700px, windowRadius = 32px (size3Xl), contentPadding = 16px (sizeLg)
         div()
-            .w(px(640.0))
-            .max_h(px(460.0))
+            .w(px(700.0))
             .flex()
             .flex_col()
-            .rounded(px(18.0))
-            .bg(bg_obsidian)
+            .p(px(16.0))
+            .rounded(px(32.0))
+            .bg(theme_bg)
             .border_1()
-            .border_color(border_subtle)
+            .border_color(theme_border)
             .shadow_2xl()
             .overflow_hidden()
-            // Header Search Input
+            .gap(px(12.0))
+            // ThemedSearchBar (Constants.size4Xl = 40px height, sizeMd = 14px radius)
             .child(
                 div()
                     .w_full()
-                    .h(px(56.0))
+                    .h(px(40.0))
                     .flex()
                     .items_center()
                     .px(px(16.0))
-                    .border_b_1()
-                    .border_color(hsla(0.0, 0.0, 1.0, 0.08))
+                    .rounded(px(14.0))
+                    .bg(theme_bg_secondary)
                     .gap(px(12.0))
+                    // Search icon (Theme.muted)
                     .child(
                         Icon::new(IconName::Search)
-                            .size(px(18.0))
-                            .text_color(accent),
+                            .size(px(16.0))
+                            .text_color(theme_muted),
                     )
+                    // Search input text / placeholder
                     .child(
                         div().flex_1().flex().items_center().child(
                             if self.query.is_empty() {
                                 div()
                                     .text_sm()
                                     .font_weight(FontWeight::NORMAL)
-                                    .text_color(hsla(0.0, 0.0, 0.50, 0.85))
-                                    .child("Search applications, utilities, and settings...")
+                                    .text_color(theme_muted)
+                                    .child("Search applications...")
                             } else {
                                 div()
-                                    .flex()
-                                    .items_center()
-                                    .child(
-                                        div()
-                                            .text_sm()
-                                            .font_weight(FontWeight::SEMIBOLD)
-                                            .text_color(hsla(0.0, 0.0, 0.98, 1.0))
-                                            .child(self.query.clone()),
-                                    )
-                                    .child(
-                                        div()
-                                            .w(px(2.0))
-                                            .h(px(16.0))
-                                            .ml(px(2.0))
-                                            .rounded_full()
-                                            .bg(accent),
-                                    )
+                                    .text_sm()
+                                    .font_weight(FontWeight::NORMAL)
+                                    .text_color(theme_fg)
+                                    .child(self.query.clone())
                             },
                         ),
                     )
+                    // Clear button (Theme.muted "x")
                     .when(!self.query.is_empty(), |this| {
                         let on_clear = on_clear.clone();
                         this.child(
                             div()
-                                .size(px(22.0))
-                                .rounded_full()
+                                .size(px(20.0))
                                 .flex()
                                 .items_center()
                                 .justify_center()
-                                .bg(hsla(0.0, 0.0, 1.0, 0.08))
-                                .hover(|s| s.bg(hsla(0.0, 0.0, 1.0, 0.16)).cursor_pointer())
+                                .hover(|s| s.cursor_pointer())
                                 .on_mouse_down(MouseButton::Left, move |_, _, _| {
                                     if let Some(h) = on_clear.as_ref() {
                                         h();
@@ -264,41 +214,20 @@ impl RenderOnce for LauncherWidget {
                                 })
                                 .child(
                                     Icon::new(IconName::X)
-                                        .size(px(12.0))
-                                        .text_color(hsla(0.0, 0.0, 0.75, 1.0)),
+                                        .size(px(14.0))
+                                        .text_color(theme_muted),
                                 ),
                         )
-                    })
-                    .child(
-                        div()
-                            .px(px(7.0))
-                            .py(px(2.5))
-                            .rounded(px(5.0))
-                            .bg(hsla(0.0, 0.0, 1.0, 0.08))
-                            .border_1()
-                            .border_color(hsla(0.0, 0.0, 1.0, 0.12))
-                            .text_xs()
-                            .font_weight(FontWeight::MEDIUM)
-                            .text_color(hsla(0.0, 0.0, 0.65, 0.90))
-                            .hover(|s| s.cursor_pointer().bg(hsla(0.0, 0.0, 1.0, 0.18)))
-                            .on_mouse_down(MouseButton::Left, move |_, _, _| {
-                                if let Some(h) = on_close.as_ref() {
-                                    h();
-                                }
-                            })
-                            .child("ESC"),
-                    ),
+                    }),
             )
-            // Applications List
+            // Applications ListView (minflair listSpacing = 8px)
             .child(
                 div()
                     .w_full()
-                    .flex_1()
                     .flex()
                     .flex_col()
-                    .py(px(8.0))
-                    .px(px(8.0))
-                    .gap(px(4.0))
+                    .gap(px(8.0))
+                    // GhostEmptyState
                     .when(total_count == 0, |this| {
                         this.child(
                             div()
@@ -308,49 +237,48 @@ impl RenderOnce for LauncherWidget {
                                 .flex_col()
                                 .items_center()
                                 .justify_center()
-                                .gap(px(10.0))
+                                .gap(px(8.0))
                                 .child(
                                     Icon::new(IconName::Search)
-                                        .size(px(28.0))
-                                        .text_color(hsla(0.0, 0.0, 0.35, 1.0)),
+                                        .size(px(24.0))
+                                        .text_color(theme_muted),
                                 )
                                 .child(
                                     div()
                                         .text_sm()
-                                        .font_weight(FontWeight::MEDIUM)
-                                        .text_color(hsla(0.0, 0.0, 0.50, 1.0))
-                                        .child("No matching applications found"),
+                                        .font_weight(FontWeight::NORMAL)
+                                        .text_color(theme_muted)
+                                        .child("No applications found"),
                                 ),
                         )
                     })
+                    // LauncherItemDelegate delegates (height = 44px, radius = 16px)
                     .children(visible_items.iter().enumerate().map(|(i, app)| {
                         let real_idx = start_idx + i;
-                        let is_active = real_idx == selected_idx;
+                        let is_current = real_idx == selected_idx;
                         let exec = app.exec.clone();
                         let on_launch = on_launch.clone();
                         let on_select = on_select.clone();
 
-                        let icon_name = app_icon_for_category(&app.categories, &app.name);
+                        let icon_path_exists = !app.icon.is_empty() && Path::new(&app.icon).exists();
+                        let icon_path = PathBuf::from(&app.icon);
 
                         div()
                             .w_full()
                             .h(px(44.0))
                             .flex()
                             .items_center()
-                            .px(px(10.0))
-                            .rounded(px(12.0))
-                            .border_1()
-                            .border_color(if is_active {
-                                accent_border
+                            .px(px(16.0))
+                            .rounded(px(16.0))
+                            // Minflair delegate highlight: Theme.bgSecondary on current or hovered
+                            .bg(if is_current {
+                                theme_bg_secondary
                             } else {
                                 hsla(0.0, 0.0, 0.0, 0.0)
                             })
-                            .bg(if is_active {
-                                accent_glow
-                            } else {
-                                hsla(0.0, 0.0, 0.0, 0.0)
+                            .hover(move |s| {
+                                s.bg(theme_bg_secondary).cursor_pointer()
                             })
-                            .hover(|s| s.bg(hsla(0.0, 0.0, 1.0, 0.06)).cursor_pointer())
                             .on_mouse_down(MouseButton::Left, move |_, _, _| {
                                 if let Some(h) = on_launch.as_ref() {
                                     h(exec.clone());
@@ -361,130 +289,66 @@ impl RenderOnce for LauncherWidget {
                                     h(real_idx);
                                 }
                             })
-                            // App Icon Badge (28x28)
+                            // Clean App Icon: 24x24px (Constants.size2Xl) without background box or circles
                             .child(
                                 div()
-                                    .size(px(28.0))
-                                    .rounded(px(8.0))
-                                    .mr(px(10.0))
+                                    .size(px(24.0))
+                                    .mr(px(16.0))
                                     .flex()
                                     .items_center()
                                     .justify_center()
-                                    .bg(if is_active {
-                                        accent_glow
-                                    } else {
-                                        hsla(0.0, 0.0, 1.0, 0.07)
-                                    })
-                                    .border_1()
-                                    .border_color(if is_active {
-                                        accent_border
-                                    } else {
-                                        hsla(0.0, 0.0, 1.0, 0.10)
-                                    })
-                                    .child(Icon::new(icon_name).size(px(15.0)).text_color(
-                                        if is_active {
-                                            accent
+                                    .child(
+                                        if icon_path_exists {
+                                            img(icon_path)
+                                                .size(px(24.0))
+                                                .rounded(px(4.0))
+                                                .into_any_element()
                                         } else {
-                                            hsla(0.0, 0.0, 0.85, 1.0)
+                                            Icon::new(IconName::Rocket)
+                                                .size(px(24.0))
+                                                .text_color(if is_current {
+                                                    theme_accent
+                                                } else {
+                                                    theme_muted
+                                                })
+                                                .into_any_element()
                                         },
-                                    )),
+                                    ),
                             )
-                            // App Title & Category Subtitle
+                            // App Name (ThemedText: font.bold when current, accent color when current, else fg)
                             .child(
                                 div()
                                     .flex_1()
-                                    .flex()
-                                    .flex_col()
-                                    .justify_center()
-                                    .child(
-                                        div()
-                                            .text_sm()
-                                            .font_weight(if is_active {
-                                                FontWeight::BOLD
-                                            } else {
-                                                FontWeight::MEDIUM
-                                            })
-                                            .text_color(if is_active {
-                                                accent
-                                            } else {
-                                                hsla(0.0, 0.0, 0.92, 1.0)
-                                            })
-                                            .child(app.name.clone()),
-                                    )
-                                    .when(!app.categories.is_empty(), |this| {
-                                        let cat = app
-                                            .categories
-                                            .split(';')
-                                            .filter(|c| !c.is_empty())
-                                            .take(2)
-                                            .collect::<Vec<_>>()
-                                            .join(" • ");
-                                        this.child(
-                                            div()
-                                                .text_xs()
-                                                .text_color(hsla(220.0 / 360.0, 0.15, 0.65, 0.70))
-                                                .child(cat),
-                                        )
-                                    }),
+                                    .text_sm()
+                                    .font_weight(if is_current {
+                                        FontWeight::BOLD
+                                    } else {
+                                        FontWeight::NORMAL
+                                    })
+                                    .text_color(if is_current {
+                                        theme_accent
+                                    } else {
+                                        theme_fg
+                                    })
+                                    .child(app.name.clone()),
                             )
-                            // Action / Open badge when active
-                            .when(is_active, |this| {
+                            // Category subtle subtitle on right (Theme.muted)
+                            .when(!app.categories.is_empty(), |this| {
+                                let cat = app
+                                    .categories
+                                    .split(';')
+                                    .filter(|c| !c.is_empty())
+                                    .next()
+                                    .unwrap_or("")
+                                    .to_string();
                                 this.child(
                                     div()
-                                        .px(px(8.0))
-                                        .py(px(3.0))
-                                        .rounded(px(6.0))
-                                        .bg(accent)
                                         .text_xs()
-                                        .font_weight(FontWeight::BOLD)
-                                        .text_color(hsla(0.0, 0.0, 0.05, 1.0))
-                                        .child("↵ Open"),
+                                        .text_color(theme_muted)
+                                        .child(cat),
                                 )
                             })
                     })),
-            )
-            // Footer Info Bar
-            .child(
-                div()
-                    .w_full()
-                    .h(px(36.0))
-                    .px(px(16.0))
-                    .flex()
-                    .items_center()
-                    .justify_between()
-                    .border_t_1()
-                    .border_color(hsla(0.0, 0.0, 1.0, 0.06))
-                    .bg(hsla(220.0 / 360.0, 0.22, 0.06, 0.50))
-                    .child(
-                        div()
-                            .text_xs()
-                            .text_color(hsla(0.0, 0.0, 0.55, 0.85))
-                            .child(format!("{total_count} applications found")),
-                    )
-                    .child(
-                        div()
-                            .flex()
-                            .items_center()
-                            .gap(px(12.0))
-                            .child(
-                                div()
-                                    .text_xs()
-                                    .text_color(hsla(0.0, 0.0, 0.50, 0.85))
-                                    .child("↑↓ navigate"),
-                            )
-                            .child(
-                                div()
-                                    .text_xs()
-                                    .text_color(hsla(0.0, 0.0, 0.50, 0.85))
-                                    .child("↵ launch"),
-                            )
-                            .child(
-                                div()
-                                    .text_xs()
-                                    .text_color(hsla(0.0, 0.0, 0.50, 0.85))
-                                    .child("ESC close"),
-                            ),
-                    ),
             )
     }
 }

@@ -1,3 +1,4 @@
+use beskar_theme::Theme;
 use gpui_kit::assets::IconName;
 use gpui_kit::component::Icon;
 use gpui_kit::*;
@@ -169,9 +170,9 @@ impl RenderOnce for PowerMenuWidget {
             .p(px(6.0))
             .rounded(px(16.0))
             // Minflair Deep Obsidian Glass (Theme.bg)
-            .bg(hsla(268.0 / 360.0, 0.40, 0.05, 0.95))
+            .bg(Theme::bg())
             .border_1()
-            .border_color(hsla(0.0, 0.0, 1.0, 0.12))
+            .border_color(Theme::border())
             .shadow_xl()
             .child(if let Some(pending) = self.pending_action {
                 // ── Stage 2: Confirmation Prompt ──

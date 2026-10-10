@@ -58,7 +58,7 @@ pub fn toggle_launcher(cx: &mut App) {
         titlebar: None,
         window_bounds: Some(WindowBounds::Windowed(Bounds {
             origin: point(px(0.), px(0.)),
-            size: Size::new(px(640.), px(460.)),
+            size: Size::new(px(700.), px(480.)),
         })),
         app_id: Some("beskar-launcher".to_string()),
         window_background: WindowBackgroundAppearance::Transparent,

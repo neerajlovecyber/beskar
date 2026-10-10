@@ -45,5 +45,8 @@ mod tests {
         assert!(!apps.is_empty(), "Should discover installed desktop applications");
         let first = &apps[0];
         assert!(!first.name.is_empty(), "App should have a name");
+        for app in apps.iter().take(5) {
+            println!("APP: {} | ICON: {} (exists: {})", app.name, app.icon, std::path::Path::new(&app.icon).exists());
+        }
     }
 }

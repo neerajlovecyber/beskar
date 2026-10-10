@@ -14,6 +14,78 @@ impl HslaColor {
     }
 }
 
+impl From<HslaColor> for gpui_kit::Hsla {
+    fn from(c: HslaColor) -> Self {
+        gpui_kit::hsla(c.h / 360.0, c.s, c.l, c.a)
+    }
+}
+
+/// Centralized Minflair theme singleton matching `references/minflair/config/quickshell/Core/Theme.qml`.
+#[derive(Debug, Clone, Copy)]
+pub struct Theme;
+
+impl Theme {
+    /// Pure obsidian dark background (`#030107` with 0.96 opacity)
+    #[inline]
+    pub fn bg() -> gpui_kit::Hsla {
+        gpui_kit::hsla(268.0 / 360.0, 0.40, 0.024, 0.96)
+    }
+
+    /// Primary foreground text (`#d1d1d1`)
+    #[inline]
+    pub fn fg() -> gpui_kit::Hsla {
+        gpui_kit::hsla(0.0, 0.0, 0.82, 1.0)
+    }
+
+    /// Primary accent lavender/purple (`#a77ef5`)
+    #[inline]
+    pub fn accent() -> gpui_kit::Hsla {
+        gpui_kit::hsla(261.0 / 360.0, 0.86, 0.73, 1.0)
+    }
+
+    /// Complementary accent rose (`#f57eb6`)
+    #[inline]
+    pub fn accent_complementary() -> gpui_kit::Hsla {
+        gpui_kit::hsla(331.0 / 360.0, 0.86, 0.73, 1.0)
+    }
+
+    /// Muted text and inactive icons (`rgba(209, 209, 209, 0.40)`)
+    #[inline]
+    pub fn muted() -> gpui_kit::Hsla {
+        gpui_kit::hsla(0.0, 0.0, 0.82, 0.40)
+    }
+
+    /// Subtle perimeter border (`rgba(209, 209, 209, 0.10)`)
+    #[inline]
+    pub fn border() -> gpui_kit::Hsla {
+        gpui_kit::hsla(0.0, 0.0, 0.82, 0.10)
+    }
+
+    /// Secondary background for hovered/selected pills and items (`rgba(overlayBase, 0.08)`)
+    #[inline]
+    pub fn bg_secondary() -> gpui_kit::Hsla {
+        gpui_kit::hsla(261.0 / 360.0, 0.70, 0.75, 0.08)
+    }
+
+    /// Tertiary background (`rgba(overlayBase, 0.03)`)
+    #[inline]
+    pub fn bg_tertiary() -> gpui_kit::Hsla {
+        gpui_kit::hsla(261.0 / 360.0, 0.70, 0.75, 0.03)
+    }
+
+    /// Accent tinted background (`rgba(accent, 0.18)`)
+    #[inline]
+    pub fn bg_accent() -> gpui_kit::Hsla {
+        gpui_kit::hsla(261.0 / 360.0, 0.86, 0.73, 0.18)
+    }
+
+    /// Card / overlay shadow (`rgba(0, 0, 0, 0.75)`)
+    #[inline]
+    pub fn shadow() -> gpui_kit::Hsla {
+        gpui_kit::hsla(0.0, 0.0, 0.0, 0.75)
+    }
+}
+
 /// Aesthetic Theme Tokens combining Suzuha's dark acrylic surfaces with iRiS's gold/amber & neutral palette.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ThemeTokens {
