@@ -370,3 +370,18 @@ pub fn command(what: &str, args: &[SysValue]) -> Result<(), String> {
     hub.send(Event::Change);
     Ok(())
 }
+
+/// Dismisses a notification by ID.
+pub fn dismiss(id: u32) {
+    let _ = command("notifications.dismiss", &[crate::sysvalue::SysValue::Num(id as f64)]);
+}
+
+/// Invokes a named action on a notification by ID.
+pub fn invoke(id: u32, key: &str) {
+    let _ = command("notifications.invoke", &[crate::sysvalue::SysValue::Num(id as f64), crate::sysvalue::SysValue::Text(key.to_string())]);
+}
+
+/// Clears all active notifications.
+pub fn clear() {
+    let _ = command("notifications.clear", &[]);
+}

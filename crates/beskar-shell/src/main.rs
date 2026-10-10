@@ -1,9 +1,9 @@
 use std::sync::Arc;
 use beskar_compositor::detect_compositor;
-use beskar_core::models::WorkspaceInfo;
+use beskar_core::models::{NotificationItem, WorkspaceInfo};
 use beskar_core::traits::CompositorBackend;
 use beskar_services::{AudioService, BatteryService, MprisService};
-use beskar_ui::BeskarBar;
+use beskar_ui::{BeskarBar, ControlCenterWidget, NotificationToastWidget};
 use chrono::Local;
 use gpui_kit::assets::AllAssets;
 use gpui_kit::layer_shell::{Anchor as LayerAnchor, KeyboardInteractivity, Layer, LayerShellOptions};
@@ -17,6 +17,11 @@ const BAR_HEIGHT: f32 = 48.0;
 /// Top margin — the gap between the screen edge and the bar surface, creating the floating look.
 const BAR_MARGIN_TOP: f32 = 6.0;
 
+#[derive(Debug, Clone)]
+enum BarAction {
+    ToggleControlCenter,
+}
+
 struct DesktopBarView {
     workspaces: Vec<WorkspaceInfo>,
     active_ws: u64,
@@ -29,7 +34,9 @@ struct DesktopBarView {
     media: Option<(String, String, bool)>,
     island_spring: beskar_ui::SpringValue,
     tray_items: Vec<beskar_core::models::TrayItem>,
+    notifications: Vec<NotificationItem>,
     show_control_center: bool,
+    action_tx: tokio::sync::mpsc::UnboundedSender<BarAction>,
     compositor: Arc<dyn CompositorBackend>,
 }
 
@@ -110,6 +117,7 @@ impl DesktopBarView {
                     this.is_muted = snap.audio.is_muted;
                     this.media = media;
                     this.tray_items = snap.tray;
+                    this.notifications = snap.notifications;
                     this.island_spring.set_target(target_width);
                     cx.notify();
                 });
@@ -140,7 +148,26 @@ impl DesktopBarView {
         })
         .detach();
 
-        // 3. Live Niri Compositor Event Stream
+        // 4. UI Actions Channel (e.g. Control Center toggle)
+        let (action_tx, mut action_rx) = tokio::sync::mpsc::unbounded_channel::<BarAction>();
+        cx.spawn(async move |this, cx| {
+            while let Some(action) = action_rx.recv().await {
+                let res = this.update(cx, |this, cx| {
+                    match action {
+                        BarAction::ToggleControlCenter => {
+                            this.show_control_center = !this.show_control_center;
+                            cx.notify();
+                        }
+                    }
+                });
+                if res.is_err() {
+                    break;
+                }
+            }
+        })
+        .detach();
+
+        // 5. Live Niri Compositor Event Stream
         let (tx, mut rx) = tokio::sync::mpsc::channel(64);
         let comp_listener = compositor.clone();
         futures::executor::block_on(async {
@@ -186,7 +213,9 @@ impl DesktopBarView {
             media: initial_media,
             island_spring,
             tray_items: Vec::new(),
+            notifications: Vec::new(),
             show_control_center: false,
+            action_tx,
             compositor,
         }
     }
@@ -214,6 +243,11 @@ impl Render for DesktopBarView {
             beskar_services::AudioService::set_volume(delta);
         });
 
+        let atx = self.action_tx.clone();
+        let on_control_center_click = Arc::new(move || {
+            let _ = atx.send(BarAction::ToggleControlCenter);
+        });
+
         let show_cc = self.show_control_center;
 
         div()
@@ -238,10 +272,7 @@ impl Render for DesktopBarView {
                 Some(on_play_pause),
                 Some(on_volume_click),
                 Some(on_volume_scroll),
-                Some(Arc::new({
-                    // Toggle control center
-                    move || {}
-                })),
+                Some(on_control_center_click),
                 None,
             ))
             // Quick Settings / Control Center slide-down card
@@ -252,7 +283,7 @@ impl Render for DesktopBarView {
                         .top(px(BAR_HEIGHT + 8.0))
                         .right(px(12.0))
                         .child(
-                            beskar_ui::ControlCenterWidget::new(
+                            ControlCenterWidget::new(
                                 self.volume_percent,
                                 self.battery_percent,
                             )
@@ -261,6 +292,28 @@ impl Render for DesktopBarView {
                             .wifi(true, None)
                             .bluetooth(true),
                         ),
+                )
+            })
+            // Notification Drop Toast stack
+            .when(!self.notifications.is_empty(), |this| {
+                let notifs = self.notifications.clone();
+                this.child(
+                    div()
+                        .absolute()
+                        .top(px(BAR_HEIGHT + 8.0))
+                        .right(px(16.0))
+                        .flex()
+                        .flex_col()
+                        .gap(px(8.0))
+                        .children(notifs.into_iter().take(3).map(|n| {
+                            NotificationToastWidget::new(n)
+                                .on_dismiss(|id| {
+                                    beskar_services::notifications::dismiss(id);
+                                })
+                                .on_invoke(|id, key| {
+                                    beskar_services::notifications::invoke(id, &key);
+                                })
+                        })),
                 )
             })
     }

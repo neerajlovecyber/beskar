@@ -90,4 +90,15 @@ pub struct TrayItem {
     pub has_menu: bool,
 }
 
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+pub struct NotificationItem {
+    pub id: u32,
+    pub app_name: String,
+    pub summary: String,
+    pub body: String,
+    pub icon: String,
+    pub urgency: u8,
+}
+
+
 

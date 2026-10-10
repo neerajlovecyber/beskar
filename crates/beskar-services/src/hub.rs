@@ -1,7 +1,7 @@
 use crate::{audio::AudioService, battery::BatteryService, mpris::MprisService};
 use anyhow::Result;
 use beskar_core::events::ServiceEvent;
-use beskar_core::models::{AudioState, BatteryState, MediaState, TrayItem};
+use beskar_core::models::{AudioState, BatteryState, MediaState, NotificationItem, TrayItem};
 use tokio::sync::{broadcast, mpsc};
 use tracing::info;
 
@@ -12,6 +12,7 @@ pub struct SystemSnapshot {
     pub battery: BatteryState,
     pub media: Option<MediaState>,
     pub tray: Vec<TrayItem>,
+    pub notifications: Vec<NotificationItem>,
 }
 
 /// Deep module providing a single reactive stream for all system states.
@@ -53,6 +54,7 @@ impl SystemHub {
             battery: initial_battery,
             media: initial_media,
             tray: Vec::new(),
+            notifications: Vec::new(),
         };
         let _ = tx.send(initial_snapshot.clone());
 
@@ -126,8 +128,42 @@ impl SystemHub {
         }));
 
         // Spawn copied pleamar Notifications service
-        crate::notifications::service(Box::new(|_val| {
-            // Live desktop notifications
+        let notif_tx = event_tx.clone();
+        crate::notifications::service(Box::new(move |val| {
+            if let crate::sysvalue::SysValue::List(items) = val {
+                let mut notifs = Vec::new();
+                for item in items {
+                    if let crate::sysvalue::SysValue::Map(m) = item {
+                        let find_str = |k: &str| {
+                            m.iter()
+                                .find(|(key, _)| key == k)
+                                .and_then(|(_, v)| match v {
+                                    crate::sysvalue::SysValue::Text(t) => Some(t.clone()),
+                                    _ => None,
+                                })
+                                .unwrap_or_default()
+                        };
+                        let find_num = |k: &str| {
+                            m.iter()
+                                .find(|(key, _)| key == k)
+                                .and_then(|(_, v)| match v {
+                                    crate::sysvalue::SysValue::Num(n) => Some(*n),
+                                    _ => None,
+                                })
+                                .unwrap_or(0.0)
+                        };
+                        notifs.push(NotificationItem {
+                            id: find_num("id") as u32,
+                            app_name: find_str("app"),
+                            summary: find_str("title"),
+                            body: find_str("body"),
+                            icon: find_str("icon"),
+                            urgency: find_num("urgency") as u8,
+                        });
+                    }
+                }
+                let _ = notif_tx.blocking_send(ServiceEvent::Notifications(notifs));
+            }
         }));
 
         // Aggregation event loop
@@ -146,6 +182,9 @@ impl SystemHub {
                     }
                     ServiceEvent::Tray(tray) => {
                         state.tray = tray;
+                    }
+                    ServiceEvent::Notifications(notifs) => {
+                        state.notifications = notifs;
                     }
                     _ => {}
                 }
