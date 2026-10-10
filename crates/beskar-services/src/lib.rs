@@ -1,5 +1,7 @@
-pub mod mpris;
+pub mod audio;
 pub mod battery;
+pub mod mpris;
 
-pub use mpris::MprisService;
+pub use audio::AudioService;
 pub use battery::BatteryService;
+pub use mpris::MprisService;

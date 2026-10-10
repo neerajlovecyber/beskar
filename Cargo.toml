@@ -24,7 +24,6 @@ futures-util = "0.3"
 zbus = "5.18"
 chrono = "0.4"
 niri-ipc = "26.4"
-gpui = { git = "https://github.com/zed-industries/zed", branch = "main", features = ["wayland"] }
 gpui-kit = "0.7.1"
 
 # Workspace crates

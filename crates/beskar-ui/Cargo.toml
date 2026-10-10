@@ -6,7 +6,6 @@ edition = "2024"
 [dependencies]
 beskar-core.workspace = true
 beskar-theme.workspace = true
-gpui.workspace = true
 gpui-kit.workspace = true
 anyhow.workspace = true
 tracing.workspace = true

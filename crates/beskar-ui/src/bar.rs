@@ -1,4 +1,6 @@
-use gpui::{div, px, AnyElement, IntoElement, ParentElement, Pixels, RenderOnce, Styled, Window, App};
+use beskar_core::models::WorkspaceInfo;
+use gpui_kit::*;
+use std::sync::Arc;
 
 /// Beskar Bar surface separating the top bar into 3 distinct layout regions:
 /// - [Left Island]: Workspaces & active tasks
@@ -10,6 +12,12 @@ pub struct BeskarBar {
     center: Vec<AnyElement>,
     right: Vec<AnyElement>,
     padding_x: Pixels,
+}
+
+impl Default for BeskarBar {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl BeskarBar {
@@ -35,6 +43,110 @@ impl BeskarBar {
     pub fn right(mut self, elements: impl IntoIterator<Item = AnyElement>) -> Self {
         self.right.extend(elements);
         self
+    }
+
+    /// Builds the signature 3-Island layout matching minflair and the reference screenshot:
+    /// - Left: Brand star badge + WorkspacesWidget inside an IslandPill
+    /// - Center: DynamicCenterWidget (Clock + MPRIS) inside an IslandPill
+    /// - Right: VitalsWidget (Recording + Controls + Audio/WiFi/Battery/Power) inside an IslandPill
+    pub fn live_islands(
+        workspaces: Vec<WorkspaceInfo>,
+        active_ws: Option<u64>,
+        time_str: impl Into<String>,
+        date_str: Option<String>,
+        media: Option<(String, String, bool)>,
+        volume_percent: u8,
+        is_muted: bool,
+        battery_percent: u8,
+        is_charging: bool,
+        on_select_ws: Option<Arc<dyn Fn(u64) + Send + Sync>>,
+        on_scroll_ws: Option<Arc<dyn Fn(i32) + Send + Sync>>,
+        on_play_pause: Option<Arc<dyn Fn() + Send + Sync>>,
+        on_volume_click: Option<Arc<dyn Fn() + Send + Sync>>,
+        on_power_click: Option<Arc<dyn Fn() + Send + Sync>>,
+    ) -> Self {
+        use crate::pill::IslandPill;
+        use crate::widgets::{DynamicCenterWidget, VitalsWidget, WorkspacesWidget};
+
+        let mut ws_widget = WorkspacesWidget::new(workspaces, active_ws);
+        if let Some(handler) = on_select_ws {
+            ws_widget = ws_widget.on_select(move |id| (handler)(id));
+        }
+        if let Some(handler) = on_scroll_ws {
+            ws_widget = ws_widget.on_scroll(move |dir| (handler)(dir));
+        }
+
+        let left_pill = IslandPill::new()
+            .child(
+                // Star logo badge from minflair/screenshot
+                div()
+                    .mr(px(8.0))
+                    .text_xs()
+                    .font_weight(FontWeight::BOLD)
+                    .text_color(hsla(45.0 / 360.0, 0.90, 0.60, 1.0))
+                    .child("✦"),
+            )
+            .child(ws_widget);
+
+        let mut center_widget = DynamicCenterWidget::new(time_str).date(date_str);
+        if let Some((title, artist, is_playing)) = media {
+            center_widget = center_widget.media(Some(title), Some(artist), is_playing);
+        }
+        if let Some(handler) = on_play_pause {
+            center_widget = center_widget.on_play_pause(move || (handler)());
+        }
+        let center_pill = IslandPill::new().child(center_widget);
+
+        let mut vitals_widget = VitalsWidget::new(volume_percent, battery_percent)
+            .muted(is_muted)
+            .charging(is_charging);
+        if let Some(handler) = on_volume_click {
+            vitals_widget = vitals_widget.on_volume_click(move || (handler)());
+        }
+        if let Some(handler) = on_power_click {
+            vitals_widget = vitals_widget.on_power_click(move || (handler)());
+        }
+        let right_pill = IslandPill::new().child(vitals_widget);
+
+        Self::new()
+            .left([left_pill.into_any_element()])
+            .center([center_pill.into_any_element()])
+            .right([right_pill.into_any_element()])
+    }
+
+    pub fn default_islands(
+        active_ws: u64,
+        total_ws: usize,
+        time_str: impl Into<String>,
+        media: Option<(String, String, bool)>,
+    ) -> Self {
+        let fake_workspaces = (1..=total_ws)
+            .map(|i| WorkspaceInfo {
+                id: i as u64,
+                idx: i as u8,
+                name: None,
+                output: String::new(),
+                is_active: i as u64 == active_ws,
+                is_focused: i as u64 == active_ws,
+            })
+            .collect();
+
+        Self::live_islands(
+            fake_workspaces,
+            Some(active_ws),
+            time_str,
+            None,
+            media,
+            65,
+            false,
+            88,
+            false,
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
     }
 }
 

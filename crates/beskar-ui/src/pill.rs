@@ -1,4 +1,5 @@
-use gpui::{div, hsla, px, AnyElement, IntoElement, ParentElement, Pixels, RenderOnce, Styled, Window, App};
+use gpui_kit::prelude::FluentBuilder;
+use gpui_kit::*;
 
 /// An Island Pill container featuring dark glassmorphic styling,
 /// subtle hairline borders, and hover responsiveness directly styled
