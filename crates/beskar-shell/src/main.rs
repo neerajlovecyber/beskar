@@ -26,6 +26,7 @@ struct DesktopBarView {
     volume_percent: u8,
     is_muted: bool,
     media: Option<(String, String, bool)>,
+    island_spring: beskar_ui::SpringValue,
     compositor: Arc<dyn CompositorBackend>,
 }
 
@@ -75,18 +76,21 @@ impl DesktopBarView {
         })
         .detach();
 
-        // 2. Hardware Stats Poller: updates battery, volume, and MPRIS every 1.5 seconds
-        cx.spawn(async move |this, cx| {
-            loop {
-                let _ = cx
-                    .background_executor()
-                    .timer(std::time::Duration::from_millis(1500))
-                    .await;
-                let bat = battery_svc.read_state();
-                let aud = AudioService::read_state();
-                let med = MprisService::read_state();
+        let has_initial_media = initial_media.is_some();
+        let initial_target_w = if has_initial_media { 320.0 } else { 120.0 };
+        let island_spring = beskar_ui::SpringValue::new(initial_target_w, beskar_ui::SpringConfig::spatial());
 
-                let media = med.map(|m| {
+        // 2. Reactive SystemHub: instant updates for audio, battery, and media
+        let hub = Arc::new(beskar_services::SystemHub::new());
+        let hub_clone = hub.clone();
+        futures::executor::block_on(async {
+            let _ = hub_clone.start().await;
+        });
+
+        let mut sys_rx = hub.subscribe();
+        cx.spawn(async move |this, cx| {
+            while let Ok(snap) = sys_rx.recv().await {
+                let media = snap.media.map(|m| {
                     (
                         m.title.unwrap_or_default(),
                         m.artist.unwrap_or_default(),
@@ -94,13 +98,36 @@ impl DesktopBarView {
                     )
                 });
 
+                let target_width = if media.is_some() { 320.0 } else { 120.0 };
+
                 let res = this.update(cx, |this, cx| {
-                    this.battery_percent = bat.percentage.round() as u8;
-                    this.is_charging = bat.is_charging;
-                    this.volume_percent = (aud.volume * 100.0).round() as u8;
-                    this.is_muted = aud.is_muted;
+                    this.battery_percent = snap.battery.percentage.round() as u8;
+                    this.is_charging = snap.battery.is_charging;
+                    this.volume_percent = (snap.audio.volume * 100.0).round() as u8;
+                    this.is_muted = snap.audio.is_muted;
                     this.media = media;
+                    this.island_spring.set_target(target_width);
                     cx.notify();
+                });
+                if res.is_err() {
+                    break;
+                }
+            }
+        })
+        .detach();
+
+        // 3. 60 FPS Physics Frame Loop for fluid Island morphing
+        cx.spawn(async move |this, cx| {
+            loop {
+                let _ = cx
+                    .background_executor()
+                    .timer(std::time::Duration::from_millis(16)) // ~60 FPS
+                    .await;
+                let res = this.update(cx, |this, cx| {
+                    if !this.island_spring.is_settled() {
+                        this.island_spring.step(1.0 / 60.0);
+                        cx.notify();
+                    }
                 });
                 if res.is_err() {
                     break;
@@ -153,6 +180,7 @@ impl DesktopBarView {
             volume_percent: (aud.volume * 100.0).round() as u8,
             is_muted: aud.is_muted,
             media: initial_media,
+            island_spring,
             compositor,
         }
     }
@@ -190,6 +218,7 @@ impl Render for DesktopBarView {
                 self.is_muted,
                 self.battery_percent,
                 self.is_charging,
+                Some(self.island_spring.current),
                 Some(on_select_ws),
                 None,
                 Some(on_play_pause),

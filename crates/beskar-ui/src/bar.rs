@@ -59,6 +59,7 @@ impl BeskarBar {
         is_muted: bool,
         battery_percent: u8,
         is_charging: bool,
+        animated_center_width: Option<f32>,
         on_select_ws: Option<Arc<dyn Fn(u64) + Send + Sync>>,
         on_scroll_ws: Option<Arc<dyn Fn(i32) + Send + Sync>>,
         on_play_pause: Option<Arc<dyn Fn() + Send + Sync>>,
@@ -89,6 +90,9 @@ impl BeskarBar {
             .child(ws_widget);
 
         let mut center_widget = DynamicCenterWidget::new(time_str).date(date_str);
+        if let Some(w) = animated_center_width {
+            center_widget = center_widget.width(px(w));
+        }
         if let Some((title, artist, is_playing)) = media {
             center_widget = center_widget.media(Some(title), Some(artist), is_playing);
         }
@@ -141,6 +145,7 @@ impl BeskarBar {
             false,
             88,
             false,
+            None,
             None,
             None,
             None,

@@ -25,6 +25,7 @@ zbus = "5.18"
 chrono = "0.4"
 niri-ipc = "26.4"
 gpui-kit = "0.7.1"
+pulseaudio = "0.3"
 
 # Workspace crates
 beskar-core = { path = "crates/beskar-core" }

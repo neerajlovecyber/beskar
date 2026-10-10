@@ -63,3 +63,20 @@ pub struct NetworkState {
     pub signal_strength: u8, // 0 - 100
     pub is_ethernet: bool,
 }
+
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+pub struct BluetoothDevice {
+    pub name: String,
+    pub address: String,
+    pub is_connected: bool,
+    pub is_paired: bool,
+    pub battery_percent: Option<u8>,
+}
+
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+pub struct BluetoothState {
+    pub is_present: bool,
+    pub is_powered: bool,
+    pub connected_devices: Vec<BluetoothDevice>,
+}
+

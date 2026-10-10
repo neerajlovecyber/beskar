@@ -1,4 +1,4 @@
-use crate::models::{AudioState, BatteryState, MediaState, NetworkState, WindowInfo, WorkspaceInfo};
+use crate::models::{AudioState, BatteryState, BluetoothState, MediaState, NetworkState, WindowInfo, WorkspaceInfo};
 
 #[derive(Debug, Clone)]
 pub enum CompositorEvent {
@@ -15,6 +15,7 @@ pub enum ServiceEvent {
     Battery(BatteryState),
     Audio(AudioState),
     Network(NetworkState),
+    Bluetooth(BluetoothState),
     TrayChanged,
 }
 

@@ -20,6 +20,7 @@ pub struct DynamicCenterWidget {
     media_title: Option<String>,
     media_artist: Option<String>,
     is_playing: bool,
+    width: Option<Pixels>,
     on_play_pause: Option<Arc<dyn Fn() + Send + Sync>>,
 }
 
@@ -31,8 +32,14 @@ impl DynamicCenterWidget {
             media_title: None,
             media_artist: None,
             is_playing: false,
+            width: None,
             on_play_pause: None,
         }
+    }
+
+    pub fn width(mut self, width: Pixels) -> Self {
+        self.width = Some(width);
+        self
     }
 
     pub fn date(mut self, date_str: Option<String>) -> Self {
@@ -64,10 +71,17 @@ impl RenderOnce for DynamicCenterWidget {
             _ => String::new(),
         };
 
-        div()
+        let mut container = div()
             .flex()
             .items_center()
-            .gap(px(10.0))
+            .justify_center()
+            .gap(px(10.0));
+
+        if let Some(w) = self.width {
+            container = container.w(w);
+        }
+
+        container
             // When no media is playing, show subtle date badge next to time
             .when(!has_media && self.date_str.is_some(), |this| {
                 this.child(
