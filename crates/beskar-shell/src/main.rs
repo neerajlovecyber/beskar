@@ -100,7 +100,7 @@ impl DesktopBarView {
         // 2. Reactive SystemHub: instant updates for audio, battery, and media
         let hub = Arc::new(beskar_services::SystemHub::new());
         let hub_clone = hub.clone();
-        futures::executor::block_on(async {
+        tokio::spawn(async move {
             let _ = hub_clone.start().await;
         });
 
@@ -185,7 +185,7 @@ impl DesktopBarView {
         // 5. Live Niri Compositor Event Stream
         let (tx, mut rx) = tokio::sync::mpsc::channel(64);
         let comp_listener = compositor.clone();
-        futures::executor::block_on(async {
+        tokio::spawn(async move {
             let _ = comp_listener.start_listener(tx).await;
         });
 
@@ -423,7 +423,8 @@ fn bar_window_options(display_id: Option<DisplayId>, cx: &App) -> WindowOptions 
     }
 }
 
-fn main() -> anyhow::Result<()> {
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt()
         .with_env_filter(EnvFilter::from_default_env().add_directive("beskar=info".parse()?))
         .init();
@@ -434,25 +435,23 @@ fn main() -> anyhow::Result<()> {
     info!("Active compositor backend: {:?}", compositor.kind());
 
     // Query initial workspace list from active Niri session
-    let (initial_workspaces, active_ws) = futures::executor::block_on(async {
-        match compositor.get_workspaces().await {
-            Ok(workspaces) => {
-                let active = workspaces
-                    .iter()
-                    .find(|w| w.is_focused || w.is_active)
-                    .map(|w| w.id)
-                    .unwrap_or(1);
-                (workspaces, active)
-            }
-            Err(e) => {
-                info!(
-                    "Could not query compositor workspaces: {}. Using defaults.",
-                    e
-                );
-                (Vec::new(), 1)
-            }
+    let (initial_workspaces, active_ws) = match compositor.get_workspaces().await {
+        Ok(workspaces) => {
+            let active = workspaces
+                .iter()
+                .find(|w| w.is_focused || w.is_active)
+                .map(|w| w.id)
+                .unwrap_or(1);
+            (workspaces, active)
         }
-    });
+        Err(e) => {
+            info!(
+                "Could not query compositor workspaces: {}. Using defaults.",
+                e
+            );
+            (Vec::new(), 1)
+        }
+    };
 
     info!(
         "Opening Beskar Shell layer-shell bar (Active Workspace ID: {}, Total Found: {})...",

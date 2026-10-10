@@ -59,40 +59,35 @@ impl BatteryService {
     pub async fn start_listener(&self, tx: mpsc::Sender<ServiceEvent>) -> Result<()> {
         info!("Battery polling listener starting");
         let path = self.path.clone();
-
-        tokio::spawn(async move {
-            let mut last_state = None;
-            loop {
-                let current = if let Some(p) = &path {
-                    let capacity = read_file_trimmed(p, "capacity").parse::<f32>().unwrap_or(100.0);
-                    let status = read_file_trimmed(p, "status");
-                    let is_charging = status == "Charging";
-                    let is_plugged_in = is_charging || status == "Full" || status == "Not charging";
-                    BatteryState {
-                        percentage: capacity,
-                        is_charging,
-                        is_plugged_in,
-                        power_watts: None,
-                    }
-                } else {
-                    BatteryState {
-                        percentage: 100.0,
-                        is_charging: false,
-                        is_plugged_in: true,
-                        power_watts: None,
-                    }
-                };
-
-                if last_state.as_ref() != Some(&current) {
-                    last_state = Some(current.clone());
-                    let _ = tx.send(ServiceEvent::Battery(current)).await;
+        let mut last_state = None;
+        loop {
+            let current = if let Some(p) = &path {
+                let capacity = read_file_trimmed(p, "capacity").parse::<f32>().unwrap_or(100.0);
+                let status = read_file_trimmed(p, "status");
+                let is_charging = status == "Charging";
+                let is_plugged_in = is_charging || status == "Full" || status == "Not charging";
+                BatteryState {
+                    percentage: capacity,
+                    is_charging,
+                    is_plugged_in,
+                    power_watts: None,
                 }
+            } else {
+                BatteryState {
+                    percentage: 100.0,
+                    is_charging: false,
+                    is_plugged_in: true,
+                    power_watts: None,
+                }
+            };
 
-                tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+            if last_state.as_ref() != Some(&current) {
+                last_state = Some(current.clone());
+                let _ = tx.send(ServiceEvent::Battery(current)).await;
             }
-        });
 
-        Ok(())
+            tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+        }
     }
 }
 

@@ -75,19 +75,16 @@ impl MprisService {
 
     pub async fn start_listener(&self, tx: mpsc::Sender<ServiceEvent>) -> Result<()> {
         info!("MPRIS media monitoring listener starting");
-        tokio::spawn(async move {
-            let mut last_state = None;
-            loop {
-                let current = Self::read_state();
-                if last_state != current {
-                    last_state = current.clone();
-                    if let Some(media) = current {
-                        let _ = tx.send(ServiceEvent::Media(media)).await;
-                    }
+        let mut last_state = None;
+        loop {
+            let current = Self::read_state();
+            if last_state != current {
+                last_state = current.clone();
+                if let Some(media) = current {
+                    let _ = tx.send(ServiceEvent::Media(media)).await;
                 }
-                tokio::time::sleep(tokio::time::Duration::from_millis(2000)).await;
             }
-        });
-        Ok(())
+            tokio::time::sleep(tokio::time::Duration::from_millis(2000)).await;
+        }
     }
 }

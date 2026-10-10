@@ -40,6 +40,9 @@ impl SystemHub {
 
     /// Spawns background listeners for Audio, Battery, MPRIS, Tray, Network, and Bluetooth into a single broadcast stream.
     pub async fn start(&self) -> Result<()> {
+        let rt = crate::tokio_runtime();
+        let _guard = rt.enter();
+
         let tx = self.tx.clone();
         let (event_tx, mut event_rx) = mpsc::channel::<ServiceEvent>(64);
 
@@ -61,20 +64,20 @@ impl SystemHub {
         // Spawn audio reactive listener (PulseAudio socket event loop)
         let audio_svc = AudioService::new();
         let audio_tx = event_tx.clone();
-        tokio::spawn(async move {
+        rt.spawn(async move {
             let _ = audio_svc.start_listener(audio_tx).await;
         });
 
         // Spawn battery listener
         let bat_tx = event_tx.clone();
-        tokio::spawn(async move {
+        rt.spawn(async move {
             let _ = battery_svc.start_listener(bat_tx).await;
         });
 
         // Spawn MPRIS listener
         let mpris_svc = MprisService::new();
         let mpris_tx = event_tx.clone();
-        tokio::spawn(async move {
+        rt.spawn(async move {
             let _ = mpris_svc.start_listener(mpris_tx).await;
         });
 
@@ -167,7 +170,7 @@ impl SystemHub {
         }));
 
         // Aggregation event loop
-        tokio::spawn(async move {
+        rt.spawn(async move {
             let mut state = initial_snapshot;
             while let Some(event) = event_rx.recv().await {
                 match event {

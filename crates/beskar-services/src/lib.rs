@@ -20,6 +20,21 @@ pub use hub::{SystemHub, SystemSnapshot};
 pub use mpris::MprisService;
 pub use sysvalue::SysValue;
 
+use std::sync::OnceLock;
+
+static TOKIO_RUNTIME: OnceLock<tokio::runtime::Runtime> = OnceLock::new();
+
+/// Returns a reference to the shared multi-thread Tokio runtime for background services.
+pub fn tokio_runtime() -> &'static tokio::runtime::Runtime {
+    TOKIO_RUNTIME.get_or_init(|| {
+        tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .thread_name("beskar-worker")
+            .build()
+            .expect("Failed to initialize background Tokio runtime")
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
