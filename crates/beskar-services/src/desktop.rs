@@ -91,6 +91,36 @@ pub fn launch(command: &str) -> Result<(), String> {
     Ok(())
 }
 
+/// Resolves an icon name to an absolute file path on disk if available.
+pub fn resolve_icon_path(icon_name: &str) -> Option<String> {
+    if icon_name.is_empty() {
+        return None;
+    }
+    let p = std::path::Path::new(icon_name);
+    if p.is_absolute() && p.exists() {
+        return Some(icon_name.to_string());
+    }
+
+    let bases = [
+        "/usr/share/pixmaps",
+        "/usr/share/icons/hicolor/scalable/apps",
+        "/usr/share/icons/hicolor/48x48/apps",
+        "/usr/share/icons/hicolor/128x128/apps",
+        "/usr/share/icons/hicolor/256x256/apps",
+        "/usr/share/icons/hicolor/512x512/apps",
+    ];
+    let extensions = ["png", "svg", "xpm"];
+    for base in &bases {
+        for ext in &extensions {
+            let candidate = format!("{base}/{icon_name}.{ext}");
+            if std::path::Path::new(&candidate).exists() {
+                return Some(candidate);
+            }
+        }
+    }
+    None
+}
+
 /// Returns a typed list of installed desktop applications.
 pub fn list_apps() -> Vec<beskar_core::models::AppItem> {
     if let SysValue::List(apps) = applications() {
@@ -106,10 +136,12 @@ pub fn list_apps() -> Vec<beskar_core::models::AppItem> {
                             })
                             .unwrap_or_default()
                     };
+                    let raw_icon = find_str("icon");
+                    let icon = resolve_icon_path(&raw_icon).unwrap_or(raw_icon);
                     Some(beskar_core::models::AppItem {
                         name: find_str("name"),
                         exec: find_str("exec"),
-                        icon: find_str("icon"),
+                        icon,
                         id: find_str("id"),
                         wmclass: find_str("wmclass"),
                         local_name: find_str("local_name"),
