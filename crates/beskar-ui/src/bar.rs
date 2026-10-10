@@ -68,6 +68,7 @@ impl BeskarBar {
         on_volume_scroll: Option<Arc<dyn Fn(i32) + Send + Sync>>,
         on_control_center_click: Option<Arc<dyn Fn() + Send + Sync>>,
         on_power_click: Option<Arc<dyn Fn() + Send + Sync>>,
+        on_launcher_click: Option<Arc<dyn Fn() + Send + Sync>>,
     ) -> Self {
         use crate::pill::IslandPill;
         use crate::widgets::{DynamicCenterWidget, VitalsWidget, WorkspacesWidget};
@@ -80,16 +81,25 @@ impl BeskarBar {
             ws_widget = ws_widget.on_scroll(move |dir| (handler)(dir));
         }
 
+        let on_star = on_launcher_click.clone();
+        let star_badge = div()
+            .mr(px(8.0))
+            .text_xs()
+            .font_weight(FontWeight::BOLD)
+            .text_color(hsla(45.0 / 360.0, 0.90, 0.60, 1.0))
+            .hover(|s| {
+                s.cursor_pointer()
+                    .text_color(hsla(45.0 / 360.0, 1.0, 0.75, 1.0))
+            })
+            .on_mouse_down(MouseButton::Left, move |_, _, _| {
+                if let Some(handler) = on_star.as_ref() {
+                    handler();
+                }
+            })
+            .child("✦");
+
         let left_pill = IslandPill::new()
-            .child(
-                // Star logo badge from minflair/screenshot
-                div()
-                    .mr(px(8.0))
-                    .text_xs()
-                    .font_weight(FontWeight::BOLD)
-                    .text_color(hsla(45.0 / 360.0, 0.90, 0.60, 1.0))
-                    .child("✦"),
-            )
+            .child(star_badge)
             .child(ws_widget);
 
         let mut center_widget = DynamicCenterWidget::new(time_str).date(date_str);
@@ -157,6 +167,7 @@ impl BeskarBar {
             false,
             None,
             Vec::new(),
+            None,
             None,
             None,
             None,

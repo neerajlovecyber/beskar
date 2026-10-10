@@ -90,3 +90,37 @@ pub fn launch(command: &str) -> Result<(), String> {
     });
     Ok(())
 }
+
+/// Returns a typed list of installed desktop applications.
+pub fn list_apps() -> Vec<beskar_core::models::AppItem> {
+    if let SysValue::List(apps) = applications() {
+        apps.into_iter()
+            .filter_map(|val| {
+                if let SysValue::Map(m) = val {
+                    let find_str = |k: &str| {
+                        m.iter()
+                            .find(|(key, _)| key == k)
+                            .and_then(|(_, v)| match v {
+                                SysValue::Text(t) => Some(t.clone()),
+                                _ => None,
+                            })
+                            .unwrap_or_default()
+                    };
+                    Some(beskar_core::models::AppItem {
+                        name: find_str("name"),
+                        exec: find_str("exec"),
+                        icon: find_str("icon"),
+                        id: find_str("id"),
+                        wmclass: find_str("wmclass"),
+                        local_name: find_str("local_name"),
+                        categories: find_str("categories"),
+                    })
+                } else {
+                    None
+                }
+            })
+            .collect()
+    } else {
+        Vec::new()
+    }
+}

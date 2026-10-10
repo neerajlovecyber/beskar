@@ -7,6 +7,6 @@ pub use bar::BeskarBar;
 pub use pill::IslandPill;
 pub use spring::{SpringConfig, SpringValue};
 pub use widgets::{
-    ControlCenterWidget, DynamicCenterWidget, NotificationToastWidget, VitalsWidget,
-    WorkspacesWidget,
+    ControlCenterWidget, DynamicCenterWidget, LauncherWidget, LockScreenWidget,
+    NotificationToastWidget, VitalsWidget, WorkspacesWidget,
 };

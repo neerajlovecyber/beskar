@@ -100,5 +100,16 @@ pub struct NotificationItem {
     pub urgency: u8,
 }
 
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+pub struct AppItem {
+    pub name: String,
+    pub exec: String,
+    pub icon: String,
+    pub id: String,
+    pub wmclass: String,
+    pub local_name: String,
+    pub categories: String,
+}
+
 
 

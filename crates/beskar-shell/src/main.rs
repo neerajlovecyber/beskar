@@ -1,9 +1,11 @@
 use std::sync::Arc;
 use beskar_compositor::detect_compositor;
-use beskar_core::models::{NotificationItem, WorkspaceInfo};
+use beskar_core::models::{AppItem, NotificationItem, WorkspaceInfo};
 use beskar_core::traits::CompositorBackend;
 use beskar_services::{AudioService, BatteryService, MprisService};
-use beskar_ui::{BeskarBar, ControlCenterWidget, NotificationToastWidget};
+use beskar_ui::{
+    BeskarBar, ControlCenterWidget, LauncherWidget, LockScreenWidget, NotificationToastWidget,
+};
 use chrono::Local;
 use gpui_kit::assets::AllAssets;
 use gpui_kit::layer_shell::{Anchor as LayerAnchor, KeyboardInteractivity, Layer, LayerShellOptions};
@@ -20,6 +22,8 @@ const BAR_MARGIN_TOP: f32 = 6.0;
 #[derive(Debug, Clone)]
 enum BarAction {
     ToggleControlCenter,
+    ToggleLauncher,
+    ToggleLockScreen,
 }
 
 struct DesktopBarView {
@@ -35,7 +39,10 @@ struct DesktopBarView {
     island_spring: beskar_ui::SpringValue,
     tray_items: Vec<beskar_core::models::TrayItem>,
     notifications: Vec<NotificationItem>,
+    apps: Vec<AppItem>,
     show_control_center: bool,
+    show_launcher: bool,
+    show_lock_screen: bool,
     action_tx: tokio::sync::mpsc::UnboundedSender<BarAction>,
     compositor: Arc<dyn CompositorBackend>,
 }
@@ -158,6 +165,14 @@ impl DesktopBarView {
                             this.show_control_center = !this.show_control_center;
                             cx.notify();
                         }
+                        BarAction::ToggleLauncher => {
+                            this.show_launcher = !this.show_launcher;
+                            cx.notify();
+                        }
+                        BarAction::ToggleLockScreen => {
+                            this.show_lock_screen = !this.show_lock_screen;
+                            cx.notify();
+                        }
                     }
                 });
                 if res.is_err() {
@@ -201,6 +216,8 @@ impl DesktopBarView {
         })
         .detach();
 
+        let apps = beskar_services::list_apps();
+
         Self {
             workspaces,
             active_ws,
@@ -214,7 +231,10 @@ impl DesktopBarView {
             island_spring,
             tray_items: Vec::new(),
             notifications: Vec::new(),
+            apps,
             show_control_center: false,
+            show_launcher: false,
+            show_lock_screen: false,
             action_tx,
             compositor,
         }
@@ -243,9 +263,19 @@ impl Render for DesktopBarView {
             beskar_services::AudioService::set_volume(delta);
         });
 
-        let atx = self.action_tx.clone();
+        let atx_cc = self.action_tx.clone();
         let on_control_center_click = Arc::new(move || {
-            let _ = atx.send(BarAction::ToggleControlCenter);
+            let _ = atx_cc.send(BarAction::ToggleControlCenter);
+        });
+
+        let atx_l = self.action_tx.clone();
+        let on_launcher_click = Arc::new(move || {
+            let _ = atx_l.send(BarAction::ToggleLauncher);
+        });
+
+        let atx_p = self.action_tx.clone();
+        let on_power_click = Arc::new(move || {
+            let _ = atx_p.send(BarAction::ToggleLockScreen);
         });
 
         let show_cc = self.show_control_center;
@@ -273,7 +303,8 @@ impl Render for DesktopBarView {
                 Some(on_volume_click),
                 Some(on_volume_scroll),
                 Some(on_control_center_click),
-                None,
+                Some(on_power_click),
+                Some(on_launcher_click),
             ))
             // Quick Settings / Control Center slide-down card
             .when(show_cc, |this| {
@@ -291,6 +322,49 @@ impl Render for DesktopBarView {
                             .charging(self.is_charging)
                             .wifi(true, None)
                             .bluetooth(true),
+                        ),
+                )
+            })
+            // App Launcher Spotlight overlay
+            .when(self.show_launcher, |this| {
+                let atx_c = self.action_tx.clone();
+                let atx_launch = self.action_tx.clone();
+                this.child(
+                    div()
+                        .absolute()
+                        .top(px(BAR_HEIGHT + 16.0))
+                        .left_0()
+                        .right_0()
+                        .flex()
+                        .justify_center()
+                        .child(
+                            LauncherWidget::new(self.apps.clone())
+                                .on_launch(move |cmd| {
+                                    let _ = beskar_services::launch_app(&cmd);
+                                    let _ = atx_launch.send(BarAction::ToggleLauncher);
+                                })
+                                .on_close(move || {
+                                    let _ = atx_c.send(BarAction::ToggleLauncher);
+                                }),
+                        ),
+                )
+            })
+            // Lock Screen Fullscreen overlay
+            .when(self.show_lock_screen, |this| {
+                let atx_u = self.action_tx.clone();
+                let atx_cancel = self.action_tx.clone();
+                this.child(
+                    div()
+                        .absolute()
+                        .size_full()
+                        .child(
+                            LockScreenWidget::new("User", &self.time_str, &self.date_str)
+                                .on_unlock_attempt(move |_| {
+                                    let _ = atx_u.send(BarAction::ToggleLockScreen);
+                                })
+                                .on_cancel(move || {
+                                    let _ = atx_cancel.send(BarAction::ToggleLockScreen);
+                                }),
                         ),
                 )
             })

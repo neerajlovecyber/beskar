@@ -13,7 +13,22 @@ pub mod sysvalue;
 pub mod tray;
 
 pub use audio::AudioService;
+pub use auth::verify as verify_password;
 pub use battery::BatteryService;
+pub use desktop::{launch as launch_app, list_apps};
 pub use hub::{SystemHub, SystemSnapshot};
 pub use mpris::MprisService;
 pub use sysvalue::SysValue;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_list_apps_discovery() {
+        let apps = list_apps();
+        assert!(!apps.is_empty(), "Should discover installed desktop applications");
+        let first = &apps[0];
+        assert!(!first.name.is_empty(), "App should have a name");
+    }
+}
