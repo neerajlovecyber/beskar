@@ -42,6 +42,7 @@ pub struct BeskarBar {
     right: Vec<AnyElement>,
     padding_x: Pixels,
     is_island_cluster: bool,
+    is_convex: bool,
 }
 
 impl Default for BeskarBar {
@@ -58,7 +59,13 @@ impl BeskarBar {
             right: Vec::new(),
             padding_x: px(12.0),
             is_island_cluster: false,
+            is_convex: false,
         }
+    }
+
+    pub fn convex(mut self, convex: bool) -> Self {
+        self.is_convex = convex;
+        self
     }
 
     pub fn island_cluster(mut self, cluster: bool) -> Self {
@@ -86,6 +93,7 @@ impl BeskarBar {
     /// - Center: DynamicCenterWidget (Clock + MPRIS) inside an IslandPill
     /// - Right: VitalsWidget (Recording + Controls + Audio/WiFi/Battery/Power) inside an IslandPill
     pub fn live_islands(
+        is_convex: bool,
         workspaces: Vec<WorkspaceInfo>,
         active_ws: Option<u64>,
         active_window: Option<WindowInfo>,
@@ -107,6 +115,7 @@ impl BeskarBar {
         on_control_center_click: Option<Arc<dyn Fn() + Send + Sync>>,
         on_power_click: Option<Arc<dyn Fn() + Send + Sync>>,
         on_launcher_click: Option<Arc<dyn Fn() + Send + Sync>>,
+        on_clock_click: Option<Arc<dyn Fn() + Send + Sync>>,
     ) -> Self {
         use crate::pill::IslandPill;
         use crate::widgets::{DynamicCenterWidget, VitalsWidget, WorkspacesWidget};
@@ -121,12 +130,19 @@ impl BeskarBar {
 
         let on_star = on_launcher_click.clone();
         let star_badge = div()
+            .flex()
+            .items_center()
+            .justify_center()
+            .w(px(24.0))
+            .h(px(24.0))
             .mr(px(8.0))
+            .rounded_md()
             .text_xs()
             .font_weight(FontWeight::BOLD)
             .text_color(hsla(45.0 / 360.0, 0.90, 0.60, 1.0))
             .hover(|s| {
                 s.cursor_pointer()
+                    .bg(beskar_theme::Theme::bg_secondary())
                     .text_color(hsla(45.0 / 360.0, 1.0, 0.75, 1.0))
             })
             .on_mouse_down(MouseButton::Left, move |_, _, _| {
@@ -137,7 +153,7 @@ impl BeskarBar {
             .child("✦");
 
         let left_pill = IslandPill::new()
-            .convex(true)
+            .convex(is_convex)
             .child(star_badge)
             .child(ws_widget)
             .when_some(active_window, |pill, win| {
@@ -197,7 +213,14 @@ impl BeskarBar {
         if let Some(handler) = on_play_pause {
             center_widget = center_widget.on_play_pause(move || (handler)());
         }
-        let center_pill = IslandPill::new().convex(true).child(center_widget);
+        if let Some(handler) = on_clock_click {
+            center_widget = center_widget.on_clock_click(move || (handler)());
+        }
+        if let Some(ref handler) = on_control_center_click {
+            let h = handler.clone();
+            center_widget = center_widget.on_media_click(move || (h)());
+        }
+        let center_pill = IslandPill::new().convex(is_convex).child(center_widget);
 
         let mut vitals_widget = VitalsWidget::new(volume_percent, battery_percent)
             .muted(is_muted)
@@ -215,10 +238,10 @@ impl BeskarBar {
         if let Some(handler) = on_power_click {
             vitals_widget = vitals_widget.on_power_click(move || (handler)());
         }
-        let right_pill = IslandPill::new().convex(true).child(vitals_widget);
-
+        let right_pill = IslandPill::new().convex(is_convex).child(vitals_widget);
 
         Self::new()
+            .convex(is_convex)
             .left([left_pill.into_any_element()])
             .center([center_pill.into_any_element()])
             .right([right_pill.into_any_element()])
@@ -242,6 +265,7 @@ impl BeskarBar {
             .collect();
 
         Self::live_islands(
+            false,
             fake_workspaces,
             Some(active_ws),
             None,
@@ -255,6 +279,7 @@ impl BeskarBar {
             false,
             None,
             Vec::new(),
+            None,
             None,
             None,
             None,
@@ -285,14 +310,16 @@ impl RenderOnce for BeskarBar {
         } else {
             // minflair ConvexBar mode: Left Notch, Center Notch, and Right Notch
             // connected with the continuous top bezel bridge
-            div()
+            let mut container = div()
                 .relative()
                 .size_full()
                 .flex()
                 .items_start()
-                .px(self.padding_x)
+                .px(self.padding_x);
+
+            if self.is_convex {
                 // Continuous top bridge line connecting the notches across the top edge
-                .child(
+                container = container.child(
                     div()
                         .absolute()
                         .top_0()
@@ -302,8 +329,11 @@ impl RenderOnce for BeskarBar {
                         .bg(hsla(250.0 / 360.0, 0.16, 0.06, 0.96))
                         .border_b_1()
                         .border_color(hsla(240.0 / 360.0, 0.10, 1.0, 0.08)),
-                )
-                // Left region: Left Island Notch
+                );
+            }
+
+            container
+                // Left region: Left Island Notch / Pill
                 .child(
                     div()
                         .flex()
@@ -312,7 +342,7 @@ impl RenderOnce for BeskarBar {
                         .justify_start()
                         .children(self.left),
                 )
-                // Center region: Dynamic Center Island Notch
+                // Center region: Dynamic Center Island Notch / Pill
                 .child(
                     div()
                         .flex()
@@ -320,7 +350,7 @@ impl RenderOnce for BeskarBar {
                         .justify_center()
                         .children(self.center),
                 )
-                // Right region: Right Island Notch
+                // Right region: Right Island Notch / Pill
                 .child(
                     div()
                         .flex()

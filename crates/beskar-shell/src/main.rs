@@ -14,11 +14,6 @@ use gpui_kit::*;
 use tracing::info;
 use tracing_subscriber::EnvFilter;
 
-/// Height of the bar surface in logical pixels.
-const BAR_HEIGHT: f32 = 40.0;
-/// Top margin — flush with the top screen bezel matching reference screenshot.
-const BAR_MARGIN_TOP: f32 = 0.0;
-
 #[derive(Debug, Clone)]
 enum BarAction {
     ToggleControlCenter,
@@ -49,14 +44,15 @@ struct DesktopBarView {
     notifications: Vec<NotificationItem>,
     action_tx: tokio::sync::mpsc::UnboundedSender<BarAction>,
     compositor: Arc<dyn CompositorBackend>,
+    is_convex: bool,
 }
-
-
 
 impl DesktopBarView {
     fn new(
         workspaces: Vec<WorkspaceInfo>,
         active_ws: u64,
+        active_window: Option<WindowInfo>,
+        is_convex: bool,
         compositor: Arc<dyn CompositorBackend>,
         cx: &mut Context<Self>,
     ) -> Self {
@@ -271,7 +267,7 @@ impl DesktopBarView {
         Self {
             workspaces,
             active_ws,
-            active_window: None,
+            active_window,
             time_str,
             date_str,
             battery_percent: bat.percentage.round() as u8,
@@ -284,12 +280,10 @@ impl DesktopBarView {
             notifications: Vec::new(),
             action_tx,
             compositor,
+            is_convex,
         }
     }
 }
-
-
-
 
 impl Render for DesktopBarView {
     fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
@@ -298,6 +292,14 @@ impl Render for DesktopBarView {
             let c = comp.clone();
             std::thread::spawn(move || {
                 let _ = futures::executor::block_on(async { c.focus_workspace(id).await });
+            });
+        });
+
+        let comp_scroll = self.compositor.clone();
+        let on_scroll_ws = Arc::new(move |dir: i32| {
+            let c = comp_scroll.clone();
+            std::thread::spawn(move || {
+                let _ = futures::executor::block_on(async { c.scroll_workspace(dir).await });
             });
         });
 
@@ -319,10 +321,14 @@ impl Render for DesktopBarView {
             let _ = atx_cc.send(BarAction::ToggleControlCenter);
         });
 
+        let on_clock_click = on_control_center_click.clone();
+
         let atx_l = self.action_tx.clone();
         let on_launcher_click = Arc::new(move || {
             let _ = atx_l.send(BarAction::ToggleLauncher);
-        });        let atx_p = self.action_tx.clone();
+        });
+
+        let atx_p = self.action_tx.clone();
         let on_power_click = Arc::new(move || {
             let _ = atx_p.send(BarAction::TogglePowerMenu);
         });
@@ -334,6 +340,7 @@ impl Render for DesktopBarView {
             .flex()
             .items_center()
             .child(BeskarBar::live_islands(
+                self.is_convex,
                 self.workspaces.clone(),
                 Some(self.active_ws),
                 self.active_window.clone(),
@@ -348,19 +355,25 @@ impl Render for DesktopBarView {
                 Some(self.island_spring.current),
                 self.tray_items.clone(),
                 Some(on_select_ws),
-                None,
+                Some(on_scroll_ws),
                 Some(on_play_pause),
                 Some(on_volume_click),
                 Some(on_volume_scroll),
                 Some(on_control_center_click),
                 Some(on_power_click),
                 Some(on_launcher_click),
+                Some(on_clock_click),
             ))
     }
 }
 
 /// Build the LayerShell window options for the bar.
-fn bar_window_options(display_id: Option<DisplayId>, cx: &App) -> WindowOptions {
+fn bar_window_options(
+    display_id: Option<DisplayId>,
+    bar_height: f32,
+    bar_margin_top: f32,
+    cx: &App,
+) -> WindowOptions {
     let display_size = display_id
         .and_then(|id| cx.find_display(id))
         .or_else(|| cx.primary_display())
@@ -372,7 +385,7 @@ fn bar_window_options(display_id: Option<DisplayId>, cx: &App) -> WindowOptions 
         titlebar: None,
         window_bounds: Some(WindowBounds::Windowed(Bounds {
             origin: point(px(0.), px(0.)),
-            size: Size::new(display_size.width, px(BAR_HEIGHT)),
+            size: Size::new(display_size.width, px(bar_height)),
         })),
         app_id: Some("beskar-bar".to_string()),
         window_background: WindowBackgroundAppearance::Transparent,
@@ -380,8 +393,8 @@ fn bar_window_options(display_id: Option<DisplayId>, cx: &App) -> WindowOptions 
             namespace: "beskar-bar".to_string(),
             layer: Layer::Top,
             anchor: LayerAnchor::LEFT | LayerAnchor::RIGHT | LayerAnchor::TOP,
-            exclusive_zone: Some(px(BAR_HEIGHT + BAR_MARGIN_TOP)),
-            margin: Some((px(BAR_MARGIN_TOP), px(0.), px(0.), px(0.))),
+            exclusive_zone: Some(px(bar_height + bar_margin_top)),
+            margin: Some((px(bar_margin_top), px(0.), px(0.), px(0.))),
             keyboard_interactivity: KeyboardInteractivity::None,
             ..Default::default()
         }),
@@ -419,6 +432,11 @@ async fn main() -> anyhow::Result<()> {
         }
     };
 
+    let initial_window = match compositor.get_windows().await {
+        Ok(windows) => windows.into_iter().find(|w| w.is_focused),
+        Err(_) => None,
+    };
+
     info!(
         "Opening Beskar Shell layer-shell bar (Active Workspace ID: {}, Total Found: {})...",
         active_ws,
@@ -436,6 +454,12 @@ async fn main() -> anyhow::Result<()> {
         beskar_core::config::ThemePresetConfig::WallpaperAuto => beskar_theme::ThemePreset::Wallpaper,
     });
 
+    let is_convex = cfg.bar_style == beskar_core::config::BarStyleConfig::Convex;
+    let (bar_height, bar_margin_top) = if is_convex {
+        (40.0, 0.0)
+    } else {
+        (44.0, 8.0)
+    };
 
     // Run the GPUI application event loop WITH embedded AllAssets registered!
     gpui_kit::application()
@@ -445,6 +469,7 @@ async fn main() -> anyhow::Result<()> {
 
             let initial_workspaces = initial_workspaces;
             let active_ws = active_ws;
+            let initial_window = initial_window;
             let compositor = comp_for_bar.clone();
 
             cx.spawn(async move |cx| {
@@ -456,7 +481,17 @@ async fn main() -> anyhow::Result<()> {
                     let displays = cx.displays();
                     if displays.is_empty() {
                         info!("No displays found, opening bar on default display");
-                        open_bar(None, initial_workspaces, active_ws, compositor.clone(), cx);
+                        open_bar(
+                            None,
+                            initial_workspaces,
+                            active_ws,
+                            initial_window,
+                            is_convex,
+                            bar_height,
+                            bar_margin_top,
+                            compositor.clone(),
+                            cx,
+                        );
                     } else {
                         for d in displays {
                             info!("Opening bar on display {:?}", d.id());
@@ -464,6 +499,10 @@ async fn main() -> anyhow::Result<()> {
                                 Some(d.id()),
                                 initial_workspaces.clone(),
                                 active_ws,
+                                initial_window.clone(),
+                                is_convex,
+                                bar_height,
+                                bar_margin_top,
                                 compositor.clone(),
                                 cx,
                             );
@@ -481,12 +520,25 @@ fn open_bar(
     display_id: Option<DisplayId>,
     workspaces: Vec<WorkspaceInfo>,
     active_ws: u64,
+    initial_window: Option<WindowInfo>,
+    is_convex: bool,
+    bar_height: f32,
+    bar_margin_top: f32,
     compositor: Arc<dyn CompositorBackend>,
     cx: &mut App,
 ) {
-    let options = bar_window_options(display_id, cx);
+    let options = bar_window_options(display_id, bar_height, bar_margin_top, cx);
     match cx.open_window(options, move |_window, cx| {
-        cx.new(|cx| DesktopBarView::new(workspaces, active_ws, compositor, cx))
+        cx.new(|cx| {
+            DesktopBarView::new(
+                workspaces,
+                active_ws,
+                initial_window,
+                is_convex,
+                compositor,
+                cx,
+            )
+        })
     }) {
         Ok(_) => info!("Beskar bar opened successfully"),
         Err(e) => tracing::warn!("Failed to open bar window: {}", e),

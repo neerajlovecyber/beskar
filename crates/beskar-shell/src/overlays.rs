@@ -102,7 +102,7 @@ pub fn toggle_power_menu(cx: &mut App) {
         titlebar: None,
         window_bounds: Some(WindowBounds::Windowed(Bounds {
             origin: point(px(0.), px(0.)),
-            size: Size::new(px(380.), px(72.)),
+            size: Size::new(px(400.), px(110.)),
         })),
         app_id: Some("beskar-power-menu".to_string()),
         window_background: WindowBackgroundAppearance::Transparent,
@@ -341,8 +341,10 @@ impl Render for LauncherView {
         let tx_close = self.msg_tx.clone();
 
         div()
+            .id("launcher-view")
             .size_full()
             .track_focus(&self.focus_handle)
+            .key_context("Launcher")
             .on_key_down(cx.listener(move |this, event: &KeyDownEvent, window, cx| {
                 let key = event.keystroke.key.as_str();
                 let mods = &event.keystroke.modifiers;
@@ -546,11 +548,13 @@ impl Render for PowerMenuView {
         let msg_tx = self.msg_tx.clone();
 
         div()
+            .id("power-menu-view")
             .size_full()
             .flex()
             .items_center()
             .justify_center()
             .track_focus(&self.focus_handle)
+            .key_context("PowerMenu")
             .on_key_down(cx.listener(move |this, event: &KeyDownEvent, window, cx| {
                 match event.keystroke.key.as_str() {
                     "escape" => {
@@ -563,7 +567,7 @@ impl Render for PowerMenuView {
                         }
                         cx.stop_propagation();
                     }
-                    "left" => {
+                    "left" | "h" | "up" | "k" => {
                         if this.pending_action.is_some() {
                             this.confirm_index = 0;
                         } else {
@@ -572,7 +576,7 @@ impl Render for PowerMenuView {
                         cx.notify();
                         cx.stop_propagation();
                     }
-                    "right" => {
+                    "right" | "l" | "down" | "j" | "tab" => {
                         if this.pending_action.is_some() {
                             this.confirm_index = 1;
                         } else {
@@ -752,8 +756,10 @@ impl Render for ControlCenterView {
         let tx_close = self.msg_tx.clone();
 
         div()
+            .id("control-center-view")
             .size_full()
             .track_focus(&self.focus_handle)
+            .key_context("ControlCenter")
             .on_key_down(cx.listener(|_, event: &KeyDownEvent, window, cx| {
                 if event.keystroke.key == "escape" {
                     forget_overlay(OverlayKind::ControlCenter);
@@ -924,11 +930,13 @@ impl Render for SettingsView {
         let tx_close = self.msg_tx.clone();
 
         div()
+            .id("settings-view")
             .size_full()
             .flex()
             .items_center()
             .justify_center()
             .track_focus(&self.focus_handle)
+            .key_context("Settings")
             .on_key_down(cx.listener(|_, event: &KeyDownEvent, window, cx| {
                 if event.keystroke.key == "escape" {
                     forget_overlay(OverlayKind::Settings);
@@ -1291,8 +1299,10 @@ impl Render for ClipboardView {
         let tx_close = self.msg_tx.clone();
 
         div()
+            .id("clipboard-view")
             .size_full()
             .track_focus(&self.focus_handle)
+            .key_context("Clipboard")
             .on_key_down(cx.listener(move |this, event: &KeyDownEvent, window, cx| {
                 let key = event.keystroke.key.as_str();
                 let mods = &event.keystroke.modifiers;

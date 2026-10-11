@@ -82,9 +82,11 @@ impl MprisService {
                 last_state = current.clone();
                 if let Some(media) = current {
                     let _ = tx.send(ServiceEvent::Media(media)).await;
+                } else {
+                    let _ = tx.send(ServiceEvent::Media(MediaState::default())).await;
                 }
             }
-            tokio::time::sleep(tokio::time::Duration::from_millis(2000)).await;
+            tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
         }
     }
 }

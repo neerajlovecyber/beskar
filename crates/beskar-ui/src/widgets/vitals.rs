@@ -31,7 +31,7 @@ pub struct VitalsWidget {
 impl VitalsWidget {
     pub fn new(volume_percent: u8, battery_percent: u8) -> Self {
         Self {
-            recording_time: Some("0:00".to_string()),
+            recording_time: None,
             volume_percent,
             is_muted: false,
             battery_percent,
@@ -135,28 +135,31 @@ impl RenderOnce for VitalsWidget {
         div()
             .flex()
             .items_center()
-            .gap(px(12.0))
+            .gap(px(6.0))
             // Render tray icons if any registered
             .when(!self.tray_items.is_empty(), |this| {
-                let mut tray_row = div().flex().items_center().gap(px(6.0));
-                for _item in self.tray_items {
+                let mut tray_row = div().flex().items_center().gap(px(4.0));
+                for item in self.tray_items {
+                    let icon_name = infer_tray_icon(&item.id, &item.icon, &item.title);
+                    let on_cc_tray = on_cc.clone();
                     tray_row = tray_row.child(
                         div()
-                            .w(px(16.0))
-                            .h(px(16.0))
+                            .w(px(24.0))
+                            .h(px(24.0))
+                            .rounded_md()
                             .flex()
                             .items_center()
                             .justify_center()
-                            .hover(|s| s.cursor_pointer())
-                            .child(
-                                // Dot badge for registered tray items
-                                div()
-                                    .w(px(8.0))
-                                    .h(px(8.0))
-                                    .rounded_full()
-                                    .bg(hsla(45.0 / 360.0, 0.90, 0.60, 0.90))
-                                    .hover(|s| s.bg(hsla(45.0 / 360.0, 1.0, 0.75, 1.0))),
-                            ),
+                            .text_color(hsla(0.0, 0.0, 0.85, 1.0))
+                            .hover(|s| {
+                                s.bg(beskar_theme::Theme::bg_secondary())
+                                    .text_color(beskar_theme::Theme::accent())
+                                    .cursor_pointer()
+                            })
+                            .when_some(on_cc_tray, |el, cb| {
+                                el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
+                            })
+                            .child(Icon::new(icon_name).size(px(14.0))),
                     );
                 }
                 this.child(tray_row)
@@ -192,14 +195,20 @@ impl RenderOnce for VitalsWidget {
             // Sliders / Control Center button
             .child(
                 div()
-                    .w(px(16.0))
-                    .h(px(16.0))
+                    .w(px(26.0))
+                    .h(px(24.0))
+                    .rounded_md()
                     .flex()
                     .items_center()
                     .justify_center()
                     .text_color(hsla(0.0, 0.0, 0.80, 1.0))
-                    .hover(|style| style.text_color(hsla(45.0 / 360.0, 0.90, 0.60, 1.0)).cursor_pointer())
-                    .when_some(on_cc, |el, cb| {
+                    .hover(|style| {
+                        style
+                            .bg(beskar_theme::Theme::bg_secondary())
+                            .text_color(beskar_theme::Theme::accent())
+                            .cursor_pointer()
+                    })
+                    .when_some(on_cc.clone(), |el, cb| {
                         el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
                     })
                     .child(
@@ -214,8 +223,16 @@ impl RenderOnce for VitalsWidget {
                     .flex()
                     .items_center()
                     .gap(px(4.0))
+                    .px(px(6.0))
+                    .py(px(2.0))
+                    .rounded_md()
                     .text_color(volume_color)
-                    .hover(|style| style.text_color(hsla(0.0, 0.0, 1.0, 1.0)).cursor_pointer())
+                    .hover(|style| {
+                        style
+                            .bg(beskar_theme::Theme::bg_secondary())
+                            .text_color(hsla(0.0, 0.0, 1.0, 1.0))
+                            .cursor_pointer()
+                    })
                     .when_some(on_vol, |el, cb| {
                         el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
                     })
@@ -237,14 +254,23 @@ impl RenderOnce for VitalsWidget {
                             }),
                     ),
             )
-            // Network icon
+            // Network Wi-Fi icon & trigger
             .child(
                 div()
-                    .w(px(16.0))
-                    .h(px(16.0))
+                    .w(px(26.0))
+                    .h(px(24.0))
+                    .rounded_md()
                     .flex()
                     .items_center()
                     .justify_center()
+                    .hover(|style| {
+                        style
+                            .bg(beskar_theme::Theme::bg_secondary())
+                            .cursor_pointer()
+                    })
+                    .when_some(on_cc.clone(), |el, cb| {
+                        el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
+                    })
                     .child(
                         Icon::new(if self.is_wifi_connected {
                             IconName::Wifi
@@ -259,14 +285,23 @@ impl RenderOnce for VitalsWidget {
                         }),
                     ),
             )
-            // Bluetooth icon matching screenshot
+            // Bluetooth icon & trigger
             .child(
                 div()
-                    .w(px(16.0))
-                    .h(px(16.0))
+                    .w(px(26.0))
+                    .h(px(24.0))
+                    .rounded_md()
                     .flex()
                     .items_center()
                     .justify_center()
+                    .hover(|style| {
+                        style
+                            .bg(beskar_theme::Theme::bg_secondary())
+                            .cursor_pointer()
+                    })
+                    .when_some(on_cc.clone(), |el, cb| {
+                        el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
+                    })
                     .child(
                         Icon::new(IconName::Bluetooth)
                             .size(px(14.0))
@@ -277,14 +312,24 @@ impl RenderOnce for VitalsWidget {
                             }),
                     ),
             )
-
             // Battery icon & percentage
             .child(
                 div()
                     .flex()
                     .items_center()
                     .gap(px(4.0))
+                    .px(px(6.0))
+                    .py(px(2.0))
+                    .rounded_md()
                     .text_color(battery_color)
+                    .hover(|style| {
+                        style
+                            .bg(beskar_theme::Theme::bg_secondary())
+                            .cursor_pointer()
+                    })
+                    .when_some(on_cc.clone(), |el, cb| {
+                        el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
+                    })
                     .child(Icon::new(battery_icon).size(px(14.0)).text_color(battery_color))
                     .child(
                         div()
@@ -296,12 +341,18 @@ impl RenderOnce for VitalsWidget {
             // Power button
             .child(
                 div()
-                    .w(px(16.0))
-                    .h(px(16.0))
+                    .w(px(26.0))
+                    .h(px(24.0))
+                    .rounded_md()
                     .flex()
                     .items_center()
                     .justify_center()
-                    .hover(|style| style.text_color(hsla(350.0 / 360.0, 0.85, 0.60, 1.0)).cursor_pointer())
+                    .hover(|style| {
+                        style
+                            .bg(hsla(350.0 / 360.0, 0.85, 0.50, 0.20))
+                            .text_color(hsla(350.0 / 360.0, 0.90, 0.65, 1.0))
+                            .cursor_pointer()
+                    })
                     .when_some(on_pwr, |el, cb| {
                         el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
                     })
@@ -311,5 +362,40 @@ impl RenderOnce for VitalsWidget {
                             .text_color(hsla(0.0, 0.0, 0.70, 1.0)),
                     ),
             )
+    }
+}
+
+fn infer_tray_icon(id: &str, icon_name: &str, title: &str) -> IconName {
+    let lower = format!(
+        "{} {} {}",
+        id.to_lowercase(),
+        icon_name.to_lowercase(),
+        title.to_lowercase()
+    );
+
+    if lower.contains("firefox") || lower.contains("chrome") || lower.contains("chromium") || lower.contains("browser") {
+        IconName::Globe
+    } else if lower.contains("discord") || lower.contains("vesktop") {
+        IconName::MessageSquare
+    } else if lower.contains("telegram") {
+        IconName::Send
+    } else if lower.contains("slack") {
+        IconName::MessageCircle
+    } else if lower.contains("spotify") || lower.contains("music") {
+        IconName::Music
+    } else if lower.contains("bluetooth") || lower.contains("blue") {
+        IconName::Bluetooth
+    } else if lower.contains("wifi") || lower.contains("network") || lower.contains("nm-") {
+        IconName::Wifi
+    } else if lower.contains("audio") || lower.contains("volume") || lower.contains("pulse") {
+        IconName::Volume2
+    } else if lower.contains("battery") || lower.contains("power") {
+        IconName::BatteryCharging
+    } else if lower.contains("settings") {
+        IconName::Settings
+    } else if lower.contains("cloud") || lower.contains("sync") || lower.contains("dropbox") || lower.contains("nextcloud") {
+        IconName::Cloud
+    } else {
+        IconName::AppWindow
     }
 }

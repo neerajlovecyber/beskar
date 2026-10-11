@@ -23,6 +23,8 @@ pub struct DynamicCenterWidget {
     notification: Option<(String, String)>,
     width: Option<Pixels>,
     on_play_pause: Option<Arc<dyn Fn() + Send + Sync>>,
+    on_clock_click: Option<Arc<dyn Fn() + Send + Sync>>,
+    on_media_click: Option<Arc<dyn Fn() + Send + Sync>>,
 }
 
 impl DynamicCenterWidget {
@@ -36,6 +38,8 @@ impl DynamicCenterWidget {
             notification: None,
             width: None,
             on_play_pause: None,
+            on_clock_click: None,
+            on_media_click: None,
         }
     }
 
@@ -65,6 +69,16 @@ impl DynamicCenterWidget {
         self.on_play_pause = Some(Arc::new(handler));
         self
     }
+
+    pub fn on_clock_click(mut self, handler: impl Fn() + Send + Sync + 'static) -> Self {
+        self.on_clock_click = Some(Arc::new(handler));
+        self
+    }
+
+    pub fn on_media_click(mut self, handler: impl Fn() + Send + Sync + 'static) -> Self {
+        self.on_media_click = Some(Arc::new(handler));
+        self
+    }
 }
 
 impl RenderOnce for DynamicCenterWidget {
@@ -72,6 +86,8 @@ impl RenderOnce for DynamicCenterWidget {
         let has_media = self.media_title.is_some();
         let has_notification = self.notification.is_some();
         let on_play_pause = self.on_play_pause;
+        let on_clock_click = self.on_clock_click;
+        let on_media_click = self.on_media_click;
 
         let media_text = match (&self.media_artist, &self.media_title) {
             (Some(artist), Some(title)) => format!("{} – {}", artist, title),
@@ -89,7 +105,18 @@ impl RenderOnce for DynamicCenterWidget {
             container = container.w(w);
         }
 
-        container
+        // Primary Clock & Date Pill
+        let clock_content = div()
+            .flex()
+            .items_center()
+            .gap(px(6.0))
+            .px(px(6.0))
+            .py(px(2.0))
+            .rounded_md()
+            .hover(|s| s.bg(beskar_theme::Theme::bg_secondary()).cursor_pointer())
+            .when_some(on_clock_click, |el, cb| {
+                el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
+            })
             // When no media is playing, show subtle date badge next to time
             .when(!has_media && self.date_str.is_some(), |this| {
                 this.child(
@@ -114,7 +141,10 @@ impl RenderOnce for DynamicCenterWidget {
                     .font_weight(FontWeight::BOLD)
                     .text_color(hsla(0.0, 0.0, 0.95, 1.0))
                     .child(self.time_str),
-            )
+            );
+
+        container
+            .child(clock_content)
             .when_some(self.notification, |this, (notif_title, notif_body)| {
                 this.child(
                     div()
@@ -151,6 +181,8 @@ impl RenderOnce for DynamicCenterWidget {
                 } else {
                     IconName::Play
                 };
+
+                let on_media = on_media_click.clone();
 
                 this.child(
                     // Subtle vertical divider hairline
@@ -204,24 +236,37 @@ impl RenderOnce for DynamicCenterWidget {
                         .text_xs()
                         .text_color(hsla(0.0, 0.0, 0.85, 1.0))
                         .child(
+                            // 22x22px comfortable hit target for play/pause
                             div()
-                                .w(px(14.0))
-                                .h(px(14.0))
+                                .w(px(22.0))
+                                .h(px(22.0))
+                                .rounded_md()
                                 .flex()
                                 .items_center()
                                 .justify_center()
                                 .text_color(hsla(185.0 / 360.0, 0.90, 0.60, 1.0))
-                                .hover(|style| style.text_color(hsla(185.0 / 360.0, 1.0, 0.75, 1.0)).cursor_pointer())
+                                .hover(|style| {
+                                    style
+                                        .bg(hsla(185.0 / 360.0, 0.90, 0.60, 0.15))
+                                        .text_color(hsla(185.0 / 360.0, 1.0, 0.75, 1.0))
+                                        .cursor_pointer()
+                                })
                                 .when_some(on_play_pause, |el, cb| {
                                     el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
                                 })
-                                .child(Icon::new(play_icon).size(px(11.0))),
+                                .child(Icon::new(play_icon).size(px(12.0))),
                         )
-
                         .child(
                             div()
                                 .max_w(px(240.0))
                                 .overflow_hidden()
+                                .px(px(4.0))
+                                .py(px(2.0))
+                                .rounded_md()
+                                .hover(|s| s.bg(beskar_theme::Theme::bg_secondary()).cursor_pointer())
+                                .when_some(on_media, |el, cb| {
+                                    el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
+                                })
                                 .child(media_text),
                         ),
                 )

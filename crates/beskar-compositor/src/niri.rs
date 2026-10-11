@@ -261,4 +261,13 @@ impl CompositorBackend for NiriBackend {
     async fn close_window(&self, id: u64) -> Result<()> {
         Self::send_action(Action::CloseWindow { id: Some(id) })
     }
+
+    async fn scroll_workspace(&self, dir: i32) -> Result<()> {
+        if dir > 0 {
+            Self::send_action(Action::FocusWorkspaceDown {})
+        } else {
+            Self::send_action(Action::FocusWorkspaceUp {})
+        }
+    }
 }
+

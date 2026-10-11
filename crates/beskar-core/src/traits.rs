@@ -41,4 +41,10 @@ pub trait CompositorBackend: Send + Sync {
 
     /// Request closing a window
     async fn close_window(&self, id: u64) -> Result<()>;
+
+    /// Request scrolling workspace (up/down)
+    async fn scroll_workspace(&self, _dir: i32) -> Result<()> {
+        Ok(())
+    }
 }
+
