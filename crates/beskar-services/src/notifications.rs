@@ -385,3 +385,32 @@ pub fn invoke(id: u32, key: &str) {
 pub fn clear() {
     let _ = command("notifications.clear", &[]);
 }
+
+/// Dispatches a test notification to verify notification rendering and toast overlay.
+pub fn send_test(summary: &str, body: &str) {
+    if let Some(hub) = HUB.get() {
+        let mut e = hub.state.lock().unwrap();
+        e.next += 1;
+        let id = e.next;
+        e.notifications.push(Notification {
+            id,
+            app: "Beskar Shell".to_string(),
+            title: summary.to_string(),
+            body: body.to_string(),
+            icon: "preferences-system".to_string(),
+            image: String::new(),
+            urgency: 1,
+            time: std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map_or(0, |d| d.as_secs()),
+            actions: vec![("default".to_string(), "Open".to_string())],
+            expires: Some(Instant::now() + Duration::from_secs(8)),
+        });
+        drop(e);
+        hub.send(Event::Change);
+    } else {
+        let _ = std::process::Command::new("notify-send")
+            .args(["-a", "Beskar Shell", summary, body])
+            .spawn();
+    }
+}

@@ -2,15 +2,14 @@ mod overlays;
 
 use std::sync::Arc;
 use beskar_compositor::detect_compositor;
-use beskar_core::models::{NotificationItem, WorkspaceInfo};
+use beskar_core::models::{NotificationItem, WindowInfo, WorkspaceInfo};
 
 use beskar_core::traits::CompositorBackend;
 use beskar_services::{AudioService, BatteryService, MprisService};
-use beskar_ui::{BeskarBar, NotificationToastWidget};
+use beskar_ui::BeskarBar;
 use chrono::Local;
 use gpui_kit::assets::AllAssets;
 use gpui_kit::layer_shell::{Anchor as LayerAnchor, KeyboardInteractivity, Layer, LayerShellOptions};
-use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 use tracing::info;
 use tracing_subscriber::EnvFilter;
@@ -26,6 +25,8 @@ enum BarAction {
     ToggleLauncher,
     TogglePowerMenu,
     #[allow(dead_code)]
+    ToggleSettings,
+    #[allow(dead_code)]
     ToggleLockScreen,
 }
 
@@ -33,6 +34,7 @@ enum BarAction {
 struct DesktopBarView {
     workspaces: Vec<WorkspaceInfo>,
     active_ws: u64,
+    active_window: Option<WindowInfo>,
     time_str: String,
     date_str: String,
     battery_percent: u8,
@@ -126,8 +128,9 @@ impl DesktopBarView {
                     this.is_muted = snap.audio.is_muted;
                     this.media = media;
                     this.tray_items = snap.tray;
-                    this.notifications = snap.notifications;
+                    this.notifications = snap.notifications.clone();
                     this.island_spring.set_target(target_width);
+                    overlays::sync_notification_toasts(snap.notifications, cx);
                     cx.notify();
                 });
                 if res.is_err() {
@@ -178,6 +181,9 @@ impl DesktopBarView {
                         BarAction::TogglePowerMenu => {
                             overlays::toggle_power_menu(cx);
                         }
+                        BarAction::ToggleSettings => {
+                            overlays::toggle_settings(cx);
+                        }
                         BarAction::ToggleLockScreen => {
                             overlays::toggle_lockscreen(cx);
                         }
@@ -216,6 +222,19 @@ impl DesktopBarView {
                             this.active_ws = id;
                             cx.notify();
                         }
+                        beskar_core::events::CompositorEvent::WindowFocused(active_win) => {
+                            if this.active_window != active_win {
+                                this.active_window = active_win;
+                                cx.notify();
+                            }
+                        }
+                        beskar_core::events::CompositorEvent::WindowsChanged(windows) => {
+                            let focused = windows.iter().find(|w| w.is_focused).cloned();
+                            if this.active_window != focused {
+                                this.active_window = focused;
+                                cx.notify();
+                            }
+                        }
                         _ => {}
                     }
                 });
@@ -229,6 +248,7 @@ impl DesktopBarView {
         Self {
             workspaces,
             active_ws,
+            active_window: None,
             time_str,
             date_str,
             battery_percent: bat.percentage.round() as u8,
@@ -291,6 +311,7 @@ impl Render for DesktopBarView {
             .child(BeskarBar::live_islands(
                 self.workspaces.clone(),
                 Some(self.active_ws),
+                self.active_window.clone(),
                 &self.time_str,
                 Some(self.date_str.clone()),
                 self.media.clone(),
@@ -309,28 +330,6 @@ impl Render for DesktopBarView {
                 Some(on_power_click),
                 Some(on_launcher_click),
             ))
-            // Notification Drop Toast stack
-            .when(!self.notifications.is_empty(), |this| {
-                let notifs = self.notifications.clone();
-                this.child(
-                    div()
-                        .absolute()
-                        .top(px(BAR_HEIGHT + 8.0))
-                        .right(px(16.0))
-                        .flex()
-                        .flex_col()
-                        .gap(px(8.0))
-                        .children(notifs.into_iter().take(3).map(|n| {
-                            NotificationToastWidget::new(n)
-                                .on_dismiss(|id| {
-                                    beskar_services::notifications::dismiss(id);
-                                })
-                                .on_invoke(|id, key| {
-                                    beskar_services::notifications::invoke(id, &key);
-                                })
-                        })),
-                )
-            })
     }
 }
 

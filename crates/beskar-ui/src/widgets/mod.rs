@@ -4,6 +4,7 @@ pub mod launcher;
 pub mod lockscreen;
 pub mod notification_toast;
 pub mod power_menu;
+pub mod settings;
 pub mod vitals;
 pub mod workspaces;
 
@@ -13,6 +14,7 @@ pub use launcher::LauncherWidget;
 pub use lockscreen::LockScreenWidget;
 pub use notification_toast::NotificationToastWidget;
 pub use power_menu::{PowerAction, PowerMenuWidget};
+pub use settings::{SettingsCategory, SettingsConfig, SettingsWidget};
 pub use vitals::VitalsWidget;
 pub use workspaces::WorkspacesWidget;
 

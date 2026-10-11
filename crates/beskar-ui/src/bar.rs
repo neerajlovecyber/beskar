@@ -1,6 +1,35 @@
-use beskar_core::models::WorkspaceInfo;
+use beskar_core::models::{WindowInfo, WorkspaceInfo};
+use gpui_kit::assets::IconName;
+use gpui_kit::component::Icon;
+use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 use std::sync::Arc;
+
+fn resolve_window_icon(app_id: Option<&str>, title: Option<&str>) -> IconName {
+    let text = format!(
+        "{} {}",
+        app_id.unwrap_or_default().to_lowercase(),
+        title.unwrap_or_default().to_lowercase()
+    );
+
+    if text.contains("firefox") || text.contains("chrome") || text.contains("browser") {
+        IconName::Globe
+    } else if text.contains("term") || text.contains("kitty") || text.contains("alacritty") || text.contains("wezterm") {
+        IconName::Terminal
+    } else if text.contains("code") || text.contains("zed") || text.contains("nvim") || text.contains("vim") {
+        IconName::Code
+    } else if text.contains("files") || text.contains("folder") || text.contains("nautilus") || text.contains("thunar") || text.contains("dolphin") {
+        IconName::Folder
+    } else if text.contains("music") || text.contains("spotify") {
+        IconName::Music
+    } else if text.contains("discord") || text.contains("slack") || text.contains("telegram") {
+        IconName::MessageSquare
+    } else if text.contains("settings") {
+        IconName::Settings
+    } else {
+        IconName::AppWindow
+    }
+}
 
 /// Beskar Bar surface separating the top bar into 3 distinct layout regions:
 /// - [Left Island]: Workspaces & active tasks
@@ -12,6 +41,7 @@ pub struct BeskarBar {
     center: Vec<AnyElement>,
     right: Vec<AnyElement>,
     padding_x: Pixels,
+    is_island_cluster: bool,
 }
 
 impl Default for BeskarBar {
@@ -27,7 +57,13 @@ impl BeskarBar {
             center: Vec::new(),
             right: Vec::new(),
             padding_x: px(12.0),
+            is_island_cluster: false,
         }
+    }
+
+    pub fn island_cluster(mut self, cluster: bool) -> Self {
+        self.is_island_cluster = cluster;
+        self
     }
 
     pub fn left(mut self, elements: impl IntoIterator<Item = AnyElement>) -> Self {
@@ -52,6 +88,7 @@ impl BeskarBar {
     pub fn live_islands(
         workspaces: Vec<WorkspaceInfo>,
         active_ws: Option<u64>,
+        active_window: Option<WindowInfo>,
         time_str: impl Into<String>,
         date_str: Option<String>,
         media: Option<(String, String, bool)>,
@@ -101,7 +138,51 @@ impl BeskarBar {
         let left_pill = IslandPill::new()
             .convex(true)
             .child(star_badge)
-            .child(ws_widget);
+            .child(ws_widget)
+            .when_some(active_window, |pill, win| {
+                let title_text = win
+                    .title
+                    .as_deref()
+                    .filter(|t| !t.trim().is_empty())
+                    .or(win.app_id.as_deref())
+                    .unwrap_or("");
+
+                if title_text.is_empty() {
+                    return pill;
+                }
+
+                let icon = resolve_window_icon(win.app_id.as_deref(), win.title.as_deref());
+                let short_title = if title_text.chars().count() > 24 {
+                    let mut s: String = title_text.chars().take(24).collect();
+                    s.push('…');
+                    s
+                } else {
+                    title_text.to_string()
+                };
+
+                pill.child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap(px(6.0))
+                        .ml(px(8.0))
+                        .pl(px(8.0))
+                        .border_l_1()
+                        .border_color(hsla(0.0, 0.0, 1.0, 0.12))
+                        .child(
+                            Icon::new(icon)
+                                .size(px(13.0))
+                                .text_color(hsla(0.0, 0.0, 0.75, 1.0)),
+                        )
+                        .child(
+                            div()
+                                .text_xs()
+                                .font_weight(FontWeight::MEDIUM)
+                                .text_color(hsla(0.0, 0.0, 0.85, 1.0))
+                                .child(short_title),
+                        ),
+                )
+            });
 
         let mut center_widget = DynamicCenterWidget::new(time_str).date(date_str);
         if let Some(w) = animated_center_width {
@@ -160,6 +241,7 @@ impl BeskarBar {
         Self::live_islands(
             fake_workspaces,
             Some(active_ws),
+            None,
             time_str,
             None,
             media,
@@ -183,50 +265,67 @@ impl BeskarBar {
 
 impl RenderOnce for BeskarBar {
     fn render(self, _window: &mut Window, _cx: &mut App) -> impl IntoElement {
-        div()
-            .relative()
-            .size_full()
-            .flex()
-            .items_start()
-            .px(self.padding_x)
-            // Continuous top bridge line connecting the notches across the top edge
-            .child(
-                div()
-                    .absolute()
-                    .top_0()
-                    .left_0()
-                    .right_0()
-                    .h(px(5.0))
-                    .bg(hsla(250.0 / 360.0, 0.16, 0.06, 0.96))
-                    .border_b_1()
-                    .border_color(hsla(240.0 / 360.0, 0.10, 1.0, 0.08)),
-            )
-            // Left region: Left Island Notch
-            .child(
-                div()
-                    .flex()
-                    .flex_1()
-                    .items_start()
-                    .justify_start()
-                    .children(self.left),
-            )
-            // Center region: Dynamic Center Island Notch
-            .child(
-                div()
-                    .flex()
-                    .items_start()
-                    .justify_center()
-                    .children(self.center),
-            )
-            // Right region: Right Island Notch
-            .child(
-                div()
-                    .flex()
-                    .flex_1()
-                    .items_start()
-                    .justify_end()
-                    .children(self.right),
-            )
+        if self.is_island_cluster {
+            // minflair IslandBar mode: Left Pill, Center Dynamic Island, and Right Pill
+            // sit grouped together as a floating tri-capsule island cluster at the top center!
+            div()
+                .relative()
+                .size_full()
+                .flex()
+                .items_start()
+                .justify_center()
+                .gap(px(10.0))
+                .children(self.left)
+                .children(self.center)
+                .children(self.right)
+        } else {
+            // minflair ConvexBar mode: Left Notch, Center Notch, and Right Notch
+            // connected with the continuous top bezel bridge
+            div()
+                .relative()
+                .size_full()
+                .flex()
+                .items_start()
+                .px(self.padding_x)
+                // Continuous top bridge line connecting the notches across the top edge
+                .child(
+                    div()
+                        .absolute()
+                        .top_0()
+                        .left_0()
+                        .right_0()
+                        .h(px(5.0))
+                        .bg(hsla(250.0 / 360.0, 0.16, 0.06, 0.96))
+                        .border_b_1()
+                        .border_color(hsla(240.0 / 360.0, 0.10, 1.0, 0.08)),
+                )
+                // Left region: Left Island Notch
+                .child(
+                    div()
+                        .flex()
+                        .flex_1()
+                        .items_start()
+                        .justify_start()
+                        .children(self.left),
+                )
+                // Center region: Dynamic Center Island Notch
+                .child(
+                    div()
+                        .flex()
+                        .items_start()
+                        .justify_center()
+                        .children(self.center),
+                )
+                // Right region: Right Island Notch
+                .child(
+                    div()
+                        .flex()
+                        .flex_1()
+                        .items_start()
+                        .justify_end()
+                        .children(self.right),
+                )
+        }
     }
 }
 

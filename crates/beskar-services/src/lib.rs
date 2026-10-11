@@ -20,6 +20,62 @@ pub use hub::{SystemHub, SystemSnapshot};
 pub use mpris::MprisService;
 pub use sysvalue::SysValue;
 
+/// Lightweight synchronous helper for NetworkManager Wi-Fi status and control.
+pub struct NetworkHelper;
+
+impl NetworkHelper {
+    pub fn get_wifi_status() -> (bool, Option<String>) {
+        if let Ok(output) = std::process::Command::new("nmcli").args(["radio", "wifi"]).output() {
+            let is_on = String::from_utf8_lossy(&output.stdout).trim() == "enabled";
+            let mut ssid = None;
+            if is_on {
+                if let Ok(out) = std::process::Command::new("nmcli")
+                    .args(["-t", "-f", "active,ssid", "dev", "wifi"])
+                    .output()
+                {
+                    let text = String::from_utf8_lossy(&out.stdout);
+                    for line in text.lines() {
+                        if line.starts_with("yes:") {
+                            let name = line.trim_start_matches("yes:").trim().to_string();
+                            if !name.is_empty() {
+                                ssid = Some(name);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            (is_on, ssid)
+        } else {
+            (true, None)
+        }
+    }
+
+    pub fn toggle_wifi(current_on: bool) {
+        let arg = if current_on { "off" } else { "on" };
+        let _ = std::process::Command::new("nmcli").args(["radio", "wifi", arg]).spawn();
+    }
+}
+
+/// Lightweight synchronous helper for BlueZ Bluetooth status and control.
+pub struct BluetoothHelper;
+
+impl BluetoothHelper {
+    pub fn get_bluetooth_status() -> bool {
+        if let Ok(output) = std::process::Command::new("bluetoothctl").args(["show"]).output() {
+            let text = String::from_utf8_lossy(&output.stdout);
+            text.contains("Powered: yes")
+        } else {
+            false
+        }
+    }
+
+    pub fn toggle_bluetooth(current_on: bool) {
+        let arg = if current_on { "off" } else { "on" };
+        let _ = std::process::Command::new("bluetoothctl").args(["power", arg]).spawn();
+    }
+}
+
 use std::sync::OnceLock;
 
 static TOKIO_RUNTIME: OnceLock<tokio::runtime::Runtime> = OnceLock::new();

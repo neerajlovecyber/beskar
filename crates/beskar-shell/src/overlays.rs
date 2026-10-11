@@ -1,8 +1,9 @@
-use beskar_core::models::AppItem;
+use beskar_core::models::{AppItem, NotificationItem};
 use beskar_services::audio::AudioService;
 use beskar_services::battery::BatteryService;
 use beskar_ui::{
-    ControlCenterWidget, LauncherWidget, LockScreenWidget, PowerAction, PowerMenuWidget,
+    ControlCenterWidget, LauncherWidget, LockScreenWidget, NotificationToastWidget,
+    PowerAction, PowerMenuWidget, SettingsCategory, SettingsConfig, SettingsWidget,
 };
 use gpui_kit::layer_shell::{
     Anchor as LayerAnchor, KeyboardInteractivity, Layer, LayerShellOptions,
@@ -18,6 +19,7 @@ pub enum OverlayKind {
     PowerMenu,
     ControlCenter,
     LockScreen,
+    Settings,
 }
 
 static ACTIVE_OVERLAY: Mutex<Option<(OverlayKind, AnyWindowHandle)>> = Mutex::new(None);
@@ -185,6 +187,42 @@ pub fn toggle_lockscreen(cx: &mut App) {
         let mut guard = ACTIVE_OVERLAY.lock().unwrap();
         *guard = Some((OverlayKind::LockScreen, handle.into()));
         info!("Opened dedicated LayerShell Lock Screen overlay window");
+    }
+}
+
+/// Toggle the Preferences / Settings window.
+pub fn toggle_settings(cx: &mut App) {
+    if close_active_overlay(cx) == Some(OverlayKind::Settings) {
+        return;
+    }
+
+    let options = WindowOptions {
+        titlebar: None,
+        window_bounds: Some(WindowBounds::Windowed(Bounds {
+            origin: point(px(0.), px(0.)),
+            size: Size::new(px(760.), px(520.)),
+        })),
+        app_id: Some("beskar-settings".to_string()),
+        window_background: WindowBackgroundAppearance::Transparent,
+        kind: WindowKind::LayerShell(LayerShellOptions {
+            namespace: "beskar-settings".to_string(),
+            layer: Layer::Overlay,
+            anchor: LayerAnchor::TOP,
+            exclusive_zone: None,
+            margin: Some((px(60.), px(0.), px(0.), px(0.))),
+            keyboard_interactivity: KeyboardInteractivity::Exclusive,
+            ..Default::default()
+        }),
+        focus: true,
+        ..Default::default()
+    };
+
+    if let Ok(handle) = cx.open_window(options, move |_window, cx| {
+        cx.new(|cx| SettingsView::new(cx))
+    }) {
+        let mut guard = ACTIVE_OVERLAY.lock().unwrap();
+        *guard = Some((OverlayKind::Settings, handle.into()));
+        info!("Opened dedicated LayerShell Settings preferences overlay window");
     }
 }
 
@@ -546,27 +584,85 @@ impl Render for PowerMenuView {
     }
 }
 
+#[derive(Debug, Clone)]
+enum ControlCenterMsg {
+    ToggleWifi,
+    ToggleBluetooth,
+    ChangeVolume(i32),
+    ToggleMute,
+    OpenLauncher,
+    OpenPower,
+    OpenSettings,
+    Close,
+}
+
 /// Dedicated View for Control Center
 pub struct ControlCenterView {
     volume_percent: u8,
     battery_percent: u8,
     is_muted: bool,
     is_charging: bool,
+    is_wifi_on: bool,
+    wifi_ssid: Option<String>,
+    is_bt_on: bool,
     focus_handle: FocusHandle,
-    close_tx: tokio::sync::mpsc::UnboundedSender<()>,
+    msg_tx: tokio::sync::mpsc::UnboundedSender<ControlCenterMsg>,
 }
 
 impl ControlCenterView {
     pub fn new(cx: &mut Context<Self>) -> Self {
         let aud = AudioService::read_state();
         let bat = BatteryService::new().read_state();
+        let (is_wifi_on, wifi_ssid) = beskar_services::NetworkHelper::get_wifi_status();
+        let is_bt_on = beskar_services::BluetoothHelper::get_bluetooth_status();
         let focus_handle = cx.focus_handle();
-        let (close_tx, mut close_rx) = tokio::sync::mpsc::unbounded_channel::<()>();
+        let (msg_tx, mut msg_rx) = tokio::sync::mpsc::unbounded_channel::<ControlCenterMsg>();
 
-        cx.spawn(async move |_this, cx| {
-            while let Some(()) = close_rx.recv().await {
-                let _ = cx.update(|cx| {
-                    close_active_overlay(cx);
+        cx.spawn(async move |this, cx| {
+            while let Some(msg) = msg_rx.recv().await {
+                let _ = this.update(cx, |this, cx| match msg {
+                    ControlCenterMsg::ToggleWifi => {
+                        beskar_services::NetworkHelper::toggle_wifi(this.is_wifi_on);
+                        this.is_wifi_on = !this.is_wifi_on;
+                        if !this.is_wifi_on {
+                            this.wifi_ssid = None;
+                        } else {
+                            let (_, ssid) = beskar_services::NetworkHelper::get_wifi_status();
+                            this.wifi_ssid = ssid;
+                        }
+                        cx.notify();
+                    }
+                    ControlCenterMsg::ToggleBluetooth => {
+                        beskar_services::BluetoothHelper::toggle_bluetooth(this.is_bt_on);
+                        this.is_bt_on = !this.is_bt_on;
+                        cx.notify();
+                    }
+                    ControlCenterMsg::ChangeVolume(delta) => {
+                        beskar_services::AudioService::set_volume(delta);
+                        let new_vol = (this.volume_percent as i32 + delta).clamp(0, 100) as u8;
+                        this.volume_percent = new_vol;
+                        cx.notify();
+                    }
+                    ControlCenterMsg::ToggleMute => {
+                        beskar_services::AudioService::toggle_mute();
+                        this.is_muted = !this.is_muted;
+                        cx.notify();
+                    }
+                    ControlCenterMsg::OpenLauncher => {
+                        close_active_overlay(cx);
+                        toggle_launcher(cx);
+                    }
+                    ControlCenterMsg::OpenPower => {
+                        close_active_overlay(cx);
+                        toggle_power_menu(cx);
+                    }
+                    ControlCenterMsg::OpenSettings => {
+                        close_active_overlay(cx);
+                        toggle_settings(cx);
+                    }
+                    ControlCenterMsg::Close => {
+                        close_active_overlay(cx);
+                    }
                 });
             }
         })
@@ -577,8 +673,11 @@ impl ControlCenterView {
             battery_percent: bat.percentage.round() as u8,
             is_muted: aud.is_muted,
             is_charging: bat.is_charging,
+            is_wifi_on,
+            wifi_ssid,
+            is_bt_on,
             focus_handle,
-            close_tx,
+            msg_tx,
         }
     }
 }
@@ -589,7 +688,14 @@ impl Render for ControlCenterView {
             self.focus_handle.focus(window, cx);
         }
 
-        let tx = self.close_tx.clone();
+        let tx_vol = self.msg_tx.clone();
+        let tx_mute = self.msg_tx.clone();
+        let tx_wifi = self.msg_tx.clone();
+        let tx_bt = self.msg_tx.clone();
+        let tx_launcher = self.msg_tx.clone();
+        let tx_power = self.msg_tx.clone();
+        let tx_settings = self.msg_tx.clone();
+        let tx_close = self.msg_tx.clone();
 
         div()
             .size_full()
@@ -605,12 +711,255 @@ impl Render for ControlCenterView {
                 ControlCenterWidget::new(self.volume_percent, self.battery_percent)
                     .muted(self.is_muted)
                     .charging(self.is_charging)
-                    .wifi(true, None)
-                    .bluetooth(true)
+                    .wifi(self.is_wifi_on, self.wifi_ssid.clone())
+                    .bluetooth(self.is_bt_on)
+                    .on_volume_change(move |delta| {
+                        let _ = tx_vol.send(ControlCenterMsg::ChangeVolume(delta));
+                    })
+                    .on_toggle_mute(move || {
+                        let _ = tx_mute.send(ControlCenterMsg::ToggleMute);
+                    })
+                    .on_toggle_wifi(move || {
+                        let _ = tx_wifi.send(ControlCenterMsg::ToggleWifi);
+                    })
+                    .on_toggle_bluetooth(move || {
+                        let _ = tx_bt.send(ControlCenterMsg::ToggleBluetooth);
+                    })
+                    .on_open_launcher(move || {
+                        let _ = tx_launcher.send(ControlCenterMsg::OpenLauncher);
+                    })
+                    .on_open_power(move || {
+                        let _ = tx_power.send(ControlCenterMsg::OpenPower);
+                    })
+                    .on_open_settings(move || {
+                        let _ = tx_settings.send(ControlCenterMsg::OpenSettings);
+                    })
                     .on_close(move || {
-                        let _ = tx.send(());
+                        let _ = tx_close.send(ControlCenterMsg::Close);
                     }),
             )
+    }
+}
+
+#[derive(Debug, Clone)]
+enum SettingsMsg {
+    SelectCategory(SettingsCategory),
+    ToggleNotch(bool),
+    ToggleWindowTitle(bool),
+    ToggleMedia(bool),
+    SelectAccent(usize),
+    TestNotification,
+    Close,
+}
+
+/// Dedicated View for Settings / Preferences
+pub struct SettingsView {
+    config: SettingsConfig,
+    focus_handle: FocusHandle,
+    msg_tx: tokio::sync::mpsc::UnboundedSender<SettingsMsg>,
+}
+
+impl SettingsView {
+    pub fn new(cx: &mut Context<Self>) -> Self {
+        let focus_handle = cx.focus_handle();
+        let (msg_tx, mut msg_rx) = tokio::sync::mpsc::unbounded_channel::<SettingsMsg>();
+
+        let mut config = SettingsConfig::default();
+        let aud = AudioService::read_state();
+        let bat = BatteryService::new().read_state();
+        let (is_wifi_on, _) = beskar_services::NetworkHelper::get_wifi_status();
+        let is_bt_on = beskar_services::BluetoothHelper::get_bluetooth_status();
+        config.volume_percent = (aud.volume * 100.0).round() as u8;
+        config.battery_percent = bat.percentage.round() as u8;
+        config.is_wifi_on = is_wifi_on;
+        config.is_bt_on = is_bt_on;
+
+        cx.spawn(async move |this, cx| {
+            while let Some(msg) = msg_rx.recv().await {
+                let _ = this.update(cx, |this, cx| match msg {
+                    SettingsMsg::SelectCategory(cat) => {
+                        this.config.active_category = cat;
+                        cx.notify();
+                    }
+                    SettingsMsg::ToggleNotch(val) => {
+                        this.config.island_mode_notch = val;
+                        cx.notify();
+                    }
+                    SettingsMsg::ToggleWindowTitle(val) => {
+                        this.config.show_active_window_title = val;
+                        cx.notify();
+                    }
+                    SettingsMsg::ToggleMedia(val) => {
+                        this.config.morph_on_media = val;
+                        cx.notify();
+                    }
+                    SettingsMsg::SelectAccent(idx) => {
+                        this.config.accent_color_idx = idx;
+                        cx.notify();
+                    }
+                    SettingsMsg::TestNotification => {
+                        beskar_services::notifications::send_test(
+                            "Beskar Shell",
+                            "Dynamic island and control center settings updated!",
+                        );
+                    }
+                    SettingsMsg::Close => {
+                        close_active_overlay(cx);
+                    }
+                });
+            }
+        })
+        .detach();
+
+        Self {
+            config,
+            focus_handle,
+            msg_tx,
+        }
+    }
+}
+
+impl Render for SettingsView {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        if !self.focus_handle.is_focused(window) {
+            self.focus_handle.focus(window, cx);
+        }
+
+        let tx_cat = self.msg_tx.clone();
+        let tx_notch = self.msg_tx.clone();
+        let tx_win = self.msg_tx.clone();
+        let tx_media = self.msg_tx.clone();
+        let tx_accent = self.msg_tx.clone();
+        let tx_test = self.msg_tx.clone();
+        let tx_close = self.msg_tx.clone();
+
+        div()
+            .size_full()
+            .flex()
+            .items_center()
+            .justify_center()
+            .track_focus(&self.focus_handle)
+            .on_key_down(cx.listener(|_, event: &KeyDownEvent, window, cx| {
+                if event.keystroke.key == "escape" {
+                    forget_overlay(OverlayKind::Settings);
+                    window.remove_window();
+                    cx.stop_propagation();
+                }
+            }))
+            .child(
+                SettingsWidget::new(self.config.clone())
+                    .on_select_category(move |cat| {
+                        let _ = tx_cat.send(SettingsMsg::SelectCategory(cat));
+                    })
+                    .on_toggle_notch_mode(move |val| {
+                        let _ = tx_notch.send(SettingsMsg::ToggleNotch(val));
+                    })
+                    .on_toggle_window_title(move |val| {
+                        let _ = tx_win.send(SettingsMsg::ToggleWindowTitle(val));
+                    })
+                    .on_toggle_media_morph(move |val| {
+                        let _ = tx_media.send(SettingsMsg::ToggleMedia(val));
+                    })
+                    .on_select_accent(move |idx| {
+                        let _ = tx_accent.send(SettingsMsg::SelectAccent(idx));
+                    })
+                    .on_test_notification(move || {
+                        let _ = tx_test.send(SettingsMsg::TestNotification);
+                    })
+                    .on_close(move || {
+                        let _ = tx_close.send(SettingsMsg::Close);
+                    }),
+            )
+    }
+}
+
+static NOTIFICATION_OVERLAY: Mutex<Option<AnyWindowHandle>> = Mutex::new(None);
+static NOTIFICATION_QUEUE: Mutex<Vec<NotificationItem>> = Mutex::new(Vec::new());
+
+pub fn forget_notification_overlay() {
+    let mut guard = NOTIFICATION_OVERLAY.lock().unwrap();
+    guard.take();
+}
+
+pub fn sync_notification_toasts(notifications: Vec<NotificationItem>, cx: &mut App) {
+    let mut queue_guard = NOTIFICATION_QUEUE.lock().unwrap();
+    *queue_guard = notifications.clone();
+    drop(queue_guard);
+
+    let mut guard = NOTIFICATION_OVERLAY.lock().unwrap();
+    if notifications.is_empty() {
+        if let Some(handle) = guard.take() {
+            let _ = cx.update_window(handle, |_, window, _| {
+                window.remove_window();
+            });
+        }
+        return;
+    }
+
+    if let Some(handle) = guard.as_ref() {
+        let _ = cx.update_window(*handle, |_, window, _| {
+            window.refresh();
+        });
+    } else {
+        let options = WindowOptions {
+            titlebar: None,
+            window_bounds: Some(WindowBounds::Windowed(Bounds {
+                origin: point(px(0.), px(0.)),
+                size: Size::new(px(380.), px(460.)),
+            })),
+            app_id: Some("beskar-notifications".to_string()),
+            window_background: WindowBackgroundAppearance::Transparent,
+            kind: WindowKind::LayerShell(LayerShellOptions {
+                namespace: "beskar-notifications".to_string(),
+                layer: Layer::Overlay,
+                anchor: LayerAnchor::TOP | LayerAnchor::RIGHT,
+                exclusive_zone: None,
+                margin: Some((px(48.), px(16.), px(0.), px(0.))),
+                keyboard_interactivity: KeyboardInteractivity::None,
+                ..Default::default()
+            }),
+            focus: false,
+            ..Default::default()
+        };
+
+        if let Ok(handle) = cx.open_window(options, move |_window, cx| {
+            cx.new(|_cx| NotificationToastQueueView)
+        }) {
+            *guard = Some(handle.into());
+            info!("Opened dedicated LayerShell Notification Toast Queue window");
+        }
+    }
+}
+
+pub struct NotificationToastQueueView;
+
+impl Render for NotificationToastQueueView {
+    fn render(&mut self, window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
+        let notifs = {
+            let guard = NOTIFICATION_QUEUE.lock().unwrap();
+            guard.clone()
+        };
+
+        if notifs.is_empty() {
+            forget_notification_overlay();
+            window.remove_window();
+            return div();
+        }
+
+        div()
+            .w(px(380.0))
+            .flex()
+            .flex_col()
+            .gap(px(8.0))
+            .children(notifs.into_iter().take(4).map(|n| {
+                NotificationToastWidget::new(n)
+                    .on_dismiss(|id| {
+                        beskar_services::notifications::dismiss(id);
+                    })
+                    .on_invoke(|id, key| {
+                        beskar_services::notifications::invoke(id, &key);
+                    })
+            }))
     }
 }
 
