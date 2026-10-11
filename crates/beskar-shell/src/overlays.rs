@@ -94,7 +94,7 @@ pub fn toggle_power_menu(cx: &mut App) {
         titlebar: None,
         window_bounds: Some(WindowBounds::Windowed(Bounds {
             origin: point(px(0.), px(0.)),
-            size: Size::new(px(356.), px(64.)),
+            size: Size::new(px(380.), px(72.)),
         })),
         app_id: Some("beskar-power-menu".to_string()),
         window_background: WindowBackgroundAppearance::Transparent,
@@ -103,7 +103,7 @@ pub fn toggle_power_menu(cx: &mut App) {
             layer: Layer::Overlay,
             anchor: LayerAnchor::TOP,
             exclusive_zone: None,
-            margin: Some((px(64.), px(0.), px(0.), px(0.))),
+            margin: Some((px(56.), px(0.), px(0.), px(0.))),
             keyboard_interactivity: KeyboardInteractivity::Exclusive,
             ..Default::default()
         }),
@@ -140,8 +140,8 @@ pub fn toggle_control_center(cx: &mut App) {
             layer: Layer::Overlay,
             anchor: LayerAnchor::TOP | LayerAnchor::RIGHT,
             exclusive_zone: None,
-            margin: Some((px(48.), px(12.), px(0.), px(0.))),
-            keyboard_interactivity: KeyboardInteractivity::OnDemand,
+            margin: Some((px(56.), px(12.), px(0.), px(0.))),
+            keyboard_interactivity: KeyboardInteractivity::Exclusive,
             ..Default::default()
         }),
         focus: true,
@@ -221,8 +221,10 @@ impl LauncherView {
                         cx.notify();
                     }
                     LauncherMsg::Select(idx) => {
-                        this.selected_idx = idx;
-                        cx.notify();
+                        if this.selected_idx != idx {
+                            this.selected_idx = idx;
+                            cx.notify();
+                        }
                     }
                     LauncherMsg::Launch(cmd) => {
                         let _ = beskar_services::launch_app(&cmd);
@@ -248,8 +250,8 @@ impl LauncherView {
 
 impl Render for LauncherView {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        if window.focused(cx).as_ref() != Some(&self.focus_handle) {
-            window.focus(&self.focus_handle, cx);
+        if !self.focus_handle.is_focused(window) {
+            self.focus_handle.focus(window, cx);
         }
 
         let tx_sel = self.msg_tx.clone();
@@ -399,8 +401,10 @@ impl PowerMenuView {
                 let _ = this.update(cx, |this, cx| {
                     match msg {
                         PowerMenuMsg::Select(idx) => {
-                            this.selected_index = idx;
-                            cx.notify();
+                            if this.selected_index != idx {
+                                this.selected_index = idx;
+                                cx.notify();
+                            }
                         }
                         PowerMenuMsg::RequestConfirm(action) => {
                             this.pending_action = Some(action);
@@ -412,8 +416,10 @@ impl PowerMenuView {
                             cx.notify();
                         }
                         PowerMenuMsg::ConfirmSelect(idx) => {
-                            this.confirm_index = idx;
-                            cx.notify();
+                            if this.confirm_index != idx {
+                                this.confirm_index = idx;
+                                cx.notify();
+                            }
                         }
                         PowerMenuMsg::Action(action) => {
                             let cmd = action.default_command();
@@ -440,7 +446,11 @@ impl PowerMenuView {
 }
 
 impl Render for PowerMenuView {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        if !self.focus_handle.is_focused(window) {
+            self.focus_handle.focus(window, cx);
+        }
+
         let tx_sel = self.msg_tx.clone();
         let tx_req = self.msg_tx.clone();
         let tx_cancel = self.msg_tx.clone();
@@ -451,6 +461,9 @@ impl Render for PowerMenuView {
 
         div()
             .size_full()
+            .flex()
+            .items_center()
+            .justify_center()
             .track_focus(&self.focus_handle)
             .on_key_down(cx.listener(move |this, event: &KeyDownEvent, window, cx| {
                 match event.keystroke.key.as_str() {
@@ -571,7 +584,11 @@ impl ControlCenterView {
 }
 
 impl Render for ControlCenterView {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        if !self.focus_handle.is_focused(window) {
+            self.focus_handle.focus(window, cx);
+        }
+
         let tx = self.close_tx.clone();
 
         div()
@@ -632,7 +649,11 @@ impl LockScreenView {
 }
 
 impl Render for LockScreenView {
-    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        if !self.focus_handle.is_focused(window) {
+            self.focus_handle.focus(window, cx);
+        }
+
         let tx = self.close_tx.clone();
         let cancel_tx = self.close_tx.clone();
 

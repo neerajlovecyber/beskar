@@ -137,22 +137,28 @@ impl DesktopBarView {
         })
         .detach();
 
-        // 3. 60 FPS Physics Frame Loop for fluid Island morphing
+        // 3. Adaptive Physics Frame Loop for fluid Island morphing
         cx.spawn(async move |this, cx| {
             loop {
-                let _ = cx
-                    .background_executor()
-                    .timer(std::time::Duration::from_millis(16)) // ~60 FPS
-                    .await;
+                let mut is_animating = false;
                 let res = this.update(cx, |this, cx| {
                     if !this.island_spring.is_settled() {
                         this.island_spring.step(1.0 / 60.0);
+                        is_animating = true;
                         cx.notify();
                     }
                 });
                 if res.is_err() {
                     break;
                 }
+
+                let sleep_duration = if is_animating {
+                    std::time::Duration::from_millis(16) // 60 FPS during motion
+                } else {
+                    std::time::Duration::from_millis(120) // Idle low-power sleep when settled
+                };
+
+                let _ = cx.background_executor().timer(sleep_duration).await;
             }
         })
         .detach();

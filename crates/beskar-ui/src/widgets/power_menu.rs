@@ -166,6 +166,7 @@ impl RenderOnce for PowerMenuWidget {
         let _ = self.on_close;
 
         div()
+            .id("power-menu-container")
             .relative()
             .p(px(6.0))
             .rounded(px(16.0))
@@ -179,10 +180,11 @@ impl RenderOnce for PowerMenuWidget {
                 let is_critical = matches!(pending, PowerAction::Shutdown | PowerAction::Restart);
                 let action_cb = on_action.clone();
                 let cancel_cb = on_cancel.clone();
-                let confirm_sel_cb1 = on_confirm_select.clone();
-                let confirm_sel_cb2 = on_confirm_select.clone();
+                let conf_sel_cancel = on_confirm_select.clone();
+                let conf_sel_confirm = on_confirm_select.clone();
 
                 div()
+                    .id("power-confirm-stage")
                     .flex()
                     .items_center()
                     .justify_between()
@@ -233,6 +235,7 @@ impl RenderOnce for PowerMenuWidget {
                             // Cancel Button (index 0)
                             .child(
                                 div()
+                                    .id("power-confirm-cancel")
                                     .px(px(10.0))
                                     .h(px(34.0))
                                     .rounded(px(8.0))
@@ -252,12 +255,10 @@ impl RenderOnce for PowerMenuWidget {
                                         hsla(0.0, 0.0, 1.0, 0.08)
                                     })
                                     .hover(|s| s.bg(hsla(0.0, 0.0, 1.0, 0.20)))
-                                    .on_mouse_move(move |_, _, _| {
-                                        if let Some(ref cb) = confirm_sel_cb1 {
+                                    .on_mouse_down(MouseButton::Left, move |_, _, _| {
+                                        if let Some(ref cb) = conf_sel_cancel {
                                             cb(0);
                                         }
-                                    })
-                                    .on_mouse_down(MouseButton::Left, move |_, _, _| {
                                         if let Some(ref cb) = cancel_cb {
                                             cb();
                                         }
@@ -274,6 +275,7 @@ impl RenderOnce for PowerMenuWidget {
                             // Confirm Button (index 1)
                             .child(
                                 div()
+                                    .id("power-confirm-action")
                                     .px(px(10.0))
                                     .h(px(34.0))
                                     .rounded(px(8.0))
@@ -297,12 +299,10 @@ impl RenderOnce for PowerMenuWidget {
                                             s.bg(hsla(261.0 / 360.0, 0.95, 0.78, 1.0))
                                         }
                                     })
-                                    .on_mouse_move(move |_, _, _| {
-                                        if let Some(ref cb) = confirm_sel_cb2 {
+                                    .on_mouse_down(MouseButton::Left, move |_, _, _| {
+                                        if let Some(ref cb) = conf_sel_confirm {
                                             cb(1);
                                         }
-                                    })
-                                    .on_mouse_down(MouseButton::Left, move |_, _, _| {
                                         if let Some(ref cb) = action_cb {
                                             cb(pending);
                                         }
@@ -342,6 +342,7 @@ impl RenderOnce for PowerMenuWidget {
                 let cur_selected = self.selected_index;
 
                 div()
+                    .id("power-actions-strip")
                     .flex()
                     .items_center()
                     .gap(px(4.0))
@@ -353,6 +354,7 @@ impl RenderOnce for PowerMenuWidget {
                         let sel_cb = on_select.clone();
 
                         div()
+                            .id(("power-action", idx))
                             .w(px(64.0))
                             .h(px(48.0))
                             .rounded(px(12.0))
@@ -374,17 +376,15 @@ impl RenderOnce for PowerMenuWidget {
                             })
                             .hover(move |s| {
                                 if !is_sel {
-                                    s.bg(hsla(0.0, 0.0, 1.0, 0.08))
+                                    s.bg(hsla(0.0, 0.0, 1.0, 0.12))
                                 } else {
                                     s
                                 }
                             })
-                            .on_mouse_move(move |_, _, _| {
+                            .on_mouse_down(MouseButton::Left, move |_, _, _| {
                                 if let Some(ref cb) = sel_cb {
                                     cb(idx);
                                 }
-                            })
-                            .on_mouse_down(MouseButton::Left, move |_, _, _| {
                                 if action.requires_confirmation() {
                                     if let Some(ref cb) = req_cb {
                                         cb(action);

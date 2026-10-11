@@ -122,7 +122,7 @@ impl RenderOnce for LauncherWidget {
         let total_count = filtered_apps.len();
         let selected_idx = self.selected_idx.min(total_count.saturating_sub(1));
 
-        let on_select = self.on_select.clone();
+        let _on_select = self.on_select.clone();
         let on_launch = self.on_launch.clone();
         let on_clear = self.on_clear.clone();
 
@@ -258,7 +258,6 @@ impl RenderOnce for LauncherWidget {
                         let is_current = real_idx == selected_idx;
                         let exec = app.exec.clone();
                         let on_launch = on_launch.clone();
-                        let on_select = on_select.clone();
 
                         let icon_path_exists = !app.icon.is_empty() && Path::new(&app.icon).exists();
                         let icon_path = PathBuf::from(&app.icon);
@@ -282,11 +281,6 @@ impl RenderOnce for LauncherWidget {
                             .on_mouse_down(MouseButton::Left, move |_, _, _| {
                                 if let Some(h) = on_launch.as_ref() {
                                     h(exec.clone());
-                                }
-                            })
-                            .on_mouse_move(move |_, _, _| {
-                                if let Some(h) = on_select.as_ref() {
-                                    h(real_idx);
                                 }
                             })
                             // Clean App Icon: 24x24px (Constants.size2Xl) without background box or circles
