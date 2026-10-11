@@ -237,11 +237,13 @@ fn render_notification_list(
     on_dismiss: Option<Arc<dyn Fn(u32) + Send + Sync>>,
 ) -> impl IntoElement {
     div()
+        .id("notification-center-scroll-list")
         .flex()
         .flex_col()
         .gap(px(8.0))
-        .overflow_hidden()
         .max_h(px(400.0))
+        .overflow_y_scroll()
+        .pb(px(8.0))
         .children(items.into_iter().map(move |item| {
             let id = item.id;
             let on_dis = on_dismiss.clone();

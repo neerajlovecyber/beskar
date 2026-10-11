@@ -234,7 +234,6 @@ impl RenderOnce for ScreenCaptureWidget {
                                 .cursor_pointer()
                             })
                             .on_mouse_down(MouseButton::Left, move |_, _, _| {
-                                m.execute();
                                 if let Some(ref cb) = on_trig {
                                     (cb)(m);
                                 }

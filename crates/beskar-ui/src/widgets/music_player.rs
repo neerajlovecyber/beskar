@@ -239,12 +239,14 @@ impl RenderOnce for MusicPlayerWidget {
                                             .text_sm()
                                             .font_weight(FontWeight::BOLD)
                                             .text_color(beskar_theme::Theme::fg())
+                                            .overflow_hidden()
                                             .child(title),
                                     )
                                     .child(
                                         div()
                                             .text_xs()
                                             .text_color(beskar_theme::Theme::muted())
+                                            .overflow_hidden()
                                             .child(artist),
                                     ),
                             )

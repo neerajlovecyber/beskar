@@ -1,4 +1,5 @@
 use gpui_kit::assets::IconName;
+use gpui_kit::component::switch::Switch;
 use gpui_kit::component::Icon;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
@@ -722,52 +723,30 @@ fn render_bar_page(
                 .child(settings_row(
                     "Dynamic Media Expansion",
                     "Morph Center Island smoothly when audio/media is playing",
-                    div()
-                        .px(px(8.0))
-                        .py(px(4.0))
-                        .rounded(px(6.0))
-                        .cursor_pointer()
-                        .bg(if media_morph {
-                            hsla(142.0 / 360.0, 0.85, 0.55, 0.20)
-                        } else {
-                            hsla(0.0, 0.0, 1.0, 0.08)
-                        })
-                        .text_xs()
-                        .font_weight(FontWeight::BOLD)
-                        .text_color(if media_morph {
-                            hsla(142.0 / 360.0, 0.90, 0.65, 1.0)
-                        } else {
-                            hsla(0.0, 0.0, 0.60, 1.0)
-                        })
-                        .when_some(on_media, move |el, cb| {
-                            el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)(!media_morph))
-                        })
-                        .child(if media_morph { "Active" } else { "Disabled" }),
+                    Switch::new("settings-media-morph-switch")
+                        .checked(media_morph)
+                        .on_click({
+                            let on_media = on_media.clone();
+                            move |_, _, _| {
+                                if let Some(cb) = on_media.as_ref() {
+                                    cb(!media_morph);
+                                }
+                            }
+                        }),
                 ))
                 .child(settings_row(
                     "Active Window Title",
                     "Display focused application icon and title beside workspace pills",
-                    div()
-                        .px(px(8.0))
-                        .py(px(4.0))
-                        .rounded(px(6.0))
-                        .cursor_pointer()
-                        .bg(if active_win_title {
-                            hsla(142.0 / 360.0, 0.85, 0.55, 0.20)
-                        } else {
-                            hsla(0.0, 0.0, 1.0, 0.08)
-                        })
-                        .text_xs()
-                        .font_weight(FontWeight::BOLD)
-                        .text_color(if active_win_title {
-                            hsla(142.0 / 360.0, 0.90, 0.65, 1.0)
-                        } else {
-                            hsla(0.0, 0.0, 0.60, 1.0)
-                        })
-                        .when_some(on_win_title, move |el, cb| {
-                            el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)(!active_win_title))
-                        })
-                        .child(if active_win_title { "Enabled" } else { "Hidden" }),
+                    Switch::new("settings-win-title-switch")
+                        .checked(active_win_title)
+                        .on_click({
+                            let on_win_title = on_win_title.clone();
+                            move |_, _, _| {
+                                if let Some(cb) = on_win_title.as_ref() {
+                                    cb(!active_win_title);
+                                }
+                            }
+                        }),
                 )),
         )
 }

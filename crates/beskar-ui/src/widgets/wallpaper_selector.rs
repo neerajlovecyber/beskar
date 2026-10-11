@@ -172,9 +172,11 @@ impl RenderOnce for WallpaperSelectorWidget {
             // Horizontal Carousel of 220x130 Wallpaper Cards
             .child(
                 div()
+                    .id("wallpaper-carousel-list")
                     .flex()
                     .gap(px(12.0))
-                    .overflow_x_hidden()
+                    .overflow_x_scroll()
+                    .pb(px(8.0))
                     .children(filtered.into_iter().map(move |item| {
                         let on_sel = on_select.clone();
                         let p = item.path.clone();
@@ -197,15 +199,6 @@ impl RenderOnce for WallpaperSelectorWidget {
                                     .cursor_pointer()
                             })
                             .on_mouse_down(MouseButton::Left, move |_, _, _| {
-                                // Apply wallpaper via swww or feh or swaybg
-                                let path_str = p.to_string_lossy().to_string();
-                                let _ = std::process::Command::new("swww")
-                                    .args(["img", &path_str, "--transition-type", "fade"])
-                                    .spawn();
-                                let _ = std::process::Command::new("feh")
-                                    .args(["--bg-fill", &path_str])
-                                    .spawn();
-
                                 if let Some(ref cb) = on_sel {
                                     (cb)(p.clone());
                                 }

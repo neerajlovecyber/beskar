@@ -559,6 +559,7 @@ impl ControlCenterView {
         let active_power_profile = beskar_services::PowerProfilesService::get_profile();
         let focus_handle = cx.focus_handle();
         let (msg_tx, mut msg_rx) = tokio::sync::mpsc::unbounded_channel::<ControlCenterMsg>();
+        let bus = beskar_services::HardwareBus::new_linux();
 
         cx.spawn(async move |this, cx| {
             while let Some(msg) = msg_rx.recv().await {
@@ -574,18 +575,11 @@ impl ControlCenterView {
                             cx.notify();
                         });
                         let this_weak = this.clone();
+                        let bus_clone = bus.clone();
                         cx.spawn(async move |cx| {
-                            tokio::task::spawn_blocking(move || {
-                                beskar_services::NetworkHelper::toggle_wifi(is_on);
-                            })
-                            .await
-                            .ok();
+                            let _ = bus_clone.set_wifi_power(next_state).await;
                             if next_state {
-                                let (_, ssid) = tokio::task::spawn_blocking(|| {
-                                    beskar_services::NetworkHelper::get_wifi_status()
-                                })
-                                .await
-                                .unwrap_or((false, None));
+                                let (_, ssid) = bus_clone.get_wifi_state().await;
                                 let _ = this_weak.update(cx, |this, cx| {
                                     this.wifi_ssid = ssid;
                                     cx.notify();
@@ -601,12 +595,9 @@ impl ControlCenterView {
                             this.is_bt_on = next_state;
                             cx.notify();
                         });
+                        let bus_clone = bus.clone();
                         tokio::spawn(async move {
-                            tokio::task::spawn_blocking(move || {
-                                beskar_services::BluetoothHelper::toggle_bluetooth(is_on);
-                            })
-                            .await
-                            .ok();
+                            let _ = bus_clone.set_bluetooth_power(next_state).await;
                         });
                     }
                     ControlCenterMsg::ChangeVolume(delta) => {
@@ -616,12 +607,9 @@ impl ControlCenterView {
                             this.is_muted = false;
                             cx.notify();
                         });
+                        let bus_clone = bus.clone();
                         tokio::spawn(async move {
-                            tokio::task::spawn_blocking(move || {
-                                beskar_services::AudioService::set_volume(delta);
-                            })
-                            .await
-                            .ok();
+                            let _ = bus_clone.set_audio_volume(delta).await;
                         });
                     }
                     ControlCenterMsg::ToggleMute => {
@@ -629,12 +617,9 @@ impl ControlCenterView {
                             this.is_muted = !this.is_muted;
                             cx.notify();
                         });
+                        let bus_clone = bus.clone();
                         tokio::spawn(async move {
-                            tokio::task::spawn_blocking(|| {
-                                beskar_services::AudioService::toggle_mute();
-                            })
-                            .await
-                            .ok();
+                            let _ = bus_clone.toggle_audio_mute().await;
                         });
                     }
                     ControlCenterMsg::ChangeBrightness(delta) => {
@@ -647,12 +632,9 @@ impl ControlCenterView {
                             this.brightness_percent = new_bright;
                             cx.notify();
                         });
+                        let bus_clone = bus.clone();
                         tokio::spawn(async move {
-                            tokio::task::spawn_blocking(move || {
-                                beskar_services::BacklightService::set_brightness(new_bright);
-                            })
-                            .await
-                            .ok();
+                            let _ = bus_clone.set_brightness(new_bright).await;
                         });
                     }
                     ControlCenterMsg::SetPowerProfile(prof) => {
@@ -661,12 +643,9 @@ impl ControlCenterView {
                             this.active_power_profile = prof;
                             cx.notify();
                         });
+                        let bus_clone = bus.clone();
                         tokio::spawn(async move {
-                            tokio::task::spawn_blocking(move || {
-                                beskar_services::PowerProfilesService::set_profile(&prof_clone);
-                            })
-                            .await
-                            .ok();
+                            let _ = bus_clone.set_power_profile(&prof_clone).await;
                         });
                     }
                     ControlCenterMsg::ToggleWifiList => {
@@ -679,8 +658,9 @@ impl ControlCenterView {
                             .unwrap_or(false);
                         if will_show {
                             let this_weak = this.clone();
+                            let bus_clone = bus.clone();
                             cx.spawn(async move |cx| {
-                                let networks = beskar_services::NetworkHelper::scan_networks_async().await;
+                                let networks = bus_clone.scan_wifi_networks().await;
                                 let _ = this_weak.update(cx, |this, cx| {
                                     this.wifi_networks = networks;
                                     cx.notify();
@@ -699,8 +679,9 @@ impl ControlCenterView {
                             .unwrap_or(false);
                         if will_show {
                             let this_weak = this.clone();
+                            let bus_clone = bus.clone();
                             cx.spawn(async move |cx| {
-                                let devices = beskar_services::BluetoothHelper::list_devices_async().await;
+                                let devices = bus_clone.list_bluetooth_devices().await;
                                 let _ = this_weak.update(cx, |this, cx| {
                                     this.bt_devices = devices;
                                     cx.notify();
@@ -714,12 +695,9 @@ impl ControlCenterView {
                             this.wifi_ssid = Some(ssid.clone());
                             cx.notify();
                         });
+                        let bus_clone = bus.clone();
                         tokio::spawn(async move {
-                            tokio::task::spawn_blocking(move || {
-                                beskar_services::NetworkHelper::connect(&ssid, None);
-                            })
-                            .await
-                            .ok();
+                            let _ = bus_clone.connect_wifi(&ssid, None).await;
                         });
                     }
                     ControlCenterMsg::OpenLauncher => {
@@ -817,7 +795,11 @@ impl Render for ControlCenterView {
             }))
             .child(
                 div()
+                    .id("cc-outer-scroll")
                     .w(px(380.0))
+                    .max_h(px(760.0))
+                    .overflow_y_scroll()
+                    .pb(px(8.0))
                     .on_mouse_down(MouseButton::Left, |_, _, cx| {
                         cx.stop_propagation();
                     })
@@ -1630,6 +1612,10 @@ impl Render for DashboardView {
             }))
             .child(
                 div()
+                    .id("dashboard-card-wrapper")
+                    .max_h(px(740.0))
+                    .overflow_y_scroll()
+                    .pb(px(8.0))
                     .on_mouse_down(MouseButton::Left, |_, _, cx| {
                         cx.stop_propagation();
                     })
@@ -1858,6 +1844,10 @@ impl Render for MusicPlayerView {
             }))
             .child(
                 div()
+                    .id("music-card-wrapper")
+                    .max_h(px(600.0))
+                    .overflow_y_scroll()
+                    .pb(px(8.0))
                     .on_mouse_down(MouseButton::Left, |_, _, cx| {
                         cx.stop_propagation();
                     })
@@ -1997,7 +1987,11 @@ impl Render for NotificationCenterView {
             }))
             .child(
                 div()
+                    .id("notif-center-outer")
                     .w(px(380.0))
+                    .max_h(px(700.0))
+                    .overflow_y_scroll()
+                    .pb(px(8.0))
                     .on_mouse_down(MouseButton::Left, |_, _, cx| {
                         cx.stop_propagation();
                     })
