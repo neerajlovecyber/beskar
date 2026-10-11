@@ -26,9 +26,11 @@ enum BarAction {
     TogglePowerMenu,
     #[allow(dead_code)]
     ToggleSettings,
-    #[allow(dead_code)]
     ToggleLockScreen,
+    #[allow(dead_code)]
+    ToggleClipboard,
 }
+
 
 
 struct DesktopBarView {
@@ -194,6 +196,9 @@ impl DesktopBarView {
                         BarAction::ToggleLockScreen => {
                             overlays::toggle_lockscreen(cx);
                         }
+                        BarAction::ToggleClipboard => {
+                            overlays::toggle_clipboard(cx);
+                        }
 
                     }
                 });
@@ -306,6 +311,7 @@ impl Render for DesktopBarView {
 
         let on_volume_scroll = Arc::new(|delta: i32| {
             beskar_services::AudioService::set_volume(delta);
+            beskar_services::SoundService::play_volume_change();
         });
 
         let atx_cc = self.action_tx.clone();
@@ -420,6 +426,16 @@ async fn main() -> anyhow::Result<()> {
     );
 
     let comp_for_bar = compositor.clone();
+
+    // Load persisted ShellConfig and apply preset immediately
+    let cfg = beskar_core::config::ShellConfig::load();
+    beskar_theme::ThemeEngine::set_preset(match cfg.theme_preset {
+        beskar_core::config::ThemePresetConfig::ObsidianGlass => beskar_theme::ThemePreset::Obsidian,
+        beskar_core::config::ThemePresetConfig::CatppuccinMocha => beskar_theme::ThemePreset::CatppuccinMocha,
+        beskar_core::config::ThemePresetConfig::GruvboxDark => beskar_theme::ThemePreset::GruvboxDark,
+        beskar_core::config::ThemePresetConfig::WallpaperAuto => beskar_theme::ThemePreset::Wallpaper,
+    });
+
 
     // Run the GPUI application event loop WITH embedded AllAssets registered!
     gpui_kit::application()

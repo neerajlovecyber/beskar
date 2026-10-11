@@ -111,5 +111,14 @@ pub struct AppItem {
     pub categories: String,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub struct ClipboardEntry {
+    pub id: String,
+    pub text: String,
+    pub full_line: String,
+    pub is_image: bool,
+}
+
+
 
 

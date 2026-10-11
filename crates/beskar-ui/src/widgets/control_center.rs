@@ -26,6 +26,7 @@ pub struct ControlCenterWidget {
     on_toggle_wifi: Option<Arc<dyn Fn() + Send + Sync>>,
     on_toggle_bluetooth: Option<Arc<dyn Fn() + Send + Sync>>,
     on_open_launcher: Option<Arc<dyn Fn() + Send + Sync>>,
+    on_open_clipboard: Option<Arc<dyn Fn() + Send + Sync>>,
     on_open_power: Option<Arc<dyn Fn() + Send + Sync>>,
     on_open_settings: Option<Arc<dyn Fn() + Send + Sync>>,
     on_close: Option<Arc<dyn Fn() + Send + Sync>>,
@@ -46,6 +47,7 @@ impl ControlCenterWidget {
             on_toggle_wifi: None,
             on_toggle_bluetooth: None,
             on_open_launcher: None,
+            on_open_clipboard: None,
             on_open_power: None,
             on_open_settings: None,
             on_close: None,
@@ -98,6 +100,11 @@ impl ControlCenterWidget {
         self
     }
 
+    pub fn on_open_clipboard(mut self, handler: impl Fn() + Send + Sync + 'static) -> Self {
+        self.on_open_clipboard = Some(Arc::new(handler));
+        self
+    }
+
     pub fn on_open_power(mut self, handler: impl Fn() + Send + Sync + 'static) -> Self {
         self.on_open_power = Some(Arc::new(handler));
         self
@@ -121,6 +128,7 @@ impl RenderOnce for ControlCenterWidget {
         let on_wifi = self.on_toggle_wifi;
         let on_bt = self.on_toggle_bluetooth;
         let on_launcher = self.on_open_launcher;
+        let on_clipboard = self.on_open_clipboard;
         let on_settings = self.on_open_settings;
         let on_power = self.on_open_power;
         let on_close = self.on_close;
@@ -538,7 +546,35 @@ impl RenderOnce for ControlCenterWidget {
                                     .text_xs()
                                     .font_weight(FontWeight::MEDIUM)
                                     .text_color(hsla(0.0, 0.0, 0.90, 1.0))
-                                    .child("Launcher"),
+                                    .child("Apps"),
+                            ),
+                    )
+                    .child(
+                        div()
+                            .id("cc-action-clipboard")
+                            .flex_1()
+                            .h(px(32.0))
+                            .rounded(px(10.0))
+                            .bg(hsla(0.0, 0.0, 1.0, 0.06))
+                            .hover(|s| s.bg(hsla(0.0, 0.0, 1.0, 0.14)).cursor_pointer())
+                            .flex()
+                            .items_center()
+                            .justify_center()
+                            .gap(px(6.0))
+                            .when_some(on_clipboard, |el, cb| {
+                                el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
+                            })
+                            .child(
+                                Icon::new(IconName::ClipboardList)
+                                    .size(px(12.0))
+                                    .text_color(hsla(280.0 / 360.0, 0.85, 0.65, 1.0)),
+                            )
+                            .child(
+                                div()
+                                    .text_xs()
+                                    .font_weight(FontWeight::MEDIUM)
+                                    .text_color(hsla(0.0, 0.0, 0.90, 1.0))
+                                    .child("Clips"),
                             ),
                     )
                     .child(

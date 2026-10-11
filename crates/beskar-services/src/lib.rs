@@ -2,6 +2,7 @@ pub mod audio;
 pub mod auth;
 pub mod battery;
 pub mod bluez;
+pub mod clipboard;
 pub mod desktop;
 pub mod files;
 pub mod hub;
@@ -10,6 +11,7 @@ pub mod mpris;
 pub mod mpris_pleamar;
 pub mod networkmanager;
 pub mod notifications;
+pub mod sound;
 pub mod sysvalue;
 pub mod tray;
 
@@ -18,10 +20,13 @@ pub use logind::listen_logind_lock;
 pub use audio::AudioService;
 pub use auth::verify as verify_password;
 pub use battery::BatteryService;
+pub use clipboard::{ClipboardEntry, ClipboardService};
 pub use desktop::{launch as launch_app, list_apps};
 pub use hub::{SystemHub, SystemSnapshot};
 pub use mpris::MprisService;
+pub use sound::SoundService;
 pub use sysvalue::SysValue;
+
 
 /// Lightweight synchronous helper for NetworkManager Wi-Fi status and control.
 pub struct NetworkHelper;

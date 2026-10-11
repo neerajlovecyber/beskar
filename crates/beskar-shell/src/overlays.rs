@@ -1,9 +1,13 @@
+use beskar_core::config::{BarStyleConfig, ShellConfig, ThemePresetConfig};
 use beskar_core::models::{AppItem, NotificationItem};
 use beskar_services::audio::AudioService;
 use beskar_services::battery::BatteryService;
+use beskar_services::ClipboardEntry;
+
 use beskar_ui::{
-    ControlCenterWidget, LauncherWidget, LockScreenWidget, NotificationToastWidget,
-    PowerAction, PowerMenuWidget, SettingsCategory, SettingsConfig, SettingsWidget,
+    ClipboardWidget, ControlCenterWidget, LauncherWidget, LockScreenWidget,
+    NotificationToastWidget, PowerAction, PowerMenuWidget, SettingsCategory, SettingsConfig,
+    SettingsWidget,
 };
 use gpui_kit::layer_shell::{
     Anchor as LayerAnchor, KeyboardInteractivity, Layer, LayerShellOptions,
@@ -20,7 +24,9 @@ pub enum OverlayKind {
     ControlCenter,
     LockScreen,
     Settings,
+    Clipboard,
 }
+
 
 static ACTIVE_OVERLAY: Mutex<Option<(OverlayKind, AnyWindowHandle)>> = Mutex::new(None);
 
@@ -225,6 +231,43 @@ pub fn toggle_settings(cx: &mut App) {
         info!("Opened dedicated LayerShell Settings preferences overlay window");
     }
 }
+
+/// Toggle the dedicated LayerShell Clipboard History overlay window.
+pub fn toggle_clipboard(cx: &mut App) {
+    if close_active_overlay(cx) == Some(OverlayKind::Clipboard) {
+        return;
+    }
+
+    let options = WindowOptions {
+        titlebar: None,
+        window_bounds: Some(WindowBounds::Windowed(Bounds {
+            origin: point(px(0.), px(0.)),
+            size: Size::new(px(640.), px(480.)),
+        })),
+        app_id: Some("beskar-clipboard".to_string()),
+        window_background: WindowBackgroundAppearance::Transparent,
+        kind: WindowKind::LayerShell(LayerShellOptions {
+            namespace: "beskar-clipboard".to_string(),
+            layer: Layer::Overlay,
+            anchor: LayerAnchor::TOP,
+            exclusive_zone: None,
+            margin: Some((px(80.), px(0.), px(0.), px(0.))),
+            keyboard_interactivity: KeyboardInteractivity::Exclusive,
+            ..Default::default()
+        }),
+        focus: true,
+        ..Default::default()
+    };
+
+    if let Ok(handle) = cx.open_window(options, move |_window, cx| {
+        cx.new(|cx| ClipboardView::new(cx))
+    }) {
+        let mut guard = ACTIVE_OVERLAY.lock().unwrap();
+        *guard = Some((OverlayKind::Clipboard, handle.into()));
+        info!("Opened dedicated LayerShell Clipboard overlay window");
+    }
+}
+
 
 
 #[derive(Debug, Clone)]
@@ -596,6 +639,7 @@ enum ControlCenterMsg {
     ChangeVolume(i32),
     ToggleMute,
     OpenLauncher,
+    OpenClipboard,
     OpenPower,
     OpenSettings,
     Close,
@@ -657,6 +701,10 @@ impl ControlCenterView {
                         close_active_overlay(cx);
                         toggle_launcher(cx);
                     }
+                    ControlCenterMsg::OpenClipboard => {
+                        close_active_overlay(cx);
+                        toggle_clipboard(cx);
+                    }
                     ControlCenterMsg::OpenPower => {
                         close_active_overlay(cx);
                         toggle_power_menu(cx);
@@ -698,6 +746,7 @@ impl Render for ControlCenterView {
         let tx_wifi = self.msg_tx.clone();
         let tx_bt = self.msg_tx.clone();
         let tx_launcher = self.msg_tx.clone();
+        let tx_clipboard = self.msg_tx.clone();
         let tx_power = self.msg_tx.clone();
         let tx_settings = self.msg_tx.clone();
         let tx_close = self.msg_tx.clone();
@@ -732,6 +781,9 @@ impl Render for ControlCenterView {
                     })
                     .on_open_launcher(move || {
                         let _ = tx_launcher.send(ControlCenterMsg::OpenLauncher);
+                    })
+                    .on_open_clipboard(move || {
+                        let _ = tx_clipboard.send(ControlCenterMsg::OpenClipboard);
                     })
                     .on_open_power(move || {
                         let _ = tx_power.send(ControlCenterMsg::OpenPower);
@@ -771,6 +823,11 @@ impl SettingsView {
         let (msg_tx, mut msg_rx) = tokio::sync::mpsc::unbounded_channel::<SettingsMsg>();
 
         let mut config = SettingsConfig::default();
+        let shell_cfg = ShellConfig::load();
+        config.island_mode_notch = shell_cfg.bar_style == BarStyleConfig::Convex;
+        config.show_active_window_title = shell_cfg.show_workspaces;
+        config.morph_on_media = shell_cfg.show_media_in_center;
+
         let aud = AudioService::read_state();
         let bat = BatteryService::new().read_state();
         let (is_wifi_on, _) = beskar_services::NetworkHelper::get_wifi_status();
@@ -789,14 +846,27 @@ impl SettingsView {
                     }
                     SettingsMsg::ToggleNotch(val) => {
                         this.config.island_mode_notch = val;
+                        let mut shell_cfg = ShellConfig::load();
+                        shell_cfg.bar_style = if val {
+                            BarStyleConfig::Convex
+                        } else {
+                            BarStyleConfig::Island
+                        };
+                        let _ = shell_cfg.save();
                         cx.notify();
                     }
                     SettingsMsg::ToggleWindowTitle(val) => {
                         this.config.show_active_window_title = val;
+                        let mut shell_cfg = ShellConfig::load();
+                        shell_cfg.show_workspaces = val;
+                        let _ = shell_cfg.save();
                         cx.notify();
                     }
                     SettingsMsg::ToggleMedia(val) => {
                         this.config.morph_on_media = val;
+                        let mut shell_cfg = ShellConfig::load();
+                        shell_cfg.show_media_in_center = val;
+                        let _ = shell_cfg.save();
                         cx.notify();
                     }
                     SettingsMsg::SelectAccent(idx) => {
@@ -805,6 +875,14 @@ impl SettingsView {
                     }
                     SettingsMsg::SelectPreset(preset) => {
                         beskar_theme::ThemeEngine::set_preset(preset);
+                        let mut shell_cfg = ShellConfig::load();
+                        shell_cfg.theme_preset = match preset {
+                            beskar_theme::ThemePreset::Obsidian => ThemePresetConfig::ObsidianGlass,
+                            beskar_theme::ThemePreset::CatppuccinMocha => ThemePresetConfig::CatppuccinMocha,
+                            beskar_theme::ThemePreset::GruvboxDark => ThemePresetConfig::GruvboxDark,
+                            beskar_theme::ThemePreset::Wallpaper => ThemePresetConfig::WallpaperAuto,
+                        };
+                        let _ = shell_cfg.save();
                         cx.notify();
                     }
                     SettingsMsg::TestNotification => {
@@ -820,6 +898,7 @@ impl SettingsView {
             }
         })
         .detach();
+
 
         Self {
             config,
@@ -1124,4 +1203,189 @@ impl Render for LockScreenView {
             )
     }
 }
+
+#[derive(Debug, Clone)]
+enum ClipboardMsg {
+    Select(usize),
+    Copy(String),
+    Delete(String),
+    ClearAll,
+    ClearQuery,
+    Close,
+}
+
+pub struct ClipboardView {
+    query: String,
+    items: Vec<ClipboardEntry>,
+    selected_idx: usize,
+    focus_handle: FocusHandle,
+    msg_tx: tokio::sync::mpsc::UnboundedSender<ClipboardMsg>,
+}
+
+impl ClipboardView {
+    pub fn new(cx: &mut Context<Self>) -> Self {
+        let items = beskar_services::ClipboardService::list_history(50);
+        let focus_handle = cx.focus_handle();
+        let (msg_tx, mut msg_rx) = tokio::sync::mpsc::unbounded_channel::<ClipboardMsg>();
+
+        cx.spawn(async move |this, cx| {
+            while let Some(msg) = msg_rx.recv().await {
+                let _ = this.update(cx, |this, cx| match msg {
+                    ClipboardMsg::Select(idx) => {
+                        this.selected_idx = idx;
+                        cx.notify();
+                    }
+                    ClipboardMsg::Copy(id) => {
+                        beskar_services::ClipboardService::copy_item(&id);
+                        beskar_services::SoundService::play_volume_change();
+                        close_active_overlay(cx);
+                    }
+                    ClipboardMsg::Delete(line) => {
+                        beskar_services::ClipboardService::delete_item(&line);
+                        this.items = beskar_services::ClipboardService::list_history(50);
+                        this.selected_idx = this.selected_idx.min(this.items.len().saturating_sub(1));
+                        cx.notify();
+                    }
+                    ClipboardMsg::ClearAll => {
+                        beskar_services::ClipboardService::clear_history();
+                        this.items.clear();
+                        this.selected_idx = 0;
+                        cx.notify();
+                    }
+                    ClipboardMsg::ClearQuery => {
+                        this.query.clear();
+                        this.selected_idx = 0;
+                        cx.notify();
+                    }
+                    ClipboardMsg::Close => {
+                        close_active_overlay(cx);
+                    }
+                });
+            }
+        })
+        .detach();
+
+        Self {
+            query: String::new(),
+            items,
+            selected_idx: 0,
+            focus_handle,
+            msg_tx,
+        }
+    }
+}
+
+impl Render for ClipboardView {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        if !self.focus_handle.is_focused(window) {
+            self.focus_handle.focus(window, cx);
+        }
+
+        let tx_sel = self.msg_tx.clone();
+        let tx_cp = self.msg_tx.clone();
+        let tx_del = self.msg_tx.clone();
+        let tx_cp_key = self.msg_tx.clone();
+        let tx_del_key = self.msg_tx.clone();
+        let tx_clr = self.msg_tx.clone();
+        let tx_clrq = self.msg_tx.clone();
+        let tx_close = self.msg_tx.clone();
+
+        div()
+            .size_full()
+            .track_focus(&self.focus_handle)
+            .on_key_down(cx.listener(move |this, event: &KeyDownEvent, window, cx| {
+                let key = event.keystroke.key.as_str();
+                let mods = &event.keystroke.modifiers;
+
+                match key {
+                    "escape" => {
+                        if !this.query.is_empty() {
+                            this.query.clear();
+                            this.selected_idx = 0;
+                            cx.notify();
+                        } else {
+                            forget_overlay(OverlayKind::Clipboard);
+                            window.remove_window();
+                        }
+                        cx.stop_propagation();
+                    }
+                    "up" => {
+                        this.selected_idx = this.selected_idx.saturating_sub(1);
+                        cx.notify();
+                        cx.stop_propagation();
+                    }
+                    "down" => {
+                        let filtered = ClipboardWidget::filter_items(&this.items, &this.query);
+                        this.selected_idx =
+                            (this.selected_idx + 1).min(filtered.len().saturating_sub(1));
+                        cx.notify();
+                        cx.stop_propagation();
+                    }
+                    "enter" | "return" => {
+                        let filtered = ClipboardWidget::filter_items(&this.items, &this.query);
+                        if let Some(item) = filtered.get(this.selected_idx) {
+                            let id = item.id.clone();
+                            let _ = tx_cp_key.send(ClipboardMsg::Copy(id));
+                        }
+                        cx.stop_propagation();
+                    }
+                    "delete" => {
+                        let filtered = ClipboardWidget::filter_items(&this.items, &this.query);
+                        if let Some(item) = filtered.get(this.selected_idx) {
+                            let line = item.full_line.clone();
+                            let _ = tx_del_key.send(ClipboardMsg::Delete(line));
+                        }
+                        cx.stop_propagation();
+                    }
+                    "backspace" => {
+                        this.query.pop();
+                        this.selected_idx = 0;
+                        cx.notify();
+                        cx.stop_propagation();
+                    }
+                    "space" if !mods.control && !mods.alt && !mods.platform => {
+                        this.query.push(' ');
+                        this.selected_idx = 0;
+                        cx.notify();
+                        cx.stop_propagation();
+                    }
+                    _ => {
+                        if key.chars().count() == 1 && !mods.control && !mods.alt && !mods.platform {
+                            let ch = key.chars().next().unwrap();
+                            if !ch.is_control() {
+                                this.query.push(ch);
+                                this.selected_idx = 0;
+                                cx.notify();
+                                cx.stop_propagation();
+                            }
+                        }
+                    }
+                }
+            }))
+            .child(
+                ClipboardWidget::new(self.items.clone())
+                    .query(&self.query)
+                    .selected_idx(self.selected_idx)
+                    .on_select(move |idx| {
+                        let _ = tx_sel.send(ClipboardMsg::Select(idx));
+                    })
+                    .on_copy(move |id| {
+                        let _ = tx_cp.send(ClipboardMsg::Copy(id));
+                    })
+                    .on_delete(move |line| {
+                        let _ = tx_del.send(ClipboardMsg::Delete(line));
+                    })
+                    .on_clear_all(move || {
+                        let _ = tx_clr.send(ClipboardMsg::ClearAll);
+                    })
+                    .on_clear_query(move || {
+                        let _ = tx_clrq.send(ClipboardMsg::ClearQuery);
+                    })
+                    .on_close(move || {
+                        let _ = tx_close.send(ClipboardMsg::Close);
+                    }),
+            )
+    }
+}
+
 

@@ -9,8 +9,9 @@ pub use convex::{ConvexBarShape, ConvexGeometry};
 pub use pill::IslandPill;
 pub use spring::{SpringConfig, SpringValue};
 pub use widgets::{
-    ControlCenterWidget, DynamicCenterWidget, LauncherWidget, LockScreenWidget,
+    ClipboardWidget, ControlCenterWidget, DynamicCenterWidget, LauncherWidget, LockScreenWidget,
     NotificationToastWidget, PowerAction, PowerMenuWidget, SettingsCategory, SettingsConfig,
     SettingsWidget, VitalsWidget, WorkspacesWidget,
 };
+
 
