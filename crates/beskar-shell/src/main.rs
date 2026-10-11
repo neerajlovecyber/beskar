@@ -119,7 +119,14 @@ impl DesktopBarView {
                     )
                 });
 
-                let target_width = if media.is_some() { 320.0 } else { 120.0 };
+                let active_notif = snap.notifications.first().map(|n| (n.summary.clone(), n.body.clone()));
+                let target_width = if active_notif.is_some() {
+                    360.0
+                } else if media.is_some() {
+                    320.0
+                } else {
+                    120.0
+                };
 
                 let res = this.update(cx, |this, cx| {
                     this.battery_percent = snap.battery.percentage.round() as u8;
@@ -303,6 +310,7 @@ impl Render for DesktopBarView {
             let _ = atx_p.send(BarAction::TogglePowerMenu);
         });
 
+        let active_notif = self.notifications.first().map(|n| (n.summary.clone(), n.body.clone()));
         div()
             .relative()
             .size_full()
@@ -315,6 +323,7 @@ impl Render for DesktopBarView {
                 &self.time_str,
                 Some(self.date_str.clone()),
                 self.media.clone(),
+                active_notif,
                 self.volume_percent,
                 self.is_muted,
                 self.battery_percent,

@@ -6,3 +6,6 @@ edition = "2024"
 [dependencies]
 serde.workspace = true
 gpui-kit.workspace = true
+image.workspace = true
+tracing.workspace = true
+anyhow.workspace = true

@@ -20,6 +20,7 @@ pub struct DynamicCenterWidget {
     media_title: Option<String>,
     media_artist: Option<String>,
     is_playing: bool,
+    notification: Option<(String, String)>,
     width: Option<Pixels>,
     on_play_pause: Option<Arc<dyn Fn() + Send + Sync>>,
 }
@@ -32,9 +33,15 @@ impl DynamicCenterWidget {
             media_title: None,
             media_artist: None,
             is_playing: false,
+            notification: None,
             width: None,
             on_play_pause: None,
         }
+    }
+
+    pub fn notification(mut self, notif: Option<(String, String)>) -> Self {
+        self.notification = notif;
+        self
     }
 
     pub fn width(mut self, width: Pixels) -> Self {
@@ -63,6 +70,7 @@ impl DynamicCenterWidget {
 impl RenderOnce for DynamicCenterWidget {
     fn render(self, _window: &mut Window, _cx: &mut App) -> impl IntoElement {
         let has_media = self.media_title.is_some();
+        let has_notification = self.notification.is_some();
         let on_play_pause = self.on_play_pause;
 
         let media_text = match (&self.media_artist, &self.media_title) {
@@ -107,7 +115,37 @@ impl RenderOnce for DynamicCenterWidget {
                     .text_color(hsla(0.0, 0.0, 0.95, 1.0))
                     .child(self.time_str),
             )
-            .when(has_media, |this| {
+            .when_some(self.notification, |this, (notif_title, notif_body)| {
+                this.child(
+                    div()
+                        .w(px(1.0))
+                        .h(px(12.0))
+                        .bg(hsla(0.0, 0.0, 1.0, 0.20)),
+                )
+                .child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap(px(6.0))
+                        .text_xs()
+                        .text_color(hsla(45.0 / 360.0, 0.95, 0.65, 1.0))
+                        .child(Icon::new(IconName::Bell).size(px(12.0)))
+                        .child(
+                            div()
+                                .font_weight(FontWeight::SEMIBOLD)
+                                .text_color(hsla(0.0, 0.0, 0.95, 1.0))
+                                .child(notif_title),
+                        )
+                        .child(
+                            div()
+                                .max_w(px(180.0))
+                                .overflow_hidden()
+                                .text_color(hsla(0.0, 0.0, 0.70, 1.0))
+                                .child(notif_body),
+                        ),
+                )
+            })
+            .when(has_media && !has_notification, |this| {
                 let play_icon = if self.is_playing {
                     IconName::Pause
                 } else {

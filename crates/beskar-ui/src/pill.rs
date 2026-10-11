@@ -54,24 +54,26 @@ impl RenderOnce for IslandPill {
             .py(self.padding_y)
             .when(is_convex, |s| s.rounded_b(px(14.0)))
             .when(!is_convex, |s| s.rounded(px(18.0)))
-            // Deep obsidian acrylic core: 96% in convex mode, 84% in floating island mode
+            // Dynamic acrylic core from active Theme
             .bg(if is_convex {
-                hsla(250.0 / 360.0, 0.16, 0.06, 0.96)
+                beskar_theme::Theme::bg()
             } else {
-                hsla(240.0 / 360.0, 0.14, 0.07, 0.84)
+                let mut b = beskar_theme::Theme::bg();
+                b.a = (b.a * 0.90).clamp(0.0, 1.0);
+                b
             })
-            // Outer 1px perimeter boundary with ultra-subtle sheen
+            // Outer 1px perimeter boundary with subtle sheen
             .border_1()
-            .border_color(hsla(240.0 / 360.0, 0.10, 1.0, 0.12))
+            .border_color(beskar_theme::Theme::border())
             // Soft atmospheric drop shadow (elevation depth)
             .shadow_md()
             .when(self.is_interactive, |this| {
                 this.hover(|style| {
                     style
                         // Elevated surface luminance on cursor hover
-                        .bg(hsla(240.0 / 360.0, 0.14, 0.13, 0.94))
-                        // Warm amber edge reflection from iRiS design language
-                        .border_color(hsla(45.0 / 360.0, 0.85, 0.65, 0.35))
+                        .bg(beskar_theme::Theme::bg_secondary())
+                        // Accent edge reflection
+                        .border_color(beskar_theme::Theme::accent())
                         .shadow_lg()
                 })
             })

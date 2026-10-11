@@ -25,61 +25,69 @@ impl From<HslaColor> for gpui_kit::Hsla {
 pub struct Theme;
 
 impl Theme {
-    /// Pure obsidian dark background (`#030107` with 0.96 opacity)
+    /// Active surface background
     #[inline]
     pub fn bg() -> gpui_kit::Hsla {
-        gpui_kit::hsla(268.0 / 360.0, 0.40, 0.024, 0.96)
+        crate::engine::ThemeEngine::current().surface_bg.into()
     }
 
-    /// Primary foreground text (`#d1d1d1`)
+    /// Primary foreground text
     #[inline]
     pub fn fg() -> gpui_kit::Hsla {
-        gpui_kit::hsla(0.0, 0.0, 0.82, 1.0)
+        crate::engine::ThemeEngine::current().text_primary.into()
     }
 
-    /// Primary accent lavender/purple (`#a77ef5`)
+    /// Primary accent
     #[inline]
     pub fn accent() -> gpui_kit::Hsla {
-        gpui_kit::hsla(261.0 / 360.0, 0.86, 0.73, 1.0)
+        crate::engine::ThemeEngine::current().accent.into()
     }
 
-    /// Complementary accent rose (`#f57eb6`)
+    /// Complementary accent (hue offset by 70 degrees)
     #[inline]
     pub fn accent_complementary() -> gpui_kit::Hsla {
-        gpui_kit::hsla(331.0 / 360.0, 0.86, 0.73, 1.0)
+        let t = crate::engine::ThemeEngine::current();
+        gpui_kit::hsla(
+            ((t.accent.h + 70.0).rem_euclid(360.0)) / 360.0,
+            t.accent.s,
+            t.accent.l,
+            t.accent.a,
+        )
     }
 
-    /// Muted text and inactive icons (`rgba(209, 209, 209, 0.40)`)
+    /// Muted text and inactive icons
     #[inline]
     pub fn muted() -> gpui_kit::Hsla {
-        gpui_kit::hsla(0.0, 0.0, 0.82, 0.40)
+        crate::engine::ThemeEngine::current().text_muted.into()
     }
 
-    /// Subtle perimeter border (`rgba(209, 209, 209, 0.10)`)
+    /// Subtle perimeter border
     #[inline]
     pub fn border() -> gpui_kit::Hsla {
-        gpui_kit::hsla(0.0, 0.0, 0.82, 0.10)
+        crate::engine::ThemeEngine::current().surface_border.into()
     }
 
-    /// Secondary background for hovered/selected pills and items (`rgba(overlayBase, 0.08)`)
+    /// Secondary background for hovered/selected pills and items
     #[inline]
     pub fn bg_secondary() -> gpui_kit::Hsla {
-        gpui_kit::hsla(261.0 / 360.0, 0.70, 0.75, 0.08)
+        crate::engine::ThemeEngine::current().surface_hover.into()
     }
 
-    /// Tertiary background (`rgba(overlayBase, 0.03)`)
+    /// Tertiary background
     #[inline]
     pub fn bg_tertiary() -> gpui_kit::Hsla {
-        gpui_kit::hsla(261.0 / 360.0, 0.70, 0.75, 0.03)
+        crate::engine::ThemeEngine::current().surface_active.into()
     }
 
-    /// Accent tinted background (`rgba(accent, 0.18)`)
+    /// Accent tinted background
     #[inline]
     pub fn bg_accent() -> gpui_kit::Hsla {
-        gpui_kit::hsla(261.0 / 360.0, 0.86, 0.73, 0.18)
+        let mut a = crate::engine::ThemeEngine::current().accent;
+        a.a = 0.18;
+        a.into()
     }
 
-    /// Card / overlay shadow (`rgba(0, 0, 0, 0.75)`)
+    /// Card / overlay shadow
     #[inline]
     pub fn shadow() -> gpui_kit::Hsla {
         gpui_kit::hsla(0.0, 0.0, 0.0, 0.75)

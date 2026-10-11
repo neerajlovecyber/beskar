@@ -96,6 +96,7 @@ pub struct SettingsWidget {
     on_toggle_window_title: Option<Arc<dyn Fn(bool) + Send + Sync>>,
     on_toggle_media_morph: Option<Arc<dyn Fn(bool) + Send + Sync>>,
     on_select_accent: Option<Arc<dyn Fn(usize) + Send + Sync>>,
+    on_select_preset: Option<Arc<dyn Fn(beskar_theme::ThemePreset) + Send + Sync>>,
     on_test_notification: Option<Arc<dyn Fn() + Send + Sync>>,
     on_close: Option<Arc<dyn Fn() + Send + Sync>>,
 }
@@ -109,6 +110,7 @@ impl SettingsWidget {
             on_toggle_window_title: None,
             on_toggle_media_morph: None,
             on_select_accent: None,
+            on_select_preset: None,
             on_test_notification: None,
             on_close: None,
         }
@@ -148,6 +150,14 @@ impl SettingsWidget {
         self
     }
 
+    pub fn on_select_preset(
+        mut self,
+        handler: impl Fn(beskar_theme::ThemePreset) + Send + Sync + 'static,
+    ) -> Self {
+        self.on_select_preset = Some(Arc::new(handler));
+        self
+    }
+
     pub fn on_test_notification(mut self, handler: impl Fn() + Send + Sync + 'static) -> Self {
         self.on_test_notification = Some(Arc::new(handler));
         self
@@ -168,6 +178,7 @@ impl RenderOnce for SettingsWidget {
         let on_win_title = self.on_toggle_window_title;
         let on_media = self.on_toggle_media_morph;
         let on_accent = self.on_select_accent;
+        let on_preset = self.on_select_preset;
         let on_test_notif = self.on_test_notification;
 
         let accents = [
@@ -393,6 +404,7 @@ impl RenderOnce for SettingsWidget {
                                 config.accent_color_idx,
                                 config.dark_mode,
                                 on_accent,
+                                on_preset,
                             )
                         }
                         SettingsCategory::BarAndIslands => {
@@ -483,11 +495,99 @@ fn render_appearance_page(
     selected_idx: usize,
     _dark_mode: bool,
     on_accent: Option<Arc<dyn Fn(usize) + Send + Sync>>,
+    on_preset: Option<Arc<dyn Fn(beskar_theme::ThemePreset) + Send + Sync>>,
 ) -> gpui::Div {
+    let wallpaper_path_str = beskar_theme::ThemeEngine::detect_wallpaper_path()
+        .map(|p| p.to_string_lossy().to_string())
+        .unwrap_or_else(|| "Not detected (using default dark acrylic)".to_string());
+
     div()
         .flex()
         .flex_col()
         .gap(px(12.0))
+        .child(
+            settings_card("Theme Engine & Wallpaper Palette")
+                .child(
+                    div()
+                        .flex()
+                        .flex_col()
+                        .gap(px(10.0))
+                        .child(
+                            div()
+                                .text_xs()
+                                .text_color(hsla(0.0, 0.0, 0.60, 1.0))
+                                .child("Select desktop color tokens or extract dominant HSL acrylics directly from wallpaper"),
+                        )
+                        .child(
+                            div()
+                                .flex()
+                                .items_center()
+                                .gap(px(8.0))
+                                .children([
+                                    (beskar_theme::ThemePreset::Obsidian, "Obsidian Glass"),
+                                    (beskar_theme::ThemePreset::CatppuccinMocha, "Catppuccin"),
+                                    (beskar_theme::ThemePreset::GruvboxDark, "Gruvbox"),
+                                    (beskar_theme::ThemePreset::Wallpaper, "Wallpaper Auto"),
+                                ].into_iter().map(|(preset, name)| {
+                                    let is_active = beskar_theme::ThemeEngine::current_preset() == preset;
+                                    let on_p = on_preset.clone();
+                                    div()
+                                        .px(px(10.0))
+                                        .py(px(5.0))
+                                        .rounded(px(6.0))
+                                        .cursor_pointer()
+                                        .border_1()
+                                        .bg(if is_active {
+                                            beskar_theme::Theme::bg_secondary()
+                                        } else {
+                                            hsla(0.0, 0.0, 1.0, 0.04)
+                                        })
+                                        .border_color(if is_active {
+                                            beskar_theme::Theme::accent()
+                                        } else {
+                                            hsla(0.0, 0.0, 1.0, 0.08)
+                                        })
+                                        .hover(|s| s.bg(hsla(0.0, 0.0, 1.0, 0.10)))
+                                        .when_some(on_p, move |el, cb| {
+                                            el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)(preset))
+                                        })
+                                        .child(
+                                            div()
+                                                .text_xs()
+                                                .font_weight(if is_active { FontWeight::BOLD } else { FontWeight::MEDIUM })
+                                                .text_color(if is_active {
+                                                    beskar_theme::Theme::fg()
+                                                } else {
+                                                    hsla(0.0, 0.0, 0.70, 1.0)
+                                                })
+                                                .child(name),
+                                        )
+                                })),
+                        )
+                        .child(
+                            div()
+                                .flex()
+                                .items_center()
+                                .justify_between()
+                                .pt(px(4.0))
+                                .child(
+                                    div()
+                                        .text_xs()
+                                        .text_color(hsla(0.0, 0.0, 0.50, 1.0))
+                                        .child("Wallpaper Source:"),
+                                )
+                                .child(
+                                    div()
+                                        .max_w(px(260.0))
+                                        .overflow_hidden()
+                                        .text_xs()
+                                        .font_weight(FontWeight::MEDIUM)
+                                        .text_color(beskar_theme::Theme::accent())
+                                        .child(wallpaper_path_str),
+                                ),
+                        ),
+                ),
+        )
         .child(
             settings_card("Accent Palette")
                 .child(

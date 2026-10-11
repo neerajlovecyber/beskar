@@ -748,6 +748,7 @@ enum SettingsMsg {
     ToggleWindowTitle(bool),
     ToggleMedia(bool),
     SelectAccent(usize),
+    SelectPreset(beskar_theme::ThemePreset),
     TestNotification,
     Close,
 }
@@ -797,6 +798,10 @@ impl SettingsView {
                         this.config.accent_color_idx = idx;
                         cx.notify();
                     }
+                    SettingsMsg::SelectPreset(preset) => {
+                        beskar_theme::ThemeEngine::set_preset(preset);
+                        cx.notify();
+                    }
                     SettingsMsg::TestNotification => {
                         beskar_services::notifications::send_test(
                             "Beskar Shell",
@@ -830,6 +835,7 @@ impl Render for SettingsView {
         let tx_win = self.msg_tx.clone();
         let tx_media = self.msg_tx.clone();
         let tx_accent = self.msg_tx.clone();
+        let tx_preset = self.msg_tx.clone();
         let tx_test = self.msg_tx.clone();
         let tx_close = self.msg_tx.clone();
 
@@ -862,6 +868,9 @@ impl Render for SettingsView {
                     })
                     .on_select_accent(move |idx| {
                         let _ = tx_accent.send(SettingsMsg::SelectAccent(idx));
+                    })
+                    .on_select_preset(move |preset| {
+                        let _ = tx_preset.send(SettingsMsg::SelectPreset(preset));
                     })
                     .on_test_notification(move || {
                         let _ = tx_test.send(SettingsMsg::TestNotification);

@@ -92,6 +92,7 @@ impl BeskarBar {
         time_str: impl Into<String>,
         date_str: Option<String>,
         media: Option<(String, String, bool)>,
+        notification: Option<(String, String)>,
         volume_percent: u8,
         is_muted: bool,
         battery_percent: u8,
@@ -184,7 +185,9 @@ impl BeskarBar {
                 )
             });
 
-        let mut center_widget = DynamicCenterWidget::new(time_str).date(date_str);
+        let mut center_widget = DynamicCenterWidget::new(time_str)
+            .date(date_str)
+            .notification(notification);
         if let Some(w) = animated_center_width {
             center_widget = center_widget.width(px(w));
         }
@@ -245,6 +248,7 @@ impl BeskarBar {
             time_str,
             None,
             media,
+            None,
             65,
             false,
             88,
