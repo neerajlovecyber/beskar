@@ -1,4 +1,6 @@
 use gpui_kit::assets::IconName;
+use gpui_kit::component::button::{Button, ButtonVariants};
+use gpui_kit::component::tag::Tag;
 use gpui_kit::component::Icon;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
@@ -145,27 +147,15 @@ impl RenderOnce for WallpaperSelectorWidget {
                                     .text_color(beskar_theme::Theme::fg())
                                     .child("Wallpaper Gallery"),
                             )
-                            .child(
-                                div()
-                                    .text_xs()
-                                    .text_color(beskar_theme::Theme::muted())
-                                    .child(format!("({} discovered)", filtered.len())),
-                            ),
+                            .child(Tag::secondary().child(format!("{} discovered", filtered.len()))),
                     )
                     .when_some(on_close, |el, cb| {
                         el.child(
-                            div()
-                                .w(px(24.0))
-                                .h(px(24.0))
-                                .rounded_md()
-                                .flex()
-                                .items_center()
-                                .justify_center()
-                                .bg(beskar_theme::Theme::bg_secondary())
-                                .text_color(beskar_theme::Theme::muted())
-                                .hover(|s| s.bg(hsla(0.0, 0.8, 0.5, 0.25)).text_color(hsla(0.0, 0.9, 0.7, 1.0)).cursor_pointer())
-                                .on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
-                                .child(Icon::new(IconName::X).size(px(12.0))),
+                            Button::new("wallpaper-close")
+                                .ghost()
+                                .compact()
+                                .icon(Icon::new(IconName::X).size(px(14.0)))
+                                .on_click(move |_, _, _| (cb)()),
                         )
                     }),
             )

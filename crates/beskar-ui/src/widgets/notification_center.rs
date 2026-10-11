@@ -1,5 +1,7 @@
 use beskar_core::models::NotificationItem;
 use gpui_kit::assets::IconName;
+use gpui_kit::component::button::{Button, ButtonVariants};
+use gpui_kit::component::tag::Tag;
 use gpui_kit::component::Icon;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
@@ -105,14 +107,11 @@ impl RenderOnce for NotificationCenterWidget {
                                     .child("Notifications"),
                             )
                             .child(
-                                div()
-                                    .text_xs()
-                                    .text_color(beskar_theme::Theme::muted())
-                                    .child(if is_empty {
-                                        "All caught up".to_string()
-                                    } else {
-                                        format!("{} active", count)
-                                    }),
+                                Tag::secondary().child(if is_empty {
+                                    "All caught up".to_string()
+                                } else {
+                                    format!("{} active", count)
+                                }),
                             ),
                     )
                     .child(
@@ -122,66 +121,45 @@ impl RenderOnce for NotificationCenterWidget {
                             .gap(px(6.0))
                             // DND Toggle Button
                             .child(
-                                div()
-                                    .px(px(8.0))
-                                    .h(px(26.0))
-                                    .rounded_md()
-                                    .bg(if is_dnd {
-                                        hsla(45.0 / 360.0, 0.90, 0.55, 0.25)
-                                    } else {
-                                        beskar_theme::Theme::bg_secondary()
-                                    })
-                                    .text_color(if is_dnd {
-                                        beskar_theme::Theme::accent()
-                                    } else {
-                                        beskar_theme::Theme::muted()
-                                    })
-                                    .flex()
-                                    .items_center()
-                                    .gap(px(4.0))
-                                    .text_xs()
-                                    .font_weight(FontWeight::MEDIUM)
-                                    .hover(|s| s.bg(beskar_theme::Theme::bg_secondary()).cursor_pointer())
-                                    .when_some(on_toggle_dnd, |el, cb| {
-                                        el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
-                                    })
-                                    .child(Icon::new(if is_dnd { IconName::BellOff } else { IconName::Bell }).size(px(12.0)))
-                                    .child(if is_dnd { "Unmute" } else { "Mute" }),
+                                Button::new("notif-dnd-btn")
+                                    .ghost()
+                                    .compact()
+                                    .icon(Icon::new(if is_dnd { IconName::BellOff } else { IconName::Bell }).size(px(12.0)))
+                                    .label(if is_dnd { "Unmute" } else { "Mute" })
+                                    .on_click({
+                                        let on_toggle_dnd = on_toggle_dnd.clone();
+                                        move |_, _, _| {
+                                            if let Some(ref cb) = on_toggle_dnd {
+                                                cb();
+                                            }
+                                        }
+                                    }),
                             )
                             // Clear All Button (Trash)
                             .when(!is_empty, |this| {
+                                let on_clear_all = on_clear_all.clone();
                                 this.child(
-                                    div()
-                                        .w(px(26.0))
-                                        .h(px(26.0))
-                                        .rounded_md()
-                                        .bg(beskar_theme::Theme::bg_secondary())
-                                        .text_color(beskar_theme::Theme::muted())
-                                        .flex()
-                                        .items_center()
-                                        .justify_center()
-                                        .hover(|s| s.bg(hsla(0.0, 0.8, 0.5, 0.25)).text_color(hsla(0.0, 0.9, 0.7, 1.0)).cursor_pointer())
-                                        .when_some(on_clear_all, |el, cb| {
-                                            el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
-                                        })
-                                        .child(Icon::new(IconName::Trash).size(px(12.0))),
+                                    Button::new("notif-clear-all-btn")
+                                        .ghost()
+                                        .compact()
+                                        .icon(Icon::new(IconName::Trash).size(px(12.0)))
+                                        .on_click(move |_, _, _| {
+                                            if let Some(ref cb) = on_clear_all {
+                                                cb();
+                                            }
+                                        }),
                                 )
                             })
                             // Close Button
-                            .when_some(on_close, |el, cb| {
-                                el.child(
-                                    div()
-                                        .w(px(26.0))
-                                        .h(px(26.0))
-                                        .rounded_md()
-                                        .bg(beskar_theme::Theme::bg_secondary())
-                                        .text_color(beskar_theme::Theme::muted())
-                                        .flex()
-                                        .items_center()
-                                        .justify_center()
-                                        .hover(|s| s.bg(hsla(0.0, 0.0, 1.0, 0.14)).cursor_pointer())
-                                        .on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
-                                        .child(Icon::new(IconName::X).size(px(12.0))),
+                            .when_some(on_close, |this, cb| {
+                                this.child(
+                                    Button::new("notif-close-btn")
+                                        .ghost()
+                                        .compact()
+                                        .icon(Icon::new(IconName::X).size(px(12.0)))
+                                        .on_click(move |_, _, _| {
+                                            (cb)();
+                                        }),
                                 )
                             }),
                     ),

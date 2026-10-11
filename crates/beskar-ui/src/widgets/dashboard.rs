@@ -1,6 +1,8 @@
 use beskar_services::github::{ContributionDay, GithubProfile, GithubState};
 use beskar_services::updates::SystemUpdatesState;
 use gpui_kit::assets::IconName;
+use gpui_kit::component::button::{Button, ButtonVariants};
+use gpui_kit::component::tag::Tag;
 use gpui_kit::component::Icon;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
@@ -138,18 +140,11 @@ impl RenderOnce for DashboardWidget {
                             .gap(px(8.0))
                             .when_some(on_close, |el, cb| {
                                 el.child(
-                                    div()
-                                        .w(px(28.0))
-                                        .h(px(28.0))
-                                        .rounded_md()
-                                        .flex()
-                                        .items_center()
-                                        .justify_center()
-                                        .bg(beskar_theme::Theme::bg_secondary())
-                                        .text_color(beskar_theme::Theme::muted())
-                                        .hover(|s| s.bg(hsla(0.0, 0.8, 0.5, 0.25)).text_color(hsla(0.0, 0.9, 0.7, 1.0)).cursor_pointer())
-                                        .on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
-                                        .child(Icon::new(IconName::X).size(px(14.0))),
+                                    Button::new("dash-close")
+                                        .ghost()
+                                        .compact()
+                                        .icon(Icon::new(IconName::X).size(px(14.0)))
+                                        .on_click(move |_, _, _| (cb)()),
                                 )
                             }),
                     ),
@@ -357,40 +352,23 @@ fn render_profile_card(
                 .gap(px(8.0))
                 .pt(px(4.0))
                 .child(
-                    div()
-                        .flex_1()
-                        .h(px(28.0))
-                        .rounded_md()
-                        .bg(beskar_theme::Theme::accent())
-                        .text_color(hsla(0.0, 0.0, 0.1, 1.0))
-                        .flex()
-                        .items_center()
-                        .justify_center()
-                        .gap(px(6.0))
-                        .text_xs()
-                        .font_weight(FontWeight::BOLD)
-                        .hover(|s| s.bg(hsla(45.0 / 360.0, 1.0, 0.65, 1.0)).cursor_pointer())
-                        .when_some(on_open, |el, cb| {
-                            el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
-                        })
-                        .child(Icon::new(IconName::ExternalLink).size(px(12.0)))
-                        .child("GitHub Profile"),
+                    Button::new("dash-gh-profile")
+                        .primary()
+                        .compact()
+                        .label("GitHub Profile")
+                        .icon(Icon::new(IconName::ExternalLink).size(px(12.0)))
+                        .when_some(on_open, |btn, cb| {
+                            btn.on_click(move |_, _, _| (cb)())
+                        }),
                 )
                 .child(
-                    div()
-                        .w(px(28.0))
-                        .h(px(28.0))
-                        .rounded_md()
-                        .bg(beskar_theme::Theme::bg_secondary())
-                        .text_color(beskar_theme::Theme::muted())
-                        .flex()
-                        .items_center()
-                        .justify_center()
-                        .hover(|s| s.bg(hsla(0.0, 0.0, 1.0, 0.12)).text_color(beskar_theme::Theme::fg()).cursor_pointer())
-                        .when_some(on_refresh, |el, cb| {
-                            el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
-                        })
-                        .child(Icon::new(IconName::RefreshCw).size(px(12.0))),
+                    Button::new("dash-gh-refresh")
+                        .ghost()
+                        .compact()
+                        .icon(Icon::new(IconName::RefreshCw).size(px(12.0)))
+                        .when_some(on_refresh, |btn, cb| {
+                            btn.on_click(move |_, _, _| (cb)())
+                        }),
                 ),
         )
 }
@@ -461,41 +439,18 @@ fn render_updates_card(
                         .flex()
                         .items_center()
                         .gap(px(6.0))
-                        .child(
-                            div()
-                                .px(px(6.0))
-                                .py(px(2.0))
-                                .rounded_full()
-                                .bg(if has_updates {
-                                    hsla(45.0 / 360.0, 0.90, 0.50, 0.20)
-                                } else {
-                                    hsla(140.0 / 360.0, 0.75, 0.40, 0.20)
-                                })
-                                .text_xs()
-                                .font_weight(FontWeight::SEMIBOLD)
-                                .text_color(if has_updates {
-                                    beskar_theme::Theme::accent()
-                                } else {
-                                    hsla(140.0 / 360.0, 0.85, 0.60, 1.0)
-                                })
-                                .child(if has_updates {
-                                    format!("{} Pending", total)
-                                } else {
-                                    "Up to date".to_string()
-                                }),
-                        )
+                        .child(Tag::secondary().child(if has_updates {
+                            format!("{} Pending", total)
+                        } else {
+                            "Up to date".to_string()
+                        }))
                         .when_some(on_refresh, |el, cb| {
                             el.child(
-                                div()
-                                    .w(px(22.0))
-                                    .h(px(22.0))
-                                    .rounded_md()
-                                    .flex()
-                                    .items_center()
-                                    .justify_center()
-                                    .hover(|s| s.bg(hsla(0.0, 0.0, 1.0, 0.12)).cursor_pointer())
-                                    .on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
-                                    .child(Icon::new(IconName::RefreshCw).size(px(10.0))),
+                                Button::new("dash-up-refresh")
+                                    .ghost()
+                                    .compact()
+                                    .icon(Icon::new(IconName::RefreshCw).size(px(10.0)))
+                                    .on_click(move |_, _, _| (cb)()),
                             )
                         }),
                 ),
@@ -525,17 +480,11 @@ fn render_updates_card(
                 )
                 .when_some(on_run_update, |el, cb| {
                     el.child(
-                        div()
-                            .px(px(8.0))
-                            .py(px(4.0))
-                            .rounded_md()
-                            .bg(hsla(0.0, 0.0, 1.0, 0.08))
-                            .text_xs()
-                            .font_weight(FontWeight::MEDIUM)
-                            .text_color(beskar_theme::Theme::fg())
-                            .hover(|s| s.bg(beskar_theme::Theme::accent()).text_color(hsla(0.0, 0.0, 0.1, 1.0)).cursor_pointer())
-                            .on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
-                            .child("Upgrade Now"),
+                        Button::new("dash-up-run")
+                            .primary()
+                            .compact()
+                            .label("Upgrade Now")
+                            .on_click(move |_, _, _| (cb)()),
                     )
                 }),
         )

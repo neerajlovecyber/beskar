@@ -1,4 +1,6 @@
 use gpui_kit::assets::IconName;
+use gpui_kit::component::button::{Button, ButtonVariants};
+use gpui_kit::component::tag::Tag;
 use gpui_kit::component::Icon;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
@@ -87,21 +89,9 @@ impl RenderOnce for LockScreenWidget {
                 div()
                     .absolute()
                     .top(px(40.0))
-                    .flex()
-                    .items_center()
-                    .gap(px(8.0))
-                    .px(px(14.0))
-                    .py(px(6.0))
-                    .rounded_full()
-                    .bg(hsla(0.0, 0.0, 0.0, 0.40))
-                    .border_1()
-                    .border_color(beskar_theme::Theme::border())
-                    .child(Icon::new(IconName::Lock).size(px(12.0)).text_color(beskar_theme::Theme::accent()))
                     .child(
-                        div()
-                            .text_xs()
-                            .font_weight(FontWeight::MEDIUM)
-                            .text_color(beskar_theme::Theme::muted())
+                        Tag::secondary()
+                            .child(Icon::new(IconName::Lock).size(px(12.0)).text_color(beskar_theme::Theme::accent()))
                             .child("Session Locked"),
                     ),
             )
@@ -212,25 +202,13 @@ impl RenderOnce for LockScreenWidget {
                             )
                             // Submit arrow button
                             .child(
-                                div()
-                                    .size(px(28.0))
-                                    .rounded(px(10.0))
-                                    .flex()
-                                    .items_center()
-                                    .justify_center()
-                                    .bg(beskar_theme::Theme::accent())
-                                    .text_xs()
-                                    .font_weight(FontWeight::BOLD)
-                                    .text_color(hsla(0.0, 0.0, 0.05, 1.0))
-                                    .hover(|s| {
-                                        s.opacity(0.85).cursor_pointer()
-                                    })
-                                    .on_mouse_down(MouseButton::Left, move |_, _, _| {
-                                        if let Some(handler) = on_unlock.as_ref() {
-                                            handler(String::new());
-                                        }
-                                    })
-                                    .child("→"),
+                                Button::new("unlock-submit")
+                                    .primary()
+                                    .compact()
+                                    .label("→")
+                                    .when_some(on_unlock, |btn, cb| {
+                                        btn.on_click(move |_, _, _| (cb)(String::new()))
+                                    }),
                             ),
                     )
                     // Error message if authentication failed
@@ -246,19 +224,13 @@ impl RenderOnce for LockScreenWidget {
                     })
                     // Cancel / dismiss button
                     .child(
-                        div()
-                            .mt(px(18.0))
-                            .text_xs()
-                            .text_color(beskar_theme::Theme::muted())
-                            .hover(|s| {
-                                s.text_color(beskar_theme::Theme::fg()).cursor_pointer()
-                            })
-                            .on_mouse_down(MouseButton::Left, move |_, _, _| {
-                                if let Some(handler) = on_cancel.as_ref() {
-                                    handler();
-                                }
-                            })
-                            .child("Cancel"),
+                        Button::new("unlock-cancel")
+                            .ghost()
+                            .compact()
+                            .label("Cancel")
+                            .when_some(on_cancel, |btn, cb| {
+                                btn.on_click(move |_, _, _| (cb)())
+                            }),
                     ),
             )
             // Bottom hint (Suzuha style)

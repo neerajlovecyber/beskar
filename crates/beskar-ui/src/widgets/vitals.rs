@@ -1,7 +1,9 @@
+use gpui_kit::assets::IconName;
+use gpui_kit::component::button::{Button, ButtonVariants};
+use gpui_kit::component::tag::Tag;
+use gpui_kit::component::Icon;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
-use gpui_kit::assets::IconName;
-use gpui_kit::component::Icon;
 use std::sync::Arc;
 
 /// Right Island vitals cluster adapted from minflair & gpui-shell.
@@ -161,7 +163,7 @@ impl RenderOnce for VitalsWidget {
         let on_scroll = self.on_volume_scroll;
 
         let on_tray_clk = self.on_tray_click;
-        let on_tray_ctx = self.on_tray_menu;
+        let _on_tray_ctx = self.on_tray_menu;
 
         div()
             .flex()
@@ -173,38 +175,21 @@ impl RenderOnce for VitalsWidget {
                 for item in self.tray_items {
                     let icon_name = infer_tray_icon(&item.id, &item.icon, &item.title);
                     let item_id_left = item.id.clone();
-                    let item_id_right = item.id.clone();
                     let on_tc = on_tray_clk.clone();
-                    let on_tm = on_tray_ctx.clone();
                     let on_cc_fallback = on_cc.clone();
 
                     tray_row = tray_row.child(
-                        div()
-                            .w(px(24.0))
-                            .h(px(24.0))
-                            .rounded_md()
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .text_color(hsla(0.0, 0.0, 0.85, 1.0))
-                            .hover(|s| {
-                                s.bg(beskar_theme::Theme::bg_secondary())
-                                    .text_color(beskar_theme::Theme::accent())
-                                    .cursor_pointer()
-                            })
-                            .on_mouse_down(MouseButton::Left, move |_, _, _| {
+                        Button::new(SharedString::from(format!("tray-btn-{}", item.id)))
+                            .ghost()
+                            .compact()
+                            .icon(Icon::new(icon_name).size(px(14.0)))
+                            .on_click(move |_, _, _| {
                                 if let Some(ref cb) = on_tc {
                                     cb(item_id_left.clone());
                                 } else if let Some(ref cb) = on_cc_fallback {
                                     cb();
                                 }
-                            })
-                            .on_mouse_down(MouseButton::Right, move |_, _, _| {
-                                if let Some(ref cb) = on_tm {
-                                    cb(item_id_right.clone());
-                                }
-                            })
-                            .child(Icon::new(icon_name).size(px(14.0))),
+                            }),
                     );
                 }
                 this.child(tray_row)
@@ -213,104 +198,39 @@ impl RenderOnce for VitalsWidget {
             // Recording badge: green pulsing dot + timer
             .when(is_recording, |this| {
                 this.child(
-                    div()
-                        .flex()
-                        .items_center()
-                        .gap(px(5.0))
-                        .px(px(6.0))
-                        .py(px(2.0))
-                        .rounded_full()
-                        .bg(hsla(142.0 / 360.0, 0.70, 0.30, 0.25))
-                        .child(
-                            div()
-                                .w(px(6.0))
-                                .h(px(6.0))
-                                .rounded_full()
-                                .bg(hsla(142.0 / 360.0, 0.85, 0.55, 1.0)),
-                        )
-                        .child(
-                            div()
-                                .text_xs()
-                                .font_weight(FontWeight::MEDIUM)
-                                .text_color(hsla(0.0, 0.0, 0.90, 1.0))
-                                .child(self.recording_time.unwrap_or_default()),
-                        ),
+                    Tag::danger()
+                        .child(self.recording_time.unwrap_or_default()),
                 )
             })
             // Sliders / Control Center button
             .child(
-                div()
-                    .w(px(26.0))
-                    .h(px(24.0))
-                    .rounded_md()
-                    .flex()
-                    .items_center()
-                    .justify_center()
-                    .text_color(hsla(0.0, 0.0, 0.80, 1.0))
-                    .hover(|style| {
-                        style
-                            .bg(beskar_theme::Theme::bg_secondary())
-                            .text_color(beskar_theme::Theme::accent())
-                            .cursor_pointer()
-                    })
-                    .when_some(on_cc.clone(), |el, cb| {
-                        el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
-                    })
-                    .child(
-                        Icon::new(IconName::SlidersHorizontal)
-                            .size(px(14.0))
-                            .text_color(hsla(0.0, 0.0, 0.80, 1.0)),
-                    ),
+                Button::new("vitals-cc")
+                    .ghost()
+                    .compact()
+                    .icon(Icon::new(IconName::SlidersHorizontal).size(px(14.0)))
+                    .when_some(on_cc.clone(), |btn, cb| {
+                        btn.on_click(move |_, _, _| (cb)())
+                    }),
             )
             // Screen Capture quick trigger
             .child(
-                div()
-                    .w(px(26.0))
-                    .h(px(24.0))
-                    .rounded_md()
-                    .flex()
-                    .items_center()
-                    .justify_center()
-                    .text_color(hsla(0.0, 0.0, 0.80, 1.0))
-                    .hover(|style| {
-                        style
-                            .bg(beskar_theme::Theme::bg_secondary())
-                            .text_color(beskar_theme::Theme::accent())
-                            .cursor_pointer()
-                    })
-                    .when_some(self.on_capture_click, |el, cb| {
-                        el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
-                    })
-                    .child(
-                        Icon::new(IconName::Camera)
-                            .size(px(14.0))
-                            .text_color(hsla(0.0, 0.0, 0.80, 1.0)),
-                    ),
+                Button::new("vitals-capture")
+                    .ghost()
+                    .compact()
+                    .icon(Icon::new(IconName::Camera).size(px(14.0)))
+                    .when_some(self.on_capture_click, |btn, cb| {
+                        btn.on_click(move |_, _, _| (cb)())
+                    }),
             )
             // Wallpaper Gallery quick trigger
             .child(
-                div()
-                    .w(px(26.0))
-                    .h(px(24.0))
-                    .rounded_md()
-                    .flex()
-                    .items_center()
-                    .justify_center()
-                    .text_color(hsla(0.0, 0.0, 0.80, 1.0))
-                    .hover(|style| {
-                        style
-                            .bg(beskar_theme::Theme::bg_secondary())
-                            .text_color(beskar_theme::Theme::accent())
-                            .cursor_pointer()
-                    })
-                    .when_some(self.on_wallpaper_click, |el, cb| {
-                        el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
-                    })
-                    .child(
-                        Icon::new(IconName::Image)
-                            .size(px(14.0))
-                            .text_color(hsla(0.0, 0.0, 0.80, 1.0)),
-                    ),
+                Button::new("vitals-wallpaper")
+                    .ghost()
+                    .compact()
+                    .icon(Icon::new(IconName::Image).size(px(14.0)))
+                    .when_some(self.on_wallpaper_click, |btn, cb| {
+                        btn.on_click(move |_, _, _| (cb)())
+                    }),
             )
             // Volume icon & indicator with scroll-to-step volume support
             .child(
@@ -351,61 +271,30 @@ impl RenderOnce for VitalsWidget {
             )
             // Network Wi-Fi icon & trigger
             .child(
-                div()
-                    .w(px(26.0))
-                    .h(px(24.0))
-                    .rounded_md()
-                    .flex()
-                    .items_center()
-                    .justify_center()
-                    .hover(|style| {
-                        style
-                            .bg(beskar_theme::Theme::bg_secondary())
-                            .cursor_pointer()
-                    })
-                    .when_some(on_cc.clone(), |el, cb| {
-                        el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
-                    })
-                    .child(
+                Button::new("vitals-wifi")
+                    .ghost()
+                    .compact()
+                    .icon(
                         Icon::new(if self.is_wifi_connected {
                             IconName::Wifi
                         } else {
                             IconName::WifiOff
                         })
-                        .size(px(14.0))
-                        .text_color(if self.is_wifi_connected {
-                            hsla(0.0, 0.0, 0.85, 1.0)
-                        } else {
-                            hsla(0.0, 0.0, 0.40, 1.0)
-                        }),
-                    ),
+                        .size(px(14.0)),
+                    )
+                    .when_some(on_cc.clone(), |btn, cb| {
+                        btn.on_click(move |_, _, _| (cb)())
+                    }),
             )
             // Bluetooth icon & trigger
             .child(
-                div()
-                    .w(px(26.0))
-                    .h(px(24.0))
-                    .rounded_md()
-                    .flex()
-                    .items_center()
-                    .justify_center()
-                    .hover(|style| {
-                        style
-                            .bg(beskar_theme::Theme::bg_secondary())
-                            .cursor_pointer()
-                    })
-                    .when_some(on_cc.clone(), |el, cb| {
-                        el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
-                    })
-                    .child(
-                        Icon::new(IconName::Bluetooth)
-                            .size(px(14.0))
-                            .text_color(if self.is_bluetooth_connected {
-                                hsla(0.0, 0.0, 0.85, 1.0)
-                            } else {
-                                hsla(0.0, 0.0, 0.40, 1.0)
-                            }),
-                    ),
+                Button::new("vitals-bluetooth")
+                    .ghost()
+                    .compact()
+                    .icon(Icon::new(IconName::Bluetooth).size(px(14.0)))
+                    .when_some(on_cc.clone(), |btn, cb| {
+                        btn.on_click(move |_, _, _| (cb)())
+                    }),
             )
             // Battery icon & percentage
             .child(
@@ -435,27 +324,14 @@ impl RenderOnce for VitalsWidget {
             )
             // Power button
             .child(
-                div()
-                    .w(px(26.0))
-                    .h(px(24.0))
-                    .rounded_md()
-                    .flex()
-                    .items_center()
-                    .justify_center()
-                    .hover(|style| {
-                        style
-                            .bg(hsla(350.0 / 360.0, 0.85, 0.50, 0.20))
-                            .text_color(hsla(350.0 / 360.0, 0.90, 0.65, 1.0))
-                            .cursor_pointer()
-                    })
-                    .when_some(on_pwr, |el, cb| {
-                        el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
-                    })
-                    .child(
-                        Icon::new(IconName::Power)
-                            .size(px(14.0))
-                            .text_color(hsla(0.0, 0.0, 0.70, 1.0)),
-                    ),
+                Button::new("vitals-power")
+                    .danger()
+                    .ghost()
+                    .compact()
+                    .icon(Icon::new(IconName::Power).size(px(14.0)))
+                    .when_some(on_pwr, |btn, cb| {
+                        btn.on_click(move |_, _, _| (cb)())
+                    }),
             )
     }
 }

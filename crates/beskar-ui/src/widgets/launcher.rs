@@ -1,6 +1,8 @@
 use beskar_core::models::AppItem;
 use beskar_theme::Theme;
 use gpui_kit::assets::IconName;
+use gpui_kit::component::button::{Button, ButtonVariants};
+use gpui_kit::component::tag::Tag;
 use gpui_kit::component::Icon;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
@@ -187,22 +189,13 @@ impl RenderOnce for LauncherWidget {
                     .when(!self.query.is_empty(), |this| {
                         let on_clear = on_clear.clone();
                         this.child(
-                            div()
-                                .size(px(20.0))
-                                .flex()
-                                .items_center()
-                                .justify_center()
-                                .hover(|s| s.cursor_pointer())
-                                .on_mouse_down(MouseButton::Left, move |_, _, _| {
-                                    if let Some(h) = on_clear.as_ref() {
-                                        h();
-                                    }
-                                })
-                                .child(
-                                    Icon::new(IconName::X)
-                                        .size(px(14.0))
-                                        .text_color(theme_muted),
-                                ),
+                            Button::new("launcher-clear")
+                                .ghost()
+                                .compact()
+                                .icon(Icon::new(IconName::X).size(px(14.0)))
+                                .when_some(on_clear, |btn, cb| {
+                                    btn.on_click(move |_, _, _| (cb)())
+                                }),
                         )
                     }),
             )
@@ -329,12 +322,7 @@ impl RenderOnce for LauncherWidget {
                                     .find(|c| !c.is_empty())
                                     .unwrap_or("")
                                     .to_string();
-                                this.child(
-                                    div()
-                                        .text_xs()
-                                        .text_color(theme_muted)
-                                        .child(cat),
-                                )
+                                this.child(Tag::secondary().child(cat))
                             })
                     })),
             )

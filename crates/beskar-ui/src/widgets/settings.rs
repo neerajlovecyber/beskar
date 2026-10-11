@@ -1,5 +1,7 @@
 use gpui_kit::assets::IconName;
+use gpui_kit::component::button::{Button, ButtonVariants};
 use gpui_kit::component::switch::Switch;
+use gpui_kit::component::tag::Tag;
 use gpui_kit::component::Icon;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
@@ -335,19 +337,13 @@ impl RenderOnce for SettingsWidget {
                                     .child("v0.1.0 • Wayland"),
                             )
                             .child(
-                                div()
-                                    .px(px(8.0))
-                                    .py(px(4.0))
-                                    .rounded(px(6.0))
-                                    .bg(hsla(0.0, 0.0, 1.0, 0.08))
-                                    .hover(|s| s.bg(hsla(0.0, 0.0, 1.0, 0.16)).cursor_pointer())
-                                    .when_some(on_close.clone(), |el, cb| {
-                                        el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
-                                    })
-                                    .text_xs()
-                                    .font_weight(FontWeight::MEDIUM)
-                                    .text_color(hsla(0.0, 0.0, 0.85, 1.0))
-                                    .child("Done"),
+                                Button::new("settings-done")
+                                    .ghost()
+                                    .compact()
+                                    .label("Done")
+                                    .when_some(on_close.clone(), |btn, cb| {
+                                        btn.on_click(move |_, _, _| (cb)())
+                                    }),
                             ),
                     ),
             )
@@ -377,23 +373,13 @@ impl RenderOnce for SettingsWidget {
                                     .child(config.active_category.title()),
                             )
                             .child(
-                                div()
-                                    .w(px(24.0))
-                                    .h(px(24.0))
-                                    .rounded_full()
-                                    .flex()
-                                    .items_center()
-                                    .justify_center()
-                                    .bg(hsla(0.0, 0.0, 1.0, 0.08))
-                                    .hover(|s| s.bg(hsla(0.0, 0.0, 1.0, 0.18)).cursor_pointer())
-                                    .when_some(on_close, |el, cb| {
-                                        el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
-                                    })
-                                    .child(
-                                        Icon::new(IconName::X)
-                                            .size(px(14.0))
-                                            .text_color(hsla(0.0, 0.0, 0.70, 1.0)),
-                                    ),
+                                Button::new("settings-close")
+                                    .ghost()
+                                    .compact()
+                                    .icon(Icon::new(IconName::X).size(px(14.0)))
+                                    .when_some(on_close, |btn, cb| {
+                                        btn.on_click(move |_, _, _| (cb)())
+                                    }),
                             ),
                     )
                     // Page Body Switcher
@@ -842,22 +828,13 @@ fn render_notifications_page(
                 .child(settings_row(
                     "Test Toast Banner",
                     "Dispatch a test notification to verify toast animations and layout",
-                    div()
-                        .px(px(10.0))
-                        .py(px(4.0))
-                        .rounded(px(6.0))
-                        .cursor_pointer()
-                        .bg(hsla(45.0 / 360.0, 0.90, 0.60, 0.18))
-                        .border_1()
-                        .border_color(hsla(45.0 / 360.0, 0.90, 0.60, 0.40))
-                        .hover(|s| s.bg(hsla(45.0 / 360.0, 0.90, 0.60, 0.28)))
-                        .when_some(on_test_notif, |el, cb| {
-                            el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
-                        })
-                        .text_xs()
-                        .font_weight(FontWeight::BOLD)
-                        .text_color(hsla(45.0 / 360.0, 0.90, 0.60, 1.0))
-                        .child("Send Test"),
+                    Button::new("test-toast")
+                        .primary()
+                        .compact()
+                        .label("Send Test")
+                        .when_some(on_test_notif, |btn, cb| {
+                            btn.on_click(move |_, _, _| (cb)())
+                        }),
                 )),
         )
 }
@@ -946,16 +923,6 @@ fn settings_row(title: &'static str, description: &'static str, control: impl In
         .child(control)
 }
 
-fn kbd_chip(label: &'static str) -> gpui::Div {
-    div()
-        .px(px(8.0))
-        .py(px(3.0))
-        .rounded(px(6.0))
-        .bg(hsla(0.0, 0.0, 1.0, 0.08))
-        .border_1()
-        .border_color(hsla(0.0, 0.0, 1.0, 0.14))
-        .text_xs()
-        .font_weight(FontWeight::BOLD)
-        .text_color(hsla(0.0, 0.0, 0.90, 1.0))
-        .child(label)
+fn kbd_chip(label: &'static str) -> impl IntoElement {
+    Tag::secondary().child(label)
 }

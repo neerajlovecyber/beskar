@@ -1,6 +1,8 @@
 use beskar_core::models::ClipboardEntry;
 use beskar_theme::Theme;
 use gpui_kit::assets::IconName;
+use gpui_kit::component::button::{Button, ButtonVariants};
+use gpui_kit::component::tag::Tag;
 use gpui_kit::component::Icon;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
@@ -156,40 +158,23 @@ impl RenderOnce for ClipboardWidget {
                     .when(!self.query.is_empty(), |this| {
                         let on_cq = on_clear_query.clone();
                         this.child(
-                            div()
-                                .px(px(8.0))
-                                .py(px(4.0))
-                                .rounded_md()
-                                .bg(hsla(0.0, 0.0, 1.0, 0.08))
-                                .hover(|s| s.bg(hsla(0.0, 0.0, 1.0, 0.16)).cursor_pointer())
-                                .when_some(on_cq, |el, cb| {
-                                    el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
-                                })
-                                .child(
-                                    div()
-                                        .text_xs()
-                                        .text_color(fg_muted)
-                                        .child("Clear"),
-                                ),
+                            Button::new("clip-clear-query")
+                                .ghost()
+                                .compact()
+                                .label("Clear")
+                                .when_some(on_cq, |btn, cb| {
+                                    btn.on_click(move |_, _, _| (cb)())
+                                }),
                         )
                     })
                     .child(
-                        div()
-                            .w(px(28.0))
-                            .h(px(28.0))
-                            .rounded_md()
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .hover(|s| s.bg(hsla(0.0, 0.0, 1.0, 0.08)).cursor_pointer())
-                            .when_some(on_close, |el, cb| {
-                                el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
-                            })
-                            .child(
-                                Icon::new(IconName::X)
-                                    .size(px(14.0))
-                                    .text_color(fg_muted),
-                            ),
+                        Button::new("clip-close")
+                            .ghost()
+                            .compact()
+                            .icon(Icon::new(IconName::X).size(px(14.0)))
+                            .when_some(on_close, |btn, cb| {
+                                btn.on_click(move |_, _, _| (cb)())
+                            }),
                     ),
             )
             // Middle Items List
@@ -260,22 +245,7 @@ impl RenderOnce for ClipboardWidget {
                                 el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)(idx))
                             })
                             // Index badge
-                            .child(
-                                div()
-                                    .w(px(24.0))
-                                    .h(px(20.0))
-                                    .rounded(px(4.0))
-                                    .flex()
-                                    .items_center()
-                                    .justify_center()
-                                    .bg(hsla(0.0, 0.0, 1.0, 0.06))
-                                    .child(
-                                        div()
-                                            .text_xs()
-                                            .text_color(fg_muted)
-                                            .child(format!("#{}", idx + 1)),
-                                    ),
-                            )
+                            .child(Tag::secondary().child(format!("#{}", idx + 1)))
                             // Content icon
                             .child(
                                 Icon::new(if item.is_image {
@@ -309,47 +279,24 @@ impl RenderOnce for ClipboardWidget {
                             )
                             // Copy Action Button
                             .child(
-                                div()
-                                    .w(px(28.0))
-                                    .h(px(28.0))
-                                    .rounded_md()
-                                    .flex()
-                                    .items_center()
-                                    .justify_center()
-                                    .hover(|s| s.bg(hsla(0.0, 0.0, 1.0, 0.12)).cursor_pointer())
-                                    .when_some(on_cp, |el, cb| {
-                                        el.on_mouse_down(MouseButton::Left, move |_, _, _| {
-                                            (cb)(cp_id.clone());
-                                        })
-                                    })
-                                    .child(
-                                        Icon::new(IconName::Copy)
-                                            .size(px(14.0))
-                                            .text_color(fg_muted),
-                                    ),
+                                Button::new(("clip-copy", idx))
+                                    .ghost()
+                                    .compact()
+                                    .icon(Icon::new(IconName::Copy).size(px(14.0)))
+                                    .when_some(on_cp, |btn, cb| {
+                                        btn.on_click(move |_, _, _| (cb)(cp_id.clone()))
+                                    }),
                             )
                             // Delete Action Button
                             .child(
-                                div()
-                                    .w(px(28.0))
-                                    .h(px(28.0))
-                                    .rounded_md()
-                                    .flex()
-                                    .items_center()
-                                    .justify_center()
-                                    .hover(|s| {
-                                        s.bg(hsla(350.0 / 360.0, 0.70, 0.40, 0.30)).cursor_pointer()
-                                    })
-                                    .when_some(on_del, |el, cb| {
-                                        el.on_mouse_down(MouseButton::Left, move |_, _, _| {
-                                            (cb)(del_line.clone());
-                                        })
-                                    })
-                                    .child(
-                                        Icon::new(IconName::Trash)
-                                            .size(px(14.0))
-                                            .text_color(hsla(350.0 / 360.0, 0.85, 0.60, 1.0)),
-                                    ),
+                                Button::new(("clip-del", idx))
+                                    .danger()
+                                    .ghost()
+                                    .compact()
+                                    .icon(Icon::new(IconName::Trash).size(px(14.0)))
+                                    .when_some(on_del, |btn, cb| {
+                                        btn.on_click(move |_, _, _| (cb)(del_line.clone()))
+                                    }),
                             )
                     })),
             )
@@ -385,29 +332,12 @@ impl RenderOnce for ClipboardWidget {
                     )
                     .when_some(on_clear_all, |this, cb| {
                         this.child(
-                            div()
-                                .flex()
-                                .items_center()
-                                .gap(px(4.0))
-                                .px(px(8.0))
-                                .py(px(4.0))
-                                .rounded_md()
-                                .bg(hsla(350.0 / 360.0, 0.70, 0.40, 0.20))
-                                .hover(|s| {
-                                    s.bg(hsla(350.0 / 360.0, 0.85, 0.45, 0.40)).cursor_pointer()
-                                })
-                                .on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
-                                .child(
-                                    Icon::new(IconName::Trash)
-                                        .size(px(12.0))
-                                        .text_color(hsla(350.0 / 360.0, 0.85, 0.65, 1.0)),
-                                )
-                                .child(
-                                    div()
-                                        .text_xs()
-                                        .text_color(hsla(350.0 / 360.0, 0.85, 0.65, 1.0))
-                                        .child("Clear All"),
-                                ),
+                            Button::new("clip-clear-all")
+                                .danger()
+                                .compact()
+                                .icon(Icon::new(IconName::Trash).size(px(12.0)))
+                                .label("Clear All")
+                                .on_click(move |_, _, _| (cb)()),
                         )
                     }),
             )

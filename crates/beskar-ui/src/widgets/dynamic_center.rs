@@ -1,7 +1,8 @@
+use gpui_kit::assets::IconName;
+use gpui_kit::component::button::{Button, ButtonVariants};
+use gpui_kit::component::Icon;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
-use gpui_kit::assets::IconName;
-use gpui_kit::component::Icon;
 use std::sync::Arc;
 
 /// Dynamic Center Island component adapted from minflair's `IslandCenterPill.qml`
@@ -264,25 +265,13 @@ impl RenderOnce for DynamicCenterWidget {
                         .text_xs()
                         .text_color(hsla(0.0, 0.0, 0.85, 1.0))
                         .child(
-                            // 22x22px comfortable hit target for play/pause
-                            div()
-                                .w(px(22.0))
-                                .h(px(22.0))
-                                .rounded_md()
-                                .flex()
-                                .items_center()
-                                .justify_center()
-                                .text_color(hsla(185.0 / 360.0, 0.90, 0.60, 1.0))
-                                .hover(|style| {
-                                    style
-                                        .bg(hsla(185.0 / 360.0, 0.90, 0.60, 0.15))
-                                        .text_color(hsla(185.0 / 360.0, 1.0, 0.75, 1.0))
-                                        .cursor_pointer()
-                                })
-                                .when_some(on_play_pause, |el, cb| {
-                                    el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
-                                })
-                                .child(Icon::new(play_icon).size(px(12.0))),
+                            Button::new("dyn-play-pause")
+                                .ghost()
+                                .compact()
+                                .icon(Icon::new(play_icon).size(px(12.0)))
+                                .when_some(on_play_pause, |btn, cb| {
+                                    btn.on_click(move |_, _, _| (cb)())
+                                }),
                         )
                         .child(
                             div()

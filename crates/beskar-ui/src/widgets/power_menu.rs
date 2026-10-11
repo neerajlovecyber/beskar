@@ -1,5 +1,6 @@
 use beskar_theme::Theme;
 use gpui_kit::assets::IconName;
+use gpui_kit::component::button::{Button, ButtonVariant, ButtonVariants};
 use gpui_kit::component::Icon;
 use gpui_kit::*;
 use std::sync::Arc;
@@ -234,107 +235,37 @@ impl RenderOnce for PowerMenuWidget {
                             .gap(px(6.0))
                             // Cancel Button (index 0)
                             .child(
-                                div()
-                                    .id("power-confirm-cancel")
-                                    .px(px(10.0))
-                                    .h(px(34.0))
-                                    .rounded(px(8.0))
-                                    .flex()
-                                    .items_center()
-                                    .gap(px(4.0))
-                                    .cursor_pointer()
-                                    .bg(if self.confirm_index == 0 {
-                                        hsla(0.0, 0.0, 1.0, 0.16)
-                                    } else {
-                                        hsla(0.0, 0.0, 1.0, 0.06)
-                                    })
-                                    .border_1()
-                                    .border_color(if self.confirm_index == 0 {
-                                        hsla(0.0, 0.0, 1.0, 0.25)
-                                    } else {
-                                        hsla(0.0, 0.0, 1.0, 0.08)
-                                    })
-                                    .hover(|s| s.bg(hsla(0.0, 0.0, 1.0, 0.20)))
-                                    .on_mouse_down(MouseButton::Left, move |_, _, _| {
+                                Button::new("power-confirm-cancel")
+                                    .ghost()
+                                    .icon(Icon::new(IconName::X).size(px(12.0)))
+                                    .label("Cancel")
+                                    .on_click(move |_, _, _| {
                                         if let Some(ref cb) = conf_sel_cancel {
                                             cb(0);
                                         }
                                         if let Some(ref cb) = cancel_cb {
                                             cb();
                                         }
-                                    })
-                                    .child(Icon::new(IconName::X).size(px(12.0)))
-                                    .child(
-                                        div()
-                                            .text_xs()
-                                            .font_weight(FontWeight::MEDIUM)
-                                            .text_color(hsla(0.0, 0.0, 0.85, 1.0))
-                                            .child("Cancel"),
-                                    ),
+                                    }),
                             )
                             // Confirm Button (index 1)
                             .child(
-                                div()
-                                    .id("power-confirm-action")
-                                    .px(px(10.0))
-                                    .h(px(34.0))
-                                    .rounded(px(8.0))
-                                    .flex()
-                                    .items_center()
-                                    .gap(px(4.0))
-                                    .cursor_pointer()
-                                    .bg(if self.confirm_index == 1 {
-                                        if is_critical {
-                                            hsla(350.0 / 360.0, 0.85, 0.50, 1.0)
-                                        } else {
-                                            hsla(261.0 / 360.0, 0.86, 0.73, 1.0)
-                                        }
+                                Button::new("power-confirm-action")
+                                    .with_variant(if is_critical {
+                                        ButtonVariant::Danger
                                     } else {
-                                        hsla(0.0, 0.0, 1.0, 0.08)
+                                        ButtonVariant::Primary
                                     })
-                                    .hover(move |s| {
-                                        if is_critical {
-                                            s.bg(hsla(350.0 / 360.0, 0.90, 0.55, 1.0))
-                                        } else {
-                                            s.bg(hsla(261.0 / 360.0, 0.95, 0.78, 1.0))
-                                        }
-                                    })
-                                    .on_mouse_down(MouseButton::Left, move |_, _, _| {
+                                    .icon(Icon::new(IconName::Check).size(px(12.0)))
+                                    .label("Confirm")
+                                    .on_click(move |_, _, _| {
                                         if let Some(ref cb) = conf_sel_confirm {
                                             cb(1);
                                         }
                                         if let Some(ref cb) = action_cb {
                                             cb(pending);
                                         }
-                                    })
-                                    .child(
-                                        Icon::new(IconName::Check)
-                                            .size(px(12.0))
-                                            .text_color(if self.confirm_index == 1 {
-                                                if is_critical {
-                                                    hsla(0.0, 0.0, 1.0, 1.0)
-                                                } else {
-                                                    hsla(0.0, 0.0, 0.05, 1.0)
-                                                }
-                                            } else {
-                                                hsla(0.0, 0.0, 0.85, 1.0)
-                                            }),
-                                    )
-                                    .child(
-                                        div()
-                                            .text_xs()
-                                            .font_weight(FontWeight::BOLD)
-                                            .text_color(if self.confirm_index == 1 {
-                                                if is_critical {
-                                                    hsla(0.0, 0.0, 1.0, 1.0)
-                                                } else {
-                                                    hsla(0.0, 0.0, 0.05, 1.0)
-                                                }
-                                            } else {
-                                                hsla(0.0, 0.0, 0.85, 1.0)
-                                            })
-                                            .child("Confirm"),
-                                    ),
+                                    }),
                             ),
                     )
             } else {

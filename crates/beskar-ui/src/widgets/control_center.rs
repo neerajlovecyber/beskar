@@ -1,5 +1,6 @@
 use beskar_services::{BluetoothDeviceItem, WifiAccessPoint};
 use gpui_kit::assets::IconName;
+use gpui_kit::component::button::{Button, ButtonVariants};
 use gpui_kit::component::switch::Switch;
 use gpui_kit::component::Icon;
 use gpui_kit::prelude::FluentBuilder;
@@ -255,25 +256,17 @@ impl RenderOnce for ControlCenterWidget {
                             .text_color(hsla(0.0, 0.0, 0.95, 1.0))
                             .child("Control Center"),
                     )
-                    .child(
-                        div()
-                            .w(px(20.0))
-                            .h(px(20.0))
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .rounded_full()
-                            .bg(hsla(0.0, 0.0, 1.0, 0.08))
-                            .hover(|s| s.bg(hsla(0.0, 0.0, 1.0, 0.16)).cursor_pointer())
-                            .when_some(on_close, |el, cb| {
-                                el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
-                            })
-                            .child(
-                                Icon::new(IconName::X)
-                                    .size(px(12.0))
-                                    .text_color(hsla(0.0, 0.0, 0.70, 1.0)),
-                            ),
-                    ),
+                    .when_some(on_close, |this, cb| {
+                        this.child(
+                            Button::new("cc-close-btn")
+                                .ghost()
+                                .compact()
+                                .icon(Icon::new(IconName::X).size(px(12.0)))
+                                .on_click(move |_, _, _| {
+                                    (cb)();
+                                }),
+                        )
+                    }),
             )
             // ── Quick Toggle Grid (Wi-Fi & Bluetooth Cards) ──
             .child(
@@ -1048,118 +1041,54 @@ impl RenderOnce for ControlCenterWidget {
                     .flex()
                     .items_center()
                     .gap(px(8.0))
-                    .child(
-                        div()
-                            .id("cc-action-launcher")
-                            .flex_1()
-                            .h(px(32.0))
-                            .rounded(px(10.0))
-                            .bg(hsla(0.0, 0.0, 1.0, 0.06))
-                            .hover(|s| s.bg(hsla(0.0, 0.0, 1.0, 0.14)).cursor_pointer())
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .gap(px(6.0))
-                            .when_some(on_launcher, |el, cb| {
-                                el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
-                            })
-                            .child(
-                                Icon::new(IconName::Search)
-                                    .size(px(12.0))
-                                    .text_color(hsla(45.0 / 360.0, 0.90, 0.60, 1.0)),
-                            )
-                            .child(
-                                div()
-                                    .text_xs()
-                                    .font_weight(FontWeight::MEDIUM)
-                                    .text_color(hsla(0.0, 0.0, 0.90, 1.0))
-                                    .child("Apps"),
-                            ),
-                    )
-                    .child(
-                        div()
-                            .id("cc-action-clipboard")
-                            .flex_1()
-                            .h(px(32.0))
-                            .rounded(px(10.0))
-                            .bg(hsla(0.0, 0.0, 1.0, 0.06))
-                            .hover(|s| s.bg(hsla(0.0, 0.0, 1.0, 0.14)).cursor_pointer())
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .gap(px(6.0))
-                            .when_some(on_clipboard, |el, cb| {
-                                el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
-                            })
-                            .child(
-                                Icon::new(IconName::ClipboardList)
-                                    .size(px(12.0))
-                                    .text_color(hsla(280.0 / 360.0, 0.85, 0.65, 1.0)),
-                            )
-                            .child(
-                                div()
-                                    .text_xs()
-                                    .font_weight(FontWeight::MEDIUM)
-                                    .text_color(hsla(0.0, 0.0, 0.90, 1.0))
-                                    .child("Clips"),
-                            ),
-                    )
-                    .child(
-                        div()
-                            .id("cc-action-settings")
-                            .flex_1()
-                            .h(px(32.0))
-                            .rounded(px(10.0))
-                            .bg(hsla(0.0, 0.0, 1.0, 0.06))
-                            .hover(|s| s.bg(hsla(0.0, 0.0, 1.0, 0.14)).cursor_pointer())
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .gap(px(6.0))
-                            .when_some(on_settings, |el, cb| {
-                                el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
-                            })
-                            .child(
-                                Icon::new(IconName::Settings)
-                                    .size(px(12.0))
-                                    .text_color(hsla(210.0 / 360.0, 0.85, 0.65, 1.0)),
-                            )
-                            .child(
-                                div()
-                                    .text_xs()
-                                    .font_weight(FontWeight::MEDIUM)
-                                    .text_color(hsla(0.0, 0.0, 0.90, 1.0))
-                                    .child("Settings"),
-                            ),
-                    )
-                    .child(
-                        div()
-                            .id("cc-action-power")
-                            .flex_1()
-                            .h(px(32.0))
-                            .rounded(px(10.0))
-                            .bg(hsla(0.0, 0.0, 1.0, 0.06))
-                            .hover(|s| s.bg(hsla(0.0, 0.0, 1.0, 0.14)).cursor_pointer())
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .gap(px(6.0))
-                            .when_some(on_power, |el, cb| {
-                                el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
-                            })
-                            .child(
-                                Icon::new(IconName::Power)
-                                    .size(px(12.0))
-                                    .text_color(hsla(350.0 / 360.0, 0.85, 0.55, 1.0)),
-                            )
-                            .child(
-                                div()
-                                    .text_xs()
-                                    .font_weight(FontWeight::MEDIUM)
-                                    .text_color(hsla(0.0, 0.0, 0.90, 1.0))
-                                    .child("Power"),
-                            ),
-                    ),
+                    .when_some(on_launcher, |this, cb| {
+                        this.child(
+                            Button::new("cc-action-launcher")
+                                .ghost()
+                                .flex_1()
+                                .icon(Icon::new(IconName::Search).size(px(12.0)))
+                                .label("Apps")
+                                .on_click(move |_, _, _| {
+                                    (cb)();
+                                }),
+                        )
+                    })
+                    .when_some(on_clipboard, |this, cb| {
+                        this.child(
+                            Button::new("cc-action-clipboard")
+                                .ghost()
+                                .flex_1()
+                                .icon(Icon::new(IconName::ClipboardList).size(px(12.0)))
+                                .label("Clips")
+                                .on_click(move |_, _, _| {
+                                    (cb)();
+                                }),
+                        )
+                    })
+                    .when_some(on_settings, |this, cb| {
+                        this.child(
+                            Button::new("cc-action-settings")
+                                .ghost()
+                                .flex_1()
+                                .icon(Icon::new(IconName::Settings).size(px(12.0)))
+                                .label("Settings")
+                                .on_click(move |_, _, _| {
+                                    (cb)();
+                                }),
+                        )
+                    })
+                    .when_some(on_power, |this, cb| {
+                        this.child(
+                            Button::new("cc-action-power")
+                                .ghost()
+                                .flex_1()
+                                .icon(Icon::new(IconName::Power).size(px(12.0)))
+                                .label("Power")
+                                .on_click(move |_, _, _| {
+                                    (cb)();
+                                }),
+                        )
+                    }),
             )
     }
 }

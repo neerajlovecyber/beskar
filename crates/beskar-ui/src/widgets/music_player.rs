@@ -1,4 +1,5 @@
 use gpui_kit::assets::IconName;
+use gpui_kit::component::button::{Button, ButtonVariants};
 use gpui_kit::component::Icon;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
@@ -185,20 +186,15 @@ impl RenderOnce for MusicPlayerWidget {
                                     .child(self.player_name),
                             ),
                     )
-                    .when_some(on_close, |el, cb| {
-                        el.child(
-                            div()
-                                .w(px(24.0))
-                                .h(px(24.0))
-                                .rounded_md()
-                                .flex()
-                                .items_center()
-                                .justify_center()
-                                .bg(beskar_theme::Theme::bg_secondary())
-                                .text_color(beskar_theme::Theme::muted())
-                                .hover(|s| s.bg(hsla(0.0, 0.8, 0.5, 0.25)).text_color(hsla(0.0, 0.9, 0.7, 1.0)).cursor_pointer())
-                                .on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
-                                .child(Icon::new(IconName::X).size(px(12.0))),
+                    .when_some(on_close, |this, cb| {
+                        this.child(
+                            Button::new("music-close-btn")
+                                .ghost()
+                                .compact()
+                                .icon(Icon::new(IconName::X).size(px(12.0)))
+                                .on_click(move |_, _, _| {
+                                    (cb)();
+                                }),
                         )
                     }),
             )
@@ -292,86 +288,64 @@ impl RenderOnce for MusicPlayerWidget {
                     .gap(px(14.0))
                     .pt(px(2.0))
                     // Shuffle Button
-                    .child(
-                        div()
-                            .w(px(28.0))
-                            .h(px(28.0))
-                            .rounded_md()
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .text_color(if self.is_shuffling { beskar_theme::Theme::accent() } else { beskar_theme::Theme::muted() })
-                            .hover(|s| s.bg(beskar_theme::Theme::bg_secondary()).cursor_pointer())
-                            .when_some(on_toggle_shuffle, |el, cb| {
-                                el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
-                            })
-                            .child(Icon::new(IconName::Shuffle).size(px(14.0))),
-                    )
+                    .when_some(on_toggle_shuffle, |this, cb| {
+                        this.child(
+                            Button::new("music-shuffle-btn")
+                                .ghost()
+                                .compact()
+                                .icon(Icon::new(IconName::Shuffle).size(px(14.0)))
+                                .on_click(move |_, _, _| {
+                                    (cb)();
+                                }),
+                        )
+                    })
                     // Previous Track Button
-                    .child(
-                        div()
-                            .w(px(32.0))
-                            .h(px(32.0))
-                            .rounded_md()
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .text_color(beskar_theme::Theme::fg())
-                            .hover(|s| s.bg(beskar_theme::Theme::bg_secondary()).cursor_pointer())
-                            .when_some(on_prev, |el, cb| {
-                                el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
-                            })
-                            .child(Icon::new(IconName::SkipBack).size(px(16.0))),
-                    )
-                    // Play / Pause Enlarged Pill Button
-                    .child(
-                        div()
-                            .w(px(40.0))
-                            .h(px(40.0))
-                            .rounded_full()
-                            .bg(beskar_theme::Theme::accent())
-                            .text_color(hsla(0.0, 0.0, 0.1, 1.0))
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .hover(|s| s.bg(hsla(45.0 / 360.0, 1.0, 0.65, 1.0)).cursor_pointer())
-                            .when_some(on_play_pause, |el, cb| {
-                                el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
-                            })
-                            .child(Icon::new(if is_playing { IconName::Pause } else { IconName::Play }).size(px(18.0))),
-                    )
+                    .when_some(on_prev, |this, cb| {
+                        this.child(
+                            Button::new("music-prev-btn")
+                                .ghost()
+                                .compact()
+                                .icon(Icon::new(IconName::SkipBack).size(px(16.0)))
+                                .on_click(move |_, _, _| {
+                                    (cb)();
+                                }),
+                        )
+                    })
+                    // Play / Pause Button
+                    .when_some(on_play_pause, |this, cb| {
+                        this.child(
+                            Button::new("music-play-pause-btn")
+                                .primary()
+                                .icon(Icon::new(if is_playing { IconName::Pause } else { IconName::Play }).size(px(18.0)))
+                                .on_click(move |_, _, _| {
+                                    (cb)();
+                                }),
+                        )
+                    })
                     // Next Track Button
-                    .child(
-                        div()
-                            .w(px(32.0))
-                            .h(px(32.0))
-                            .rounded_md()
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .text_color(beskar_theme::Theme::fg())
-                            .hover(|s| s.bg(beskar_theme::Theme::bg_secondary()).cursor_pointer())
-                            .when_some(on_next, |el, cb| {
-                                el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
-                            })
-                            .child(Icon::new(IconName::SkipForward).size(px(16.0))),
-                    )
+                    .when_some(on_next, |this, cb| {
+                        this.child(
+                            Button::new("music-next-btn")
+                                .ghost()
+                                .compact()
+                                .icon(Icon::new(IconName::SkipForward).size(px(16.0)))
+                                .on_click(move |_, _, _| {
+                                    (cb)();
+                                }),
+                        )
+                    })
                     // Loop Mode Button
-                    .child(
-                        div()
-                            .w(px(28.0))
-                            .h(px(28.0))
-                            .rounded_md()
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .text_color(if self.is_looping { beskar_theme::Theme::accent() } else { beskar_theme::Theme::muted() })
-                            .hover(|s| s.bg(beskar_theme::Theme::bg_secondary()).cursor_pointer())
-                            .when_some(on_toggle_loop, |el, cb| {
-                                el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
-                            })
-                            .child(Icon::new(IconName::Repeat).size(px(14.0))),
-                    ),
+                    .when_some(on_toggle_loop, |this, cb| {
+                        this.child(
+                            Button::new("music-loop-btn")
+                                .ghost()
+                                .compact()
+                                .icon(Icon::new(IconName::Repeat).size(px(14.0)))
+                                .on_click(move |_, _, _| {
+                                    (cb)();
+                                }),
+                        )
+                    }),
             )
     }
 }

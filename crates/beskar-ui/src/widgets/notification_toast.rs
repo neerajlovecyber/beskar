@@ -1,4 +1,8 @@
 use beskar_core::models::NotificationItem;
+use gpui_kit::assets::IconName;
+use gpui_kit::component::button::{Button, ButtonVariants};
+use gpui_kit::component::tag::Tag;
+use gpui_kit::component::Icon;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 use std::sync::Arc;
@@ -108,40 +112,18 @@ impl RenderOnce for NotificationToastWidget {
                             )
                             // Critical badge if applicable
                             .when(is_critical, |this| {
-                                this.child(
-                                    div()
-                                        .px(px(4.0))
-                                        .py(px(1.0))
-                                        .rounded(px(4.0))
-                                        .bg(hsla(0.0, 0.70, 0.35, 0.60))
-                                        .text_xs()
-                                        .font_weight(FontWeight::BOLD)
-                                        .text_color(hsla(0.0, 0.90, 0.75, 1.0))
-                                        .child("URGENT"),
-                                )
+                                this.child(Tag::danger().child("URGENT"))
                             }),
                     )
                     // Close button
                     .child(
-                        div()
-                            .size(px(20.0))
-                            .rounded(px(6.0))
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .text_xs()
-                            .text_color(hsla(0.0, 0.0, 0.70, 0.80))
-                            .hover(|s| {
-                                s.bg(hsla(0.0, 0.0, 1.0, 0.15))
-                                    .text_color(hsla(0.0, 0.0, 1.0, 1.0))
-                                    .cursor_pointer()
-                            })
-                            .on_mouse_down(MouseButton::Left, move |_, _, _| {
-                                if let Some(handler) = on_dismiss.as_ref() {
-                                    handler(notif_id);
-                                }
-                            })
-                            .child("✕"),
+                        Button::new(("toast-close", notif_id))
+                            .ghost()
+                            .compact()
+                            .icon(Icon::new(IconName::X).size(px(12.0)))
+                            .when_some(on_dismiss, |btn, cb| {
+                                btn.on_click(move |_, _, _| (cb)(notif_id))
+                            }),
                     ),
             )
             // Summary / Title
@@ -177,27 +159,15 @@ impl RenderOnce for NotificationToastWidget {
                     .gap(px(8.0))
                     .mt(px(4.0))
                     .child(
-                        div()
-                            .px(px(10.0))
-                            .py(px(3.0))
-                            .rounded(px(6.0))
-                            .bg(hsla(0.0, 0.0, 1.0, 0.08))
-                            .border_1()
-                            .border_color(hsla(0.0, 0.0, 1.0, 0.12))
-                            .text_xs()
-                            .font_weight(FontWeight::MEDIUM)
-                            .text_color(hsla(0.0, 0.0, 0.88, 1.0))
-                            .hover(|s| {
-                                s.bg(hsla(0.0, 0.0, 1.0, 0.18))
-                                    .text_color(hsla(0.0, 0.0, 1.0, 1.0))
-                                    .cursor_pointer()
-                            })
-                            .on_mouse_down(MouseButton::Left, move |_, _, _| {
-                                if let Some(handler) = on_invoke.as_ref() {
-                                    handler(notif_id, "default".to_string());
-                                }
-                            })
-                            .child("Open"),
+                        Button::new(("toast-open", notif_id))
+                            .primary()
+                            .compact()
+                            .label("Open")
+                            .when_some(on_invoke, |btn, cb| {
+                                btn.on_click(move |_, _, _| {
+                                    (cb)(notif_id, "default".to_string())
+                                })
+                            }),
                     ),
             )
     }
