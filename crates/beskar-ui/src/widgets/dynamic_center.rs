@@ -113,7 +113,7 @@ impl RenderOnce for DynamicCenterWidget {
         }
 
         let hour = chrono::Local::now().format("%H").to_string().parse::<u32>().unwrap_or(12);
-        let is_day = hour >= 6 && hour < 18;
+        let is_day = (6..18).contains(&hour);
 
         // Primary Clock & Date Pill
         let clock_content = div()

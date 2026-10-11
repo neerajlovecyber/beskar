@@ -81,7 +81,7 @@ pub fn toggle_launcher(cx: &mut App) {
             anchor: LayerAnchor::TOP,
             exclusive_zone: None,
             margin: Some((px(100.), px(0.), px(0.), px(0.))),
-            keyboard_interactivity: KeyboardInteractivity::Exclusive,
+            keyboard_interactivity: KeyboardInteractivity::OnDemand,
             ..Default::default()
         }),
         focus: true,
@@ -89,7 +89,7 @@ pub fn toggle_launcher(cx: &mut App) {
     };
 
     if let Ok(handle) = cx.open_window(options, move |_window, cx| {
-        cx.new(|cx| LauncherView::new(cx))
+        cx.new(LauncherView::new)
     }) {
         let mut guard = ACTIVE_OVERLAY.lock().unwrap();
         *guard = Some((OverlayKind::Launcher, handle.into()));
@@ -117,7 +117,7 @@ pub fn toggle_power_menu(cx: &mut App) {
             anchor: LayerAnchor::TOP,
             exclusive_zone: None,
             margin: Some((px(56.), px(0.), px(0.), px(0.))),
-            keyboard_interactivity: KeyboardInteractivity::Exclusive,
+            keyboard_interactivity: KeyboardInteractivity::OnDemand,
             ..Default::default()
         }),
         focus: true,
@@ -125,7 +125,7 @@ pub fn toggle_power_menu(cx: &mut App) {
     };
 
     if let Ok(handle) = cx.open_window(options, move |_window, cx| {
-        cx.new(|cx| PowerMenuView::new(cx))
+        cx.new(PowerMenuView::new)
     }) {
         let mut guard = ACTIVE_OVERLAY.lock().unwrap();
         *guard = Some((OverlayKind::PowerMenu, handle.into()));
@@ -154,7 +154,7 @@ pub fn toggle_control_center(cx: &mut App) {
             anchor: LayerAnchor::TOP | LayerAnchor::RIGHT,
             exclusive_zone: None,
             margin: Some((px(56.), px(12.), px(0.), px(0.))),
-            keyboard_interactivity: KeyboardInteractivity::Exclusive,
+            keyboard_interactivity: KeyboardInteractivity::OnDemand,
             ..Default::default()
         }),
         focus: true,
@@ -162,7 +162,7 @@ pub fn toggle_control_center(cx: &mut App) {
     };
 
     if let Ok(handle) = cx.open_window(options, move |_window, cx| {
-        cx.new(|cx| ControlCenterView::new(cx))
+        cx.new(ControlCenterView::new)
     }) {
         let mut guard = ACTIVE_OVERLAY.lock().unwrap();
         *guard = Some((OverlayKind::ControlCenter, handle.into()));
@@ -193,7 +193,7 @@ pub fn toggle_lockscreen(cx: &mut App) {
     };
 
     if let Ok(handle) = cx.open_window(options, move |_window, cx| {
-        cx.new(|cx| LockScreenView::new(cx))
+        cx.new(LockScreenView::new)
     }) {
         let mut guard = ACTIVE_OVERLAY.lock().unwrap();
         *guard = Some((OverlayKind::LockScreen, handle.into()));
@@ -221,7 +221,7 @@ pub fn toggle_settings(cx: &mut App) {
             anchor: LayerAnchor::TOP,
             exclusive_zone: None,
             margin: Some((px(60.), px(0.), px(0.), px(0.))),
-            keyboard_interactivity: KeyboardInteractivity::Exclusive,
+            keyboard_interactivity: KeyboardInteractivity::OnDemand,
             ..Default::default()
         }),
         focus: true,
@@ -229,7 +229,7 @@ pub fn toggle_settings(cx: &mut App) {
     };
 
     if let Ok(handle) = cx.open_window(options, move |_window, cx| {
-        cx.new(|cx| SettingsView::new(cx))
+        cx.new(SettingsView::new)
     }) {
         let mut guard = ACTIVE_OVERLAY.lock().unwrap();
         *guard = Some((OverlayKind::Settings, handle.into()));
@@ -257,7 +257,7 @@ pub fn toggle_clipboard(cx: &mut App) {
             anchor: LayerAnchor::TOP,
             exclusive_zone: None,
             margin: Some((px(80.), px(0.), px(0.), px(0.))),
-            keyboard_interactivity: KeyboardInteractivity::Exclusive,
+            keyboard_interactivity: KeyboardInteractivity::OnDemand,
             ..Default::default()
         }),
         focus: true,
@@ -265,7 +265,7 @@ pub fn toggle_clipboard(cx: &mut App) {
     };
 
     if let Ok(handle) = cx.open_window(options, move |_window, cx| {
-        cx.new(|cx| ClipboardView::new(cx))
+        cx.new(ClipboardView::new)
     }) {
         let mut guard = ACTIVE_OVERLAY.lock().unwrap();
         *guard = Some((OverlayKind::Clipboard, handle.into()));
@@ -293,7 +293,7 @@ pub fn toggle_dashboard(cx: &mut App) {
             anchor: LayerAnchor::TOP,
             exclusive_zone: None,
             margin: Some((px(50.), px(0.), px(0.), px(0.))),
-            keyboard_interactivity: KeyboardInteractivity::Exclusive,
+            keyboard_interactivity: KeyboardInteractivity::OnDemand,
             ..Default::default()
         }),
         focus: true,
@@ -301,7 +301,7 @@ pub fn toggle_dashboard(cx: &mut App) {
     };
 
     if let Ok(handle) = cx.open_window(options, move |_window, cx| {
-        cx.new(|cx| DashboardView::new(cx))
+        cx.new(DashboardView::new)
     }) {
         let mut guard = ACTIVE_OVERLAY.lock().unwrap();
         *guard = Some((OverlayKind::Dashboard, handle.into()));
@@ -329,7 +329,7 @@ pub fn toggle_music(cx: &mut App) {
             anchor: LayerAnchor::TOP,
             exclusive_zone: None,
             margin: Some((px(50.), px(0.), px(0.), px(0.))),
-            keyboard_interactivity: KeyboardInteractivity::Exclusive,
+            keyboard_interactivity: KeyboardInteractivity::OnDemand,
             ..Default::default()
         }),
         focus: true,
@@ -337,7 +337,7 @@ pub fn toggle_music(cx: &mut App) {
     };
 
     if let Ok(handle) = cx.open_window(options, move |_window, cx| {
-        cx.new(|cx| MusicPlayerView::new(cx))
+        cx.new(MusicPlayerView::new)
     }) {
         let mut guard = ACTIVE_OVERLAY.lock().unwrap();
         *guard = Some((OverlayKind::Music, handle.into()));
@@ -365,7 +365,7 @@ pub fn toggle_notification_center(cx: &mut App) {
             anchor: LayerAnchor::TOP | LayerAnchor::RIGHT,
             exclusive_zone: None,
             margin: Some((px(50.), px(16.), px(0.), px(0.))),
-            keyboard_interactivity: KeyboardInteractivity::Exclusive,
+            keyboard_interactivity: KeyboardInteractivity::OnDemand,
             ..Default::default()
         }),
         focus: true,
@@ -373,7 +373,7 @@ pub fn toggle_notification_center(cx: &mut App) {
     };
 
     if let Ok(handle) = cx.open_window(options, move |_window, cx| {
-        cx.new(|cx| NotificationCenterView::new(cx))
+        cx.new(NotificationCenterView::new)
     }) {
         let mut guard = ACTIVE_OVERLAY.lock().unwrap();
         *guard = Some((OverlayKind::NotificationCenter, handle.into()));
@@ -401,7 +401,7 @@ pub fn toggle_screencapture(cx: &mut App) {
             anchor: LayerAnchor::TOP,
             exclusive_zone: None,
             margin: Some((px(70.), px(0.), px(0.), px(0.))),
-            keyboard_interactivity: KeyboardInteractivity::Exclusive,
+            keyboard_interactivity: KeyboardInteractivity::OnDemand,
             ..Default::default()
         }),
         focus: true,
@@ -409,7 +409,7 @@ pub fn toggle_screencapture(cx: &mut App) {
     };
 
     if let Ok(handle) = cx.open_window(options, move |_window, cx| {
-        cx.new(|cx| ScreenCaptureView::new(cx))
+        cx.new(ScreenCaptureView::new)
     }) {
         let mut guard = ACTIVE_OVERLAY.lock().unwrap();
         *guard = Some((OverlayKind::ScreenCapture, handle.into()));
@@ -437,7 +437,7 @@ pub fn toggle_wallpaper_selector(cx: &mut App) {
             anchor: LayerAnchor::TOP,
             exclusive_zone: None,
             margin: Some((px(60.), px(0.), px(0.), px(0.))),
-            keyboard_interactivity: KeyboardInteractivity::Exclusive,
+            keyboard_interactivity: KeyboardInteractivity::OnDemand,
             ..Default::default()
         }),
         focus: true,
@@ -445,7 +445,7 @@ pub fn toggle_wallpaper_selector(cx: &mut App) {
     };
 
     if let Ok(handle) = cx.open_window(options, move |_window, cx| {
-        cx.new(|cx| WallpaperSelectorView::new(cx))
+        cx.new(WallpaperSelectorView::new)
     }) {
         let mut guard = ACTIVE_OVERLAY.lock().unwrap();
         *guard = Some((OverlayKind::WallpaperSelector, handle.into()));
@@ -514,12 +514,14 @@ impl LauncherView {
     }
 }
 
-impl Render for LauncherView {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        if !self.focus_handle.is_focused(window) {
-            self.focus_handle.focus(window, cx);
-        }
+impl Focusable for LauncherView {
+    fn focus_handle(&self, _cx: &App) -> FocusHandle {
+        self.focus_handle.clone()
+    }
+}
 
+impl Render for LauncherView {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let tx_sel = self.msg_tx.clone();
         let tx_launch = self.msg_tx.clone();
         let tx_clear = self.msg_tx.clone();
@@ -608,14 +610,13 @@ impl Render for LauncherView {
                                 }
                                 _ => {}
                             }
-                        } else if !mods.alt && !mods.platform {
-                            if event.keystroke.key.chars().count() == 1 {
-                                let ch = event.keystroke.key.chars().next().unwrap();
-                                this.query.push(ch);
-                                this.selected_idx = 0;
-                                cx.notify();
-                                cx.stop_propagation();
-                            }
+                        } else if !mods.alt && !mods.platform
+                            && event.keystroke.key.chars().count() == 1 {
+                            let ch = event.keystroke.key.chars().next().unwrap();
+                            this.query.push(ch);
+                            this.selected_idx = 0;
+                            cx.notify();
+                            cx.stop_propagation();
                         }
                     }
                 }
@@ -718,12 +719,14 @@ impl PowerMenuView {
     }
 }
 
-impl Render for PowerMenuView {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        if !self.focus_handle.is_focused(window) {
-            self.focus_handle.focus(window, cx);
-        }
+impl Focusable for PowerMenuView {
+    fn focus_handle(&self, _cx: &App) -> FocusHandle {
+        self.focus_handle.clone()
+    }
+}
 
+impl Render for PowerMenuView {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let tx_sel = self.msg_tx.clone();
         let tx_req = self.msg_tx.clone();
         let tx_cancel = self.msg_tx.clone();
@@ -750,6 +753,34 @@ impl Render for PowerMenuView {
                             forget_overlay(OverlayKind::PowerMenu);
                             window.remove_window();
                         }
+                        cx.stop_propagation();
+                    }
+                    "1" => {
+                        let _ = msg_tx.send(PowerMenuMsg::Action(PowerAction::Lock));
+                        cx.stop_propagation();
+                    }
+                    "2" => {
+                        this.pending_action = Some(PowerAction::Suspend);
+                        this.confirm_index = 1;
+                        cx.notify();
+                        cx.stop_propagation();
+                    }
+                    "3" => {
+                        this.pending_action = Some(PowerAction::Logout);
+                        this.confirm_index = 1;
+                        cx.notify();
+                        cx.stop_propagation();
+                    }
+                    "4" => {
+                        this.pending_action = Some(PowerAction::Restart);
+                        this.confirm_index = 1;
+                        cx.notify();
+                        cx.stop_propagation();
+                    }
+                    "5" => {
+                        this.pending_action = Some(PowerAction::Shutdown);
+                        this.confirm_index = 1;
+                        cx.notify();
                         cx.stop_propagation();
                     }
                     "left" | "h" | "up" | "k" => {
@@ -974,12 +1005,14 @@ impl ControlCenterView {
     }
 }
 
-impl Render for ControlCenterView {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        if !self.focus_handle.is_focused(window) {
-            self.focus_handle.focus(window, cx);
-        }
+impl Focusable for ControlCenterView {
+    fn focus_handle(&self, _cx: &App) -> FocusHandle {
+        self.focus_handle.clone()
+    }
+}
 
+impl Render for ControlCenterView {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let tx_vol = self.msg_tx.clone();
         let tx_mute = self.msg_tx.clone();
         let tx_bright = self.msg_tx.clone();
@@ -1173,12 +1206,14 @@ impl SettingsView {
     }
 }
 
-impl Render for SettingsView {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        if !self.focus_handle.is_focused(window) {
-            self.focus_handle.focus(window, cx);
-        }
+impl Focusable for SettingsView {
+    fn focus_handle(&self, _cx: &App) -> FocusHandle {
+        self.focus_handle.clone()
+    }
+}
 
+impl Render for SettingsView {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let tx_cat = self.msg_tx.clone();
         let tx_notch = self.msg_tx.clone();
         let tx_win = self.msg_tx.clone();
@@ -1346,7 +1381,7 @@ impl LockScreenView {
         // 1. Overlay close listener
         cx.spawn(async move |_this, cx| {
             while let Some(()) = close_rx.recv().await {
-                let _ = cx.update(|cx| {
+                cx.update(|cx| {
                     close_active_overlay(cx);
                 });
             }
@@ -1387,12 +1422,14 @@ impl LockScreenView {
     }
 }
 
-impl Render for LockScreenView {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        if !self.focus_handle.is_focused(window) {
-            self.focus_handle.focus(window, cx);
-        }
+impl Focusable for LockScreenView {
+    fn focus_handle(&self, _cx: &App) -> FocusHandle {
+        self.focus_handle.clone()
+    }
+}
 
+impl Render for LockScreenView {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let tx = self.close_tx.clone();
         let cancel_tx = self.close_tx.clone();
 
@@ -1542,12 +1579,14 @@ impl ClipboardView {
     }
 }
 
-impl Render for ClipboardView {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        if !self.focus_handle.is_focused(window) {
-            self.focus_handle.focus(window, cx);
-        }
+impl Focusable for ClipboardView {
+    fn focus_handle(&self, _cx: &App) -> FocusHandle {
+        self.focus_handle.clone()
+    }
+}
 
+impl Render for ClipboardView {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let tx_sel = self.msg_tx.clone();
         let tx_cp = self.msg_tx.clone();
         let tx_del = self.msg_tx.clone();
@@ -1748,6 +1787,12 @@ impl DashboardView {
     }
 }
 
+impl Focusable for DashboardView {
+    fn focus_handle(&self, _cx: &App) -> FocusHandle {
+        self.focus_handle.clone()
+    }
+}
+
 impl Render for DashboardView {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let tx_gh = self.msg_tx.clone();
@@ -1853,7 +1898,7 @@ impl MusicPlayerView {
                 tokio::time::sleep(tokio::time::Duration::from_millis(80)).await;
                 tick = tick.wrapping_add(1);
 
-                let polled_media = if tick % 12 == 0 {
+                let polled_media = if tick.is_multiple_of(12) {
                     beskar_services::MprisService::read_state()
                 } else {
                     None
@@ -1949,6 +1994,12 @@ impl MusicPlayerView {
             focus_handle,
             msg_tx,
         }
+    }
+}
+
+impl Focusable for MusicPlayerView {
+    fn focus_handle(&self, _cx: &App) -> FocusHandle {
+        self.focus_handle.clone()
     }
 }
 
@@ -2072,6 +2123,12 @@ impl NotificationCenterView {
     }
 }
 
+impl Focusable for NotificationCenterView {
+    fn focus_handle(&self, _cx: &App) -> FocusHandle {
+        self.focus_handle.clone()
+    }
+}
+
 impl Render for NotificationCenterView {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let tx_d = self.msg_tx.clone();
@@ -2137,7 +2194,7 @@ impl ScreenCaptureView {
             while let Some(msg) = msg_rx.recv().await {
                 match msg {
                     ScreenCapMsg::Trigger(mode) => {
-                        let _ = cx.update(|cx| {
+                        cx.update(|cx| {
                             close_active_overlay(cx);
                         });
                         std::thread::spawn(move || {
@@ -2146,7 +2203,7 @@ impl ScreenCaptureView {
                         });
                     }
                     ScreenCapMsg::Close => {
-                        let _ = cx.update(|cx| {
+                        cx.update(|cx| {
                             close_active_overlay(cx);
                         });
                     }
@@ -2160,6 +2217,12 @@ impl ScreenCaptureView {
             focus_handle,
             msg_tx,
         }
+    }
+}
+
+impl Focusable for ScreenCaptureView {
+    fn focus_handle(&self, _cx: &App) -> FocusHandle {
+        self.focus_handle.clone()
     }
 }
 
@@ -2246,6 +2309,12 @@ impl WallpaperSelectorView {
             focus_handle,
             msg_tx,
         }
+    }
+}
+
+impl Focusable for WallpaperSelectorView {
+    fn focus_handle(&self, _cx: &App) -> FocusHandle {
+        self.focus_handle.clone()
     }
 }
 

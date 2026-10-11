@@ -182,17 +182,21 @@ impl RenderOnce for ConvexBarShape {
             move |bounds, _, window, _cx| {
                 let ox = f32::from(bounds.origin.x);
                 let oy = f32::from(bounds.origin.y);
+                let w = f32::from(bounds.size.width);
+                let mut dynamic_geom = geom;
+                dynamic_geom.width = w;
+                dynamic_geom.center_x = (w - dynamic_geom.center_w) * 0.5;
 
                 // 1. Fill path
                 let mut fill_builder = PathBuilder::fill();
-                trace_convex_notch(&mut fill_builder, ox, oy, &geom);
+                trace_convex_notch(&mut fill_builder, ox, oy, &dynamic_geom);
                 if let Ok(fill_path) = fill_builder.build() {
                     window.paint_path(fill_path, fill);
                 }
 
                 // 2. 1px Stroke outline
                 let mut stroke_builder = PathBuilder::stroke(px(1.0));
-                trace_convex_notch(&mut stroke_builder, ox, oy, &geom);
+                trace_convex_notch(&mut stroke_builder, ox, oy, &dynamic_geom);
                 if let Ok(stroke_path) = stroke_builder.build() {
                     window.paint_path(stroke_path, border);
                 }

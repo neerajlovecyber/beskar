@@ -62,8 +62,8 @@ impl NetworkHelper {
         if let Ok(output) = std::process::Command::new("nmcli").args(["radio", "wifi"]).output() {
             let is_on = String::from_utf8_lossy(&output.stdout).trim() == "enabled";
             let mut ssid = None;
-            if is_on {
-                if let Ok(out) = std::process::Command::new("nmcli")
+            if is_on
+                && let Ok(out) = std::process::Command::new("nmcli")
                     .args(["-t", "-f", "active,ssid", "dev", "wifi"])
                     .output()
                 {
@@ -78,7 +78,6 @@ impl NetworkHelper {
                         }
                     }
                 }
-            }
             (is_on, ssid)
         } else {
             (true, None)
@@ -117,11 +116,10 @@ impl NetworkHelper {
     pub fn connect(ssid: &str, password: Option<&str>) {
         let mut cmd = std::process::Command::new("nmcli");
         cmd.args(["dev", "wifi", "connect", ssid]);
-        if let Some(pw) = password {
-            if !pw.is_empty() {
+        if let Some(pw) = password
+            && !pw.is_empty() {
                 cmd.args(["password", pw]);
             }
-        }
         let _ = cmd.spawn();
     }
 
@@ -162,15 +160,12 @@ impl BluetoothHelper {
                             is_connected = true;
                         }
                         for l in info_str.lines() {
-                            if l.contains("Battery Percentage:") {
-                                if let Some(pct_str) = l.split('(').nth(1) {
-                                    if let Some(num) = pct_str.split('%').next() {
-                                        if let Ok(v) = num.trim().parse::<u8>() {
+                            if l.contains("Battery Percentage:")
+                                && let Some(pct_str) = l.split('(').nth(1)
+                                    && let Some(num) = pct_str.split('%').next()
+                                        && let Ok(v) = num.trim().parse::<u8>() {
                                             battery = Some(v);
                                         }
-                                    }
-                                }
-                            }
                         }
                     }
 
@@ -183,7 +178,7 @@ impl BluetoothHelper {
                 }
             }
         }
-        list.sort_by(|a, b| b.is_connected.cmp(&a.is_connected));
+        list.sort_by_key(|a| std::cmp::Reverse(a.is_connected));
         list
     }
 

@@ -61,22 +61,20 @@ impl WallpaperSelectorWidget {
 
         for dir in &candidate_dirs {
             let path = Path::new(dir);
-            if path.is_dir() {
-                if let Ok(entries) = std::fs::read_dir(path) {
-                    for entry in entries.flatten() {
-                        let p = entry.path();
-                        if p.is_file() {
-                            if let Some(ext) = p.extension().and_then(|e| e.to_str()) {
-                                if exts.contains(&ext.to_lowercase().as_str()) {
-                                    let name = p.file_stem().and_then(|s| s.to_str()).unwrap_or("Wallpaper").to_string();
-                                    results.push(WallpaperItem {
-                                        path: p,
-                                        name,
-                                        is_active: false,
-                                    });
-                                }
-                            }
-                        }
+            if let Ok(entries) = std::fs::read_dir(path) {
+                for entry in entries.flatten() {
+                    let p = entry.path();
+                    let is_image = p.is_file()
+                        && p.extension()
+                            .and_then(|e| e.to_str())
+                            .is_some_and(|ext| exts.contains(&ext.to_lowercase().as_str()));
+                    if is_image {
+                        let name = p.file_stem().and_then(|s| s.to_str()).unwrap_or("Wallpaper").to_string();
+                        results.push(WallpaperItem {
+                            path: p,
+                            name,
+                            is_active: false,
+                        });
                     }
                 }
             }

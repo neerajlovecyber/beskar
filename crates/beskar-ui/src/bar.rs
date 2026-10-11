@@ -92,6 +92,7 @@ impl BeskarBar {
     /// - Left: Brand star badge + WorkspacesWidget inside an IslandPill
     /// - Center: DynamicCenterWidget (Clock + MPRIS) inside an IslandPill
     /// - Right: VitalsWidget (Recording + Controls + Audio/WiFi/Battery/Power) inside an IslandPill
+    #[allow(clippy::too_many_arguments)]
     pub fn live_islands(
         is_convex: bool,
         workspaces: Vec<WorkspaceInfo>,
@@ -121,6 +122,10 @@ impl BeskarBar {
         on_music_click: Option<Arc<dyn Fn() + Send + Sync>>,
         on_capture_click: Option<Arc<dyn Fn() + Send + Sync>>,
         on_wallpaper_click: Option<Arc<dyn Fn() + Send + Sync>>,
+        on_tray_click: Option<Arc<dyn Fn(String) + Send + Sync>>,
+        on_tray_menu: Option<Arc<dyn Fn(String) + Send + Sync>>,
+        on_window_click: Option<Arc<dyn Fn() + Send + Sync>>,
+        on_window_close: Option<Arc<dyn Fn() + Send + Sync>>,
     ) -> Self {
         use crate::pill::IslandPill;
         use crate::widgets::{DynamicCenterWidget, VitalsWidget, WorkspacesWidget};
@@ -188,6 +193,8 @@ impl BeskarBar {
                     title_text.to_string()
                 };
 
+                let on_win_clk = on_window_click.clone();
+                let on_win_cls = on_window_close.clone();
                 pill.child(
                     div()
                         .flex()
@@ -197,6 +204,14 @@ impl BeskarBar {
                         .pl(px(8.0))
                         .border_l_1()
                         .border_color(hsla(0.0, 0.0, 1.0, 0.12))
+                        .cursor_pointer()
+                        .hover(|s| s.bg(beskar_theme::Theme::bg_secondary()).rounded_md())
+                        .when_some(on_win_clk, |el, cb| {
+                            el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
+                        })
+                        .when_some(on_win_cls, |el, cb| {
+                            el.on_mouse_down(MouseButton::Middle, move |_, _, _| (cb)())
+                        })
                         .child(
                             Icon::new(icon)
                                 .size(px(13.0))
@@ -260,6 +275,12 @@ impl BeskarBar {
         if let Some(handler) = on_power_click {
             vitals_widget = vitals_widget.on_power_click(move || (handler)());
         }
+        if let Some(handler) = on_tray_click {
+            vitals_widget = vitals_widget.on_tray_click(move |id| (handler)(id));
+        }
+        if let Some(handler) = on_tray_menu {
+            vitals_widget = vitals_widget.on_tray_menu(move |id| (handler)(id));
+        }
         let right_pill = IslandPill::new().convex(is_convex).child(vitals_widget);
 
         Self::new()
@@ -315,6 +336,10 @@ impl BeskarBar {
             None,
             None,
             None,
+            None,
+            None,
+            None,
+            None,
         )
     }
 }
@@ -345,17 +370,31 @@ impl RenderOnce for BeskarBar {
                 .px(self.padding_x);
 
             if self.is_convex {
-                // Continuous top bridge line connecting the notches across the top edge
+                use crate::convex::{ConvexBarShape, ConvexGeometry};
+                let geom = ConvexGeometry {
+                    width: 1920.0,
+                    height: 40.0,
+                    left_w: 330.0,
+                    center_x: 820.0,
+                    center_w: 280.0,
+                    right_w: 340.0,
+                    top_bezel: 2.0,
+                    flare_width: 16.0,
+                    flare_height: 14.0,
+                    bottom_radius: 14.0,
+                    center_bottom_radius: 14.0,
+                    center_height: 40.0,
+                    base_height: 40.0,
+                };
                 container = container.child(
                     div()
                         .absolute()
-                        .top_0()
-                        .left_0()
-                        .right_0()
-                        .h(px(5.0))
-                        .bg(hsla(250.0 / 360.0, 0.16, 0.06, 0.96))
-                        .border_b_1()
-                        .border_color(hsla(240.0 / 360.0, 0.10, 1.0, 0.08)),
+                        .inset_0()
+                        .child(ConvexBarShape::new(
+                            geom,
+                            beskar_theme::Theme::bg(),
+                            beskar_theme::Theme::border(),
+                        )),
                 );
             }
 

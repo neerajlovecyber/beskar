@@ -587,7 +587,7 @@ fn render_contributions_heatmap(
     contributions: &[ContributionDay],
 ) -> impl IntoElement {
     let total_sum: u32 = contributions.iter().map(|c| c.count).sum();
-    let column_count = (contributions.len() + 6) / 7;
+    let column_count = contributions.len().div_ceil(7);
 
     div()
         .flex()

@@ -1,21 +1,16 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub enum BarStyleConfig {
     #[serde(rename = "island")]
+    #[default]
     Island,
     #[serde(rename = "convex")]
     Convex,
 }
 
-impl Default for BarStyleConfig {
-    fn default() -> Self {
-        Self::Island
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub enum ThemePresetConfig {
     #[serde(rename = "obsidian")]
     ObsidianGlass,
@@ -24,13 +19,8 @@ pub enum ThemePresetConfig {
     #[serde(rename = "gruvbox")]
     GruvboxDark,
     #[serde(rename = "wallpaper")]
+    #[default]
     WallpaperAuto,
-}
-
-impl Default for ThemePresetConfig {
-    fn default() -> Self {
-        Self::WallpaperAuto
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -75,13 +65,12 @@ impl ShellConfig {
 
     pub fn load() -> Self {
         let path = Self::config_path();
-        if path.exists() {
-            if let Ok(content) = std::fs::read_to_string(&path) {
-                if let Ok(config) = serde_json::from_str::<Self>(&content) {
-                    tracing::info!("Loaded Beskar config from {}", path.display());
-                    return config;
-                }
-            }
+        if let Some(config) = std::fs::read_to_string(&path)
+            .ok()
+            .and_then(|c| serde_json::from_str::<Self>(&c).ok())
+        {
+            tracing::info!("Loaded Beskar config from {}", path.display());
+            return config;
         }
         let default_config = Self::default();
         let _ = default_config.save();
@@ -94,11 +83,31 @@ impl ShellConfig {
             let _ = std::fs::create_dir_all(parent);
         }
         let json = serde_json::to_string_pretty(self)
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+            .map_err(std::io::Error::other)?;
         std::fs::write(&path, json)?;
         tracing::info!("Saved Beskar config to {}", path.display());
+        notify_config_changed(self.clone());
         Ok(())
     }
+}
+
+static CONFIG_CHANNEL: std::sync::OnceLock<tokio::sync::broadcast::Sender<ShellConfig>> =
+    std::sync::OnceLock::new();
+
+fn get_config_channel() -> &'static tokio::sync::broadcast::Sender<ShellConfig> {
+    CONFIG_CHANNEL.get_or_init(|| {
+        let (tx, _) = tokio::sync::broadcast::channel(16);
+        tx
+    })
+}
+
+pub fn subscribe_config() -> tokio::sync::broadcast::Receiver<ShellConfig> {
+    get_config_channel().subscribe()
+}
+
+pub fn notify_config_changed(cfg: ShellConfig) {
+    let tx = get_config_channel();
+    let _ = tx.send(cfg);
 }
 
 #[cfg(test)]

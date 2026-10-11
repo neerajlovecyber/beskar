@@ -64,15 +64,13 @@ fn remember(name: &str) {
 fn active_player(c: &Connection) -> Option<(String, Proxy<'static>, bool)> {
     let pinned = chosen();
     let names = players(c);
-    if !pinned.is_empty() {
-        if let Some(n) = names.iter().find(|n| n.strip_prefix(PREFIX) == Some(pinned.as_str())) {
-            if let Some(p) = player(c, n) {
+    if !pinned.is_empty()
+        && let Some(n) = names.iter().find(|n| n.strip_prefix(PREFIX) == Some(pinned.as_str()))
+            && let Some(p) = player(c, n) {
                 let playing = is_playing(&p);
                 if playing { remember(n) }
                 return Some((n.clone(), p, playing));
             }
-        }
-    }
     let last = LAST.lock().map(|l| l.clone()).unwrap_or_default();
     let (mut first, mut previous) = (None, None);
     for n in names {

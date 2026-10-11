@@ -28,6 +28,8 @@ pub struct VitalsWidget {
     on_control_center_click: Option<Arc<dyn Fn() + Send + Sync>>,
     on_capture_click: Option<Arc<dyn Fn() + Send + Sync>>,
     on_wallpaper_click: Option<Arc<dyn Fn() + Send + Sync>>,
+    on_tray_click: Option<Arc<dyn Fn(String) + Send + Sync>>,
+    on_tray_menu: Option<Arc<dyn Fn(String) + Send + Sync>>,
 }
 
 impl VitalsWidget {
@@ -47,7 +49,19 @@ impl VitalsWidget {
             on_control_center_click: None,
             on_capture_click: None,
             on_wallpaper_click: None,
+            on_tray_click: None,
+            on_tray_menu: None,
         }
+    }
+
+    pub fn on_tray_click(mut self, handler: impl Fn(String) + Send + Sync + 'static) -> Self {
+        self.on_tray_click = Some(Arc::new(handler));
+        self
+    }
+
+    pub fn on_tray_menu(mut self, handler: impl Fn(String) + Send + Sync + 'static) -> Self {
+        self.on_tray_menu = Some(Arc::new(handler));
+        self
     }
 
 
@@ -146,6 +160,9 @@ impl RenderOnce for VitalsWidget {
 
         let on_scroll = self.on_volume_scroll;
 
+        let on_tray_clk = self.on_tray_click;
+        let on_tray_ctx = self.on_tray_menu;
+
         div()
             .flex()
             .items_center()
@@ -155,7 +172,12 @@ impl RenderOnce for VitalsWidget {
                 let mut tray_row = div().flex().items_center().gap(px(4.0));
                 for item in self.tray_items {
                     let icon_name = infer_tray_icon(&item.id, &item.icon, &item.title);
-                    let on_cc_tray = on_cc.clone();
+                    let item_id_left = item.id.clone();
+                    let item_id_right = item.id.clone();
+                    let on_tc = on_tray_clk.clone();
+                    let on_tm = on_tray_ctx.clone();
+                    let on_cc_fallback = on_cc.clone();
+
                     tray_row = tray_row.child(
                         div()
                             .w(px(24.0))
@@ -170,8 +192,17 @@ impl RenderOnce for VitalsWidget {
                                     .text_color(beskar_theme::Theme::accent())
                                     .cursor_pointer()
                             })
-                            .when_some(on_cc_tray, |el, cb| {
-                                el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
+                            .on_mouse_down(MouseButton::Left, move |_, _, _| {
+                                if let Some(ref cb) = on_tc {
+                                    cb(item_id_left.clone());
+                                } else if let Some(ref cb) = on_cc_fallback {
+                                    cb();
+                                }
+                            })
+                            .on_mouse_down(MouseButton::Right, move |_, _, _| {
+                                if let Some(ref cb) = on_tm {
+                                    cb(item_id_right.clone());
+                                }
                             })
                             .child(Icon::new(icon_name).size(px(14.0))),
                     );

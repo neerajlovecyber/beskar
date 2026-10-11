@@ -34,10 +34,8 @@ pub struct ThemeEngine;
 impl ThemeEngine {
     /// Retrieve active ThemeTokens singleton
     pub fn current() -> ThemeTokens {
-        if let Ok(guard) = GLOBAL_THEME.read() {
-            if let Some(theme) = guard.as_ref() {
-                return theme.clone();
-            }
+        if let Some(theme) = GLOBAL_THEME.read().ok().and_then(|g| g.clone()) {
+            return theme;
         }
 
         // Default fallback
@@ -102,24 +100,20 @@ impl ThemeEngine {
 
         // 1. Suzuha / Amane wallpaper-selection
         let amane_path = PathBuf::from(&home).join(".local/state/amane/wallpaper-selection");
-        if amane_path.exists() {
-            if let Ok(text) = std::fs::read_to_string(&amane_path) {
-                let url = text.trim();
-                let clean = url.strip_prefix("file://").unwrap_or(url);
-                let p = PathBuf::from(clean);
-                if p.exists() {
-                    return Some(p);
-                }
+        if let Ok(text) = std::fs::read_to_string(&amane_path) {
+            let url = text.trim();
+            let clean = url.strip_prefix("file://").unwrap_or(url);
+            let p = PathBuf::from(clean);
+            if p.exists() {
+                return Some(p);
             }
         }
 
         // 2. ~/.current_wallpaper symlink or text file
         let cur_wall = PathBuf::from(&home).join(".current_wallpaper");
         if cur_wall.exists() {
-            if let Ok(target) = std::fs::read_link(&cur_wall) {
-                if target.exists() {
-                    return Some(target);
-                }
+            if let Some(target) = std::fs::read_link(&cur_wall).ok().filter(|t| t.exists()) {
+                return Some(target);
             }
             if let Ok(text) = std::fs::read_to_string(&cur_wall) {
                 let p = PathBuf::from(text.trim());
@@ -131,17 +125,13 @@ impl ThemeEngine {
 
         // 3. Swww cache
         let swww_cache = PathBuf::from(&home).join(".cache/swww");
-        if swww_cache.is_dir() {
-            if let Ok(entries) = std::fs::read_dir(swww_cache) {
-                for entry in entries.flatten() {
-                    let path = entry.path();
-                    if path.is_file() {
-                        if let Ok(text) = std::fs::read_to_string(&path) {
-                            let p = PathBuf::from(text.trim());
-                            if p.exists() {
-                                return Some(p);
-                            }
-                        }
+        if let Ok(entries) = std::fs::read_dir(swww_cache) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if let Ok(text) = std::fs::read_to_string(&path) {
+                    let p = PathBuf::from(text.trim());
+                    if p.exists() {
+                        return Some(p);
                     }
                 }
             }

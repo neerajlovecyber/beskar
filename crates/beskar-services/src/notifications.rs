@@ -74,15 +74,17 @@ static HUB: OnceLock<Arc<Hub>> = OnceLock::new();
 /// How many the history keeps.
 const HISTORY: usize = 50;
 
+type SysValueCallback = Option<Box<dyn Fn(SysValue) + Send>>;
+
 /// Whoever hears the history, as `LISTENER` hears the list.
-static HISTORY_LISTENER: Mutex<Option<Box<dyn Fn(SysValue) + Send>>> = Mutex::new(None);
+static HISTORY_LISTENER: Mutex<SysValueCallback> = Mutex::new(None);
 
 /// Whoever hears the list: the logic that asked last. The server is one per
 /// process and outlives the logic: when the logic is reloaded, the new one
 /// takes the name's place in here instead of asking D-Bus for the name again,
 /// which the old one still held —and the new logic, finding it taken, fell
 /// back to made-up notices—.
-static LISTENER: Mutex<Option<Box<dyn Fn(SysValue) + Send>>> = Mutex::new(None);
+static LISTENER: Mutex<SysValueCallback> = Mutex::new(None);
 
 impl Hub {
     fn send(&self, c: Event) {
@@ -286,16 +288,14 @@ fn serve() -> bool {
             let (now, past) = (hub.report(), hub.history());
             let fingerprints = (format!("{now:?}"), format!("{past:?}"));
             let mut last = last.borrow_mut();
-            if last.0 != fingerprints.0 {
-                if let Some(f) = LISTENER.lock().unwrap().as_ref() {
+            if last.0 != fingerprints.0
+                && let Some(f) = LISTENER.lock().unwrap().as_ref() {
                     f(now);
                 }
-            }
-            if last.1 != fingerprints.1 {
-                if let Some(f) = HISTORY_LISTENER.lock().unwrap().as_ref() {
+            if last.1 != fingerprints.1
+                && let Some(f) = HISTORY_LISTENER.lock().unwrap().as_ref() {
                     f(past);
                 }
-            }
             *last = fingerprints;
         };
         dispatch(hub.report());

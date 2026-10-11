@@ -182,23 +182,16 @@ fn get_contrib_cache_file(username: &str) -> PathBuf {
 
 fn fetch_contributions_cached(username: &str) -> Vec<ContributionDay> {
     let cache_file = get_contrib_cache_file(username);
-    if cache_file.exists() {
-        if let Ok(metadata) = std::fs::metadata(&cache_file) {
-            if let Ok(modified) = metadata.modified() {
-                if let Ok(elapsed) = modified.elapsed() {
-                    if elapsed.as_secs() < 3600 {
-                        if let Ok(data) = std::fs::read_to_string(&cache_file) {
-                            if let Ok(parsed) = serde_json::from_str::<Vec<ContributionDay>>(&data) {
-                                if !parsed.is_empty() {
+    if cache_file.exists()
+        && let Ok(metadata) = std::fs::metadata(&cache_file)
+            && let Ok(modified) = metadata.modified()
+                && let Ok(elapsed) = modified.elapsed()
+                    && elapsed.as_secs() < 3600
+                        && let Ok(data) = std::fs::read_to_string(&cache_file)
+                            && let Ok(parsed) = serde_json::from_str::<Vec<ContributionDay>>(&data)
+                                && !parsed.is_empty() {
                                     return parsed;
                                 }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
 
     let url = format!("https://github.com/users/{}/contributions", username);
     let output = std::process::Command::new("curl")
@@ -213,8 +206,8 @@ fn fetch_contributions_cached(username: &str) -> Vec<ContributionDay> {
         ])
         .output();
 
-    if let Ok(out) = output {
-        if out.status.success() {
+    if let Ok(out) = output
+        && out.status.success() {
             let html = String::from_utf8_lossy(&out.stdout);
             let parsed = parse_github_contributions_html(&html);
             if !parsed.is_empty() {
@@ -224,18 +217,14 @@ fn fetch_contributions_cached(username: &str) -> Vec<ContributionDay> {
                 return parsed;
             }
         }
-    }
 
     // If cache exists even if stale, fallback to it
-    if cache_file.exists() {
-        if let Ok(data) = std::fs::read_to_string(&cache_file) {
-            if let Ok(parsed) = serde_json::from_str::<Vec<ContributionDay>>(&data) {
-                if !parsed.is_empty() {
+    if cache_file.exists()
+        && let Ok(data) = std::fs::read_to_string(&cache_file)
+            && let Ok(parsed) = serde_json::from_str::<Vec<ContributionDay>>(&data)
+                && !parsed.is_empty() {
                     return parsed;
                 }
-            }
-        }
-    }
 
     generate_demo_contributions()
 }
@@ -298,11 +287,10 @@ fn fetch_profile_cached(username: &str, token: Option<&str>) -> Option<GithubPro
     let url = format!("https://api.github.com/users/{}", username);
     let mut cmd = std::process::Command::new("curl");
     cmd.args(["-s", "-L", "--max-time", "8", "-H", "User-Agent: Beskar-Shell"]);
-    if let Some(tok) = token {
-        if !tok.trim().is_empty() {
+    if let Some(tok) = token
+        && !tok.trim().is_empty() {
             cmd.args(["-H", &format!("Authorization: Bearer {}", tok.trim())]);
         }
-    }
     cmd.arg(&url);
 
     let output = cmd.output().ok()?;
@@ -350,7 +338,7 @@ pub fn generate_demo_contributions() -> Vec<ContributionDay> {
     for i in 0..364 {
         let weekday = i % 7;
         let week = i / 7;
-        let base_activity = if weekday >= 1 && weekday <= 5 { 0.65 } else { 0.25 };
+        let base_activity = if (1..=5).contains(&weekday) { 0.65 } else { 0.25 };
         let hash = (((i as u64).wrapping_mul(1013904223).wrapping_add((week as u64).wrapping_mul(1664525))) & 0x7fffffff) as f32 / 2147483647.0;
         let level = if hash < (1.0 - base_activity) {
             0

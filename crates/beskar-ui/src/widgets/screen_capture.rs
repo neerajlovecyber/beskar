@@ -78,11 +78,9 @@ impl CaptureMode {
             CaptureMode::RecordToggle => {
                 // If wf-recorder is running, kill it; otherwise start recording
                 let check = std::process::Command::new("pidof").arg("wf-recorder").output();
-                if let Ok(out) = check {
-                    if out.status.success() {
-                        let _ = std::process::Command::new("pkill").arg("wf-recorder").spawn();
-                        return;
-                    }
+                if check.map(|o| o.status.success()).unwrap_or(false) {
+                    let _ = std::process::Command::new("pkill").arg("wf-recorder").spawn();
+                    return;
                 }
                 let rec_file = format!("{}/Recording_{}.mp4", shot_dir, timestamp);
                 let cmd = format!("wf-recorder -g \"$(slurp)\" -f \"{}\"", rec_file);

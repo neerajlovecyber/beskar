@@ -81,12 +81,11 @@ impl UpdateService {
 
         let pacman_count = tokio::task::spawn_blocking(|| {
             let out = std::process::Command::new("checkupdates").output();
-            if let Ok(o) = out {
-                if o.status.success() {
+            if let Ok(o) = out
+                && o.status.success() {
                     let s = String::from_utf8_lossy(&o.stdout);
                     return s.lines().count() as u32;
                 }
-            }
             0
         })
         .await
@@ -95,19 +94,17 @@ impl UpdateService {
         let aur_count = tokio::task::spawn_blocking(|| {
             // Try paru first, then yay
             let out_paru = std::process::Command::new("paru").args(["-Qua"]).output();
-            if let Ok(o) = out_paru {
-                if o.status.success() {
+            if let Ok(o) = out_paru
+                && o.status.success() {
                     let s = String::from_utf8_lossy(&o.stdout);
                     return s.lines().count() as u32;
                 }
-            }
             let out_yay = std::process::Command::new("yay").args(["-Qua"]).output();
-            if let Ok(o) = out_yay {
-                if o.status.success() {
+            if let Ok(o) = out_yay
+                && o.status.success() {
                     let s = String::from_utf8_lossy(&o.stdout);
                     return s.lines().count() as u32;
                 }
-            }
             0
         })
         .await

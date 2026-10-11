@@ -331,8 +331,7 @@ impl RenderOnce for LauncherWidget {
                                 let cat = app
                                     .categories
                                     .split(';')
-                                    .filter(|c| !c.is_empty())
-                                    .next()
+                                    .find(|c| !c.is_empty())
                                     .unwrap_or("")
                                     .to_string();
                                 this.child(

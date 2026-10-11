@@ -99,8 +99,8 @@ impl AudioService {
     /// Read volume and mute state directly from PulseAudio UNIX socket.
     /// Falls back to wpctl if pulse socket is unavailable.
     pub fn read_state() -> AudioState {
-        if let Ok(mut pulse) = Pulse::connect("beskar") {
-            if let Ok((server, sinks)) = pulse.state() {
+        if let Ok(mut pulse) = Pulse::connect("beskar")
+            && let Ok((server, sinks)) = pulse.state() {
                 let default_sink = server.default_sink_name.as_ref();
                 if let Some(sink) = sinks.iter().find(|s| Some(&s.name) == default_sink).or(sinks.first()) {
                     let volume = level(&sink.cvolume);
@@ -113,28 +113,24 @@ impl AudioService {
                     };
                 }
             }
-        }
 
         // Fallback to wpctl
         if let Ok(output) = std::process::Command::new("wpctl")
             .args(["get-volume", "@DEFAULT_AUDIO_SINK@"])
             .output()
-        {
-            if output.status.success() {
+            && output.status.success() {
                 let text = String::from_utf8_lossy(&output.stdout);
                 let is_muted = text.contains("[MUTED]");
                 let parts: Vec<&str> = text.split_whitespace().collect();
-                if parts.len() >= 2 {
-                    if let Ok(vol) = parts[1].parse::<f32>() {
+                if parts.len() >= 2
+                    && let Ok(vol) = parts[1].parse::<f32>() {
                         return AudioState {
                             volume: vol,
                             is_muted,
                             default_sink_name: None,
                         };
                     }
-                }
             }
-        }
 
         AudioState {
             volume: 1.0,
@@ -144,9 +140,9 @@ impl AudioService {
     }
 
     pub fn set_volume(delta_percent: i32) {
-        if let Ok(mut pulse) = Pulse::connect("beskar cmd") {
-            if let Ok((server, sinks)) = pulse.state() {
-                if let Some(sink) = sinks.iter().find(|s| Some(&s.name) == server.default_sink_name.as_ref()).or(sinks.first()) {
+        if let Ok(mut pulse) = Pulse::connect("beskar cmd")
+            && let Ok((server, sinks)) = pulse.state()
+                && let Some(sink) = sinks.iter().find(|s| Some(&s.name) == server.default_sink_name.as_ref()).or(sinks.first()) {
                     let current = level(&sink.cvolume);
                     let target = (current + (delta_percent as f32 / 100.0)).clamp(0.0, 1.0);
                     let mut cv = ChannelVolume::empty();
@@ -162,8 +158,6 @@ impl AudioService {
                     let _ = pulse.ack(Command::SetSinkVolume(params));
                     return;
                 }
-            }
-        }
 
         // Fallback to wpctl
         let arg = if delta_percent >= 0 {
@@ -177,9 +171,9 @@ impl AudioService {
     }
 
     pub fn toggle_mute() {
-        if let Ok(mut pulse) = Pulse::connect("beskar cmd") {
-            if let Ok((server, sinks)) = pulse.state() {
-                if let Some(sink) = sinks.iter().find(|s| Some(&s.name) == server.default_sink_name.as_ref()).or(sinks.first()) {
+        if let Ok(mut pulse) = Pulse::connect("beskar cmd")
+            && let Ok((server, sinks)) = pulse.state()
+                && let Some(sink) = sinks.iter().find(|s| Some(&s.name) == server.default_sink_name.as_ref()).or(sinks.first()) {
                     let params = SetDeviceMuteParams {
                         device_index: Some(sink.index),
                         device_name: None,
@@ -188,8 +182,6 @@ impl AudioService {
                     let _ = pulse.ack(Command::SetSinkMute(params));
                     return;
                 }
-            }
-        }
 
         let _ = std::process::Command::new("wpctl")
             .args(["set-mute", "@DEFAULT_AUDIO_SINK@", "toggle"])

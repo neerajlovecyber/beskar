@@ -43,6 +43,12 @@ impl IslandPill {
     }
 }
 
+impl Default for IslandPill {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RenderOnce for IslandPill {
     fn render(self, _window: &mut Window, _cx: &mut App) -> impl IntoElement {
         let is_convex = self.is_convex;

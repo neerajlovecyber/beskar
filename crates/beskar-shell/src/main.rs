@@ -14,8 +14,7 @@ use gpui_kit::*;
 use tracing::info;
 use tracing_subscriber::EnvFilter;
 
-#[allow(dead_code)]
-#[derive(Debug, Clone)]
+#[allow(dead_code, clippy::enum_variant_names)]
 enum BarAction {
     ToggleControlCenter,
     ToggleLauncher,
@@ -166,7 +165,7 @@ impl DesktopBarView {
                 let sleep_duration = if is_animating {
                     std::time::Duration::from_millis(16) // 60 FPS during motion
                 } else {
-                    std::time::Duration::from_millis(120) // Idle low-power sleep when settled
+                    std::time::Duration::from_millis(300) // Deep idle low-power sleep when settled
                 };
 
                 let _ = cx.background_executor().timer(sleep_duration).await;
@@ -226,8 +225,18 @@ impl DesktopBarView {
         cx.spawn(async move |this, cx| {
             let mut tick: u32 = 0;
             loop {
-                tokio::time::sleep(tokio::time::Duration::from_millis(60)).await;
-                tick = tick.wrapping_add(1);
+                let mut is_playing = false;
+                let _ = this.update(cx, |this, _| {
+                    is_playing = this.media.as_ref().is_some_and(|m| m.2);
+                });
+
+                let sleep_ms = if is_playing { 60 } else { 350 };
+                tokio::time::sleep(tokio::time::Duration::from_millis(sleep_ms)).await;
+
+                if is_playing {
+                    tick = tick.wrapping_add(1);
+                }
+
                 let res = this.update(cx, |this, cx| {
                     if this.media.as_ref().is_some_and(|m| m.2) {
                         let b0 = (((tick as f32 * 0.20).sin().abs() * 70.0) + 20.0) as u8;
@@ -298,6 +307,29 @@ impl DesktopBarView {
                         }
                         _ => {}
                     }
+                });
+                if res.is_err() {
+                    break;
+                }
+            }
+        })
+        .detach();
+
+        // 7. Reactive Config Change Listener (Live Theme & Bar Style Switching)
+        let mut cfg_rx = beskar_core::config::subscribe_config();
+        cx.spawn(async move |this, cx| {
+            while let Ok(cfg) = cfg_rx.recv().await {
+                beskar_theme::ThemeEngine::set_preset(match cfg.theme_preset {
+                    beskar_core::config::ThemePresetConfig::ObsidianGlass => beskar_theme::ThemePreset::Obsidian,
+                    beskar_core::config::ThemePresetConfig::CatppuccinMocha => beskar_theme::ThemePreset::CatppuccinMocha,
+                    beskar_core::config::ThemePresetConfig::GruvboxDark => beskar_theme::ThemePreset::GruvboxDark,
+                    beskar_core::config::ThemePresetConfig::WallpaperAuto => beskar_theme::ThemePreset::Wallpaper,
+                });
+
+                let is_convex = cfg.bar_style == beskar_core::config::BarStyleConfig::Convex;
+                let res = this.update(cx, |this, cx| {
+                    this.is_convex = is_convex;
+                    cx.notify();
                 });
                 if res.is_err() {
                     break;
@@ -399,6 +431,36 @@ impl Render for DesktopBarView {
             let _ = atx_p.send(BarAction::TogglePowerMenu);
         });
 
+        let on_tray_click = Arc::new(|id: String| {
+            std::thread::spawn(move || {
+                let _ = beskar_services::tray::command(
+                    "tray.activate",
+                    &[beskar_services::sysvalue::SysValue::Text(id)],
+                );
+            });
+        });
+
+        let on_tray_menu = Arc::new(|id: String| {
+            std::thread::spawn(move || {
+                let _ = beskar_services::tray::command(
+                    "tray.context",
+                    &[beskar_services::sysvalue::SysValue::Text(id)],
+                );
+            });
+        });
+
+        let on_window_click = Arc::new(|| {
+            let _ = std::process::Command::new("niri")
+                .args(["msg", "action", "fullscreen-window"])
+                .spawn();
+        });
+
+        let on_window_close = Arc::new(|| {
+            let _ = std::process::Command::new("niri")
+                .args(["msg", "action", "close-window"])
+                .spawn();
+        });
+
         let active_notif = self.notifications.first().map(|n| (n.summary.clone(), n.body.clone()));
         div()
             .relative()
@@ -434,6 +496,10 @@ impl Render for DesktopBarView {
                 Some(on_music_click),
                 Some(on_capture_click),
                 Some(on_wallpaper_click),
+                Some(on_tray_click),
+                Some(on_tray_menu),
+                Some(on_window_click),
+                Some(on_window_close),
             ))
     }
 }
@@ -587,6 +653,7 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 fn open_bar(
     display_id: Option<DisplayId>,
     workspaces: Vec<WorkspaceInfo>,

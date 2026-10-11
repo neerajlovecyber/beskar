@@ -74,10 +74,11 @@ impl Watcher {
 }
 
 static CONNECTION: OnceLock<Connection> = OnceLock::new();
+type SysValueCallback = Option<Box<dyn Fn(SysValue) + Send>>;
 /// Who hears the icons, and how to ask for a fresh look: the service is one per
 /// process and outlives the logic, so a reloaded logic takes the listener's place
 /// here instead of opening another connection that finds the watcher's name taken.
-static LISTENER: Mutex<Option<Box<dyn Fn(SysValue) + Send>>> = Mutex::new(None);
+static LISTENER: Mutex<SysValueCallback> = Mutex::new(None);
 static RESCAN: OnceLock<Mutex<std::sync::mpsc::Sender<Update>>> = OnceLock::new();
 
 fn split(full: &str) -> (&str, String) {
@@ -107,7 +108,7 @@ fn from_pixels(pixmaps: Vec<(i32, i32, Vec<u8>)>) -> Option<String> {
     if !path.exists() {
         std::fs::create_dir_all(&dir).ok()?;
         // They arrive as ARGB, with the high byte first.
-        let rgba: Vec<u8> = argb.chunks_exact(4).flat_map(|p| [p[1], p[2], p[3], p[0]]).collect();
+        let rgba: Vec<u8> = argb.as_chunks::<4>().0.iter().flat_map(|p| [p[1], p[2], p[3], p[0]]).collect();
         image::RgbaImage::from_raw(w as u32, h as u32, rgba)?.save(&path).ok()?;
     }
     Some(path.to_string_lossy().into_owned())
