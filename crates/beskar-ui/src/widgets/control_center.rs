@@ -489,48 +489,73 @@ impl RenderOnce for ControlCenterWidget {
                                 .text_color(hsla(45.0 / 360.0, 0.90, 0.60, 1.0))
                                 .child("Available Wi-Fi Networks"),
                         )
-                        .children(self.wifi_networks.iter().take(6).map(|ap| {
-                            let ssid_clone = ap.ssid.clone();
-                            let on_c = on_connect.clone();
-                            div()
-                                .flex()
-                                .items_center()
-                                .justify_between()
-                                .p(px(6.0))
-                                .rounded(px(8.0))
-                                .hover(|s| s.bg(hsla(0.0, 0.0, 1.0, 0.10)).cursor_pointer())
-                                .when_some(on_c, move |el, cb| {
-                                    el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)(ssid_clone.clone()))
-                                })
-                                .child(
-                                    div()
-                                        .flex()
-                                        .items_center()
-                                        .gap(px(6.0))
-                                        .child(
-                                            Icon::new(IconName::Wifi)
-                                                .size(px(12.0))
-                                                .text_color(if ap.is_active {
-                                                    hsla(142.0 / 360.0, 0.85, 0.55, 1.0)
-                                                } else {
-                                                    hsla(0.0, 0.0, 0.70, 1.0)
-                                                }),
-                                        )
-                                        .child(
-                                            div()
-                                                .text_xs()
-                                                .font_weight(if ap.is_active { FontWeight::BOLD } else { FontWeight::NORMAL })
-                                                .text_color(hsla(0.0, 0.0, 0.90, 1.0))
-                                                .child(ap.ssid.clone()),
-                                        ),
-                                )
-                                .child(
-                                    div()
-                                        .text_xs()
-                                        .text_color(hsla(0.0, 0.0, 0.55, 1.0))
-                                        .child(format!("{}%", ap.signal)),
-                                )
-                        })),
+                        .child(
+                            if self.wifi_networks.is_empty() {
+                                div()
+                                    .py(px(12.0))
+                                    .flex()
+                                    .items_center()
+                                    .justify_center()
+                                    .child(
+                                        div()
+                                            .text_xs()
+                                            .text_color(hsla(0.0, 0.0, 0.60, 1.0))
+                                            .child("Scanning networks..."),
+                                    )
+                                    .into_any_element()
+                            } else {
+                                div()
+                                    .id("cc-wifi-scroll-list")
+                                    .flex()
+                                    .flex_col()
+                                    .gap(px(4.0))
+                                    .max_h(px(180.0))
+                                    .overflow_y_scroll()
+                                    .children(self.wifi_networks.iter().map(|ap| {
+                                        let ssid_clone = ap.ssid.clone();
+                                        let on_c = on_connect.clone();
+                                        div()
+                                            .flex()
+                                            .items_center()
+                                            .justify_between()
+                                            .p(px(6.0))
+                                            .rounded(px(8.0))
+                                            .hover(|s| s.bg(hsla(0.0, 0.0, 1.0, 0.10)).cursor_pointer())
+                                            .when_some(on_c, move |el, cb| {
+                                                el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)(ssid_clone.clone()))
+                                            })
+                                            .child(
+                                                div()
+                                                    .flex()
+                                                    .items_center()
+                                                    .gap(px(6.0))
+                                                    .child(
+                                                        Icon::new(IconName::Wifi)
+                                                            .size(px(12.0))
+                                                            .text_color(if ap.is_active {
+                                                                hsla(142.0 / 360.0, 0.85, 0.55, 1.0)
+                                                            } else {
+                                                                hsla(0.0, 0.0, 0.70, 1.0)
+                                                            }),
+                                                    )
+                                                    .child(
+                                                        div()
+                                                            .text_xs()
+                                                            .font_weight(if ap.is_active { FontWeight::BOLD } else { FontWeight::NORMAL })
+                                                            .text_color(hsla(0.0, 0.0, 0.90, 1.0))
+                                                            .child(ap.ssid.clone()),
+                                                    ),
+                                            )
+                                            .child(
+                                                div()
+                                                    .text_xs()
+                                                    .text_color(hsla(0.0, 0.0, 0.55, 1.0))
+                                                    .child(format!("{}%", ap.signal)),
+                                            )
+                                    }))
+                                    .into_any_element()
+                            },
+                        ),
                 )
             })
             // ── Expandable Bluetooth Devices Subpanel ──
@@ -552,53 +577,78 @@ impl RenderOnce for ControlCenterWidget {
                                 .text_color(hsla(210.0 / 360.0, 0.85, 0.65, 1.0))
                                 .child("Paired Bluetooth Devices"),
                         )
-                        .children(self.bt_devices.iter().take(5).map(|dev| {
-                            div()
-                                .flex()
-                                .items_center()
-                                .justify_between()
-                                .p(px(6.0))
-                                .rounded(px(8.0))
-                                .child(
-                                    div()
-                                        .flex()
-                                        .items_center()
-                                        .gap(px(6.0))
-                                        .child(
-                                            Icon::new(IconName::Bluetooth)
-                                                .size(px(12.0))
-                                                .text_color(if dev.is_connected {
-                                                    hsla(142.0 / 360.0, 0.85, 0.55, 1.0)
-                                                } else {
-                                                    hsla(0.0, 0.0, 0.60, 1.0)
-                                                }),
-                                        )
-                                        .child(
-                                            div()
-                                                .text_xs()
-                                                .text_color(hsla(0.0, 0.0, 0.90, 1.0))
-                                                .child(dev.name.clone()),
-                                        ),
-                                )
-                                .child(
-                                    div()
-                                        .text_xs()
-                                        .text_color(if dev.is_connected {
-                                            hsla(142.0 / 360.0, 0.85, 0.55, 1.0)
-                                        } else {
-                                            hsla(0.0, 0.0, 0.50, 1.0)
-                                        })
-                                        .child(if dev.is_connected {
-                                            if let Some(bat) = dev.battery_percent {
-                                                format!("Connected ({}%)", bat)
-                                            } else {
-                                                "Connected".to_string()
-                                            }
-                                        } else {
-                                            "Disconnected".to_string()
-                                        }),
-                                )
-                        })),
+                        .child(
+                            if self.bt_devices.is_empty() {
+                                div()
+                                    .py(px(12.0))
+                                    .flex()
+                                    .items_center()
+                                    .justify_center()
+                                    .child(
+                                        div()
+                                            .text_xs()
+                                            .text_color(hsla(0.0, 0.0, 0.60, 1.0))
+                                            .child("Scanning Bluetooth devices..."),
+                                    )
+                                    .into_any_element()
+                            } else {
+                                div()
+                                    .id("cc-bt-scroll-list")
+                                    .flex()
+                                    .flex_col()
+                                    .gap(px(4.0))
+                                    .max_h(px(180.0))
+                                    .overflow_y_scroll()
+                                    .children(self.bt_devices.iter().map(|dev| {
+                                        div()
+                                            .flex()
+                                            .items_center()
+                                            .justify_between()
+                                            .p(px(6.0))
+                                            .rounded(px(8.0))
+                                            .child(
+                                                div()
+                                                    .flex()
+                                                    .items_center()
+                                                    .gap(px(6.0))
+                                                    .child(
+                                                        Icon::new(IconName::Bluetooth)
+                                                            .size(px(12.0))
+                                                            .text_color(if dev.is_connected {
+                                                                hsla(142.0 / 360.0, 0.85, 0.55, 1.0)
+                                                            } else {
+                                                                hsla(0.0, 0.0, 0.60, 1.0)
+                                                            }),
+                                                    )
+                                                    .child(
+                                                        div()
+                                                            .text_xs()
+                                                            .text_color(hsla(0.0, 0.0, 0.90, 1.0))
+                                                            .child(dev.name.clone()),
+                                                    ),
+                                            )
+                                            .child(
+                                                div()
+                                                    .text_xs()
+                                                    .text_color(if dev.is_connected {
+                                                        hsla(142.0 / 360.0, 0.85, 0.55, 1.0)
+                                                    } else {
+                                                        hsla(0.0, 0.0, 0.50, 1.0)
+                                                    })
+                                                    .child(if dev.is_connected {
+                                                        if let Some(bat) = dev.battery_percent {
+                                                            format!("Connected ({}%)", bat)
+                                                        } else {
+                                                            "Connected".to_string()
+                                                        }
+                                                    } else {
+                                                        "Disconnected".to_string()
+                                                    }),
+                                            )
+                                    }))
+                                    .into_any_element()
+                            },
+                        ),
                 )
             })
             // ── Master Volume Slider Card ──

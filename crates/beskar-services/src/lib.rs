@@ -113,6 +113,12 @@ impl NetworkHelper {
         list
     }
 
+    pub async fn scan_networks_async() -> Vec<WifiAccessPoint> {
+        tokio::task::spawn_blocking(Self::scan_networks)
+            .await
+            .unwrap_or_default()
+    }
+
     pub fn connect(ssid: &str, password: Option<&str>) {
         let mut cmd = std::process::Command::new("nmcli");
         cmd.args(["dev", "wifi", "connect", ssid]);
@@ -180,6 +186,12 @@ impl BluetoothHelper {
         }
         list.sort_by_key(|a| std::cmp::Reverse(a.is_connected));
         list
+    }
+
+    pub async fn list_devices_async() -> Vec<BluetoothDeviceItem> {
+        tokio::task::spawn_blocking(Self::list_devices)
+            .await
+            .unwrap_or_default()
     }
 
     pub fn connect(address: &str) {

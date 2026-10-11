@@ -223,7 +223,10 @@ impl RenderOnce for LauncherWidget {
             // Applications ListView (minflair listSpacing = 8px)
             .child(
                 div()
+                    .id("launcher-apps-list")
                     .w_full()
+                    .max_h(px(410.0))
+                    .overflow_y_scroll()
                     .flex()
                     .flex_col()
                     .gap(px(8.0))

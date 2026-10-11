@@ -43,8 +43,11 @@ pub fn forget_overlay(kind: OverlayKind) {
 }
 
 pub fn close_active_overlay(cx: &mut App) -> Option<OverlayKind> {
-    let mut guard = ACTIVE_OVERLAY.lock().unwrap();
-    if let Some((kind, handle)) = guard.take() {
+    let item = {
+        let mut guard = ACTIVE_OVERLAY.lock().unwrap();
+        guard.take()
+    };
+    if let Some((kind, handle)) = item {
         let _ = cx.update_window(handle, |_, window, _| {
             window.remove_window();
         });
@@ -69,18 +72,13 @@ pub fn toggle_launcher(cx: &mut App) {
 
     let options = WindowOptions {
         titlebar: None,
-        window_bounds: Some(WindowBounds::Windowed(Bounds {
-            origin: point(px(0.), px(0.)),
-            size: Size::new(px(700.), px(480.)),
-        })),
         app_id: Some("beskar-launcher".to_string()),
         window_background: WindowBackgroundAppearance::Transparent,
         kind: WindowKind::LayerShell(LayerShellOptions {
             namespace: "beskar-launcher".to_string(),
             layer: Layer::Overlay,
-            anchor: LayerAnchor::TOP,
+            anchor: LayerAnchor::TOP | LayerAnchor::BOTTOM | LayerAnchor::LEFT | LayerAnchor::RIGHT,
             exclusive_zone: None,
-            margin: Some((px(100.), px(0.), px(0.), px(0.))),
             keyboard_interactivity: KeyboardInteractivity::OnDemand,
             ..Default::default()
         }),
@@ -105,18 +103,13 @@ pub fn toggle_power_menu(cx: &mut App) {
 
     let options = WindowOptions {
         titlebar: None,
-        window_bounds: Some(WindowBounds::Windowed(Bounds {
-            origin: point(px(0.), px(0.)),
-            size: Size::new(px(400.), px(110.)),
-        })),
         app_id: Some("beskar-power-menu".to_string()),
         window_background: WindowBackgroundAppearance::Transparent,
         kind: WindowKind::LayerShell(LayerShellOptions {
             namespace: "beskar-power-menu".to_string(),
             layer: Layer::Overlay,
-            anchor: LayerAnchor::TOP,
+            anchor: LayerAnchor::TOP | LayerAnchor::BOTTOM | LayerAnchor::LEFT | LayerAnchor::RIGHT,
             exclusive_zone: None,
-            margin: Some((px(56.), px(0.), px(0.), px(0.))),
             keyboard_interactivity: KeyboardInteractivity::OnDemand,
             ..Default::default()
         }),
@@ -142,18 +135,13 @@ pub fn toggle_control_center(cx: &mut App) {
 
     let options = WindowOptions {
         titlebar: None,
-        window_bounds: Some(WindowBounds::Windowed(Bounds {
-            origin: point(px(0.), px(0.)),
-            size: Size::new(px(360.), px(460.)),
-        })),
         app_id: Some("beskar-control-center".to_string()),
         window_background: WindowBackgroundAppearance::Transparent,
         kind: WindowKind::LayerShell(LayerShellOptions {
             namespace: "beskar-control-center".to_string(),
             layer: Layer::Overlay,
-            anchor: LayerAnchor::TOP | LayerAnchor::RIGHT,
+            anchor: LayerAnchor::TOP | LayerAnchor::BOTTOM | LayerAnchor::LEFT | LayerAnchor::RIGHT,
             exclusive_zone: None,
-            margin: Some((px(56.), px(12.), px(0.), px(0.))),
             keyboard_interactivity: KeyboardInteractivity::OnDemand,
             ..Default::default()
         }),
@@ -209,18 +197,13 @@ pub fn toggle_settings(cx: &mut App) {
 
     let options = WindowOptions {
         titlebar: None,
-        window_bounds: Some(WindowBounds::Windowed(Bounds {
-            origin: point(px(0.), px(0.)),
-            size: Size::new(px(760.), px(520.)),
-        })),
         app_id: Some("beskar-settings".to_string()),
         window_background: WindowBackgroundAppearance::Transparent,
         kind: WindowKind::LayerShell(LayerShellOptions {
             namespace: "beskar-settings".to_string(),
             layer: Layer::Overlay,
-            anchor: LayerAnchor::TOP,
+            anchor: LayerAnchor::TOP | LayerAnchor::BOTTOM | LayerAnchor::LEFT | LayerAnchor::RIGHT,
             exclusive_zone: None,
-            margin: Some((px(60.), px(0.), px(0.), px(0.))),
             keyboard_interactivity: KeyboardInteractivity::OnDemand,
             ..Default::default()
         }),
@@ -245,18 +228,13 @@ pub fn toggle_clipboard(cx: &mut App) {
 
     let options = WindowOptions {
         titlebar: None,
-        window_bounds: Some(WindowBounds::Windowed(Bounds {
-            origin: point(px(0.), px(0.)),
-            size: Size::new(px(640.), px(480.)),
-        })),
         app_id: Some("beskar-clipboard".to_string()),
         window_background: WindowBackgroundAppearance::Transparent,
         kind: WindowKind::LayerShell(LayerShellOptions {
             namespace: "beskar-clipboard".to_string(),
             layer: Layer::Overlay,
-            anchor: LayerAnchor::TOP,
+            anchor: LayerAnchor::TOP | LayerAnchor::BOTTOM | LayerAnchor::LEFT | LayerAnchor::RIGHT,
             exclusive_zone: None,
-            margin: Some((px(80.), px(0.), px(0.), px(0.))),
             keyboard_interactivity: KeyboardInteractivity::OnDemand,
             ..Default::default()
         }),
@@ -281,18 +259,13 @@ pub fn toggle_dashboard(cx: &mut App) {
 
     let options = WindowOptions {
         titlebar: None,
-        window_bounds: Some(WindowBounds::Windowed(Bounds {
-            origin: point(px(0.), px(0.)),
-            size: Size::new(px(780.), px(560.)),
-        })),
         app_id: Some("beskar-dashboard".to_string()),
         window_background: WindowBackgroundAppearance::Transparent,
         kind: WindowKind::LayerShell(LayerShellOptions {
             namespace: "beskar-dashboard".to_string(),
             layer: Layer::Overlay,
-            anchor: LayerAnchor::TOP,
+            anchor: LayerAnchor::TOP | LayerAnchor::BOTTOM | LayerAnchor::LEFT | LayerAnchor::RIGHT,
             exclusive_zone: None,
-            margin: Some((px(50.), px(0.), px(0.), px(0.))),
             keyboard_interactivity: KeyboardInteractivity::OnDemand,
             ..Default::default()
         }),
@@ -317,18 +290,13 @@ pub fn toggle_music(cx: &mut App) {
 
     let options = WindowOptions {
         titlebar: None,
-        window_bounds: Some(WindowBounds::Windowed(Bounds {
-            origin: point(px(0.), px(0.)),
-            size: Size::new(px(430.), px(220.)),
-        })),
         app_id: Some("beskar-music".to_string()),
         window_background: WindowBackgroundAppearance::Transparent,
         kind: WindowKind::LayerShell(LayerShellOptions {
             namespace: "beskar-music".to_string(),
             layer: Layer::Overlay,
-            anchor: LayerAnchor::TOP,
+            anchor: LayerAnchor::TOP | LayerAnchor::BOTTOM | LayerAnchor::LEFT | LayerAnchor::RIGHT,
             exclusive_zone: None,
-            margin: Some((px(50.), px(0.), px(0.), px(0.))),
             keyboard_interactivity: KeyboardInteractivity::OnDemand,
             ..Default::default()
         }),
@@ -353,18 +321,13 @@ pub fn toggle_notification_center(cx: &mut App) {
 
     let options = WindowOptions {
         titlebar: None,
-        window_bounds: Some(WindowBounds::Windowed(Bounds {
-            origin: point(px(0.), px(0.)),
-            size: Size::new(px(380.), px(520.)),
-        })),
         app_id: Some("beskar-notifications".to_string()),
         window_background: WindowBackgroundAppearance::Transparent,
         kind: WindowKind::LayerShell(LayerShellOptions {
             namespace: "beskar-notifications".to_string(),
             layer: Layer::Overlay,
-            anchor: LayerAnchor::TOP | LayerAnchor::RIGHT,
+            anchor: LayerAnchor::TOP | LayerAnchor::BOTTOM | LayerAnchor::LEFT | LayerAnchor::RIGHT,
             exclusive_zone: None,
-            margin: Some((px(50.), px(16.), px(0.), px(0.))),
             keyboard_interactivity: KeyboardInteractivity::OnDemand,
             ..Default::default()
         }),
@@ -389,18 +352,13 @@ pub fn toggle_screencapture(cx: &mut App) {
 
     let options = WindowOptions {
         titlebar: None,
-        window_bounds: Some(WindowBounds::Windowed(Bounds {
-            origin: point(px(0.), px(0.)),
-            size: Size::new(px(460.), px(220.)),
-        })),
         app_id: Some("beskar-screencapture".to_string()),
         window_background: WindowBackgroundAppearance::Transparent,
         kind: WindowKind::LayerShell(LayerShellOptions {
             namespace: "beskar-screencapture".to_string(),
             layer: Layer::Overlay,
-            anchor: LayerAnchor::TOP,
+            anchor: LayerAnchor::TOP | LayerAnchor::BOTTOM | LayerAnchor::LEFT | LayerAnchor::RIGHT,
             exclusive_zone: None,
-            margin: Some((px(70.), px(0.), px(0.), px(0.))),
             keyboard_interactivity: KeyboardInteractivity::OnDemand,
             ..Default::default()
         }),
@@ -425,18 +383,13 @@ pub fn toggle_wallpaper_selector(cx: &mut App) {
 
     let options = WindowOptions {
         titlebar: None,
-        window_bounds: Some(WindowBounds::Windowed(Bounds {
-            origin: point(px(0.), px(0.)),
-            size: Size::new(px(760.), px(240.)),
-        })),
         app_id: Some("beskar-wallpapers".to_string()),
         window_background: WindowBackgroundAppearance::Transparent,
         kind: WindowKind::LayerShell(LayerShellOptions {
             namespace: "beskar-wallpapers".to_string(),
             layer: Layer::Overlay,
-            anchor: LayerAnchor::TOP,
+            anchor: LayerAnchor::TOP | LayerAnchor::BOTTOM | LayerAnchor::LEFT | LayerAnchor::RIGHT,
             exclusive_zone: None,
-            margin: Some((px(60.), px(0.), px(0.), px(0.))),
             keyboard_interactivity: KeyboardInteractivity::OnDemand,
             ..Default::default()
         }),
@@ -528,10 +481,18 @@ impl Render for LauncherView {
         let tx_close = self.msg_tx.clone();
 
         div()
-            .id("launcher-view")
+            .id("launcher-backdrop")
             .size_full()
+            .flex()
+            .flex_col()
+            .items_center()
+            .pt(px(90.0))
             .track_focus(&self.focus_handle)
             .key_context("Launcher")
+            .on_mouse_down(MouseButton::Left, move |_, window, _cx| {
+                forget_overlay(OverlayKind::Launcher);
+                window.remove_window();
+            })
             .on_key_down(cx.listener(move |this, event: &KeyDownEvent, window, cx| {
                 let key = event.keystroke.key.as_str();
                 let mods = &event.keystroke.modifiers;
@@ -622,21 +583,28 @@ impl Render for LauncherView {
                 }
             }))
             .child(
-                LauncherWidget::new(self.apps.clone())
-                    .query(self.query.clone())
-                    .selected_idx(self.selected_idx)
-                    .on_select(move |idx| {
-                        let _ = tx_sel.send(LauncherMsg::Select(idx));
+                div()
+                    .w(px(700.0))
+                    .on_mouse_down(MouseButton::Left, |_, _, cx| {
+                        cx.stop_propagation();
                     })
-                    .on_launch(move |cmd| {
-                        let _ = tx_launch.send(LauncherMsg::Launch(cmd));
-                    })
-                    .on_clear(move || {
-                        let _ = tx_clear.send(LauncherMsg::ClearQuery);
-                    })
-                    .on_close(move || {
-                        let _ = tx_close.send(LauncherMsg::Close);
-                    }),
+                    .child(
+                        LauncherWidget::new(self.apps.clone())
+                            .query(self.query.clone())
+                            .selected_idx(self.selected_idx)
+                            .on_select(move |idx| {
+                                let _ = tx_sel.send(LauncherMsg::Select(idx));
+                            })
+                            .on_launch(move |cmd| {
+                                let _ = tx_launch.send(LauncherMsg::Launch(cmd));
+                            })
+                            .on_clear(move || {
+                                let _ = tx_clear.send(LauncherMsg::ClearQuery);
+                            })
+                            .on_close(move || {
+                                let _ = tx_close.send(LauncherMsg::Close);
+                            }),
+                    ),
             )
     }
 }
@@ -736,13 +704,17 @@ impl Render for PowerMenuView {
         let msg_tx = self.msg_tx.clone();
 
         div()
-            .id("power-menu-view")
+            .id("power-menu-backdrop")
             .size_full()
             .flex()
             .items_center()
             .justify_center()
             .track_focus(&self.focus_handle)
             .key_context("PowerMenu")
+            .on_mouse_down(MouseButton::Left, move |_, window, _cx| {
+                forget_overlay(OverlayKind::PowerMenu);
+                window.remove_window();
+            })
             .on_key_down(cx.listener(move |this, event: &KeyDownEvent, window, cx| {
                 match event.keystroke.key.as_str() {
                     "escape" => {
@@ -826,28 +798,34 @@ impl Render for PowerMenuView {
                 }
             }))
             .child(
-                PowerMenuWidget::new()
-                    .selected_index(self.selected_index)
-                    .pending_action(self.pending_action)
-                    .confirm_index(self.confirm_index)
-                    .on_select(move |idx| {
-                        let _ = tx_sel.send(PowerMenuMsg::Select(idx));
+                div()
+                    .on_mouse_down(MouseButton::Left, |_, _, cx| {
+                        cx.stop_propagation();
                     })
-                    .on_request_confirm(move |action| {
-                        let _ = tx_req.send(PowerMenuMsg::RequestConfirm(action));
-                    })
-                    .on_cancel_confirm(move || {
-                        let _ = tx_cancel.send(PowerMenuMsg::CancelConfirm);
-                    })
-                    .on_confirm_select(move |idx| {
-                        let _ = tx_conf_sel.send(PowerMenuMsg::ConfirmSelect(idx));
-                    })
-                    .on_action(move |action| {
-                        let _ = tx_act.send(PowerMenuMsg::Action(action));
-                    })
-                    .on_close(move || {
-                        let _ = tx_close.send(PowerMenuMsg::Close);
-                    }),
+                    .child(
+                        PowerMenuWidget::new()
+                            .selected_index(self.selected_index)
+                            .pending_action(self.pending_action)
+                            .confirm_index(self.confirm_index)
+                            .on_select(move |idx| {
+                                let _ = tx_sel.send(PowerMenuMsg::Select(idx));
+                            })
+                            .on_request_confirm(move |action| {
+                                let _ = tx_req.send(PowerMenuMsg::RequestConfirm(action));
+                            })
+                            .on_cancel_confirm(move || {
+                                let _ = tx_cancel.send(PowerMenuMsg::CancelConfirm);
+                            })
+                            .on_confirm_select(move |idx| {
+                                let _ = tx_conf_sel.send(PowerMenuMsg::ConfirmSelect(idx));
+                            })
+                            .on_action(move |action| {
+                                let _ = tx_act.send(PowerMenuMsg::Action(action));
+                            })
+                            .on_close(move || {
+                                let _ = tx_close.send(PowerMenuMsg::Close);
+                            }),
+                    ),
             )
     }
 }
@@ -902,85 +880,172 @@ impl ControlCenterView {
 
         cx.spawn(async move |this, cx| {
             while let Some(msg) = msg_rx.recv().await {
-                let _ = this.update(cx, |this, cx| match msg {
+                match msg {
                     ControlCenterMsg::ToggleWifi => {
-                        beskar_services::NetworkHelper::toggle_wifi(this.is_wifi_on);
-                        this.is_wifi_on = !this.is_wifi_on;
-                        if !this.is_wifi_on {
-                            this.wifi_ssid = None;
-                        } else {
-                            let (_, ssid) = beskar_services::NetworkHelper::get_wifi_status();
-                            this.wifi_ssid = ssid;
+                        let is_on = this.update(cx, |t, _| t.is_wifi_on).unwrap_or(true);
+                        let next_state = !is_on;
+                        let _ = this.update(cx, |this, cx| {
+                            this.is_wifi_on = next_state;
+                            if !next_state {
+                                this.wifi_ssid = None;
+                            }
+                            cx.notify();
+                        });
+                        tokio::task::spawn_blocking(move || {
+                            beskar_services::NetworkHelper::toggle_wifi(is_on);
+                        })
+                        .await
+                        .ok();
+                        if next_state {
+                            let (_, ssid) = tokio::task::spawn_blocking(|| {
+                                beskar_services::NetworkHelper::get_wifi_status()
+                            })
+                            .await
+                            .unwrap_or((false, None));
+                            let _ = this.update(cx, |this, cx| {
+                                this.wifi_ssid = ssid;
+                                cx.notify();
+                            });
                         }
-                        cx.notify();
                     }
                     ControlCenterMsg::ToggleBluetooth => {
-                        beskar_services::BluetoothHelper::toggle_bluetooth(this.is_bt_on);
-                        this.is_bt_on = !this.is_bt_on;
-                        cx.notify();
+                        let is_on = this.update(cx, |t, _| t.is_bt_on).unwrap_or(true);
+                        let next_state = !is_on;
+                        let _ = this.update(cx, |this, cx| {
+                            this.is_bt_on = next_state;
+                            cx.notify();
+                        });
+                        tokio::task::spawn_blocking(move || {
+                            beskar_services::BluetoothHelper::toggle_bluetooth(is_on);
+                        })
+                        .await
+                        .ok();
                     }
                     ControlCenterMsg::ChangeVolume(delta) => {
-                        beskar_services::AudioService::set_volume(delta);
-                        let new_vol = (this.volume_percent as i32 + delta).clamp(0, 100) as u8;
-                        this.volume_percent = new_vol;
-                        cx.notify();
+                        let _ = this.update(cx, |this, cx| {
+                            let new_vol = (this.volume_percent as i32 + delta).clamp(0, 100) as u8;
+                            this.volume_percent = new_vol;
+                            this.is_muted = false;
+                            cx.notify();
+                        });
+                        tokio::task::spawn_blocking(move || {
+                            beskar_services::AudioService::set_volume(delta);
+                        })
+                        .await
+                        .ok();
                     }
                     ControlCenterMsg::ToggleMute => {
-                        beskar_services::AudioService::toggle_mute();
-                        this.is_muted = !this.is_muted;
-                        cx.notify();
+                        let _ = this.update(cx, |this, cx| {
+                            this.is_muted = !this.is_muted;
+                            cx.notify();
+                        });
+                        tokio::task::spawn_blocking(|| {
+                            beskar_services::AudioService::toggle_mute();
+                        })
+                        .await
+                        .ok();
                     }
                     ControlCenterMsg::ChangeBrightness(delta) => {
-                        let new_bright =
-                            (this.brightness_percent as i32 + delta).clamp(5, 100) as u8;
-                        beskar_services::BacklightService::set_brightness(new_bright);
-                        this.brightness_percent = new_bright;
-                        cx.notify();
+                        let new_bright = this
+                            .update(cx, |t, _| {
+                                (t.brightness_percent as i32 + delta).clamp(5, 100) as u8
+                            })
+                            .unwrap_or(50);
+                        let _ = this.update(cx, |this, cx| {
+                            this.brightness_percent = new_bright;
+                            cx.notify();
+                        });
+                        tokio::task::spawn_blocking(move || {
+                            beskar_services::BacklightService::set_brightness(new_bright);
+                        })
+                        .await
+                        .ok();
                     }
                     ControlCenterMsg::SetPowerProfile(prof) => {
-                        beskar_services::PowerProfilesService::set_profile(&prof);
-                        this.active_power_profile = prof;
-                        cx.notify();
+                        let prof_clone = prof.clone();
+                        let _ = this.update(cx, |this, cx| {
+                            this.active_power_profile = prof;
+                            cx.notify();
+                        });
+                        tokio::task::spawn_blocking(move || {
+                            beskar_services::PowerProfilesService::set_profile(&prof_clone);
+                        })
+                        .await
+                        .ok();
                     }
                     ControlCenterMsg::ToggleWifiList => {
-                        this.show_wifi_list = !this.show_wifi_list;
-                        if this.show_wifi_list {
-                            this.wifi_networks = beskar_services::NetworkHelper::scan_networks();
+                        let will_show = this
+                            .update(cx, |t, cx| {
+                                t.show_wifi_list = !t.show_wifi_list;
+                                cx.notify();
+                                t.show_wifi_list
+                            })
+                            .unwrap_or(false);
+                        if will_show {
+                            let networks = beskar_services::NetworkHelper::scan_networks_async().await;
+                            let _ = this.update(cx, |this, cx| {
+                                this.wifi_networks = networks;
+                                cx.notify();
+                            });
                         }
-                        cx.notify();
                     }
                     ControlCenterMsg::ToggleBtList => {
-                        this.show_bt_list = !this.show_bt_list;
-                        if this.show_bt_list {
-                            this.bt_devices = beskar_services::BluetoothHelper::list_devices();
+                        let will_show = this
+                            .update(cx, |t, cx| {
+                                t.show_bt_list = !t.show_bt_list;
+                                cx.notify();
+                                t.show_bt_list
+                            })
+                            .unwrap_or(false);
+                        if will_show {
+                            let devices = beskar_services::BluetoothHelper::list_devices_async().await;
+                            let _ = this.update(cx, |this, cx| {
+                                this.bt_devices = devices;
+                                cx.notify();
+                            });
                         }
-                        cx.notify();
                     }
                     ControlCenterMsg::ConnectWifi(ssid) => {
-                        beskar_services::NetworkHelper::connect(&ssid, None);
-                        this.wifi_ssid = Some(ssid);
-                        cx.notify();
+                        let _ = this.update(cx, |this, cx| {
+                            this.wifi_ssid = Some(ssid.clone());
+                            cx.notify();
+                        });
+                        tokio::task::spawn_blocking(move || {
+                            beskar_services::NetworkHelper::connect(&ssid, None);
+                        })
+                        .await
+                        .ok();
                     }
                     ControlCenterMsg::OpenLauncher => {
-                        close_active_overlay(cx);
-                        toggle_launcher(cx);
+                        let _ = this.update(cx, |_, cx| {
+                            close_active_overlay(cx);
+                            toggle_launcher(cx);
+                        });
                     }
                     ControlCenterMsg::OpenClipboard => {
-                        close_active_overlay(cx);
-                        toggle_clipboard(cx);
+                        let _ = this.update(cx, |_, cx| {
+                            close_active_overlay(cx);
+                            toggle_clipboard(cx);
+                        });
                     }
                     ControlCenterMsg::OpenPower => {
-                        close_active_overlay(cx);
-                        toggle_power_menu(cx);
+                        let _ = this.update(cx, |_, cx| {
+                            close_active_overlay(cx);
+                            toggle_power_menu(cx);
+                        });
                     }
                     ControlCenterMsg::OpenSettings => {
-                        close_active_overlay(cx);
-                        toggle_settings(cx);
+                        let _ = this.update(cx, |_, cx| {
+                            close_active_overlay(cx);
+                            toggle_settings(cx);
+                        });
                     }
                     ControlCenterMsg::Close => {
-                        close_active_overlay(cx);
+                        let _ = this.update(cx, |_, cx| {
+                            close_active_overlay(cx);
+                        });
                     }
-                });
+                }
             }
         })
         .detach();
@@ -1029,10 +1094,18 @@ impl Render for ControlCenterView {
         let tx_close = self.msg_tx.clone();
 
         div()
-            .id("control-center-view")
+            .id("control-center-backdrop")
             .size_full()
+            .flex()
+            .justify_end()
+            .pt(px(56.0))
+            .pr(px(16.0))
             .track_focus(&self.focus_handle)
             .key_context("ControlCenter")
+            .on_mouse_down(MouseButton::Left, move |_, window, _cx| {
+                forget_overlay(OverlayKind::ControlCenter);
+                window.remove_window();
+            })
             .on_key_down(cx.listener(|_, event: &KeyDownEvent, window, cx| {
                 if event.keystroke.key == "escape" {
                     forget_overlay(OverlayKind::ControlCenter);
@@ -1041,57 +1114,64 @@ impl Render for ControlCenterView {
                 }
             }))
             .child(
-                ControlCenterWidget::new(self.volume_percent, self.battery_percent)
-                    .muted(self.is_muted)
-                    .charging(self.is_charging)
-                    .brightness(self.brightness_percent)
-                    .power_profile(self.active_power_profile.clone())
-                    .wifi(self.is_wifi_on, self.wifi_ssid.clone())
-                    .bluetooth(self.is_bt_on)
-                    .wifi_networks(self.wifi_networks.clone(), self.show_wifi_list)
-                    .bt_devices(self.bt_devices.clone(), self.show_bt_list)
-                    .on_volume_change(move |delta| {
-                        let _ = tx_vol.send(ControlCenterMsg::ChangeVolume(delta));
+                div()
+                    .w(px(380.0))
+                    .on_mouse_down(MouseButton::Left, |_, _, cx| {
+                        cx.stop_propagation();
                     })
-                    .on_toggle_mute(move || {
-                        let _ = tx_mute.send(ControlCenterMsg::ToggleMute);
-                    })
-                    .on_brightness_change(move |delta| {
-                        let _ = tx_bright.send(ControlCenterMsg::ChangeBrightness(delta));
-                    })
-                    .on_set_power_profile(move |prof| {
-                        let _ = tx_prof.send(ControlCenterMsg::SetPowerProfile(prof));
-                    })
-                    .on_toggle_wifi(move || {
-                        let _ = tx_wifi.send(ControlCenterMsg::ToggleWifi);
-                    })
-                    .on_toggle_bluetooth(move || {
-                        let _ = tx_bt.send(ControlCenterMsg::ToggleBluetooth);
-                    })
-                    .on_toggle_wifi_list(move || {
-                        let _ = tx_wlist.send(ControlCenterMsg::ToggleWifiList);
-                    })
-                    .on_toggle_bt_list(move || {
-                        let _ = tx_blist.send(ControlCenterMsg::ToggleBtList);
-                    })
-                    .on_connect_wifi(move |ssid| {
-                        let _ = tx_conn.send(ControlCenterMsg::ConnectWifi(ssid));
-                    })
-                    .on_open_launcher(move || {
-                        let _ = tx_launcher.send(ControlCenterMsg::OpenLauncher);
-                    })
-                    .on_open_clipboard(move || {
-                        let _ = tx_clipboard.send(ControlCenterMsg::OpenClipboard);
-                    })
-                    .on_open_power(move || {
-                        let _ = tx_power.send(ControlCenterMsg::OpenPower);
-                    })
-                    .on_open_settings(move || {
-                        let _ = tx_settings.send(ControlCenterMsg::OpenSettings);
-                    })
-                    .on_close(move || {
-                        let _ = tx_close.send(ControlCenterMsg::Close);
-                    }),
+                    .child(
+                        ControlCenterWidget::new(self.volume_percent, self.battery_percent)
+                            .muted(self.is_muted)
+                            .charging(self.is_charging)
+                            .brightness(self.brightness_percent)
+                            .power_profile(self.active_power_profile.clone())
+                            .wifi(self.is_wifi_on, self.wifi_ssid.clone())
+                            .bluetooth(self.is_bt_on)
+                            .wifi_networks(self.wifi_networks.clone(), self.show_wifi_list)
+                            .bt_devices(self.bt_devices.clone(), self.show_bt_list)
+                            .on_volume_change(move |delta| {
+                                let _ = tx_vol.send(ControlCenterMsg::ChangeVolume(delta));
+                            })
+                            .on_toggle_mute(move || {
+                                let _ = tx_mute.send(ControlCenterMsg::ToggleMute);
+                            })
+                            .on_brightness_change(move |delta| {
+                                let _ = tx_bright.send(ControlCenterMsg::ChangeBrightness(delta));
+                            })
+                            .on_set_power_profile(move |prof| {
+                                let _ = tx_prof.send(ControlCenterMsg::SetPowerProfile(prof));
+                            })
+                            .on_toggle_wifi(move || {
+                                let _ = tx_wifi.send(ControlCenterMsg::ToggleWifi);
+                            })
+                            .on_toggle_bluetooth(move || {
+                                let _ = tx_bt.send(ControlCenterMsg::ToggleBluetooth);
+                            })
+                            .on_toggle_wifi_list(move || {
+                                let _ = tx_wlist.send(ControlCenterMsg::ToggleWifiList);
+                            })
+                            .on_toggle_bt_list(move || {
+                                let _ = tx_blist.send(ControlCenterMsg::ToggleBtList);
+                            })
+                            .on_connect_wifi(move |ssid| {
+                                let _ = tx_conn.send(ControlCenterMsg::ConnectWifi(ssid));
+                            })
+                            .on_open_launcher(move || {
+                                let _ = tx_launcher.send(ControlCenterMsg::OpenLauncher);
+                            })
+                            .on_open_clipboard(move || {
+                                let _ = tx_clipboard.send(ControlCenterMsg::OpenClipboard);
+                            })
+                            .on_open_power(move || {
+                                let _ = tx_power.send(ControlCenterMsg::OpenPower);
+                            })
+                            .on_open_settings(move || {
+                                let _ = tx_settings.send(ControlCenterMsg::OpenSettings);
+                            })
+                            .on_close(move || {
+                                let _ = tx_close.send(ControlCenterMsg::Close);
+                            }),
+                    ),
             )
     }
 }
@@ -1224,13 +1304,17 @@ impl Render for SettingsView {
         let tx_close = self.msg_tx.clone();
 
         div()
-            .id("settings-view")
+            .id("settings-backdrop")
             .size_full()
             .flex()
             .items_center()
             .justify_center()
             .track_focus(&self.focus_handle)
             .key_context("Settings")
+            .on_mouse_down(MouseButton::Left, move |_, window, _cx| {
+                forget_overlay(OverlayKind::Settings);
+                window.remove_window();
+            })
             .on_key_down(cx.listener(|_, event: &KeyDownEvent, window, cx| {
                 if event.keystroke.key == "escape" {
                     forget_overlay(OverlayKind::Settings);
@@ -1239,31 +1323,37 @@ impl Render for SettingsView {
                 }
             }))
             .child(
-                SettingsWidget::new(self.config.clone())
-                    .on_select_category(move |cat| {
-                        let _ = tx_cat.send(SettingsMsg::SelectCategory(cat));
+                div()
+                    .on_mouse_down(MouseButton::Left, |_, _, cx| {
+                        cx.stop_propagation();
                     })
-                    .on_toggle_notch_mode(move |val| {
-                        let _ = tx_notch.send(SettingsMsg::ToggleNotch(val));
-                    })
-                    .on_toggle_window_title(move |val| {
-                        let _ = tx_win.send(SettingsMsg::ToggleWindowTitle(val));
-                    })
-                    .on_toggle_media_morph(move |val| {
-                        let _ = tx_media.send(SettingsMsg::ToggleMedia(val));
-                    })
-                    .on_select_accent(move |idx| {
-                        let _ = tx_accent.send(SettingsMsg::SelectAccent(idx));
-                    })
-                    .on_select_preset(move |preset| {
-                        let _ = tx_preset.send(SettingsMsg::SelectPreset(preset));
-                    })
-                    .on_test_notification(move || {
-                        let _ = tx_test.send(SettingsMsg::TestNotification);
-                    })
-                    .on_close(move || {
-                        let _ = tx_close.send(SettingsMsg::Close);
-                    }),
+                    .child(
+                        SettingsWidget::new(self.config.clone())
+                            .on_select_category(move |cat| {
+                                let _ = tx_cat.send(SettingsMsg::SelectCategory(cat));
+                            })
+                            .on_toggle_notch_mode(move |val| {
+                                let _ = tx_notch.send(SettingsMsg::ToggleNotch(val));
+                            })
+                            .on_toggle_window_title(move |val| {
+                                let _ = tx_win.send(SettingsMsg::ToggleWindowTitle(val));
+                            })
+                            .on_toggle_media_morph(move |val| {
+                                let _ = tx_media.send(SettingsMsg::ToggleMedia(val));
+                            })
+                            .on_select_accent(move |idx| {
+                                let _ = tx_accent.send(SettingsMsg::SelectAccent(idx));
+                            })
+                            .on_select_preset(move |preset| {
+                                let _ = tx_preset.send(SettingsMsg::SelectPreset(preset));
+                            })
+                            .on_test_notification(move || {
+                                let _ = tx_test.send(SettingsMsg::TestNotification);
+                            })
+                            .on_close(move || {
+                                let _ = tx_close.send(SettingsMsg::Close);
+                            }),
+                    ),
             )
     }
 }
@@ -1597,10 +1687,18 @@ impl Render for ClipboardView {
         let tx_close = self.msg_tx.clone();
 
         div()
-            .id("clipboard-view")
+            .id("clipboard-backdrop")
             .size_full()
+            .flex()
+            .flex_col()
+            .items_center()
+            .pt(px(80.0))
             .track_focus(&self.focus_handle)
             .key_context("Clipboard")
+            .on_mouse_down(MouseButton::Left, move |_, window, _cx| {
+                forget_overlay(OverlayKind::Clipboard);
+                window.remove_window();
+            })
             .on_key_down(cx.listener(move |this, event: &KeyDownEvent, window, cx| {
                 let key = event.keystroke.key.as_str();
                 let mods = &event.keystroke.modifiers;
@@ -1671,27 +1769,34 @@ impl Render for ClipboardView {
                 }
             }))
             .child(
-                ClipboardWidget::new(self.items.clone())
-                    .query(&self.query)
-                    .selected_idx(self.selected_idx)
-                    .on_select(move |idx| {
-                        let _ = tx_sel.send(ClipboardMsg::Select(idx));
+                div()
+                    .w(px(640.0))
+                    .on_mouse_down(MouseButton::Left, |_, _, cx| {
+                        cx.stop_propagation();
                     })
-                    .on_copy(move |id| {
-                        let _ = tx_cp.send(ClipboardMsg::Copy(id));
-                    })
-                    .on_delete(move |line| {
-                        let _ = tx_del.send(ClipboardMsg::Delete(line));
-                    })
-                    .on_clear_all(move || {
-                        let _ = tx_clr.send(ClipboardMsg::ClearAll);
-                    })
-                    .on_clear_query(move || {
-                        let _ = tx_clrq.send(ClipboardMsg::ClearQuery);
-                    })
-                    .on_close(move || {
-                        let _ = tx_close.send(ClipboardMsg::Close);
-                    }),
+                    .child(
+                        ClipboardWidget::new(self.items.clone())
+                            .query(&self.query)
+                            .selected_idx(self.selected_idx)
+                            .on_select(move |idx| {
+                                let _ = tx_sel.send(ClipboardMsg::Select(idx));
+                            })
+                            .on_copy(move |id| {
+                                let _ = tx_cp.send(ClipboardMsg::Copy(id));
+                            })
+                            .on_delete(move |line| {
+                                let _ = tx_del.send(ClipboardMsg::Delete(line));
+                            })
+                            .on_clear_all(move || {
+                                let _ = tx_clr.send(ClipboardMsg::ClearAll);
+                            })
+                            .on_clear_query(move || {
+                                let _ = tx_clrq.send(ClipboardMsg::ClearQuery);
+                            })
+                            .on_close(move || {
+                                let _ = tx_close.send(ClipboardMsg::Close);
+                            }),
+                    ),
             )
     }
 }
@@ -1802,8 +1907,18 @@ impl Render for DashboardView {
         let tx_close = self.msg_tx.clone();
 
         div()
+            .id("dashboard-backdrop")
+            .size_full()
+            .flex()
+            .flex_col()
+            .items_center()
+            .pt(px(60.0))
             .track_focus(&self.focus_handle)
             .key_context("DashboardView")
+            .on_mouse_down(MouseButton::Left, move |_, window, _cx| {
+                forget_overlay(OverlayKind::Dashboard);
+                window.remove_window();
+            })
             .on_key_down(cx.listener(|_this, event: &KeyDownEvent, window, cx| {
                 if event.keystroke.key == "escape" {
                     forget_overlay(OverlayKind::Dashboard);
@@ -1812,22 +1927,28 @@ impl Render for DashboardView {
                 }
             }))
             .child(
-                DashboardWidget::new(self.github_state.clone(), self.updates_state.clone())
-                    .on_refresh_github(move || {
-                        let _ = tx_gh.send(DashboardMsg::RefreshGithub);
+                div()
+                    .on_mouse_down(MouseButton::Left, |_, _, cx| {
+                        cx.stop_propagation();
                     })
-                    .on_refresh_updates(move || {
-                        let _ = tx_up.send(DashboardMsg::RefreshUpdates);
-                    })
-                    .on_run_update(move || {
-                        let _ = tx_run.send(DashboardMsg::RunUpdate);
-                    })
-                    .on_open_profile(move || {
-                        let _ = tx_prof.send(DashboardMsg::OpenProfile);
-                    })
-                    .on_close(move || {
-                        let _ = tx_close.send(DashboardMsg::Close);
-                    }),
+                    .child(
+                        DashboardWidget::new(self.github_state.clone(), self.updates_state.clone())
+                            .on_refresh_github(move || {
+                                let _ = tx_gh.send(DashboardMsg::RefreshGithub);
+                            })
+                            .on_refresh_updates(move || {
+                                let _ = tx_up.send(DashboardMsg::RefreshUpdates);
+                            })
+                            .on_run_update(move || {
+                                let _ = tx_run.send(DashboardMsg::RunUpdate);
+                            })
+                            .on_open_profile(move || {
+                                let _ = tx_prof.send(DashboardMsg::OpenProfile);
+                            })
+                            .on_close(move || {
+                                let _ = tx_close.send(DashboardMsg::Close);
+                            }),
+                    ),
             )
     }
 }
@@ -2014,8 +2135,18 @@ impl Render for MusicPlayerView {
         let tx_close = self.msg_tx.clone();
 
         div()
+            .id("music-player-backdrop")
+            .size_full()
+            .flex()
+            .flex_col()
+            .items_center()
+            .pt(px(60.0))
             .track_focus(&self.focus_handle)
             .key_context("MusicPlayerView")
+            .on_mouse_down(MouseButton::Left, move |_, window, _cx| {
+                forget_overlay(OverlayKind::Music);
+                window.remove_window();
+            })
             .on_key_down(cx.listener(|_this, event: &KeyDownEvent, window, cx| {
                 if event.keystroke.key == "escape" {
                     forget_overlay(OverlayKind::Music);
@@ -2024,34 +2155,40 @@ impl Render for MusicPlayerView {
                 }
             }))
             .child(
-                MusicPlayerWidget::new(self.title.clone(), self.artist.clone(), self.is_playing)
-                    .album(self.album.clone())
-                    .player_name(self.player_name.clone())
-                    .position(self.position_secs, self.duration_secs)
-                    .cava_bars(self.cava_bars.clone())
-                    .loop_mode(self.is_looping)
-                    .shuffle(self.is_shuffling)
-                    .on_play_pause(move || {
-                        let _ = tx_pp.send(MusicMsg::PlayPause);
+                div()
+                    .on_mouse_down(MouseButton::Left, |_, _, cx| {
+                        cx.stop_propagation();
                     })
-                    .on_prev(move || {
-                        let _ = tx_prev.send(MusicMsg::Prev);
-                    })
-                    .on_next(move || {
-                        let _ = tx_next.send(MusicMsg::Next);
-                    })
-                    .on_seek(move |frac| {
-                        let _ = tx_seek.send(MusicMsg::Seek(frac));
-                    })
-                    .on_toggle_loop(move || {
-                        let _ = tx_loop.send(MusicMsg::ToggleLoop);
-                    })
-                    .on_toggle_shuffle(move || {
-                        let _ = tx_shuf.send(MusicMsg::ToggleShuffle);
-                    })
-                    .on_close(move || {
-                        let _ = tx_close.send(MusicMsg::Close);
-                    }),
+                    .child(
+                        MusicPlayerWidget::new(self.title.clone(), self.artist.clone(), self.is_playing)
+                            .album(self.album.clone())
+                            .player_name(self.player_name.clone())
+                            .position(self.position_secs, self.duration_secs)
+                            .cava_bars(self.cava_bars.clone())
+                            .loop_mode(self.is_looping)
+                            .shuffle(self.is_shuffling)
+                            .on_play_pause(move || {
+                                let _ = tx_pp.send(MusicMsg::PlayPause);
+                            })
+                            .on_prev(move || {
+                                let _ = tx_prev.send(MusicMsg::Prev);
+                            })
+                            .on_next(move || {
+                                let _ = tx_next.send(MusicMsg::Next);
+                            })
+                            .on_seek(move |frac| {
+                                let _ = tx_seek.send(MusicMsg::Seek(frac));
+                            })
+                            .on_toggle_loop(move || {
+                                let _ = tx_loop.send(MusicMsg::ToggleLoop);
+                            })
+                            .on_toggle_shuffle(move || {
+                                let _ = tx_shuf.send(MusicMsg::ToggleShuffle);
+                            })
+                            .on_close(move || {
+                                let _ = tx_close.send(MusicMsg::Close);
+                            }),
+                    ),
             )
     }
 }
@@ -2137,8 +2274,18 @@ impl Render for NotificationCenterView {
         let tx_close = self.msg_tx.clone();
 
         div()
+            .id("notification-center-backdrop")
+            .size_full()
+            .flex()
+            .justify_end()
+            .pt(px(56.0))
+            .pr(px(16.0))
             .track_focus(&self.focus_handle)
             .key_context("NotificationCenterView")
+            .on_mouse_down(MouseButton::Left, move |_, window, _cx| {
+                forget_overlay(OverlayKind::NotificationCenter);
+                window.remove_window();
+            })
             .on_key_down(cx.listener(|_this, event: &KeyDownEvent, window, cx| {
                 if event.keystroke.key == "escape" {
                     forget_overlay(OverlayKind::NotificationCenter);
@@ -2147,20 +2294,27 @@ impl Render for NotificationCenterView {
                 }
             }))
             .child(
-                NotificationCenterWidget::new(self.notifications.clone())
-                    .dnd(self.is_dnd)
-                    .on_dismiss(move |id| {
-                        let _ = tx_d.send(NotifCenterMsg::Dismiss(id));
+                div()
+                    .w(px(380.0))
+                    .on_mouse_down(MouseButton::Left, |_, _, cx| {
+                        cx.stop_propagation();
                     })
-                    .on_clear_all(move || {
-                        let _ = tx_c.send(NotifCenterMsg::ClearAll);
-                    })
-                    .on_toggle_dnd(move || {
-                        let _ = tx_dnd.send(NotifCenterMsg::ToggleDnd);
-                    })
-                    .on_close(move || {
-                        let _ = tx_close.send(NotifCenterMsg::Close);
-                    }),
+                    .child(
+                        NotificationCenterWidget::new(self.notifications.clone())
+                            .dnd(self.is_dnd)
+                            .on_dismiss(move |id| {
+                                let _ = tx_d.send(NotifCenterMsg::Dismiss(id));
+                            })
+                            .on_clear_all(move || {
+                                let _ = tx_c.send(NotifCenterMsg::ClearAll);
+                            })
+                            .on_toggle_dnd(move || {
+                                let _ = tx_dnd.send(NotifCenterMsg::ToggleDnd);
+                            })
+                            .on_close(move || {
+                                let _ = tx_close.send(NotifCenterMsg::Close);
+                            }),
+                    ),
             )
     }
 }
@@ -2232,8 +2386,18 @@ impl Render for ScreenCaptureView {
         let tx_close = self.msg_tx.clone();
 
         div()
+            .id("screen-capture-backdrop")
+            .size_full()
+            .flex()
+            .flex_col()
+            .items_center()
+            .pt(px(80.0))
             .track_focus(&self.focus_handle)
             .key_context("ScreenCaptureView")
+            .on_mouse_down(MouseButton::Left, move |_, window, _cx| {
+                forget_overlay(OverlayKind::ScreenCapture);
+                window.remove_window();
+            })
             .on_key_down(cx.listener(|_this, event: &KeyDownEvent, window, cx| {
                 if event.keystroke.key == "escape" {
                     forget_overlay(OverlayKind::ScreenCapture);
@@ -2242,14 +2406,20 @@ impl Render for ScreenCaptureView {
                 }
             }))
             .child(
-                ScreenCaptureWidget::new()
-                    .recording(self.is_recording)
-                    .on_trigger(move |mode| {
-                        let _ = tx_trig.send(ScreenCapMsg::Trigger(mode));
+                div()
+                    .on_mouse_down(MouseButton::Left, |_, _, cx| {
+                        cx.stop_propagation();
                     })
-                    .on_close(move || {
-                        let _ = tx_close.send(ScreenCapMsg::Close);
-                    }),
+                    .child(
+                        ScreenCaptureWidget::new()
+                            .recording(self.is_recording)
+                            .on_trigger(move |mode| {
+                                let _ = tx_trig.send(ScreenCapMsg::Trigger(mode));
+                            })
+                            .on_close(move || {
+                                let _ = tx_close.send(ScreenCapMsg::Close);
+                            }),
+                    ),
             )
     }
 }
@@ -2324,8 +2494,18 @@ impl Render for WallpaperSelectorView {
         let tx_close = self.msg_tx.clone();
 
         div()
+            .id("wallpaper-selector-backdrop")
+            .size_full()
+            .flex()
+            .flex_col()
+            .items_center()
+            .pt(px(60.0))
             .track_focus(&self.focus_handle)
             .key_context("WallpaperSelectorView")
+            .on_mouse_down(MouseButton::Left, move |_, window, _cx| {
+                forget_overlay(OverlayKind::WallpaperSelector);
+                window.remove_window();
+            })
             .on_key_down(cx.listener(|this, event: &KeyDownEvent, window, cx| {
                 if event.keystroke.key == "escape" {
                     if !this.query.is_empty() {
@@ -2339,14 +2519,21 @@ impl Render for WallpaperSelectorView {
                 }
             }))
             .child(
-                WallpaperSelectorWidget::new(self.wallpapers.clone())
-                    .query(&self.query)
-                    .on_select(move |path| {
-                        let _ = tx_sel.send(WallpaperMsg::Select(path));
+                div()
+                    .w(px(720.0))
+                    .on_mouse_down(MouseButton::Left, |_, _, cx| {
+                        cx.stop_propagation();
                     })
-                    .on_close(move || {
-                        let _ = tx_close.send(WallpaperMsg::Close);
-                    }),
+                    .child(
+                        WallpaperSelectorWidget::new(self.wallpapers.clone())
+                            .query(&self.query)
+                            .on_select(move |path| {
+                                let _ = tx_sel.send(WallpaperMsg::Select(path));
+                            })
+                            .on_close(move || {
+                                let _ = tx_close.send(WallpaperMsg::Close);
+                            }),
+                    ),
             )
     }
 }
