@@ -98,6 +98,8 @@ pub struct NotificationItem {
     pub body: String,
     pub icon: String,
     pub urgency: u8,
+    #[serde(default)]
+    pub time_secs: u64,
 }
 
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]

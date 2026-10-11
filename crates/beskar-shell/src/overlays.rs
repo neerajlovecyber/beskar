@@ -5,9 +5,9 @@ use beskar_services::battery::BatteryService;
 use beskar_services::ClipboardEntry;
 
 use beskar_ui::{
-    ClipboardWidget, ControlCenterWidget, LauncherWidget, LockScreenWidget,
-    NotificationToastWidget, PowerAction, PowerMenuWidget, SettingsCategory, SettingsConfig,
-    SettingsWidget,
+    CaptureMode, ClipboardWidget, ControlCenterWidget, DashboardWidget, LauncherWidget, LockScreenWidget,
+    MusicPlayerWidget, NotificationCenterWidget, NotificationToastWidget, PowerAction, PowerMenuWidget,
+    ScreenCaptureWidget, SettingsCategory, SettingsConfig, SettingsWidget, WallpaperItem, WallpaperSelectorWidget,
 };
 use gpui_kit::layer_shell::{
     Anchor as LayerAnchor, KeyboardInteractivity, Layer, LayerShellOptions,
@@ -25,6 +25,11 @@ pub enum OverlayKind {
     LockScreen,
     Settings,
     Clipboard,
+    Dashboard,
+    Music,
+    NotificationCenter,
+    ScreenCapture,
+    WallpaperSelector,
 }
 
 
@@ -265,6 +270,186 @@ pub fn toggle_clipboard(cx: &mut App) {
         let mut guard = ACTIVE_OVERLAY.lock().unwrap();
         *guard = Some((OverlayKind::Clipboard, handle.into()));
         info!("Opened dedicated LayerShell Clipboard overlay window");
+    }
+}
+
+/// Toggle the Developer Dashboard overlay window.
+pub fn toggle_dashboard(cx: &mut App) {
+    if close_active_overlay(cx) == Some(OverlayKind::Dashboard) {
+        return;
+    }
+
+    let options = WindowOptions {
+        titlebar: None,
+        window_bounds: Some(WindowBounds::Windowed(Bounds {
+            origin: point(px(0.), px(0.)),
+            size: Size::new(px(780.), px(560.)),
+        })),
+        app_id: Some("beskar-dashboard".to_string()),
+        window_background: WindowBackgroundAppearance::Transparent,
+        kind: WindowKind::LayerShell(LayerShellOptions {
+            namespace: "beskar-dashboard".to_string(),
+            layer: Layer::Overlay,
+            anchor: LayerAnchor::TOP,
+            exclusive_zone: None,
+            margin: Some((px(50.), px(0.), px(0.), px(0.))),
+            keyboard_interactivity: KeyboardInteractivity::Exclusive,
+            ..Default::default()
+        }),
+        focus: true,
+        ..Default::default()
+    };
+
+    if let Ok(handle) = cx.open_window(options, move |_window, cx| {
+        cx.new(|cx| DashboardView::new(cx))
+    }) {
+        let mut guard = ACTIVE_OVERLAY.lock().unwrap();
+        *guard = Some((OverlayKind::Dashboard, handle.into()));
+        info!("Opened dedicated LayerShell Developer Dashboard overlay window");
+    }
+}
+
+/// Toggle the dedicated Music Player overlay window.
+pub fn toggle_music(cx: &mut App) {
+    if close_active_overlay(cx) == Some(OverlayKind::Music) {
+        return;
+    }
+
+    let options = WindowOptions {
+        titlebar: None,
+        window_bounds: Some(WindowBounds::Windowed(Bounds {
+            origin: point(px(0.), px(0.)),
+            size: Size::new(px(430.), px(220.)),
+        })),
+        app_id: Some("beskar-music".to_string()),
+        window_background: WindowBackgroundAppearance::Transparent,
+        kind: WindowKind::LayerShell(LayerShellOptions {
+            namespace: "beskar-music".to_string(),
+            layer: Layer::Overlay,
+            anchor: LayerAnchor::TOP,
+            exclusive_zone: None,
+            margin: Some((px(50.), px(0.), px(0.), px(0.))),
+            keyboard_interactivity: KeyboardInteractivity::Exclusive,
+            ..Default::default()
+        }),
+        focus: true,
+        ..Default::default()
+    };
+
+    if let Ok(handle) = cx.open_window(options, move |_window, cx| {
+        cx.new(|cx| MusicPlayerView::new(cx))
+    }) {
+        let mut guard = ACTIVE_OVERLAY.lock().unwrap();
+        *guard = Some((OverlayKind::Music, handle.into()));
+        info!("Opened dedicated LayerShell Music Player overlay window");
+    }
+}
+
+/// Toggle the persistent Notification Center drawer.
+pub fn toggle_notification_center(cx: &mut App) {
+    if close_active_overlay(cx) == Some(OverlayKind::NotificationCenter) {
+        return;
+    }
+
+    let options = WindowOptions {
+        titlebar: None,
+        window_bounds: Some(WindowBounds::Windowed(Bounds {
+            origin: point(px(0.), px(0.)),
+            size: Size::new(px(380.), px(520.)),
+        })),
+        app_id: Some("beskar-notifications".to_string()),
+        window_background: WindowBackgroundAppearance::Transparent,
+        kind: WindowKind::LayerShell(LayerShellOptions {
+            namespace: "beskar-notifications".to_string(),
+            layer: Layer::Overlay,
+            anchor: LayerAnchor::TOP | LayerAnchor::RIGHT,
+            exclusive_zone: None,
+            margin: Some((px(50.), px(16.), px(0.), px(0.))),
+            keyboard_interactivity: KeyboardInteractivity::Exclusive,
+            ..Default::default()
+        }),
+        focus: true,
+        ..Default::default()
+    };
+
+    if let Ok(handle) = cx.open_window(options, move |_window, cx| {
+        cx.new(|cx| NotificationCenterView::new(cx))
+    }) {
+        let mut guard = ACTIVE_OVERLAY.lock().unwrap();
+        *guard = Some((OverlayKind::NotificationCenter, handle.into()));
+        info!("Opened dedicated LayerShell Notification Center overlay window");
+    }
+}
+
+/// Toggle the Screen Capture tool modal.
+pub fn toggle_screencapture(cx: &mut App) {
+    if close_active_overlay(cx) == Some(OverlayKind::ScreenCapture) {
+        return;
+    }
+
+    let options = WindowOptions {
+        titlebar: None,
+        window_bounds: Some(WindowBounds::Windowed(Bounds {
+            origin: point(px(0.), px(0.)),
+            size: Size::new(px(460.), px(220.)),
+        })),
+        app_id: Some("beskar-screencapture".to_string()),
+        window_background: WindowBackgroundAppearance::Transparent,
+        kind: WindowKind::LayerShell(LayerShellOptions {
+            namespace: "beskar-screencapture".to_string(),
+            layer: Layer::Overlay,
+            anchor: LayerAnchor::TOP,
+            exclusive_zone: None,
+            margin: Some((px(70.), px(0.), px(0.), px(0.))),
+            keyboard_interactivity: KeyboardInteractivity::Exclusive,
+            ..Default::default()
+        }),
+        focus: true,
+        ..Default::default()
+    };
+
+    if let Ok(handle) = cx.open_window(options, move |_window, cx| {
+        cx.new(|cx| ScreenCaptureView::new(cx))
+    }) {
+        let mut guard = ACTIVE_OVERLAY.lock().unwrap();
+        *guard = Some((OverlayKind::ScreenCapture, handle.into()));
+        info!("Opened dedicated LayerShell Screen Capture overlay window");
+    }
+}
+
+/// Toggle the Wallpaper Selector gallery modal.
+pub fn toggle_wallpaper_selector(cx: &mut App) {
+    if close_active_overlay(cx) == Some(OverlayKind::WallpaperSelector) {
+        return;
+    }
+
+    let options = WindowOptions {
+        titlebar: None,
+        window_bounds: Some(WindowBounds::Windowed(Bounds {
+            origin: point(px(0.), px(0.)),
+            size: Size::new(px(760.), px(240.)),
+        })),
+        app_id: Some("beskar-wallpapers".to_string()),
+        window_background: WindowBackgroundAppearance::Transparent,
+        kind: WindowKind::LayerShell(LayerShellOptions {
+            namespace: "beskar-wallpapers".to_string(),
+            layer: Layer::Overlay,
+            anchor: LayerAnchor::TOP,
+            exclusive_zone: None,
+            margin: Some((px(60.), px(0.), px(0.), px(0.))),
+            keyboard_interactivity: KeyboardInteractivity::Exclusive,
+            ..Default::default()
+        }),
+        focus: true,
+        ..Default::default()
+    };
+
+    if let Ok(handle) = cx.open_window(options, move |_window, cx| {
+        cx.new(|cx| WallpaperSelectorView::new(cx))
+    }) {
+        let mut guard = ACTIVE_OVERLAY.lock().unwrap();
+        *guard = Some((OverlayKind::WallpaperSelector, handle.into()));
+        info!("Opened dedicated LayerShell Wallpaper Selector overlay window");
     }
 }
 
@@ -642,6 +827,11 @@ enum ControlCenterMsg {
     ToggleBluetooth,
     ChangeVolume(i32),
     ToggleMute,
+    ChangeBrightness(i32),
+    SetPowerProfile(String),
+    ToggleWifiList,
+    ToggleBtList,
+    ConnectWifi(String),
     OpenLauncher,
     OpenClipboard,
     OpenPower,
@@ -655,9 +845,15 @@ pub struct ControlCenterView {
     battery_percent: u8,
     is_muted: bool,
     is_charging: bool,
+    brightness_percent: u8,
+    active_power_profile: String,
     is_wifi_on: bool,
     wifi_ssid: Option<String>,
     is_bt_on: bool,
+    wifi_networks: Vec<beskar_services::WifiAccessPoint>,
+    bt_devices: Vec<beskar_services::BluetoothDeviceItem>,
+    show_wifi_list: bool,
+    show_bt_list: bool,
     focus_handle: FocusHandle,
     msg_tx: tokio::sync::mpsc::UnboundedSender<ControlCenterMsg>,
 }
@@ -668,6 +864,8 @@ impl ControlCenterView {
         let bat = BatteryService::new().read_state();
         let (is_wifi_on, wifi_ssid) = beskar_services::NetworkHelper::get_wifi_status();
         let is_bt_on = beskar_services::BluetoothHelper::get_bluetooth_status();
+        let brightness_percent = beskar_services::BacklightService::get_brightness();
+        let active_power_profile = beskar_services::PowerProfilesService::get_profile();
         let focus_handle = cx.focus_handle();
         let (msg_tx, mut msg_rx) = tokio::sync::mpsc::unbounded_channel::<ControlCenterMsg>();
 
@@ -701,6 +899,37 @@ impl ControlCenterView {
                         this.is_muted = !this.is_muted;
                         cx.notify();
                     }
+                    ControlCenterMsg::ChangeBrightness(delta) => {
+                        let new_bright =
+                            (this.brightness_percent as i32 + delta).clamp(5, 100) as u8;
+                        beskar_services::BacklightService::set_brightness(new_bright);
+                        this.brightness_percent = new_bright;
+                        cx.notify();
+                    }
+                    ControlCenterMsg::SetPowerProfile(prof) => {
+                        beskar_services::PowerProfilesService::set_profile(&prof);
+                        this.active_power_profile = prof;
+                        cx.notify();
+                    }
+                    ControlCenterMsg::ToggleWifiList => {
+                        this.show_wifi_list = !this.show_wifi_list;
+                        if this.show_wifi_list {
+                            this.wifi_networks = beskar_services::NetworkHelper::scan_networks();
+                        }
+                        cx.notify();
+                    }
+                    ControlCenterMsg::ToggleBtList => {
+                        this.show_bt_list = !this.show_bt_list;
+                        if this.show_bt_list {
+                            this.bt_devices = beskar_services::BluetoothHelper::list_devices();
+                        }
+                        cx.notify();
+                    }
+                    ControlCenterMsg::ConnectWifi(ssid) => {
+                        beskar_services::NetworkHelper::connect(&ssid, None);
+                        this.wifi_ssid = Some(ssid);
+                        cx.notify();
+                    }
                     ControlCenterMsg::OpenLauncher => {
                         close_active_overlay(cx);
                         toggle_launcher(cx);
@@ -730,9 +959,15 @@ impl ControlCenterView {
             battery_percent: bat.percentage.round() as u8,
             is_muted: aud.is_muted,
             is_charging: bat.is_charging,
+            brightness_percent,
+            active_power_profile,
             is_wifi_on,
             wifi_ssid,
             is_bt_on,
+            wifi_networks: Vec::new(),
+            bt_devices: Vec::new(),
+            show_wifi_list: false,
+            show_bt_list: false,
             focus_handle,
             msg_tx,
         }
@@ -747,8 +982,13 @@ impl Render for ControlCenterView {
 
         let tx_vol = self.msg_tx.clone();
         let tx_mute = self.msg_tx.clone();
+        let tx_bright = self.msg_tx.clone();
+        let tx_prof = self.msg_tx.clone();
         let tx_wifi = self.msg_tx.clone();
         let tx_bt = self.msg_tx.clone();
+        let tx_wlist = self.msg_tx.clone();
+        let tx_blist = self.msg_tx.clone();
+        let tx_conn = self.msg_tx.clone();
         let tx_launcher = self.msg_tx.clone();
         let tx_clipboard = self.msg_tx.clone();
         let tx_power = self.msg_tx.clone();
@@ -771,19 +1011,38 @@ impl Render for ControlCenterView {
                 ControlCenterWidget::new(self.volume_percent, self.battery_percent)
                     .muted(self.is_muted)
                     .charging(self.is_charging)
+                    .brightness(self.brightness_percent)
+                    .power_profile(self.active_power_profile.clone())
                     .wifi(self.is_wifi_on, self.wifi_ssid.clone())
                     .bluetooth(self.is_bt_on)
+                    .wifi_networks(self.wifi_networks.clone(), self.show_wifi_list)
+                    .bt_devices(self.bt_devices.clone(), self.show_bt_list)
                     .on_volume_change(move |delta| {
                         let _ = tx_vol.send(ControlCenterMsg::ChangeVolume(delta));
                     })
                     .on_toggle_mute(move || {
                         let _ = tx_mute.send(ControlCenterMsg::ToggleMute);
                     })
+                    .on_brightness_change(move |delta| {
+                        let _ = tx_bright.send(ControlCenterMsg::ChangeBrightness(delta));
+                    })
+                    .on_set_power_profile(move |prof| {
+                        let _ = tx_prof.send(ControlCenterMsg::SetPowerProfile(prof));
+                    })
                     .on_toggle_wifi(move || {
                         let _ = tx_wifi.send(ControlCenterMsg::ToggleWifi);
                     })
                     .on_toggle_bluetooth(move || {
                         let _ = tx_bt.send(ControlCenterMsg::ToggleBluetooth);
+                    })
+                    .on_toggle_wifi_list(move || {
+                        let _ = tx_wlist.send(ControlCenterMsg::ToggleWifiList);
+                    })
+                    .on_toggle_bt_list(move || {
+                        let _ = tx_blist.send(ControlCenterMsg::ToggleBtList);
+                    })
+                    .on_connect_wifi(move |ssid| {
+                        let _ = tx_conn.send(ControlCenterMsg::ConnectWifi(ssid));
                     })
                     .on_open_launcher(move || {
                         let _ = tx_launcher.send(ControlCenterMsg::OpenLauncher);
@@ -1393,6 +1652,631 @@ impl Render for ClipboardView {
                     })
                     .on_close(move || {
                         let _ = tx_close.send(ClipboardMsg::Close);
+                    }),
+            )
+    }
+}
+
+// ============================================================================
+// Developer Dashboard View
+// ============================================================================
+
+#[derive(Debug, Clone)]
+enum DashboardMsg {
+    RefreshGithub,
+    RefreshUpdates,
+    RunUpdate,
+    OpenProfile,
+    Close,
+}
+
+pub struct DashboardView {
+    github_state: beskar_services::GithubState,
+    updates_state: beskar_services::SystemUpdatesState,
+    focus_handle: FocusHandle,
+    msg_tx: tokio::sync::mpsc::UnboundedSender<DashboardMsg>,
+}
+
+impl DashboardView {
+    pub fn new(cx: &mut Context<Self>) -> Self {
+        let focus_handle = cx.focus_handle();
+        let (msg_tx, mut msg_rx) = tokio::sync::mpsc::unbounded_channel::<DashboardMsg>();
+
+        let user = std::env::var("USER").unwrap_or_else(|_| "developer".to_string());
+        let github_state = beskar_services::GithubService::get_or_load(&user);
+        let updates_state = beskar_services::UpdateService::cached();
+
+        cx.spawn(async move |this, cx| {
+            while let Some(msg) = msg_rx.recv().await {
+                match msg {
+                    DashboardMsg::RefreshGithub => {
+                        let user_clone = user.clone();
+                        let state = cx
+                            .background_executor()
+                            .spawn(async move {
+                                beskar_services::GithubService::fetch_github_profile_and_contributions(
+                                    &user_clone,
+                                )
+                                .await
+                            })
+                            .await;
+                        let _ = this.update(cx, |this, cx| {
+                            this.github_state = state;
+                            cx.notify();
+                        });
+                    }
+                    DashboardMsg::RefreshUpdates => {
+                        let state = cx
+                            .background_executor()
+                            .spawn(async move {
+                                beskar_services::UpdateService::check_system_updates().await
+                            })
+                            .await;
+                        let _ = this.update(cx, |this, cx| {
+                            this.updates_state = state;
+                            cx.notify();
+                        });
+                    }
+                    DashboardMsg::RunUpdate => {
+                        cx.background_executor()
+                            .spawn(async move {
+                                beskar_services::UpdateService::run_system_update();
+                            })
+                            .detach();
+                    }
+                    DashboardMsg::OpenProfile => {
+                        let _ = std::process::Command::new("xdg-open")
+                            .arg("https://github.com")
+                            .spawn();
+                    }
+                    DashboardMsg::Close => {
+                        let _ = this.update(cx, |_, cx| {
+                            close_active_overlay(cx);
+                        });
+                    }
+                }
+            }
+        })
+        .detach();
+
+        Self {
+            github_state,
+            updates_state,
+            focus_handle,
+            msg_tx,
+        }
+    }
+}
+
+impl Render for DashboardView {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let tx_gh = self.msg_tx.clone();
+        let tx_up = self.msg_tx.clone();
+        let tx_run = self.msg_tx.clone();
+        let tx_prof = self.msg_tx.clone();
+        let tx_close = self.msg_tx.clone();
+
+        div()
+            .track_focus(&self.focus_handle)
+            .key_context("DashboardView")
+            .on_key_down(cx.listener(|_this, event: &KeyDownEvent, window, cx| {
+                if event.keystroke.key == "escape" {
+                    forget_overlay(OverlayKind::Dashboard);
+                    window.remove_window();
+                    cx.stop_propagation();
+                }
+            }))
+            .child(
+                DashboardWidget::new(self.github_state.clone(), self.updates_state.clone())
+                    .on_refresh_github(move || {
+                        let _ = tx_gh.send(DashboardMsg::RefreshGithub);
+                    })
+                    .on_refresh_updates(move || {
+                        let _ = tx_up.send(DashboardMsg::RefreshUpdates);
+                    })
+                    .on_run_update(move || {
+                        let _ = tx_run.send(DashboardMsg::RunUpdate);
+                    })
+                    .on_open_profile(move || {
+                        let _ = tx_prof.send(DashboardMsg::OpenProfile);
+                    })
+                    .on_close(move || {
+                        let _ = tx_close.send(DashboardMsg::Close);
+                    }),
+            )
+    }
+}
+
+// ============================================================================
+// Dedicated Music Player View
+// ============================================================================
+
+#[derive(Debug, Clone)]
+enum MusicMsg {
+    PlayPause,
+    Prev,
+    Next,
+    Seek(f32),
+    ToggleLoop,
+    ToggleShuffle,
+    Close,
+}
+
+pub struct MusicPlayerView {
+    title: String,
+    artist: String,
+    album: Option<String>,
+    player_name: String,
+    is_playing: bool,
+    position_secs: u32,
+    duration_secs: u32,
+    cava_bars: Vec<u8>,
+    is_looping: bool,
+    is_shuffling: bool,
+    focus_handle: FocusHandle,
+    msg_tx: tokio::sync::mpsc::UnboundedSender<MusicMsg>,
+}
+
+impl MusicPlayerView {
+    pub fn new(cx: &mut Context<Self>) -> Self {
+        let focus_handle = cx.focus_handle();
+        let (msg_tx, mut msg_rx) = tokio::sync::mpsc::unbounded_channel::<MusicMsg>();
+
+        let media = beskar_services::MprisService::read_state();
+        let title = media
+            .as_ref()
+            .and_then(|m| m.title.clone())
+            .unwrap_or_else(|| "No Media Playing".to_string());
+        let artist = media
+            .as_ref()
+            .and_then(|m| m.artist.clone())
+            .unwrap_or_else(|| "Idle Audio Service".to_string());
+        let album = media.as_ref().and_then(|m| m.album.clone());
+        let player_name = media
+            .as_ref()
+            .map(|m| m.player_name.clone())
+            .unwrap_or_else(|| "MPRIS".to_string());
+        let is_playing = media.as_ref().map(|m| m.is_playing).unwrap_or(false);
+        let duration_secs = media
+            .as_ref()
+            .map(|m| (m.duration_ms / 1000) as u32)
+            .unwrap_or(215);
+        let position_secs = media
+            .as_ref()
+            .map(|m| (m.position_ms / 1000) as u32)
+            .unwrap_or(45);
+
+        // Responsive spectrum bars animation loop
+        cx.spawn(async move |this, cx| {
+            let mut tick: u32 = 0;
+            loop {
+                tokio::time::sleep(tokio::time::Duration::from_millis(80)).await;
+                tick = tick.wrapping_add(1);
+
+                let polled_media = if tick % 12 == 0 {
+                    beskar_services::MprisService::read_state()
+                } else {
+                    None
+                };
+
+                let generated_bars: Vec<u8> = if is_playing
+                    || polled_media.as_ref().is_some_and(|m| m.is_playing)
+                {
+                    (0..32)
+                        .map(|i| {
+                            let phase = (tick as f32 * 0.18 + i as f32 * 0.35).sin().abs();
+                            let harmonic = (tick as f32 * 0.28 + i as f32 * 0.55).cos().abs();
+                            ((phase * 50.0 + harmonic * 40.0 + 8.0).min(99.0)) as u8
+                        })
+                        .collect()
+                } else {
+                    (0..32).map(|_| 4).collect()
+                };
+
+                let res = this.update(cx, |this, cx| {
+                    if let Some(ref m) = polled_media {
+                        this.title = m
+                            .title
+                            .clone()
+                            .unwrap_or_else(|| "No Media Playing".to_string());
+                        this.artist = m
+                            .artist
+                            .clone()
+                            .unwrap_or_else(|| "Idle Audio Service".to_string());
+                        this.player_name = m.player_name.clone();
+                        this.is_playing = m.is_playing;
+                    }
+                    this.cava_bars = generated_bars;
+                    cx.notify();
+                });
+                if res.is_err() {
+                    break;
+                }
+            }
+        })
+        .detach();
+
+        cx.spawn(async move |this, cx| {
+            while let Some(msg) = msg_rx.recv().await {
+                match msg {
+                    MusicMsg::PlayPause => {
+                        beskar_services::MprisService::play_pause();
+                    }
+                    MusicMsg::Prev => {
+                        beskar_services::MprisService::previous();
+                    }
+                    MusicMsg::Next => {
+                        beskar_services::MprisService::next();
+                    }
+                    MusicMsg::Seek(fraction) => {
+                        let _ = std::process::Command::new("playerctl")
+                            .args(["position", &format!("{:.1}", fraction * 200.0)])
+                            .spawn();
+                    }
+                    MusicMsg::ToggleLoop => {
+                        let _ = this.update(cx, |this, cx| {
+                            this.is_looping = !this.is_looping;
+                            cx.notify();
+                        });
+                    }
+                    MusicMsg::ToggleShuffle => {
+                        let _ = this.update(cx, |this, cx| {
+                            this.is_shuffling = !this.is_shuffling;
+                            cx.notify();
+                        });
+                    }
+                    MusicMsg::Close => {
+                        let _ = this.update(cx, |_, cx| {
+                            close_active_overlay(cx);
+                        });
+                    }
+                }
+            }
+        })
+        .detach();
+
+        Self {
+            title,
+            artist,
+            album,
+            player_name,
+            is_playing,
+            position_secs,
+            duration_secs,
+            cava_bars: (0..32).map(|_| 6).collect(),
+            is_looping: false,
+            is_shuffling: false,
+            focus_handle,
+            msg_tx,
+        }
+    }
+}
+
+impl Render for MusicPlayerView {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let tx_pp = self.msg_tx.clone();
+        let tx_prev = self.msg_tx.clone();
+        let tx_next = self.msg_tx.clone();
+        let tx_seek = self.msg_tx.clone();
+        let tx_loop = self.msg_tx.clone();
+        let tx_shuf = self.msg_tx.clone();
+        let tx_close = self.msg_tx.clone();
+
+        div()
+            .track_focus(&self.focus_handle)
+            .key_context("MusicPlayerView")
+            .on_key_down(cx.listener(|_this, event: &KeyDownEvent, window, cx| {
+                if event.keystroke.key == "escape" {
+                    forget_overlay(OverlayKind::Music);
+                    window.remove_window();
+                    cx.stop_propagation();
+                }
+            }))
+            .child(
+                MusicPlayerWidget::new(self.title.clone(), self.artist.clone(), self.is_playing)
+                    .album(self.album.clone())
+                    .player_name(self.player_name.clone())
+                    .position(self.position_secs, self.duration_secs)
+                    .cava_bars(self.cava_bars.clone())
+                    .loop_mode(self.is_looping)
+                    .shuffle(self.is_shuffling)
+                    .on_play_pause(move || {
+                        let _ = tx_pp.send(MusicMsg::PlayPause);
+                    })
+                    .on_prev(move || {
+                        let _ = tx_prev.send(MusicMsg::Prev);
+                    })
+                    .on_next(move || {
+                        let _ = tx_next.send(MusicMsg::Next);
+                    })
+                    .on_seek(move |frac| {
+                        let _ = tx_seek.send(MusicMsg::Seek(frac));
+                    })
+                    .on_toggle_loop(move || {
+                        let _ = tx_loop.send(MusicMsg::ToggleLoop);
+                    })
+                    .on_toggle_shuffle(move || {
+                        let _ = tx_shuf.send(MusicMsg::ToggleShuffle);
+                    })
+                    .on_close(move || {
+                        let _ = tx_close.send(MusicMsg::Close);
+                    }),
+            )
+    }
+}
+
+// ============================================================================
+// Notification Center View
+// ============================================================================
+
+#[derive(Debug, Clone)]
+enum NotifCenterMsg {
+    Dismiss(u32),
+    ClearAll,
+    ToggleDnd,
+    Close,
+}
+
+pub struct NotificationCenterView {
+    notifications: Vec<NotificationItem>,
+    is_dnd: bool,
+    focus_handle: FocusHandle,
+    msg_tx: tokio::sync::mpsc::UnboundedSender<NotifCenterMsg>,
+}
+
+impl NotificationCenterView {
+    pub fn new(cx: &mut Context<Self>) -> Self {
+        let focus_handle = cx.focus_handle();
+        let (msg_tx, mut msg_rx) = tokio::sync::mpsc::unbounded_channel::<NotifCenterMsg>();
+        let notifications = beskar_services::notifications::get_notifications();
+
+        cx.spawn(async move |this, cx| {
+            while let Some(msg) = msg_rx.recv().await {
+                match msg {
+                    NotifCenterMsg::Dismiss(id) => {
+                        beskar_services::notifications::dismiss(id);
+                        let _ = this.update(cx, |this, cx| {
+                            this.notifications.retain(|n| n.id != id);
+                            cx.notify();
+                        });
+                    }
+                    NotifCenterMsg::ClearAll => {
+                        beskar_services::notifications::clear_all();
+                        let _ = this.update(cx, |this, cx| {
+                            this.notifications.clear();
+                            cx.notify();
+                        });
+                    }
+                    NotifCenterMsg::ToggleDnd => {
+                        let _ = this.update(cx, |this, cx| {
+                            this.is_dnd = !this.is_dnd;
+                            cx.notify();
+                        });
+                    }
+                    NotifCenterMsg::Close => {
+                        let _ = this.update(cx, |_, cx| {
+                            close_active_overlay(cx);
+                        });
+                    }
+                }
+            }
+        })
+        .detach();
+
+        Self {
+            notifications,
+            is_dnd: false,
+            focus_handle,
+            msg_tx,
+        }
+    }
+}
+
+impl Render for NotificationCenterView {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let tx_d = self.msg_tx.clone();
+        let tx_c = self.msg_tx.clone();
+        let tx_dnd = self.msg_tx.clone();
+        let tx_close = self.msg_tx.clone();
+
+        div()
+            .track_focus(&self.focus_handle)
+            .key_context("NotificationCenterView")
+            .on_key_down(cx.listener(|_this, event: &KeyDownEvent, window, cx| {
+                if event.keystroke.key == "escape" {
+                    forget_overlay(OverlayKind::NotificationCenter);
+                    window.remove_window();
+                    cx.stop_propagation();
+                }
+            }))
+            .child(
+                NotificationCenterWidget::new(self.notifications.clone())
+                    .dnd(self.is_dnd)
+                    .on_dismiss(move |id| {
+                        let _ = tx_d.send(NotifCenterMsg::Dismiss(id));
+                    })
+                    .on_clear_all(move || {
+                        let _ = tx_c.send(NotifCenterMsg::ClearAll);
+                    })
+                    .on_toggle_dnd(move || {
+                        let _ = tx_dnd.send(NotifCenterMsg::ToggleDnd);
+                    })
+                    .on_close(move || {
+                        let _ = tx_close.send(NotifCenterMsg::Close);
+                    }),
+            )
+    }
+}
+
+// ============================================================================
+// Screen Capture View
+// ============================================================================
+
+#[derive(Debug, Clone)]
+enum ScreenCapMsg {
+    Trigger(CaptureMode),
+    Close,
+}
+
+pub struct ScreenCaptureView {
+    is_recording: bool,
+    focus_handle: FocusHandle,
+    msg_tx: tokio::sync::mpsc::UnboundedSender<ScreenCapMsg>,
+}
+
+impl ScreenCaptureView {
+    pub fn new(cx: &mut Context<Self>) -> Self {
+        let focus_handle = cx.focus_handle();
+        let check = std::process::Command::new("pidof")
+            .arg("wf-recorder")
+            .output();
+        let is_recording = check.map(|o| o.status.success()).unwrap_or(false);
+        let (msg_tx, mut msg_rx) = tokio::sync::mpsc::unbounded_channel::<ScreenCapMsg>();
+
+        cx.spawn(async move |_this, cx| {
+            while let Some(msg) = msg_rx.recv().await {
+                match msg {
+                    ScreenCapMsg::Trigger(mode) => {
+                        let _ = cx.update(|cx| {
+                            close_active_overlay(cx);
+                        });
+                        std::thread::spawn(move || {
+                            std::thread::sleep(std::time::Duration::from_millis(200));
+                            mode.execute();
+                        });
+                    }
+                    ScreenCapMsg::Close => {
+                        let _ = cx.update(|cx| {
+                            close_active_overlay(cx);
+                        });
+                    }
+                }
+            }
+        })
+        .detach();
+
+        Self {
+            is_recording,
+            focus_handle,
+            msg_tx,
+        }
+    }
+}
+
+impl Render for ScreenCaptureView {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let tx_trig = self.msg_tx.clone();
+        let tx_close = self.msg_tx.clone();
+
+        div()
+            .track_focus(&self.focus_handle)
+            .key_context("ScreenCaptureView")
+            .on_key_down(cx.listener(|_this, event: &KeyDownEvent, window, cx| {
+                if event.keystroke.key == "escape" {
+                    forget_overlay(OverlayKind::ScreenCapture);
+                    window.remove_window();
+                    cx.stop_propagation();
+                }
+            }))
+            .child(
+                ScreenCaptureWidget::new()
+                    .recording(self.is_recording)
+                    .on_trigger(move |mode| {
+                        let _ = tx_trig.send(ScreenCapMsg::Trigger(mode));
+                    })
+                    .on_close(move || {
+                        let _ = tx_close.send(ScreenCapMsg::Close);
+                    }),
+            )
+    }
+}
+
+// ============================================================================
+// Wallpaper Selector View
+// ============================================================================
+
+#[derive(Debug, Clone)]
+enum WallpaperMsg {
+    Select(std::path::PathBuf),
+    Close,
+}
+
+pub struct WallpaperSelectorView {
+    wallpapers: Vec<WallpaperItem>,
+    query: String,
+    focus_handle: FocusHandle,
+    msg_tx: tokio::sync::mpsc::UnboundedSender<WallpaperMsg>,
+}
+
+impl WallpaperSelectorView {
+    pub fn new(cx: &mut Context<Self>) -> Self {
+        let focus_handle = cx.focus_handle();
+        let wallpapers = WallpaperSelectorWidget::discover_wallpapers();
+        let (msg_tx, mut msg_rx) = tokio::sync::mpsc::unbounded_channel::<WallpaperMsg>();
+
+        cx.spawn(async move |this, cx| {
+            while let Some(msg) = msg_rx.recv().await {
+                match msg {
+                    WallpaperMsg::Select(path) => {
+                        let path_str = path.to_string_lossy().to_string();
+                        let _ = std::process::Command::new("swww")
+                            .args(["img", &path_str, "--transition-type", "wipe"])
+                            .spawn();
+                        let _ = std::process::Command::new("feh")
+                            .args(["--bg-fill", &path_str])
+                            .spawn();
+
+                        let _ = this.update(cx, |_, cx| {
+                            close_active_overlay(cx);
+                        });
+                    }
+                    WallpaperMsg::Close => {
+                        let _ = this.update(cx, |_, cx| {
+                            close_active_overlay(cx);
+                        });
+                    }
+                }
+            }
+        })
+        .detach();
+
+        Self {
+            wallpapers,
+            query: String::new(),
+            focus_handle,
+            msg_tx,
+        }
+    }
+}
+
+impl Render for WallpaperSelectorView {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let tx_sel = self.msg_tx.clone();
+        let tx_close = self.msg_tx.clone();
+
+        div()
+            .track_focus(&self.focus_handle)
+            .key_context("WallpaperSelectorView")
+            .on_key_down(cx.listener(|this, event: &KeyDownEvent, window, cx| {
+                if event.keystroke.key == "escape" {
+                    if !this.query.is_empty() {
+                        this.query.clear();
+                        cx.notify();
+                    } else {
+                        forget_overlay(OverlayKind::WallpaperSelector);
+                        window.remove_window();
+                    }
+                    cx.stop_propagation();
+                }
+            }))
+            .child(
+                WallpaperSelectorWidget::new(self.wallpapers.clone())
+                    .query(&self.query)
+                    .on_select(move |path| {
+                        let _ = tx_sel.send(WallpaperMsg::Select(path));
+                    })
+                    .on_close(move || {
+                        let _ = tx_close.send(WallpaperMsg::Close);
                     }),
             )
     }

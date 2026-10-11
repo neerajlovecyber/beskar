@@ -162,6 +162,7 @@ impl SystemHub {
                             body: find_str("body"),
                             icon: find_str("icon"),
                             urgency: find_num("urgency") as u8,
+                            time_secs: find_num("time") as u64,
                         });
                     }
                 }

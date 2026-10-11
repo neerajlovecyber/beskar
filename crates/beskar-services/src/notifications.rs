@@ -414,3 +414,42 @@ pub fn send_test(summary: &str, body: &str) {
             .spawn();
     }
 }
+
+/// Retrieves all current notifications and history items.
+pub fn get_notifications() -> Vec<beskar_core::models::NotificationItem> {
+    if let Some(hub) = HUB.get() {
+        let e = hub.state.lock().unwrap();
+        let mut list = Vec::new();
+        for n in e.notifications.iter().rev() {
+            list.push(beskar_core::models::NotificationItem {
+                id: n.id,
+                app_name: n.app.clone(),
+                summary: n.title.clone(),
+                body: n.body.clone(),
+                icon: n.icon.clone(),
+                urgency: n.urgency,
+                time_secs: n.time,
+            });
+        }
+        for n in e.history.iter().rev() {
+            list.push(beskar_core::models::NotificationItem {
+                id: n.id,
+                app_name: n.app.clone(),
+                summary: n.title.clone(),
+                body: n.body.clone(),
+                icon: n.icon.clone(),
+                urgency: n.urgency,
+                time_secs: n.time,
+            });
+        }
+        list
+    } else {
+        Vec::new()
+    }
+}
+
+/// Clears both active and historical notifications.
+pub fn clear_all() {
+    clear();
+    let _ = command("notifications.clear_history", &[]);
+}

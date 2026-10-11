@@ -14,19 +14,21 @@ use gpui_kit::*;
 use tracing::info;
 use tracing_subscriber::EnvFilter;
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 enum BarAction {
     ToggleControlCenter,
     ToggleLauncher,
     TogglePowerMenu,
-    #[allow(dead_code)]
     ToggleSettings,
     ToggleLockScreen,
-    #[allow(dead_code)]
     ToggleClipboard,
+    ToggleDashboard,
+    ToggleMusic,
+    ToggleNotificationCenter,
+    ToggleScreenCapture,
+    ToggleWallpaperSelector,
 }
-
-
 
 struct DesktopBarView {
     workspaces: Vec<WorkspaceInfo>,
@@ -39,6 +41,7 @@ struct DesktopBarView {
     volume_percent: u8,
     is_muted: bool,
     media: Option<(String, String, bool)>,
+    cava_bands: Option<[u8; 4]>,
     island_spring: beskar_ui::SpringValue,
     tray_items: Vec<beskar_core::models::TrayItem>,
     notifications: Vec<NotificationItem>,
@@ -195,14 +198,53 @@ impl DesktopBarView {
                         BarAction::ToggleClipboard => {
                             overlays::toggle_clipboard(cx);
                         }
-
+                        BarAction::ToggleDashboard => {
+                            overlays::toggle_dashboard(cx);
+                        }
+                        BarAction::ToggleMusic => {
+                            overlays::toggle_music(cx);
+                        }
+                        BarAction::ToggleNotificationCenter => {
+                            overlays::toggle_notification_center(cx);
+                        }
+                        BarAction::ToggleScreenCapture => {
+                            overlays::toggle_screencapture(cx);
+                        }
+                        BarAction::ToggleWallpaperSelector => {
+                            overlays::toggle_wallpaper_selector(cx);
+                        }
                     }
                 });
                 if res.is_err() {
                     break;
                 }
             }
+        })
+        .detach();
 
+        // 5. CAVA spectrum audio equalizer loop (4 bands for Dynamic Center island)
+        cx.spawn(async move |this, cx| {
+            let mut tick: u32 = 0;
+            loop {
+                tokio::time::sleep(tokio::time::Duration::from_millis(60)).await;
+                tick = tick.wrapping_add(1);
+                let res = this.update(cx, |this, cx| {
+                    if this.media.as_ref().is_some_and(|m| m.2) {
+                        let b0 = (((tick as f32 * 0.20).sin().abs() * 70.0) + 20.0) as u8;
+                        let b1 = (((tick as f32 * 0.28).cos().abs() * 80.0) + 15.0) as u8;
+                        let b2 = (((tick as f32 * 0.35).sin().abs() * 90.0) + 25.0) as u8;
+                        let b3 = (((tick as f32 * 0.22).cos().abs() * 60.0) + 10.0) as u8;
+                        this.cava_bands = Some([b0, b1, b2, b3]);
+                        cx.notify();
+                    } else if this.cava_bands.is_some() {
+                        this.cava_bands = None;
+                        cx.notify();
+                    }
+                });
+                if res.is_err() {
+                    break;
+                }
+            }
         })
         .detach();
 
@@ -275,6 +317,7 @@ impl DesktopBarView {
             volume_percent: (aud.volume * 100.0).round() as u8,
             is_muted: aud.is_muted,
             media: initial_media,
+            cava_bands: None,
             island_spring,
             tray_items: Vec::new(),
             notifications: Vec::new(),
@@ -321,7 +364,30 @@ impl Render for DesktopBarView {
             let _ = atx_cc.send(BarAction::ToggleControlCenter);
         });
 
-        let on_clock_click = on_control_center_click.clone();
+        let atx_notif = self.action_tx.clone();
+        let on_clock_click = Arc::new(move || {
+            let _ = atx_notif.send(BarAction::ToggleNotificationCenter);
+        });
+
+        let atx_music = self.action_tx.clone();
+        let on_music_click = Arc::new(move || {
+            let _ = atx_music.send(BarAction::ToggleMusic);
+        });
+
+        let atx_dash = self.action_tx.clone();
+        let on_dashboard_click = Arc::new(move || {
+            let _ = atx_dash.send(BarAction::ToggleDashboard);
+        });
+
+        let atx_cap = self.action_tx.clone();
+        let on_capture_click = Arc::new(move || {
+            let _ = atx_cap.send(BarAction::ToggleScreenCapture);
+        });
+
+        let atx_wall = self.action_tx.clone();
+        let on_wallpaper_click = Arc::new(move || {
+            let _ = atx_wall.send(BarAction::ToggleWallpaperSelector);
+        });
 
         let atx_l = self.action_tx.clone();
         let on_launcher_click = Arc::new(move || {
@@ -353,6 +419,7 @@ impl Render for DesktopBarView {
                 self.battery_percent,
                 self.is_charging,
                 Some(self.island_spring.current),
+                self.cava_bands,
                 self.tray_items.clone(),
                 Some(on_select_ws),
                 Some(on_scroll_ws),
@@ -363,6 +430,10 @@ impl Render for DesktopBarView {
                 Some(on_power_click),
                 Some(on_launcher_click),
                 Some(on_clock_click),
+                Some(on_dashboard_click),
+                Some(on_music_click),
+                Some(on_capture_click),
+                Some(on_wallpaper_click),
             ))
     }
 }

@@ -26,6 +26,8 @@ pub struct VitalsWidget {
     on_volume_scroll: Option<Arc<dyn Fn(i32) + Send + Sync>>,
     on_power_click: Option<Arc<dyn Fn() + Send + Sync>>,
     on_control_center_click: Option<Arc<dyn Fn() + Send + Sync>>,
+    on_capture_click: Option<Arc<dyn Fn() + Send + Sync>>,
+    on_wallpaper_click: Option<Arc<dyn Fn() + Send + Sync>>,
 }
 
 impl VitalsWidget {
@@ -43,6 +45,8 @@ impl VitalsWidget {
             on_volume_scroll: None,
             on_power_click: None,
             on_control_center_click: None,
+            on_capture_click: None,
+            on_wallpaper_click: None,
         }
     }
 
@@ -89,6 +93,16 @@ impl VitalsWidget {
 
     pub fn on_control_center_click(mut self, handler: impl Fn() + Send + Sync + 'static) -> Self {
         self.on_control_center_click = Some(Arc::new(handler));
+        self
+    }
+
+    pub fn on_capture_click(mut self, handler: impl Fn() + Send + Sync + 'static) -> Self {
+        self.on_capture_click = Some(Arc::new(handler));
+        self
+    }
+
+    pub fn on_wallpaper_click(mut self, handler: impl Fn() + Send + Sync + 'static) -> Self {
+        self.on_wallpaper_click = Some(Arc::new(handler));
         self
     }
 }
@@ -213,6 +227,56 @@ impl RenderOnce for VitalsWidget {
                     })
                     .child(
                         Icon::new(IconName::SlidersHorizontal)
+                            .size(px(14.0))
+                            .text_color(hsla(0.0, 0.0, 0.80, 1.0)),
+                    ),
+            )
+            // Screen Capture quick trigger
+            .child(
+                div()
+                    .w(px(26.0))
+                    .h(px(24.0))
+                    .rounded_md()
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .text_color(hsla(0.0, 0.0, 0.80, 1.0))
+                    .hover(|style| {
+                        style
+                            .bg(beskar_theme::Theme::bg_secondary())
+                            .text_color(beskar_theme::Theme::accent())
+                            .cursor_pointer()
+                    })
+                    .when_some(self.on_capture_click, |el, cb| {
+                        el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
+                    })
+                    .child(
+                        Icon::new(IconName::Camera)
+                            .size(px(14.0))
+                            .text_color(hsla(0.0, 0.0, 0.80, 1.0)),
+                    ),
+            )
+            // Wallpaper Gallery quick trigger
+            .child(
+                div()
+                    .w(px(26.0))
+                    .h(px(24.0))
+                    .rounded_md()
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .text_color(hsla(0.0, 0.0, 0.80, 1.0))
+                    .hover(|style| {
+                        style
+                            .bg(beskar_theme::Theme::bg_secondary())
+                            .text_color(beskar_theme::Theme::accent())
+                            .cursor_pointer()
+                    })
+                    .when_some(self.on_wallpaper_click, |el, cb| {
+                        el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
+                    })
+                    .child(
+                        Icon::new(IconName::Image)
                             .size(px(14.0))
                             .text_color(hsla(0.0, 0.0, 0.80, 1.0)),
                     ),

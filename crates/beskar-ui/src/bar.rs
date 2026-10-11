@@ -106,6 +106,7 @@ impl BeskarBar {
         battery_percent: u8,
         is_charging: bool,
         animated_center_width: Option<f32>,
+        cava_bands: Option<[u8; 4]>,
         tray_items: Vec<beskar_core::models::TrayItem>,
         on_select_ws: Option<Arc<dyn Fn(u64) + Send + Sync>>,
         on_scroll_ws: Option<Arc<dyn Fn(i32) + Send + Sync>>,
@@ -116,6 +117,10 @@ impl BeskarBar {
         on_power_click: Option<Arc<dyn Fn() + Send + Sync>>,
         on_launcher_click: Option<Arc<dyn Fn() + Send + Sync>>,
         on_clock_click: Option<Arc<dyn Fn() + Send + Sync>>,
+        on_dashboard_click: Option<Arc<dyn Fn() + Send + Sync>>,
+        on_music_click: Option<Arc<dyn Fn() + Send + Sync>>,
+        on_capture_click: Option<Arc<dyn Fn() + Send + Sync>>,
+        on_wallpaper_click: Option<Arc<dyn Fn() + Send + Sync>>,
     ) -> Self {
         use crate::pill::IslandPill;
         use crate::widgets::{DynamicCenterWidget, VitalsWidget, WorkspacesWidget};
@@ -129,6 +134,7 @@ impl BeskarBar {
         }
 
         let on_star = on_launcher_click.clone();
+        let on_dash = on_dashboard_click.clone();
         let star_badge = div()
             .flex()
             .items_center()
@@ -147,6 +153,11 @@ impl BeskarBar {
             })
             .on_mouse_down(MouseButton::Left, move |_, _, _| {
                 if let Some(handler) = on_star.as_ref() {
+                    handler();
+                }
+            })
+            .on_mouse_down(MouseButton::Right, move |_, _, _| {
+                if let Some(handler) = on_dash.as_ref() {
                     handler();
                 }
             })
@@ -204,6 +215,9 @@ impl BeskarBar {
         let mut center_widget = DynamicCenterWidget::new(time_str)
             .date(date_str)
             .notification(notification);
+        if let Some(bands) = cava_bands {
+            center_widget = center_widget.cava_bands(bands);
+        }
         if let Some(w) = animated_center_width {
             center_widget = center_widget.width(px(w));
         }
@@ -216,7 +230,9 @@ impl BeskarBar {
         if let Some(handler) = on_clock_click {
             center_widget = center_widget.on_clock_click(move || (handler)());
         }
-        if let Some(ref handler) = on_control_center_click {
+        if let Some(handler) = on_music_click {
+            center_widget = center_widget.on_media_click(move || (handler)());
+        } else if let Some(ref handler) = on_control_center_click {
             let h = handler.clone();
             center_widget = center_widget.on_media_click(move || (h)());
         }
@@ -234,6 +250,12 @@ impl BeskarBar {
         }
         if let Some(handler) = on_control_center_click {
             vitals_widget = vitals_widget.on_control_center_click(move || (handler)());
+        }
+        if let Some(handler) = on_capture_click {
+            vitals_widget = vitals_widget.on_capture_click(move || (handler)());
+        }
+        if let Some(handler) = on_wallpaper_click {
+            vitals_widget = vitals_widget.on_wallpaper_click(move || (handler)());
         }
         if let Some(handler) = on_power_click {
             vitals_widget = vitals_widget.on_power_click(move || (handler)());
@@ -278,7 +300,12 @@ impl BeskarBar {
             88,
             false,
             None,
+            None,
             Vec::new(),
+            None,
+            None,
+            None,
+            None,
             None,
             None,
             None,

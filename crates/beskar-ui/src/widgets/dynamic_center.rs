@@ -22,6 +22,7 @@ pub struct DynamicCenterWidget {
     is_playing: bool,
     notification: Option<(String, String)>,
     width: Option<Pixels>,
+    cava_bands: Option<[u8; 4]>,
     on_play_pause: Option<Arc<dyn Fn() + Send + Sync>>,
     on_clock_click: Option<Arc<dyn Fn() + Send + Sync>>,
     on_media_click: Option<Arc<dyn Fn() + Send + Sync>>,
@@ -37,10 +38,16 @@ impl DynamicCenterWidget {
             is_playing: false,
             notification: None,
             width: None,
+            cava_bands: None,
             on_play_pause: None,
             on_clock_click: None,
             on_media_click: None,
         }
+    }
+
+    pub fn cava_bands(mut self, bands: [u8; 4]) -> Self {
+        self.cava_bands = Some(bands);
+        self
     }
 
     pub fn notification(mut self, notif: Option<(String, String)>) -> Self {
@@ -105,6 +112,9 @@ impl RenderOnce for DynamicCenterWidget {
             container = container.w(w);
         }
 
+        let hour = chrono::Local::now().format("%H").to_string().parse::<u32>().unwrap_or(12);
+        let is_day = hour >= 6 && hour < 18;
+
         // Primary Clock & Date Pill
         let clock_content = div()
             .flex()
@@ -117,6 +127,11 @@ impl RenderOnce for DynamicCenterWidget {
             .when_some(on_clock_click, |el, cb| {
                 el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
             })
+            .child(
+                Icon::new(if is_day { IconName::Sun } else { IconName::Moon })
+                    .size(px(13.0))
+                    .text_color(if is_day { hsla(45.0 / 360.0, 0.95, 0.60, 1.0) } else { hsla(220.0 / 360.0, 0.85, 0.70, 1.0) })
+            )
             // When no media is playing, show subtle date badge next to time
             .when(!has_media && self.date_str.is_some(), |this| {
                 this.child(
@@ -139,7 +154,7 @@ impl RenderOnce for DynamicCenterWidget {
                 div()
                     .text_xs()
                     .font_weight(FontWeight::BOLD)
-                    .text_color(hsla(0.0, 0.0, 0.95, 1.0))
+                    .text_color(beskar_theme::Theme::fg())
                     .child(self.time_str),
             );
 
@@ -184,6 +199,19 @@ impl RenderOnce for DynamicCenterWidget {
 
                 let on_media = on_media_click.clone();
 
+                let (h0, h1, h2, h3) = if let Some([c0, c1, c2, c3]) = self.cava_bands {
+                    (
+                        (3.0 + (c0 as f32 / 100.0) * 9.0).clamp(3.0, 12.0),
+                        (3.0 + (c1 as f32 / 100.0) * 9.0).clamp(3.0, 12.0),
+                        (3.0 + (c2 as f32 / 100.0) * 9.0).clamp(3.0, 12.0),
+                        (3.0 + (c3 as f32 / 100.0) * 9.0).clamp(3.0, 12.0),
+                    )
+                } else if self.is_playing {
+                    (7.0, 12.0, 8.0, 10.0)
+                } else {
+                    (3.0, 3.0, 3.0, 3.0)
+                };
+
                 this.child(
                     // Subtle vertical divider hairline
                     div()
@@ -201,30 +229,30 @@ impl RenderOnce for DynamicCenterWidget {
                         .child(
                             div()
                                 .w(px(2.0))
-                                .h(if self.is_playing { px(7.0) } else { px(3.0) })
+                                .h(px(h0))
                                 .rounded(px(1.0))
-                                .bg(hsla(185.0 / 360.0, 0.85, 0.60, 0.90)),
+                                .bg(beskar_theme::Theme::accent()),
                         )
                         .child(
                             div()
                                 .w(px(2.0))
-                                .h(if self.is_playing { px(12.0) } else { px(4.0) })
+                                .h(px(h1))
                                 .rounded(px(1.0))
-                                .bg(hsla(185.0 / 360.0, 0.85, 0.60, 0.90)),
+                                .bg(beskar_theme::Theme::accent()),
                         )
                         .child(
                             div()
                                 .w(px(2.0))
-                                .h(if self.is_playing { px(8.0) } else { px(3.0) })
+                                .h(px(h2))
                                 .rounded(px(1.0))
-                                .bg(hsla(185.0 / 360.0, 0.85, 0.60, 0.90)),
+                                .bg(beskar_theme::Theme::accent()),
                         )
                         .child(
                             div()
                                 .w(px(2.0))
-                                .h(if self.is_playing { px(10.0) } else { px(5.0) })
+                                .h(px(h3))
                                 .rounded(px(1.0))
-                                .bg(hsla(185.0 / 360.0, 0.85, 0.60, 0.90)),
+                                .bg(beskar_theme::Theme::accent()),
                         ),
                 )
                 .child(
