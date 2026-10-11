@@ -1,5 +1,6 @@
 use beskar_services::{BluetoothDeviceItem, WifiAccessPoint};
 use gpui_kit::assets::IconName;
+use gpui_kit::component::switch::Switch;
 use gpui_kit::component::Icon;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
@@ -306,7 +307,7 @@ impl RenderOnce for ControlCenterWidget {
                                     .items_center()
                                     .gap(px(8.0))
                                     .cursor_pointer()
-                                    .when_some(on_wifi, |el, cb| {
+                                    .when_some(on_wifi.clone(), |el, cb| {
                                         el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
                                     })
                                     .child(
@@ -353,24 +354,42 @@ impl RenderOnce for ControlCenterWidget {
                             )
                             .child(
                                 div()
-                                    .w(px(18.0))
-                                    .h(px(18.0))
                                     .flex()
                                     .items_center()
-                                    .justify_center()
-                                    .rounded_full()
-                                    .hover(|s| s.bg(hsla(0.0, 0.0, 1.0, 0.15)).cursor_pointer())
-                                    .when_some(on_wifi_list, |el, cb| {
-                                        el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
-                                    })
+                                    .gap(px(6.0))
                                     .child(
-                                        Icon::new(if self.show_wifi_list {
-                                            IconName::ChevronUp
-                                        } else {
-                                            IconName::ChevronDown
-                                        })
-                                        .size(px(12.0))
-                                        .text_color(hsla(0.0, 0.0, 0.60, 1.0)),
+                                        Switch::new("cc-wifi-switch")
+                                            .checked(self.is_wifi_on)
+                                            .on_click({
+                                                let on_wifi = on_wifi.clone();
+                                                move |_, _, _| {
+                                                    if let Some(cb) = on_wifi.as_ref() {
+                                                        cb();
+                                                    }
+                                                }
+                                            }),
+                                    )
+                                    .child(
+                                        div()
+                                            .w(px(18.0))
+                                            .h(px(18.0))
+                                            .flex()
+                                            .items_center()
+                                            .justify_center()
+                                            .rounded_full()
+                                            .hover(|s| s.bg(hsla(0.0, 0.0, 1.0, 0.15)).cursor_pointer())
+                                            .when_some(on_wifi_list, |el, cb| {
+                                                el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
+                                            })
+                                            .child(
+                                                Icon::new(if self.show_wifi_list {
+                                                    IconName::ChevronUp
+                                                } else {
+                                                    IconName::ChevronDown
+                                                })
+                                                .size(px(12.0))
+                                                .text_color(hsla(0.0, 0.0, 0.60, 1.0)),
+                                            ),
                                     ),
                             ),
                     )
@@ -401,7 +420,7 @@ impl RenderOnce for ControlCenterWidget {
                                     .items_center()
                                     .gap(px(8.0))
                                     .cursor_pointer()
-                                    .when_some(on_bt, |el, cb| {
+                                    .when_some(on_bt.clone(), |el, cb| {
                                         el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
                                     })
                                     .child(
@@ -448,24 +467,42 @@ impl RenderOnce for ControlCenterWidget {
                             )
                             .child(
                                 div()
-                                    .w(px(18.0))
-                                    .h(px(18.0))
                                     .flex()
                                     .items_center()
-                                    .justify_center()
-                                    .rounded_full()
-                                    .hover(|s| s.bg(hsla(0.0, 0.0, 1.0, 0.15)).cursor_pointer())
-                                    .when_some(on_bt_list, |el, cb| {
-                                        el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
-                                    })
+                                    .gap(px(6.0))
                                     .child(
-                                        Icon::new(if self.show_bt_list {
-                                            IconName::ChevronUp
-                                        } else {
-                                            IconName::ChevronDown
-                                        })
-                                        .size(px(12.0))
-                                        .text_color(hsla(0.0, 0.0, 0.60, 1.0)),
+                                        Switch::new("cc-bt-switch")
+                                            .checked(self.is_bt_on)
+                                            .on_click({
+                                                let on_bt = on_bt.clone();
+                                                move |_, _, _| {
+                                                    if let Some(cb) = on_bt.as_ref() {
+                                                        cb();
+                                                    }
+                                                }
+                                            }),
+                                    )
+                                    .child(
+                                        div()
+                                            .w(px(18.0))
+                                            .h(px(18.0))
+                                            .flex()
+                                            .items_center()
+                                            .justify_center()
+                                            .rounded_full()
+                                            .hover(|s| s.bg(hsla(0.0, 0.0, 1.0, 0.15)).cursor_pointer())
+                                            .when_some(on_bt_list, |el, cb| {
+                                                el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
+                                            })
+                                            .child(
+                                                Icon::new(if self.show_bt_list {
+                                                    IconName::ChevronUp
+                                                } else {
+                                                    IconName::ChevronDown
+                                                })
+                                                .size(px(12.0))
+                                                .text_color(hsla(0.0, 0.0, 0.60, 1.0)),
+                                            ),
                                     ),
                             ),
                     ),

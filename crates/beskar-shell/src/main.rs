@@ -1,3 +1,4 @@
+mod overlay_host;
 mod overlays;
 
 use std::sync::Arc;

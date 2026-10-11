@@ -195,9 +195,11 @@ impl RenderOnce for ClipboardWidget {
             // Middle Items List
             .child(
                 div()
+                    .id("clipboard-history-list")
                     .flex_1()
-                    .overflow_hidden()
+                    .overflow_y_scroll()
                     .p(px(8.0))
+                    .pb(px(16.0))
                     .flex()
                     .flex_col()
                     .gap(px(4.0))

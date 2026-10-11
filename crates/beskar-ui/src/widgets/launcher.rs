@@ -122,7 +122,7 @@ impl RenderOnce for LauncherWidget {
         let total_count = filtered_apps.len();
         let selected_idx = self.selected_idx.min(total_count.saturating_sub(1));
 
-        let _on_select = self.on_select.clone();
+        let on_select = self.on_select.clone();
         let on_launch = self.on_launch.clone();
         let on_clear = self.on_clear.clone();
 
@@ -133,20 +133,6 @@ impl RenderOnce for LauncherWidget {
         let theme_muted = Theme::muted();
         let theme_border = Theme::border();
         let theme_bg_secondary = Theme::bg_secondary();
-
-        // Windowed visible list (max 8 visible items matching Minflair)
-        const WINDOW_SIZE: usize = 8;
-        let start_idx = if selected_idx >= WINDOW_SIZE {
-            selected_idx - WINDOW_SIZE + 1
-        } else {
-            0
-        };
-        let end_idx = (start_idx + WINDOW_SIZE).min(total_count);
-        let visible_items = if total_count > 0 {
-            &filtered_apps[start_idx..end_idx]
-        } else {
-            &[]
-        };
 
         // Minflair FloatingOverlayStyle container:
         // preferredWidth = 700px, windowRadius = 32px (size3Xl), contentPadding = 16px (sizeLg)
@@ -225,11 +211,13 @@ impl RenderOnce for LauncherWidget {
                 div()
                     .id("launcher-apps-list")
                     .w_full()
-                    .max_h(px(410.0))
+                    .max_h(px(460.0))
                     .overflow_y_scroll()
                     .flex()
                     .flex_col()
-                    .gap(px(8.0))
+                    .gap(px(6.0))
+                    .pb(px(8.0))
+                    .pr(px(4.0))
                     // GhostEmptyState
                     .when(total_count == 0, |this| {
                         this.child(
@@ -256,11 +244,12 @@ impl RenderOnce for LauncherWidget {
                         )
                     })
                     // LauncherItemDelegate delegates (height = 44px, radius = 16px)
-                    .children(visible_items.iter().enumerate().map(|(i, app)| {
-                        let real_idx = start_idx + i;
+                    .children(filtered_apps.iter().enumerate().map(|(i, app)| {
+                        let real_idx = i;
                         let is_current = real_idx == selected_idx;
                         let exec = app.exec.clone();
                         let on_launch = on_launch.clone();
+                        let on_select = on_select.clone();
 
                         let icon_path_exists = !app.icon.is_empty() && Path::new(&app.icon).exists();
                         let icon_path = PathBuf::from(&app.icon);
@@ -282,6 +271,9 @@ impl RenderOnce for LauncherWidget {
                                 s.bg(theme_bg_secondary).cursor_pointer()
                             })
                             .on_mouse_down(MouseButton::Left, move |_, _, _| {
+                                if let Some(s) = on_select.as_ref() {
+                                    s(real_idx);
+                                }
                                 if let Some(h) = on_launch.as_ref() {
                                     h(exec.clone());
                                 }

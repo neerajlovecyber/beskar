@@ -353,13 +353,15 @@ impl RenderOnce for SettingsWidget {
             // ── Right Main Content Area (540px) ──
             .child(
                 div()
+                    .id("settings-page-scroll")
                     .flex_1()
                     .h_full()
                     .p(px(24.0))
+                    .pb(px(24.0))
                     .flex()
                     .flex_col()
                     .gap(px(16.0))
-                    .overflow_hidden()
+                    .overflow_y_scroll()
                     // Page Title + Close button
                     .child(
                         div()

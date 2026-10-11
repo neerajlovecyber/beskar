@@ -17,9 +17,11 @@ pub mod notifications;
 pub mod power_profiles;
 pub mod sound;
 pub mod sysvalue;
+pub mod hardware_bus;
 pub mod tray;
 pub mod updates;
 
+pub use hardware_bus::{HardwareBus, HardwarePlatform, LinuxHardwareAdapter, MockHardwareAdapter, MockHardwareState};
 pub use logind::listen_logind_lock;
 
 pub use audio::AudioService;

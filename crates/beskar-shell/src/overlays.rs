@@ -17,393 +17,75 @@ use gpui_kit::*;
 use std::sync::Mutex;
 use tracing::info;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum OverlayKind {
-    Launcher,
-    PowerMenu,
-    ControlCenter,
-    LockScreen,
-    Settings,
-    Clipboard,
-    Dashboard,
-    Music,
-    NotificationCenter,
-    ScreenCapture,
-    WallpaperSelector,
-}
-
-
-static ACTIVE_OVERLAY: Mutex<Option<(OverlayKind, AnyWindowHandle)>> = Mutex::new(None);
+pub use crate::overlay_host::{OverlayHost, OverlayKind};
 
 pub fn forget_overlay(kind: OverlayKind) {
-    let mut guard = ACTIVE_OVERLAY.lock().unwrap();
-    if guard.as_ref().is_some_and(|(k, _)| *k == kind) {
-        guard.take();
-    }
+    OverlayHost::forget(kind);
 }
 
 pub fn close_active_overlay(cx: &mut App) -> Option<OverlayKind> {
-    let item = {
-        let mut guard = ACTIVE_OVERLAY.lock().unwrap();
-        guard.take()
-    };
-    if let Some((kind, handle)) = item {
-        let _ = cx.update_window(handle, |_, window, _| {
-            window.remove_window();
-        });
-        Some(kind)
-    } else {
-        None
-    }
+    OverlayHost::close(cx)
 }
 
 #[allow(dead_code)]
 pub fn is_overlay_open(kind: OverlayKind) -> bool {
-    let guard = ACTIVE_OVERLAY.lock().unwrap();
-    guard.as_ref().is_some_and(|(k, _)| *k == kind)
+    OverlayHost::active_overlay() == Some(kind)
 }
 
 
 /// Toggle the App Launcher window.
 pub fn toggle_launcher(cx: &mut App) {
-    if close_active_overlay(cx) == Some(OverlayKind::Launcher) {
-        return;
-    }
-
-    let options = WindowOptions {
-        titlebar: None,
-        app_id: Some("beskar-launcher".to_string()),
-        window_background: WindowBackgroundAppearance::Transparent,
-        kind: WindowKind::LayerShell(LayerShellOptions {
-            namespace: "beskar-launcher".to_string(),
-            layer: Layer::Overlay,
-            anchor: LayerAnchor::TOP | LayerAnchor::BOTTOM | LayerAnchor::LEFT | LayerAnchor::RIGHT,
-            exclusive_zone: None,
-            keyboard_interactivity: KeyboardInteractivity::OnDemand,
-            ..Default::default()
-        }),
-        focus: true,
-        ..Default::default()
-    };
-
-    if let Ok(handle) = cx.open_window(options, move |_window, cx| {
-        cx.new(LauncherView::new)
-    }) {
-        let mut guard = ACTIVE_OVERLAY.lock().unwrap();
-        *guard = Some((OverlayKind::Launcher, handle.into()));
-        info!("Opened dedicated LayerShell App Launcher overlay window");
-    }
+    OverlayHost::toggle(OverlayKind::Launcher, cx);
 }
 
 /// Toggle the Power Menu window.
 pub fn toggle_power_menu(cx: &mut App) {
-    if close_active_overlay(cx) == Some(OverlayKind::PowerMenu) {
-        return;
-    }
-
-    let options = WindowOptions {
-        titlebar: None,
-        app_id: Some("beskar-power-menu".to_string()),
-        window_background: WindowBackgroundAppearance::Transparent,
-        kind: WindowKind::LayerShell(LayerShellOptions {
-            namespace: "beskar-power-menu".to_string(),
-            layer: Layer::Overlay,
-            anchor: LayerAnchor::TOP | LayerAnchor::BOTTOM | LayerAnchor::LEFT | LayerAnchor::RIGHT,
-            exclusive_zone: None,
-            keyboard_interactivity: KeyboardInteractivity::OnDemand,
-            ..Default::default()
-        }),
-        focus: true,
-        ..Default::default()
-    };
-
-    if let Ok(handle) = cx.open_window(options, move |_window, cx| {
-        cx.new(PowerMenuView::new)
-    }) {
-        let mut guard = ACTIVE_OVERLAY.lock().unwrap();
-        *guard = Some((OverlayKind::PowerMenu, handle.into()));
-        info!("Opened dedicated LayerShell Power Menu overlay window");
-    }
+    OverlayHost::toggle(OverlayKind::PowerMenu, cx);
 }
-
 
 /// Toggle the Control Center / Quick Settings window.
 pub fn toggle_control_center(cx: &mut App) {
-    if close_active_overlay(cx) == Some(OverlayKind::ControlCenter) {
-        return;
-    }
-
-    let options = WindowOptions {
-        titlebar: None,
-        app_id: Some("beskar-control-center".to_string()),
-        window_background: WindowBackgroundAppearance::Transparent,
-        kind: WindowKind::LayerShell(LayerShellOptions {
-            namespace: "beskar-control-center".to_string(),
-            layer: Layer::Overlay,
-            anchor: LayerAnchor::TOP | LayerAnchor::BOTTOM | LayerAnchor::LEFT | LayerAnchor::RIGHT,
-            exclusive_zone: None,
-            keyboard_interactivity: KeyboardInteractivity::OnDemand,
-            ..Default::default()
-        }),
-        focus: true,
-        ..Default::default()
-    };
-
-    if let Ok(handle) = cx.open_window(options, move |_window, cx| {
-        cx.new(ControlCenterView::new)
-    }) {
-        let mut guard = ACTIVE_OVERLAY.lock().unwrap();
-        *guard = Some((OverlayKind::ControlCenter, handle.into()));
-        info!("Opened dedicated LayerShell Control Center overlay window");
-    }
+    OverlayHost::toggle(OverlayKind::ControlCenter, cx);
 }
 
 /// Toggle the Fullscreen Lock Screen window.
 pub fn toggle_lockscreen(cx: &mut App) {
-    if close_active_overlay(cx) == Some(OverlayKind::LockScreen) {
-        return;
-    }
-
-    let options = WindowOptions {
-        titlebar: None,
-        app_id: Some("beskar-lockscreen".to_string()),
-        window_background: WindowBackgroundAppearance::Transparent,
-        kind: WindowKind::LayerShell(LayerShellOptions {
-            namespace: "beskar-lockscreen".to_string(),
-            layer: Layer::Overlay,
-            anchor: LayerAnchor::TOP | LayerAnchor::BOTTOM | LayerAnchor::LEFT | LayerAnchor::RIGHT,
-            exclusive_zone: None,
-            keyboard_interactivity: KeyboardInteractivity::Exclusive,
-            ..Default::default()
-        }),
-        focus: true,
-        ..Default::default()
-    };
-
-    if let Ok(handle) = cx.open_window(options, move |_window, cx| {
-        cx.new(LockScreenView::new)
-    }) {
-        let mut guard = ACTIVE_OVERLAY.lock().unwrap();
-        *guard = Some((OverlayKind::LockScreen, handle.into()));
-        info!("Opened dedicated LayerShell Lock Screen overlay window");
-    }
+    OverlayHost::toggle(OverlayKind::LockScreen, cx);
 }
 
 /// Toggle the Preferences / Settings window.
 pub fn toggle_settings(cx: &mut App) {
-    if close_active_overlay(cx) == Some(OverlayKind::Settings) {
-        return;
-    }
-
-    let options = WindowOptions {
-        titlebar: None,
-        app_id: Some("beskar-settings".to_string()),
-        window_background: WindowBackgroundAppearance::Transparent,
-        kind: WindowKind::LayerShell(LayerShellOptions {
-            namespace: "beskar-settings".to_string(),
-            layer: Layer::Overlay,
-            anchor: LayerAnchor::TOP | LayerAnchor::BOTTOM | LayerAnchor::LEFT | LayerAnchor::RIGHT,
-            exclusive_zone: None,
-            keyboard_interactivity: KeyboardInteractivity::OnDemand,
-            ..Default::default()
-        }),
-        focus: true,
-        ..Default::default()
-    };
-
-    if let Ok(handle) = cx.open_window(options, move |_window, cx| {
-        cx.new(SettingsView::new)
-    }) {
-        let mut guard = ACTIVE_OVERLAY.lock().unwrap();
-        *guard = Some((OverlayKind::Settings, handle.into()));
-        info!("Opened dedicated LayerShell Settings preferences overlay window");
-    }
+    OverlayHost::toggle(OverlayKind::Settings, cx);
 }
 
 /// Toggle the dedicated LayerShell Clipboard History overlay window.
 pub fn toggle_clipboard(cx: &mut App) {
-    if close_active_overlay(cx) == Some(OverlayKind::Clipboard) {
-        return;
-    }
-
-    let options = WindowOptions {
-        titlebar: None,
-        app_id: Some("beskar-clipboard".to_string()),
-        window_background: WindowBackgroundAppearance::Transparent,
-        kind: WindowKind::LayerShell(LayerShellOptions {
-            namespace: "beskar-clipboard".to_string(),
-            layer: Layer::Overlay,
-            anchor: LayerAnchor::TOP | LayerAnchor::BOTTOM | LayerAnchor::LEFT | LayerAnchor::RIGHT,
-            exclusive_zone: None,
-            keyboard_interactivity: KeyboardInteractivity::OnDemand,
-            ..Default::default()
-        }),
-        focus: true,
-        ..Default::default()
-    };
-
-    if let Ok(handle) = cx.open_window(options, move |_window, cx| {
-        cx.new(ClipboardView::new)
-    }) {
-        let mut guard = ACTIVE_OVERLAY.lock().unwrap();
-        *guard = Some((OverlayKind::Clipboard, handle.into()));
-        info!("Opened dedicated LayerShell Clipboard overlay window");
-    }
+    OverlayHost::toggle(OverlayKind::Clipboard, cx);
 }
 
 /// Toggle the Developer Dashboard overlay window.
 pub fn toggle_dashboard(cx: &mut App) {
-    if close_active_overlay(cx) == Some(OverlayKind::Dashboard) {
-        return;
-    }
-
-    let options = WindowOptions {
-        titlebar: None,
-        app_id: Some("beskar-dashboard".to_string()),
-        window_background: WindowBackgroundAppearance::Transparent,
-        kind: WindowKind::LayerShell(LayerShellOptions {
-            namespace: "beskar-dashboard".to_string(),
-            layer: Layer::Overlay,
-            anchor: LayerAnchor::TOP | LayerAnchor::BOTTOM | LayerAnchor::LEFT | LayerAnchor::RIGHT,
-            exclusive_zone: None,
-            keyboard_interactivity: KeyboardInteractivity::OnDemand,
-            ..Default::default()
-        }),
-        focus: true,
-        ..Default::default()
-    };
-
-    if let Ok(handle) = cx.open_window(options, move |_window, cx| {
-        cx.new(DashboardView::new)
-    }) {
-        let mut guard = ACTIVE_OVERLAY.lock().unwrap();
-        *guard = Some((OverlayKind::Dashboard, handle.into()));
-        info!("Opened dedicated LayerShell Developer Dashboard overlay window");
-    }
+    OverlayHost::toggle(OverlayKind::Dashboard, cx);
 }
 
 /// Toggle the dedicated Music Player overlay window.
 pub fn toggle_music(cx: &mut App) {
-    if close_active_overlay(cx) == Some(OverlayKind::Music) {
-        return;
-    }
-
-    let options = WindowOptions {
-        titlebar: None,
-        app_id: Some("beskar-music".to_string()),
-        window_background: WindowBackgroundAppearance::Transparent,
-        kind: WindowKind::LayerShell(LayerShellOptions {
-            namespace: "beskar-music".to_string(),
-            layer: Layer::Overlay,
-            anchor: LayerAnchor::TOP | LayerAnchor::BOTTOM | LayerAnchor::LEFT | LayerAnchor::RIGHT,
-            exclusive_zone: None,
-            keyboard_interactivity: KeyboardInteractivity::OnDemand,
-            ..Default::default()
-        }),
-        focus: true,
-        ..Default::default()
-    };
-
-    if let Ok(handle) = cx.open_window(options, move |_window, cx| {
-        cx.new(MusicPlayerView::new)
-    }) {
-        let mut guard = ACTIVE_OVERLAY.lock().unwrap();
-        *guard = Some((OverlayKind::Music, handle.into()));
-        info!("Opened dedicated LayerShell Music Player overlay window");
-    }
+    OverlayHost::toggle(OverlayKind::Music, cx);
 }
 
 /// Toggle the persistent Notification Center drawer.
 pub fn toggle_notification_center(cx: &mut App) {
-    if close_active_overlay(cx) == Some(OverlayKind::NotificationCenter) {
-        return;
-    }
-
-    let options = WindowOptions {
-        titlebar: None,
-        app_id: Some("beskar-notifications".to_string()),
-        window_background: WindowBackgroundAppearance::Transparent,
-        kind: WindowKind::LayerShell(LayerShellOptions {
-            namespace: "beskar-notifications".to_string(),
-            layer: Layer::Overlay,
-            anchor: LayerAnchor::TOP | LayerAnchor::BOTTOM | LayerAnchor::LEFT | LayerAnchor::RIGHT,
-            exclusive_zone: None,
-            keyboard_interactivity: KeyboardInteractivity::OnDemand,
-            ..Default::default()
-        }),
-        focus: true,
-        ..Default::default()
-    };
-
-    if let Ok(handle) = cx.open_window(options, move |_window, cx| {
-        cx.new(NotificationCenterView::new)
-    }) {
-        let mut guard = ACTIVE_OVERLAY.lock().unwrap();
-        *guard = Some((OverlayKind::NotificationCenter, handle.into()));
-        info!("Opened dedicated LayerShell Notification Center overlay window");
-    }
+    OverlayHost::toggle(OverlayKind::NotificationCenter, cx);
 }
 
 /// Toggle the Screen Capture tool modal.
 pub fn toggle_screencapture(cx: &mut App) {
-    if close_active_overlay(cx) == Some(OverlayKind::ScreenCapture) {
-        return;
-    }
-
-    let options = WindowOptions {
-        titlebar: None,
-        app_id: Some("beskar-screencapture".to_string()),
-        window_background: WindowBackgroundAppearance::Transparent,
-        kind: WindowKind::LayerShell(LayerShellOptions {
-            namespace: "beskar-screencapture".to_string(),
-            layer: Layer::Overlay,
-            anchor: LayerAnchor::TOP | LayerAnchor::BOTTOM | LayerAnchor::LEFT | LayerAnchor::RIGHT,
-            exclusive_zone: None,
-            keyboard_interactivity: KeyboardInteractivity::OnDemand,
-            ..Default::default()
-        }),
-        focus: true,
-        ..Default::default()
-    };
-
-    if let Ok(handle) = cx.open_window(options, move |_window, cx| {
-        cx.new(ScreenCaptureView::new)
-    }) {
-        let mut guard = ACTIVE_OVERLAY.lock().unwrap();
-        *guard = Some((OverlayKind::ScreenCapture, handle.into()));
-        info!("Opened dedicated LayerShell Screen Capture overlay window");
-    }
+    OverlayHost::toggle(OverlayKind::ScreenCapture, cx);
 }
 
 /// Toggle the Wallpaper Selector gallery modal.
 pub fn toggle_wallpaper_selector(cx: &mut App) {
-    if close_active_overlay(cx) == Some(OverlayKind::WallpaperSelector) {
-        return;
-    }
-
-    let options = WindowOptions {
-        titlebar: None,
-        app_id: Some("beskar-wallpapers".to_string()),
-        window_background: WindowBackgroundAppearance::Transparent,
-        kind: WindowKind::LayerShell(LayerShellOptions {
-            namespace: "beskar-wallpapers".to_string(),
-            layer: Layer::Overlay,
-            anchor: LayerAnchor::TOP | LayerAnchor::BOTTOM | LayerAnchor::LEFT | LayerAnchor::RIGHT,
-            exclusive_zone: None,
-            keyboard_interactivity: KeyboardInteractivity::OnDemand,
-            ..Default::default()
-        }),
-        focus: true,
-        ..Default::default()
-    };
-
-    if let Ok(handle) = cx.open_window(options, move |_window, cx| {
-        cx.new(WallpaperSelectorView::new)
-    }) {
-        let mut guard = ACTIVE_OVERLAY.lock().unwrap();
-        *guard = Some((OverlayKind::WallpaperSelector, handle.into()));
-        info!("Opened dedicated LayerShell Wallpaper Selector overlay window");
-    }
+    OverlayHost::toggle(OverlayKind::WallpaperSelector, cx);
 }
 
 
@@ -891,22 +573,26 @@ impl ControlCenterView {
                             }
                             cx.notify();
                         });
-                        tokio::task::spawn_blocking(move || {
-                            beskar_services::NetworkHelper::toggle_wifi(is_on);
-                        })
-                        .await
-                        .ok();
-                        if next_state {
-                            let (_, ssid) = tokio::task::spawn_blocking(|| {
-                                beskar_services::NetworkHelper::get_wifi_status()
+                        let this_weak = this.clone();
+                        cx.spawn(async move |cx| {
+                            tokio::task::spawn_blocking(move || {
+                                beskar_services::NetworkHelper::toggle_wifi(is_on);
                             })
                             .await
-                            .unwrap_or((false, None));
-                            let _ = this.update(cx, |this, cx| {
-                                this.wifi_ssid = ssid;
-                                cx.notify();
-                            });
-                        }
+                            .ok();
+                            if next_state {
+                                let (_, ssid) = tokio::task::spawn_blocking(|| {
+                                    beskar_services::NetworkHelper::get_wifi_status()
+                                })
+                                .await
+                                .unwrap_or((false, None));
+                                let _ = this_weak.update(cx, |this, cx| {
+                                    this.wifi_ssid = ssid;
+                                    cx.notify();
+                                });
+                            }
+                        })
+                        .detach();
                     }
                     ControlCenterMsg::ToggleBluetooth => {
                         let is_on = this.update(cx, |t, _| t.is_bt_on).unwrap_or(true);
@@ -915,11 +601,13 @@ impl ControlCenterView {
                             this.is_bt_on = next_state;
                             cx.notify();
                         });
-                        tokio::task::spawn_blocking(move || {
-                            beskar_services::BluetoothHelper::toggle_bluetooth(is_on);
-                        })
-                        .await
-                        .ok();
+                        tokio::spawn(async move {
+                            tokio::task::spawn_blocking(move || {
+                                beskar_services::BluetoothHelper::toggle_bluetooth(is_on);
+                            })
+                            .await
+                            .ok();
+                        });
                     }
                     ControlCenterMsg::ChangeVolume(delta) => {
                         let _ = this.update(cx, |this, cx| {
@@ -928,22 +616,26 @@ impl ControlCenterView {
                             this.is_muted = false;
                             cx.notify();
                         });
-                        tokio::task::spawn_blocking(move || {
-                            beskar_services::AudioService::set_volume(delta);
-                        })
-                        .await
-                        .ok();
+                        tokio::spawn(async move {
+                            tokio::task::spawn_blocking(move || {
+                                beskar_services::AudioService::set_volume(delta);
+                            })
+                            .await
+                            .ok();
+                        });
                     }
                     ControlCenterMsg::ToggleMute => {
                         let _ = this.update(cx, |this, cx| {
                             this.is_muted = !this.is_muted;
                             cx.notify();
                         });
-                        tokio::task::spawn_blocking(|| {
-                            beskar_services::AudioService::toggle_mute();
-                        })
-                        .await
-                        .ok();
+                        tokio::spawn(async move {
+                            tokio::task::spawn_blocking(|| {
+                                beskar_services::AudioService::toggle_mute();
+                            })
+                            .await
+                            .ok();
+                        });
                     }
                     ControlCenterMsg::ChangeBrightness(delta) => {
                         let new_bright = this
@@ -955,11 +647,13 @@ impl ControlCenterView {
                             this.brightness_percent = new_bright;
                             cx.notify();
                         });
-                        tokio::task::spawn_blocking(move || {
-                            beskar_services::BacklightService::set_brightness(new_bright);
-                        })
-                        .await
-                        .ok();
+                        tokio::spawn(async move {
+                            tokio::task::spawn_blocking(move || {
+                                beskar_services::BacklightService::set_brightness(new_bright);
+                            })
+                            .await
+                            .ok();
+                        });
                     }
                     ControlCenterMsg::SetPowerProfile(prof) => {
                         let prof_clone = prof.clone();
@@ -967,11 +661,13 @@ impl ControlCenterView {
                             this.active_power_profile = prof;
                             cx.notify();
                         });
-                        tokio::task::spawn_blocking(move || {
-                            beskar_services::PowerProfilesService::set_profile(&prof_clone);
-                        })
-                        .await
-                        .ok();
+                        tokio::spawn(async move {
+                            tokio::task::spawn_blocking(move || {
+                                beskar_services::PowerProfilesService::set_profile(&prof_clone);
+                            })
+                            .await
+                            .ok();
+                        });
                     }
                     ControlCenterMsg::ToggleWifiList => {
                         let will_show = this
@@ -982,11 +678,15 @@ impl ControlCenterView {
                             })
                             .unwrap_or(false);
                         if will_show {
-                            let networks = beskar_services::NetworkHelper::scan_networks_async().await;
-                            let _ = this.update(cx, |this, cx| {
-                                this.wifi_networks = networks;
-                                cx.notify();
-                            });
+                            let this_weak = this.clone();
+                            cx.spawn(async move |cx| {
+                                let networks = beskar_services::NetworkHelper::scan_networks_async().await;
+                                let _ = this_weak.update(cx, |this, cx| {
+                                    this.wifi_networks = networks;
+                                    cx.notify();
+                                });
+                            })
+                            .detach();
                         }
                     }
                     ControlCenterMsg::ToggleBtList => {
@@ -998,11 +698,15 @@ impl ControlCenterView {
                             })
                             .unwrap_or(false);
                         if will_show {
-                            let devices = beskar_services::BluetoothHelper::list_devices_async().await;
-                            let _ = this.update(cx, |this, cx| {
-                                this.bt_devices = devices;
-                                cx.notify();
-                            });
+                            let this_weak = this.clone();
+                            cx.spawn(async move |cx| {
+                                let devices = beskar_services::BluetoothHelper::list_devices_async().await;
+                                let _ = this_weak.update(cx, |this, cx| {
+                                    this.bt_devices = devices;
+                                    cx.notify();
+                                });
+                            })
+                            .detach();
                         }
                     }
                     ControlCenterMsg::ConnectWifi(ssid) => {
@@ -1010,39 +714,37 @@ impl ControlCenterView {
                             this.wifi_ssid = Some(ssid.clone());
                             cx.notify();
                         });
-                        tokio::task::spawn_blocking(move || {
-                            beskar_services::NetworkHelper::connect(&ssid, None);
-                        })
-                        .await
-                        .ok();
+                        tokio::spawn(async move {
+                            tokio::task::spawn_blocking(move || {
+                                beskar_services::NetworkHelper::connect(&ssid, None);
+                            })
+                            .await
+                            .ok();
+                        });
                     }
                     ControlCenterMsg::OpenLauncher => {
                         let _ = this.update(cx, |_, cx| {
-                            close_active_overlay(cx);
-                            toggle_launcher(cx);
+                            OverlayHost::open(OverlayKind::Launcher, cx);
                         });
                     }
                     ControlCenterMsg::OpenClipboard => {
                         let _ = this.update(cx, |_, cx| {
-                            close_active_overlay(cx);
-                            toggle_clipboard(cx);
+                            OverlayHost::open(OverlayKind::Clipboard, cx);
                         });
                     }
                     ControlCenterMsg::OpenPower => {
                         let _ = this.update(cx, |_, cx| {
-                            close_active_overlay(cx);
-                            toggle_power_menu(cx);
+                            OverlayHost::open(OverlayKind::PowerMenu, cx);
                         });
                     }
                     ControlCenterMsg::OpenSettings => {
                         let _ = this.update(cx, |_, cx| {
-                            close_active_overlay(cx);
-                            toggle_settings(cx);
+                            OverlayHost::open(OverlayKind::Settings, cx);
                         });
                     }
                     ControlCenterMsg::Close => {
                         let _ = this.update(cx, |_, cx| {
-                            close_active_overlay(cx);
+                            OverlayHost::close(cx);
                         });
                     }
                 }
