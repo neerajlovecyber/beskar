@@ -1,9 +1,11 @@
+use gpui_kit::assets::IconName;
+use gpui_kit::component::Icon;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 use std::sync::Arc;
 
-/// Premium fullscreen PAM desktop lock screen overlay.
-/// Features atmospheric clock, date, user session profile, and password authentication.
+/// Premium fullscreen PAM desktop lock screen overlay adapted from Suzuha and Iris.
+/// Features atmospheric giant clock, date, user session profile avatar, and interactive password authentication.
 #[derive(IntoElement)]
 pub struct LockScreenWidget {
     user_name: String,
@@ -11,6 +13,7 @@ pub struct LockScreenWidget {
     date_str: String,
     password_len: usize,
     has_error: bool,
+    wallpaper_path: Option<String>,
     on_unlock_attempt: Option<Arc<dyn Fn(String) + Send + Sync>>,
     on_cancel: Option<Arc<dyn Fn() + Send + Sync>>,
 }
@@ -27,6 +30,7 @@ impl LockScreenWidget {
             date_str: date_str.into(),
             password_len: 0,
             has_error: false,
+            wallpaper_path: None,
             on_unlock_attempt: None,
             on_cancel: None,
         }
@@ -39,6 +43,11 @@ impl LockScreenWidget {
 
     pub fn error(mut self, error: bool) -> Self {
         self.has_error = error;
+        self
+    }
+
+    pub fn wallpaper(mut self, path: Option<String>) -> Self {
+        self.wallpaper_path = path;
         self
     }
 
@@ -60,73 +69,98 @@ impl RenderOnce for LockScreenWidget {
     fn render(self, _window: &mut Window, _cx: &mut App) -> impl IntoElement {
         let on_unlock = self.on_unlock_attempt.clone();
         let on_cancel = self.on_cancel.clone();
+        let danger_color: gpui_kit::Hsla = beskar_theme::ThemeEngine::current().danger.into();
 
-        let masked_dots = "•".repeat(self.password_len.max(1));
+        let masked_dots = "•".repeat(self.password_len);
 
         div()
+            .relative()
             .size_full()
             .flex()
             .flex_col()
             .items_center()
             .justify_center()
-            // Deep obsidian atmospheric acrylic backdrop
-            .bg(hsla(220.0 / 360.0, 0.25, 0.05, 0.95))
+            // Deep obsidian atmospheric acrylic backdrop (darkened by 72% per Suzuha)
+            .bg(beskar_theme::Theme::bg())
+            // Top lock hint badge (Suzuha style)
+            .child(
+                div()
+                    .absolute()
+                    .top(px(40.0))
+                    .flex()
+                    .items_center()
+                    .gap(px(8.0))
+                    .px(px(14.0))
+                    .py(px(6.0))
+                    .rounded_full()
+                    .bg(hsla(0.0, 0.0, 0.0, 0.40))
+                    .border_1()
+                    .border_color(beskar_theme::Theme::border())
+                    .child(Icon::new(IconName::Lock).size(px(12.0)).text_color(beskar_theme::Theme::accent()))
+                    .child(
+                        div()
+                            .text_xs()
+                            .font_weight(FontWeight::MEDIUM)
+                            .text_color(beskar_theme::Theme::muted())
+                            .child("Session Locked"),
+                    ),
+            )
             // Clock & Date Section
             .child(
                 div()
                     .flex()
                     .flex_col()
                     .items_center()
-                    .mb(px(48.0))
+                    .mb(px(40.0))
                     .child(
                         div()
-                            .text_size(px(72.0))
+                            .text_size(px(80.0))
                             .line_height(relative(1.0))
                             .font_weight(FontWeight::BOLD)
-                            .text_color(hsla(0.0, 0.0, 1.0, 0.95))
+                            .text_color(beskar_theme::Theme::fg())
                             .child(self.time_str),
                     )
                     .child(
                         div()
-                            .mt(px(8.0))
-                            .text_base()
+                            .mt(px(10.0))
+                            .text_lg()
                             .font_weight(FontWeight::MEDIUM)
-                            .text_color(hsla(215.0 / 360.0, 0.30, 0.70, 0.85))
+                            .text_color(beskar_theme::Theme::muted())
                             .child(self.date_str),
                     ),
             )
-            // Profile & Password Card
+            // Profile & Password Card (Frosted Glass Acrylic)
             .child(
                 div()
-                    .w(px(320.0))
+                    .w(px(340.0))
                     .flex()
                     .flex_col()
                     .items_center()
-                    .p(px(24.0))
-                    .rounded(px(20.0))
-                    .bg(hsla(220.0 / 360.0, 0.20, 0.10, 0.80))
+                    .p(px(28.0))
+                    .rounded(px(24.0))
+                    .bg(beskar_theme::Theme::bg_secondary())
                     .border_1()
                     .border_color(if self.has_error {
-                        hsla(0.0, 0.75, 0.55, 0.60)
+                        beskar_theme::ThemeEngine::current().danger.into()
                     } else {
-                        hsla(0.0, 0.0, 1.0, 0.12)
+                        beskar_theme::Theme::border()
                     })
-                    .shadow_xl()
-                    // User Avatar
+                    .shadow_2xl()
+                    // User Session Avatar
                     .child(
                         div()
-                            .size(px(64.0))
+                            .size(px(68.0))
                             .rounded_full()
                             .flex()
                             .items_center()
                             .justify_center()
-                            .bg(hsla(215.0 / 360.0, 0.60, 0.35, 0.40))
+                            .bg(beskar_theme::Theme::bg_accent())
                             .border_2()
-                            .border_color(hsla(215.0 / 360.0, 0.80, 0.65, 0.60))
+                            .border_color(beskar_theme::Theme::accent())
                             .text_2xl()
                             .font_weight(FontWeight::BOLD)
-                            .text_color(hsla(0.0, 0.0, 1.0, 0.95))
-                            .mb(px(12.0))
+                            .text_color(beskar_theme::Theme::fg())
+                            .mb(px(14.0))
                             .child(
                                 self.user_name
                                     .chars()
@@ -136,61 +170,60 @@ impl RenderOnce for LockScreenWidget {
                                     .to_string(),
                             ),
                     )
-                    // Username
+                    // Username Readout
                     .child(
                         div()
                             .text_base()
                             .font_weight(FontWeight::SEMIBOLD)
-                            .text_color(hsla(0.0, 0.0, 0.95, 1.0))
-                            .mb(px(16.0))
+                            .text_color(beskar_theme::Theme::fg())
+                            .mb(px(18.0))
                             .child(self.user_name),
                     )
-                    // Password input field pill
+                    // Password input field capsule
                     .child(
                         div()
                             .w_full()
-                            .h(px(40.0))
-                            .px(px(14.0))
-                            .rounded(px(12.0))
+                            .h(px(44.0))
+                            .px(px(16.0))
+                            .rounded(px(14.0))
                             .flex()
                             .items_center()
                             .justify_between()
-                            .bg(hsla(0.0, 0.0, 0.0, 0.40))
+                            .bg(hsla(0.0, 0.0, 0.0, 0.50))
                             .border_1()
                             .border_color(if self.has_error {
-                                hsla(0.0, 0.75, 0.55, 0.60)
+                                danger_color
                             } else {
-                                hsla(0.0, 0.0, 1.0, 0.15)
+                                beskar_theme::Theme::border()
                             })
                             .child(
                                 div()
                                     .text_sm()
                                     .text_color(if self.password_len > 0 {
-                                        hsla(0.0, 0.0, 1.0, 0.90)
+                                        beskar_theme::Theme::fg()
                                     } else {
-                                        hsla(0.0, 0.0, 0.45, 0.80)
+                                        beskar_theme::Theme::muted()
                                     })
                                     .child(if self.password_len > 0 {
                                         masked_dots
                                     } else {
-                                        "Enter password...".to_string()
+                                        "Type password to unlock...".to_string()
                                     }),
                             )
                             // Submit arrow button
                             .child(
                                 div()
-                                    .size(px(26.0))
-                                    .rounded(px(8.0))
+                                    .size(px(28.0))
+                                    .rounded(px(10.0))
                                     .flex()
                                     .items_center()
                                     .justify_center()
-                                    .bg(hsla(215.0 / 360.0, 0.60, 0.45, 0.50))
+                                    .bg(beskar_theme::Theme::accent())
                                     .text_xs()
                                     .font_weight(FontWeight::BOLD)
-                                    .text_color(hsla(0.0, 0.0, 1.0, 1.0))
+                                    .text_color(hsla(0.0, 0.0, 0.05, 1.0))
                                     .hover(|s| {
-                                        s.bg(hsla(215.0 / 360.0, 0.70, 0.55, 0.70))
-                                            .cursor_pointer()
+                                        s.opacity(0.85).cursor_pointer()
                                     })
                                     .on_mouse_down(MouseButton::Left, move |_, _, _| {
                                         if let Some(handler) = on_unlock.as_ref() {
@@ -204,22 +237,21 @@ impl RenderOnce for LockScreenWidget {
                     .when(self.has_error, |this| {
                         this.child(
                             div()
-                                .mt(px(8.0))
+                                .mt(px(10.0))
                                 .text_xs()
                                 .font_weight(FontWeight::MEDIUM)
-                                .text_color(hsla(0.0, 0.85, 0.70, 1.0))
-                                .child("Incorrect password, please try again"),
+                                .text_color(danger_color)
+                                .child("Incorrect password, try again"),
                         )
                     })
                     // Cancel / dismiss button
                     .child(
                         div()
-                            .mt(px(16.0))
+                            .mt(px(18.0))
                             .text_xs()
-                            .text_color(hsla(0.0, 0.0, 0.55, 0.80))
+                            .text_color(beskar_theme::Theme::muted())
                             .hover(|s| {
-                                s.text_color(hsla(0.0, 0.0, 0.85, 1.0))
-                                    .cursor_pointer()
+                                s.text_color(beskar_theme::Theme::fg()).cursor_pointer()
                             })
                             .on_mouse_down(MouseButton::Left, move |_, _, _| {
                                 if let Some(handler) = on_cancel.as_ref() {
@@ -228,6 +260,15 @@ impl RenderOnce for LockScreenWidget {
                             })
                             .child("Cancel"),
                     ),
+            )
+            // Bottom hint (Suzuha style)
+            .child(
+                div()
+                    .absolute()
+                    .bottom(px(32.0))
+                    .text_xs()
+                    .text_color(beskar_theme::Theme::muted())
+                    .child("Press Enter or arrow to unlock • Escape to clear"),
             )
     }
 }

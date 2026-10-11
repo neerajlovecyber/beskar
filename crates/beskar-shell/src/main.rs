@@ -205,7 +205,18 @@ impl DesktopBarView {
         })
         .detach();
 
-        // 5. Live Niri Compositor Event Stream
+        // 5. Systemd logind Session Lock Listener
+        let atx_lock = action_tx.clone();
+        let (lock_tx, mut lock_rx) = tokio::sync::mpsc::unbounded_channel::<()>();
+        beskar_services::listen_logind_lock(lock_tx);
+        cx.spawn(async move |_this, _cx| {
+            while let Some(()) = lock_rx.recv().await {
+                let _ = atx_lock.send(BarAction::ToggleLockScreen);
+            }
+        })
+        .detach();
+
+        // 6. Live Niri Compositor Event Stream
         let (tx, mut rx) = tokio::sync::mpsc::channel(64);
         let comp_listener = compositor.clone();
         tokio::spawn(async move {

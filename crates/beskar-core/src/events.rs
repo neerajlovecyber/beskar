@@ -19,6 +19,7 @@ pub enum ServiceEvent {
     Tray(Vec<crate::models::TrayItem>),
     Notifications(Vec<crate::models::NotificationItem>),
     TrayChanged,
+    SessionLockRequested,
 }
 
 #[derive(Debug, Clone)]

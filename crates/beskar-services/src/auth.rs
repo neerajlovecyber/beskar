@@ -80,8 +80,15 @@ fn user() -> Option<CString> {
 pub fn verify(password: &str) -> Result<bool, String> {
     let user = user().ok_or("I cannot tell who owns this session")?;
     let password = CString::new(password).map_err(|_| "a password cannot carry a zero byte")?;
-    // With its own file in /etc/pam.d, that one; otherwise `login`'s, which is always there.
-    let service = CString::new(if std::path::Path::new("/etc/pam.d/pleamar").exists() { "pleamar" } else { "login" }).unwrap();
+    // With its own file in /etc/pam.d, that one; otherwise `login` or `system-auth`
+    let service_name = if std::path::Path::new("/etc/pam.d/beskar").exists() {
+        "beskar"
+    } else if std::path::Path::new("/etc/pam.d/login").exists() {
+        "login"
+    } else {
+        "system-auth"
+    };
+    let service = CString::new(service_name).unwrap();
     let conv = Conversation { converse, data: password.as_ptr() as *mut c_void };
     let mut handle: *mut c_void = std::ptr::null_mut();
     let ok = unsafe {

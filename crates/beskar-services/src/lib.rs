@@ -5,12 +5,15 @@ pub mod bluez;
 pub mod desktop;
 pub mod files;
 pub mod hub;
+pub mod logind;
 pub mod mpris;
 pub mod mpris_pleamar;
 pub mod networkmanager;
 pub mod notifications;
 pub mod sysvalue;
 pub mod tray;
+
+pub use logind::listen_logind_lock;
 
 pub use audio::AudioService;
 pub use auth::verify as verify_password;
