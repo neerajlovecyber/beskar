@@ -20,9 +20,13 @@ pub mod sysvalue;
 pub mod hardware_bus;
 pub mod tray;
 pub mod updates;
+pub mod vitals;
+pub mod watcher;
 
 pub use hardware_bus::{HardwareBus, HardwarePlatform, LinuxHardwareAdapter, MockHardwareAdapter, MockHardwareState};
 pub use logind::listen_logind_lock;
+pub use vitals::{VitalsService, VitalsSnapshot, CpuMetrics, MemoryMetrics, DiskMetrics, ThermalMetrics};
+pub use watcher::{FileWatcherService, WatchEvent};
 
 pub use audio::AudioService;
 pub use auth::verify as verify_password;

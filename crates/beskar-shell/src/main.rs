@@ -50,6 +50,7 @@ struct DesktopBarView {
     action_tx: tokio::sync::mpsc::UnboundedSender<BarAction>,
     compositor: Arc<dyn CompositorBackend>,
     is_convex: bool,
+    config: beskar_core::config::ShellConfig,
 }
 
 impl DesktopBarView {
@@ -61,6 +62,7 @@ impl DesktopBarView {
         compositor: Arc<dyn CompositorBackend>,
         cx: &mut Context<Self>,
     ) -> Self {
+        let initial_cfg = beskar_core::config::ShellConfig::load();
         let now = Local::now();
         let time_str = now.format("%-I:%M %p").to_string();
         let date_str = now.format("%a %b %-d").to_string();
@@ -332,6 +334,7 @@ impl DesktopBarView {
                 let is_convex = cfg.bar_style == beskar_core::config::BarStyleConfig::Convex;
                 let res = this.update(cx, |this, cx| {
                     this.is_convex = is_convex;
+                    this.config = cfg;
                     cx.notify();
                 });
                 if res.is_err() {
@@ -359,6 +362,7 @@ impl DesktopBarView {
             action_tx,
             compositor,
             is_convex,
+            config: initial_cfg,
         }
     }
 }
@@ -478,7 +482,6 @@ impl Render for DesktopBarView {
         });
 
         let active_notif = self.notifications.first().map(|n| (n.summary.clone(), n.body.clone()));
-        let cfg = beskar_core::config::ShellConfig::load();
         let state = beskar_ui::BarState {
             is_convex: self.is_convex,
             workspaces: self.workspaces.clone(),
@@ -495,9 +498,9 @@ impl Render for DesktopBarView {
             animated_center_width: Some(self.island_spring.current),
             cava_bands: self.cava_bands,
             tray_items: self.tray_items.clone(),
-            modules_left: Some(cfg.modules_left),
-            modules_center: Some(cfg.modules_center),
-            modules_right: Some(cfg.modules_right),
+            modules_left: Some(self.config.modules_left.clone()),
+            modules_center: Some(self.config.modules_center.clone()),
+            modules_right: Some(self.config.modules_right.clone()),
         };
         let actions = beskar_ui::BarActions {
             on_select_ws: Some(on_select_ws),

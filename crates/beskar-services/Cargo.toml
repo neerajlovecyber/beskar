@@ -21,3 +21,6 @@ libc = "0.2.190"
 freedesktop-desktop-entry.workspace = true
 freedesktop-icons.workspace = true
 reqwest.workspace = true
+sysinfo.workspace = true
+notify.workspace = true
+arboard.workspace = true

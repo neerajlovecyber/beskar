@@ -156,7 +156,7 @@ impl ShellConfig {
             .ok()
             .and_then(|c| serde_json::from_str::<Self>(&c).ok())
         {
-            tracing::info!("Loaded Beskar config from {}", path.display());
+            tracing::debug!("Loaded Beskar config from {}", path.display());
             return config;
         }
         let default_config = Self::default();
