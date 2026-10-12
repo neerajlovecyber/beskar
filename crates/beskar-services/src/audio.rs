@@ -139,6 +139,32 @@ impl AudioService {
         }
     }
 
+    pub fn set_volume_percent(percent: u8) {
+        let target = (percent as f32 / 100.0).clamp(0.0, 1.0);
+        if let Ok(mut pulse) = Pulse::connect("beskar cmd")
+            && let Ok((server, sinks)) = pulse.state()
+            && let Some(sink) = sinks.iter().find(|s| Some(&s.name) == server.default_sink_name.as_ref()).or(sinks.first()) {
+                let mut cv = ChannelVolume::empty();
+                let raw = Volume::from_u32_clamped((target * Volume::NORM.as_u32() as f32).round() as u32);
+                for _ in 0..sink.cvolume.channels().len().max(1) {
+                    cv.push(raw);
+                }
+                let params = SetDeviceVolumeParams {
+                    device_index: Some(sink.index),
+                    device_name: None,
+                    volume: cv,
+                };
+                let _ = pulse.ack(Command::SetSinkVolume(params));
+                return;
+            }
+
+        // Fallback to wpctl
+        let arg = format!("{}%", percent.min(100));
+        let _ = std::process::Command::new("wpctl")
+            .args(["set-volume", "@DEFAULT_AUDIO_SINK@", &arg])
+            .spawn();
+    }
+
     pub fn set_volume(delta_percent: i32) {
         if let Ok(mut pulse) = Pulse::connect("beskar cmd")
             && let Ok((server, sinks)) = pulse.state()

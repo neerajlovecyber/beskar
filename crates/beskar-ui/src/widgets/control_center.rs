@@ -1,6 +1,7 @@
 use beskar_services::{BluetoothDeviceItem, WifiAccessPoint};
 use gpui_kit::assets::IconName;
 use gpui_kit::component::button::{Button, ButtonVariants};
+use gpui_kit::component::slider::{Slider, SliderState};
 use gpui_kit::component::switch::Switch;
 use gpui_kit::component::tag::Tag;
 use gpui_kit::component::Icon;
@@ -33,6 +34,8 @@ pub struct ControlCenterWidget {
     bt_devices: Vec<BluetoothDeviceItem>,
     show_wifi_list: bool,
     show_bt_list: bool,
+    volume_slider: Option<Entity<SliderState>>,
+    brightness_slider: Option<Entity<SliderState>>,
     on_volume_change: Option<Arc<dyn Fn(i32) + Send + Sync>>,
     on_toggle_mute: Option<Arc<dyn Fn() + Send + Sync>>,
     on_brightness_change: Option<Arc<dyn Fn(i32) + Send + Sync>>,
@@ -65,6 +68,8 @@ impl ControlCenterWidget {
             bt_devices: Vec::new(),
             show_wifi_list: false,
             show_bt_list: false,
+            volume_slider: None,
+            brightness_slider: None,
             on_volume_change: None,
             on_toggle_mute: None,
             on_brightness_change: None,
@@ -122,6 +127,16 @@ impl ControlCenterWidget {
     pub fn bt_devices(mut self, list: Vec<BluetoothDeviceItem>, show: bool) -> Self {
         self.bt_devices = list;
         self.show_bt_list = show;
+        self
+    }
+
+    pub fn volume_slider(mut self, slider: Entity<SliderState>) -> Self {
+        self.volume_slider = Some(slider);
+        self
+    }
+
+    pub fn brightness_slider(mut self, slider: Entity<SliderState>) -> Self {
+        self.brightness_slider = Some(slider);
         self
     }
 
@@ -201,9 +216,9 @@ impl ControlCenterWidget {
 
 impl RenderOnce for ControlCenterWidget {
     fn render(self, _window: &mut Window, _cx: &mut App) -> impl IntoElement {
-        let on_vol = self.on_volume_change;
+        let _on_vol = self.on_volume_change;
         let on_mute = self.on_toggle_mute;
-        let on_bright = self.on_brightness_change;
+        let _on_bright = self.on_brightness_change;
         let on_profile = self.on_set_power_profile;
         let on_wifi = self.on_toggle_wifi;
         let on_bt = self.on_toggle_bluetooth;
@@ -732,54 +747,40 @@ impl RenderOnce for ControlCenterWidget {
                                     ),
                             )
                             .child(
-                                div()
-                                    .flex()
-                                    .items_center()
-                                    .gap(px(6.0))
-                                    .child(
-                                        Button::new("cc-vol-down")
-                                            .ghost()
-                                            .compact()
-                                            .label("-")
-                                            .when_some(on_vol.clone(), |btn, cb| {
-                                                btn.on_click(move |_, _, _| (cb)(-5))
-                                            }),
-                                    )
-                                    .child(
-                                        Tag::secondary().child(format!("{}%", self.volume_percent)),
-                                    )
-                                    .child(
-                                        Button::new("cc-vol-up")
-                                            .ghost()
-                                            .compact()
-                                            .label("+")
-                                            .when_some(on_vol, |btn, cb| {
-                                                btn.on_click(move |_, _, _| (cb)(5))
-                                            }),
-                                    ),
+                                Tag::secondary().child(format!("{}%", self.volume_percent)),
                             ),
                     )
-                    // Visual Volume Bar
-                    .child(
-                        div()
-                            .relative()
-                            .w_full()
-                            .h(px(8.0))
-                            .rounded_full()
-                            .bg(beskar_theme::Theme::glass_fill(0.10))
-                            .overflow_hidden()
-                            .child(
+                    .map(|card| {
+                        if let Some(ref slider) = self.volume_slider {
+                            card.child(
                                 div()
-                                    .h_full()
-                                    .w(relative(self.volume_percent as f32 / 100.0))
+                                    .w_full()
+                                    .px(px(2.0))
+                                    .child(Slider::new(slider).w_full()),
+                            )
+                        } else {
+                            card.child(
+                                div()
+                                    .relative()
+                                    .w_full()
+                                    .h(px(8.0))
                                     .rounded_full()
-                                    .bg(if self.is_muted {
-                                        beskar_theme::Theme::muted()
-                                    } else {
-                                        beskar_theme::Theme::accent()
-                                    }),
-                            ),
-                    ),
+                                    .bg(beskar_theme::Theme::glass_fill(0.10))
+                                    .overflow_hidden()
+                                    .child(
+                                        div()
+                                            .h_full()
+                                            .w(relative(self.volume_percent as f32 / 100.0))
+                                            .rounded_full()
+                                            .bg(if self.is_muted {
+                                                beskar_theme::Theme::muted()
+                                            } else {
+                                                beskar_theme::Theme::accent()
+                                            }),
+                                    ),
+                            )
+                        }
+                    }),
             )
             // ── Master Display Brightness Slider Card ──
             .child(
@@ -791,7 +792,7 @@ impl RenderOnce for ControlCenterWidget {
                     .border_color(beskar_theme::Theme::subtle_border())
                     .flex()
                     .flex_col()
-                    .gap(px(8.0))
+                    .gap(px(10.0))
                     .child(
                         div()
                             .flex()
@@ -816,50 +817,36 @@ impl RenderOnce for ControlCenterWidget {
                                     ),
                             )
                             .child(
-                                div()
-                                    .flex()
-                                    .items_center()
-                                    .gap(px(6.0))
-                                    .child(
-                                        Button::new("cc-bright-down")
-                                            .ghost()
-                                            .compact()
-                                            .label("-")
-                                            .when_some(on_bright.clone(), |btn, cb| {
-                                                btn.on_click(move |_, _, _| (cb)(-5))
-                                            }),
-                                    )
-                                    .child(
-                                        Tag::secondary().child(format!("{}%", self.brightness_percent)),
-                                    )
-                                    .child(
-                                        Button::new("cc-bright-up")
-                                            .ghost()
-                                            .compact()
-                                            .label("+")
-                                            .when_some(on_bright, |btn, cb| {
-                                                btn.on_click(move |_, _, _| (cb)(5))
-                                            }),
-                                    ),
+                                Tag::secondary().child(format!("{}%", self.brightness_percent)),
                             ),
                     )
-                    // Visual Brightness Bar
-                    .child(
-                        div()
-                            .relative()
-                            .w_full()
-                            .h(px(8.0))
-                            .rounded_full()
-                            .bg(beskar_theme::Theme::glass_fill(0.10))
-                            .overflow_hidden()
-                            .child(
+                    .map(|card| {
+                        if let Some(ref slider) = self.brightness_slider {
+                            card.child(
                                 div()
-                                    .h_full()
-                                    .w(relative(self.brightness_percent as f32 / 100.0))
+                                    .w_full()
+                                    .px(px(2.0))
+                                    .child(Slider::new(slider).w_full()),
+                            )
+                        } else {
+                            card.child(
+                                div()
+                                    .relative()
+                                    .w_full()
+                                    .h(px(8.0))
                                     .rounded_full()
-                                    .bg(beskar_theme::Theme::accent()),
-                            ),
-                    ),
+                                    .bg(beskar_theme::Theme::glass_fill(0.10))
+                                    .overflow_hidden()
+                                    .child(
+                                        div()
+                                            .h_full()
+                                            .w(relative(self.brightness_percent as f32 / 100.0))
+                                            .rounded_full()
+                                            .bg(beskar_theme::Theme::accent()),
+                                    ),
+                            )
+                        }
+                    }),
             )
             // ── Power Profiles Selector Pill Strip ──
             .child(

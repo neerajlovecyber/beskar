@@ -35,6 +35,7 @@ pub trait HardwarePlatform: Send + Sync {
     // ── Audio ──
     async fn get_audio_volume(&self) -> (u8, bool);
     async fn set_audio_volume(&self, delta: i32) -> anyhow::Result<()>;
+    async fn set_audio_volume_percent(&self, percent: u8) -> anyhow::Result<()>;
     async fn toggle_audio_mute(&self) -> anyhow::Result<()>;
 
     // ── Display Brightness ──
@@ -124,6 +125,14 @@ impl HardwarePlatform for LinuxHardwareAdapter {
     async fn set_audio_volume(&self, delta: i32) -> anyhow::Result<()> {
         tokio::task::spawn_blocking(move || {
             AudioService::set_volume(delta);
+        })
+        .await?;
+        Ok(())
+    }
+
+    async fn set_audio_volume_percent(&self, percent: u8) -> anyhow::Result<()> {
+        tokio::task::spawn_blocking(move || {
+            AudioService::set_volume_percent(percent);
         })
         .await?;
         Ok(())
@@ -320,6 +329,13 @@ impl HardwarePlatform for MockHardwareAdapter {
         Ok(())
     }
 
+    async fn set_audio_volume_percent(&self, percent: u8) -> anyhow::Result<()> {
+        let mut s = self.state.write().await;
+        s.audio_volume = percent.clamp(0, 100);
+        s.audio_muted = false;
+        Ok(())
+    }
+
     async fn toggle_audio_mute(&self) -> anyhow::Result<()> {
         let mut s = self.state.write().await;
         s.audio_muted = !s.audio_muted;
@@ -417,6 +433,10 @@ impl HardwareBus {
 
     pub async fn set_audio_volume(&self, delta: i32) -> anyhow::Result<()> {
         self.platform.set_audio_volume(delta).await
+    }
+
+    pub async fn set_audio_volume_percent(&self, percent: u8) -> anyhow::Result<()> {
+        self.platform.set_audio_volume_percent(percent).await
     }
 
     pub async fn toggle_audio_mute(&self) -> anyhow::Result<()> {
