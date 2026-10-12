@@ -197,9 +197,9 @@ impl RenderOnce for SettingsWidget {
             .h(px(520.0))
             .rounded(px(22.0))
             // Frosted Obsidian Acrylic Glass
-            .bg(hsla(240.0 / 360.0, 0.16, 0.08, 0.95))
+            .bg(beskar_theme::Theme::bg())
             .border_1()
-            .border_color(hsla(240.0 / 360.0, 0.10, 1.0, 0.14))
+            .border_color(beskar_theme::Theme::card_border())
             .shadow_2xl()
             .flex()
             .overflow_hidden()
@@ -208,9 +208,9 @@ impl RenderOnce for SettingsWidget {
                 div()
                     .w(px(220.0))
                     .h_full()
-                    .bg(hsla(0.0, 0.0, 0.0, 0.25))
+                    .bg(beskar_theme::Theme::glass_dark(0.25))
                     .border_r_1()
-                    .border_color(hsla(0.0, 0.0, 1.0, 0.08))
+                    .border_color(beskar_theme::Theme::subtle_border())
                     .p(px(16.0))
                     .flex()
                     .flex_col()
@@ -232,14 +232,14 @@ impl RenderOnce for SettingsWidget {
                                             .w(px(28.0))
                                             .h(px(28.0))
                                             .rounded(px(8.0))
-                                            .bg(hsla(45.0 / 360.0, 0.90, 0.60, 1.0))
+                                            .bg(beskar_theme::Theme::accent())
                                             .flex()
                                             .items_center()
                                             .justify_center()
                                             .child(
                                                 Icon::new(IconName::Settings2)
                                                     .size(px(16.0))
-                                                    .text_color(hsla(0.0, 0.0, 0.08, 1.0)),
+                                                    .text_color(beskar_theme::Theme::bg()),
                                             ),
                                     )
                                     .child(
@@ -250,13 +250,13 @@ impl RenderOnce for SettingsWidget {
                                                 div()
                                                     .text_sm()
                                                     .font_weight(FontWeight::BOLD)
-                                                    .text_color(hsla(0.0, 0.0, 0.98, 1.0))
+                                                    .text_color(beskar_theme::Theme::fg())
                                                     .child("Beskar Shell"),
                                             )
                                             .child(
                                                 div()
                                                     .text_xs()
-                                                    .text_color(hsla(0.0, 0.0, 0.55, 1.0))
+                                                    .text_color(beskar_theme::Theme::text_secondary())
                                                     .child("Preferences"),
                                             ),
                                     ),
@@ -277,13 +277,13 @@ impl RenderOnce for SettingsWidget {
                                             .rounded(px(8.0))
                                             .cursor_pointer()
                                             .bg(if is_active {
-                                                hsla(45.0 / 360.0, 0.90, 0.60, 0.16)
+                                                beskar_theme::Theme::accent_alpha(0.16)
                                             } else {
-                                                hsla(0.0, 0.0, 0.0, 0.0)
+                                                gpui_kit::transparent_black()
                                             })
                                             .hover(move |s| {
                                                 if !is_active {
-                                                    s.bg(hsla(0.0, 0.0, 1.0, 0.06))
+                                                    s.bg(beskar_theme::Theme::card_border())
                                                 } else {
                                                     s
                                                 }
@@ -298,9 +298,9 @@ impl RenderOnce for SettingsWidget {
                                                 Icon::new(cat.icon())
                                                     .size(px(15.0))
                                                     .text_color(if is_active {
-                                                        hsla(45.0 / 360.0, 0.90, 0.60, 1.0)
+                                                        beskar_theme::Theme::accent()
                                                     } else {
-                                                        hsla(0.0, 0.0, 0.60, 1.0)
+                                                        beskar_theme::Theme::muted()
                                                     }),
                                             )
                                             .child(
@@ -312,9 +312,9 @@ impl RenderOnce for SettingsWidget {
                                                         FontWeight::MEDIUM
                                                     })
                                                     .text_color(if is_active {
-                                                        hsla(0.0, 0.0, 0.98, 1.0)
+                                                        beskar_theme::Theme::fg()
                                                     } else {
-                                                        hsla(0.0, 0.0, 0.80, 1.0)
+                                                        beskar_theme::Theme::text_secondary()
                                                     })
                                                     .child(cat.title()),
                                             )
@@ -329,11 +329,11 @@ impl RenderOnce for SettingsWidget {
                             .justify_between()
                             .pt(px(10.0))
                             .border_t_1()
-                            .border_color(hsla(0.0, 0.0, 1.0, 0.06))
+                            .border_color(beskar_theme::Theme::subtle_border())
                             .child(
                                 div()
                                     .text_xs()
-                                    .text_color(hsla(0.0, 0.0, 0.45, 1.0))
+                                    .text_color(beskar_theme::Theme::muted())
                                     .child("v0.1.0 • Wayland"),
                             )
                             .child(
@@ -369,7 +369,7 @@ impl RenderOnce for SettingsWidget {
                                 div()
                                     .text_lg()
                                     .font_weight(FontWeight::BOLD)
-                                    .text_color(hsla(0.0, 0.0, 0.98, 1.0))
+                                    .text_color(beskar_theme::Theme::fg())
                                     .child(config.active_category.title()),
                             )
                             .child(
@@ -435,10 +435,10 @@ fn render_general_page() -> gpui::Div {
                         .px(px(8.0))
                         .py(px(4.0))
                         .rounded(px(6.0))
-                        .bg(hsla(142.0 / 360.0, 0.85, 0.55, 0.20))
+                        .bg(beskar_theme::Theme::success_alpha(0.20))
                         .text_xs()
                         .font_weight(FontWeight::BOLD)
-                        .text_color(hsla(142.0 / 360.0, 0.90, 0.65, 1.0))
+                        .text_color(beskar_theme::Theme::success())
                         .child("Connected"),
                 ))
                 .child(settings_row(
@@ -448,10 +448,10 @@ fn render_general_page() -> gpui::Div {
                         .px(px(8.0))
                         .py(px(4.0))
                         .rounded(px(6.0))
-                        .bg(hsla(0.0, 0.0, 1.0, 0.08))
+                        .bg(beskar_theme::Theme::card_bg())
                         .text_xs()
                         .font_weight(FontWeight::MEDIUM)
-                        .text_color(hsla(0.0, 0.0, 0.70, 1.0))
+                        .text_color(beskar_theme::Theme::text_secondary())
                         .child("Standby"),
                 )),
         )
@@ -463,7 +463,7 @@ fn render_general_page() -> gpui::Div {
                     div()
                         .text_xs()
                         .font_weight(FontWeight::MEDIUM)
-                        .text_color(hsla(45.0 / 360.0, 0.90, 0.60, 1.0))
+                        .text_color(beskar_theme::Theme::accent())
                         .child("Vulkan / wgpu"),
                 ))
                 .child(settings_row(
@@ -472,7 +472,7 @@ fn render_general_page() -> gpui::Div {
                     div()
                         .text_xs()
                         .font_weight(FontWeight::MEDIUM)
-                        .text_color(hsla(0.0, 0.0, 0.75, 1.0))
+                        .text_color(beskar_theme::Theme::text_secondary())
                         .child("Top Bezel Flush"),
                 )),
         )
@@ -504,7 +504,7 @@ fn render_appearance_page(
                         .child(
                             div()
                                 .text_xs()
-                                .text_color(hsla(0.0, 0.0, 0.60, 1.0))
+                                .text_color(beskar_theme::Theme::text_secondary())
                                 .child("Select desktop color tokens or extract dominant HSL acrylics directly from wallpaper"),
                         )
                         .child(
@@ -529,14 +529,14 @@ fn render_appearance_page(
                                         .bg(if is_active {
                                             beskar_theme::Theme::bg_secondary()
                                         } else {
-                                            hsla(0.0, 0.0, 1.0, 0.04)
+                                            gpui_kit::transparent_black()
                                         })
                                         .border_color(if is_active {
                                             beskar_theme::Theme::accent()
                                         } else {
-                                            hsla(0.0, 0.0, 1.0, 0.08)
+                                            beskar_theme::Theme::subtle_border()
                                         })
-                                        .hover(|s| s.bg(hsla(0.0, 0.0, 1.0, 0.10)))
+                                        .hover(|s| s.bg(beskar_theme::Theme::bg_secondary()))
                                         .when_some(on_p, move |el, cb| {
                                             el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)(preset))
                                         })
@@ -547,7 +547,7 @@ fn render_appearance_page(
                                                 .text_color(if is_active {
                                                     beskar_theme::Theme::fg()
                                                 } else {
-                                                    hsla(0.0, 0.0, 0.70, 1.0)
+                                                    beskar_theme::Theme::text_secondary()
                                                 })
                                                 .child(name),
                                         )
@@ -562,7 +562,7 @@ fn render_appearance_page(
                                 .child(
                                     div()
                                         .text_xs()
-                                        .text_color(hsla(0.0, 0.0, 0.50, 1.0))
+                                        .text_color(beskar_theme::Theme::text_secondary())
                                         .child("Wallpaper Source:"),
                                 )
                                 .child(
@@ -587,7 +587,7 @@ fn render_appearance_page(
                         .child(
                             div()
                                 .text_xs()
-                                .text_color(hsla(0.0, 0.0, 0.60, 1.0))
+                                .text_color(beskar_theme::Theme::text_secondary())
                                 .child("Select the primary accent vibrancy used across dynamic islands and badges"),
                         )
                         .child(
@@ -611,9 +611,9 @@ fn render_appearance_page(
                                                 .bg(*color)
                                                 .border_2()
                                                 .border_color(if is_active {
-                                                    hsla(0.0, 0.0, 1.0, 0.90)
+                                                    beskar_theme::Theme::fg()
                                                 } else {
-                                                    hsla(0.0, 0.0, 0.0, 0.40)
+                                                    beskar_theme::Theme::glass_dark(0.40)
                                                 })
                                                 .hover(|s| s.opacity(0.85))
                                                 .when_some(on_acc, move |el, cb| {
@@ -629,9 +629,9 @@ fn render_appearance_page(
                                                     FontWeight::NORMAL
                                                 })
                                                 .text_color(if is_active {
-                                                    hsla(0.0, 0.0, 0.95, 1.0)
+                                                    beskar_theme::Theme::fg()
                                                 } else {
-                                                    hsla(0.0, 0.0, 0.50, 1.0)
+                                                    beskar_theme::Theme::text_secondary()
                                                 })
                                                 .child(*name),
                                         )
@@ -648,10 +648,10 @@ fn render_appearance_page(
                         .px(px(8.0))
                         .py(px(4.0))
                         .rounded(px(6.0))
-                        .bg(hsla(45.0 / 360.0, 0.90, 0.60, 0.15))
+                        .bg(beskar_theme::Theme::accent_alpha(0.15))
                         .text_xs()
                         .font_weight(FontWeight::BOLD)
-                        .text_color(hsla(45.0 / 360.0, 0.90, 0.60, 1.0))
+                        .text_color(beskar_theme::Theme::accent())
                         .child("Enabled"),
                 ))
                 .child(settings_row(
@@ -660,7 +660,7 @@ fn render_appearance_page(
                     div()
                         .text_xs()
                         .font_weight(FontWeight::BOLD)
-                        .text_color(hsla(0.0, 0.0, 0.85, 1.0))
+                        .text_color(beskar_theme::Theme::fg())
                         .child("18 px"),
                 )),
         )
@@ -690,16 +690,16 @@ fn render_bar_page(
                         .rounded(px(6.0))
                         .cursor_pointer()
                         .bg(if notch_mode {
-                            hsla(210.0 / 360.0, 0.85, 0.55, 0.20)
+                            beskar_theme::Theme::info_alpha(0.20)
                         } else {
-                            hsla(45.0 / 360.0, 0.90, 0.60, 0.20)
+                            beskar_theme::Theme::accent_alpha(0.20)
                         })
                         .text_xs()
                         .font_weight(FontWeight::BOLD)
                         .text_color(if notch_mode {
-                            hsla(210.0 / 360.0, 0.90, 0.65, 1.0)
+                            beskar_theme::Theme::info()
                         } else {
-                            hsla(45.0 / 360.0, 0.90, 0.60, 1.0)
+                            beskar_theme::Theme::accent()
                         })
                         .when_some(on_notch, move |el, cb| {
                             el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)(!notch_mode))
@@ -752,9 +752,9 @@ fn render_hardware_page(config: &SettingsConfig) -> gpui::Div {
                         .text_xs()
                         .font_weight(FontWeight::BOLD)
                         .text_color(if config.is_wifi_on {
-                            hsla(45.0 / 360.0, 0.90, 0.60, 1.0)
+                            beskar_theme::Theme::accent()
                         } else {
-                            hsla(0.0, 0.0, 0.50, 1.0)
+                            beskar_theme::Theme::muted()
                         })
                         .child(if config.is_wifi_on { "Connected" } else { "Disabled" }),
                 ))
@@ -765,9 +765,9 @@ fn render_hardware_page(config: &SettingsConfig) -> gpui::Div {
                         .text_xs()
                         .font_weight(FontWeight::BOLD)
                         .text_color(if config.is_bt_on {
-                            hsla(210.0 / 360.0, 0.90, 0.65, 1.0)
+                            beskar_theme::Theme::info()
                         } else {
-                            hsla(0.0, 0.0, 0.50, 1.0)
+                            beskar_theme::Theme::muted()
                         })
                         .child(if config.is_bt_on { "Active" } else { "Powered Off" }),
                 ))
@@ -777,7 +777,7 @@ fn render_hardware_page(config: &SettingsConfig) -> gpui::Div {
                     div()
                         .text_xs()
                         .font_weight(FontWeight::BOLD)
-                        .text_color(hsla(45.0 / 360.0, 0.90, 0.60, 1.0))
+                        .text_color(beskar_theme::Theme::accent())
                         .child(format!("{}%", config.volume_percent)),
                 ))
                 .child(settings_row(
@@ -786,7 +786,7 @@ fn render_hardware_page(config: &SettingsConfig) -> gpui::Div {
                     div()
                         .text_xs()
                         .font_weight(FontWeight::BOLD)
-                        .text_color(hsla(142.0 / 360.0, 0.85, 0.55, 1.0))
+                        .text_color(beskar_theme::Theme::success())
                         .child(format!("{}%", config.battery_percent)),
                 )),
         )
@@ -810,10 +810,10 @@ fn render_notifications_page(
                         .px(px(8.0))
                         .py(px(4.0))
                         .rounded(px(6.0))
-                        .bg(hsla(142.0 / 360.0, 0.85, 0.55, 0.20))
+                        .bg(beskar_theme::Theme::success_alpha(0.20))
                         .text_xs()
                         .font_weight(FontWeight::BOLD)
-                        .text_color(hsla(142.0 / 360.0, 0.90, 0.65, 1.0))
+                        .text_color(beskar_theme::Theme::success())
                         .child("Running"),
                 ))
                 .child(settings_row(
@@ -822,7 +822,7 @@ fn render_notifications_page(
                     div()
                         .text_xs()
                         .font_weight(FontWeight::BOLD)
-                        .text_color(hsla(0.0, 0.0, 0.85, 1.0))
+                        .text_color(beskar_theme::Theme::fg())
                         .child(format!("{} seconds", timeout_secs)),
                 ))
                 .child(settings_row(
@@ -880,9 +880,9 @@ fn settings_card(title: &'static str) -> gpui::Div {
     div()
         .p(px(14.0))
         .rounded(px(14.0))
-        .bg(hsla(0.0, 0.0, 1.0, 0.04))
+        .bg(beskar_theme::Theme::glass_fill(0.04))
         .border_1()
-        .border_color(hsla(0.0, 0.0, 1.0, 0.08))
+        .border_color(beskar_theme::Theme::card_border())
         .flex()
         .flex_col()
         .gap(px(10.0))
@@ -890,7 +890,7 @@ fn settings_card(title: &'static str) -> gpui::Div {
             div()
                 .text_xs()
                 .font_weight(FontWeight::BOLD)
-                .text_color(hsla(0.0, 0.0, 0.55, 1.0))
+                .text_color(beskar_theme::Theme::text_secondary())
                 .child(title),
         )
 }
@@ -910,13 +910,13 @@ fn settings_row(title: &'static str, description: &'static str, control: impl In
                     div()
                         .text_xs()
                         .font_weight(FontWeight::BOLD)
-                        .text_color(hsla(0.0, 0.0, 0.95, 1.0))
+                        .text_color(beskar_theme::Theme::fg())
                         .child(title),
                 )
                 .child(
                     div()
                         .text_xs()
-                        .text_color(hsla(0.0, 0.0, 0.55, 1.0))
+                        .text_color(beskar_theme::Theme::text_secondary())
                         .child(description),
                 ),
         )

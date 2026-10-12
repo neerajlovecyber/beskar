@@ -206,17 +206,17 @@ impl RenderOnce for PowerMenuWidget {
                                     .items_center()
                                     .justify_center()
                                     .bg(if is_critical {
-                                        hsla(350.0 / 360.0, 0.85, 0.50, 0.20)
+                                        beskar_theme::Theme::danger_alpha(0.20)
                                     } else {
-                                        hsla(261.0 / 360.0, 0.86, 0.73, 0.20)
+                                        beskar_theme::Theme::accent_alpha(0.20)
                                     })
                                     .child(
                                         Icon::new(pending.icon())
                                             .size(px(13.0))
                                             .text_color(if is_critical {
-                                                hsla(350.0 / 360.0, 0.90, 0.65, 1.0)
+                                                beskar_theme::Theme::danger()
                                             } else {
-                                                hsla(261.0 / 360.0, 0.90, 0.75, 1.0)
+                                                beskar_theme::Theme::accent()
                                             }),
                                     ),
                             )
@@ -224,7 +224,7 @@ impl RenderOnce for PowerMenuWidget {
                                 div()
                                     .text_sm()
                                     .font_weight(FontWeight::BOLD)
-                                    .text_color(hsla(0.0, 0.0, 0.95, 1.0))
+                                    .text_color(beskar_theme::Theme::fg())
                                     .child(format!("Confirm {}?", pending.label())),
                             ),
                     )
@@ -298,16 +298,16 @@ impl RenderOnce for PowerMenuWidget {
                             // Accent pill selection matching Minflair ActionMenu.qml
                             .bg(if is_sel {
                                 if is_shutdown {
-                                    hsla(350.0 / 360.0, 0.85, 0.50, 1.0)
+                                    beskar_theme::Theme::danger()
                                 } else {
-                                    hsla(261.0 / 360.0, 0.86, 0.73, 1.0)
+                                    beskar_theme::Theme::accent()
                                 }
                             } else {
-                                hsla(0.0, 0.0, 1.0, 0.0)
+                                gpui_kit::transparent_black()
                             })
                             .hover(move |s| {
                                 if !is_sel {
-                                    s.bg(hsla(0.0, 0.0, 1.0, 0.12))
+                                    s.bg(beskar_theme::Theme::card_border())
                                 } else {
                                     s
                                 }
@@ -329,12 +329,12 @@ impl RenderOnce for PowerMenuWidget {
                                     .size(px(16.0))
                                     .text_color(if is_sel {
                                         if is_shutdown {
-                                            hsla(0.0, 0.0, 1.0, 1.0)
+                                            beskar_theme::Theme::fg()
                                         } else {
-                                            hsla(0.0, 0.0, 0.05, 1.0)
+                                            beskar_theme::Theme::bg()
                                         }
                                     } else {
-                                        hsla(0.0, 0.0, 0.80, 1.0)
+                                        beskar_theme::Theme::fg()
                                     }),
                             )
                             .child(
@@ -347,12 +347,12 @@ impl RenderOnce for PowerMenuWidget {
                                     })
                                     .text_color(if is_sel {
                                         if is_shutdown {
-                                            hsla(0.0, 0.0, 1.0, 1.0)
+                                            beskar_theme::Theme::fg()
                                         } else {
-                                            hsla(0.0, 0.0, 0.05, 1.0)
+                                            beskar_theme::Theme::bg()
                                         }
                                     } else {
-                                        hsla(0.0, 0.0, 0.65, 1.0)
+                                        beskar_theme::Theme::text_secondary()
                                     })
                                     .child(action.label()),
                             )

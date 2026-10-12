@@ -23,23 +23,107 @@ pub enum ThemePresetConfig {
     WallpaperAuto,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub enum BarPosition {
+    #[serde(rename = "top")]
+    #[default]
+    Top,
+    #[serde(rename = "bottom")]
+    Bottom,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum BarModule {
+    #[serde(rename = "brand_star")]
+    BrandStar,
+    #[serde(rename = "workspaces")]
+    Workspaces,
+    #[serde(rename = "active_window")]
+    ActiveWindow,
+    #[serde(rename = "clock")]
+    Clock,
+    #[serde(rename = "media")]
+    Media,
+    #[serde(rename = "cava")]
+    Cava,
+    #[serde(rename = "tray")]
+    Tray,
+    #[serde(rename = "quick_controls")]
+    QuickControls,
+    #[serde(rename = "vitals")]
+    Vitals,
+    #[serde(rename = "power")]
+    Power,
+}
+
+fn default_true() -> bool {
+    true
+}
+
+fn default_bar_height() -> f32 {
+    38.0
+}
+
+fn default_island_spacing() -> f32 {
+    12.0
+}
+
+fn default_modules_left() -> Vec<BarModule> {
+    vec![
+        BarModule::BrandStar,
+        BarModule::Workspaces,
+        BarModule::ActiveWindow,
+    ]
+}
+
+fn default_modules_center() -> Vec<BarModule> {
+    vec![BarModule::Clock, BarModule::Media]
+}
+
+fn default_modules_right() -> Vec<BarModule> {
+    vec![
+        BarModule::Tray,
+        BarModule::QuickControls,
+        BarModule::Vitals,
+        BarModule::Power,
+    ]
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ShellConfig {
+    #[serde(default)]
     pub bar_style: BarStyleConfig,
+    #[serde(default)]
+    pub bar_position: BarPosition,
+    #[serde(default)]
     pub theme_preset: ThemePresetConfig,
+    #[serde(default = "default_true")]
     pub sound_feedback: bool,
+    #[serde(default = "default_true")]
     pub blur_enabled: bool,
+    #[serde(default = "default_bar_height")]
     pub bar_height: f32,
+    #[serde(default = "default_island_spacing")]
     pub island_spacing: f32,
+    #[serde(default = "default_true")]
     pub multi_monitor: bool,
+    #[serde(default = "default_true")]
     pub show_workspaces: bool,
+    #[serde(default = "default_true")]
     pub show_media_in_center: bool,
+    #[serde(default = "default_modules_left")]
+    pub modules_left: Vec<BarModule>,
+    #[serde(default = "default_modules_center")]
+    pub modules_center: Vec<BarModule>,
+    #[serde(default = "default_modules_right")]
+    pub modules_right: Vec<BarModule>,
 }
 
 impl Default for ShellConfig {
     fn default() -> Self {
         Self {
             bar_style: BarStyleConfig::Island,
+            bar_position: BarPosition::Top,
             theme_preset: ThemePresetConfig::WallpaperAuto,
             sound_feedback: true,
             blur_enabled: true,
@@ -48,6 +132,9 @@ impl Default for ShellConfig {
             multi_monitor: true,
             show_workspaces: true,
             show_media_in_center: true,
+            modules_left: default_modules_left(),
+            modules_center: default_modules_center(),
+            modules_right: default_modules_right(),
         }
     }
 }

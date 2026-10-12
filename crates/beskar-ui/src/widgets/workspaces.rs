@@ -7,7 +7,7 @@ use std::sync::Arc;
 /// Renders actual compositor workspaces from Niri:
 /// - Elongated amber/gold capsule pill for the active workspace
 /// - Subtle dots for inactive workspaces with hover and click interactions
-#[derive(IntoElement)]
+#[derive(Clone, IntoElement)]
 pub struct WorkspacesWidget {
     workspaces: Vec<WorkspaceInfo>,
     active_id: Option<u64>,
@@ -79,12 +79,12 @@ impl RenderOnce for WorkspacesWidget {
                 let on_select_cb = on_select.clone();
 
                 if is_active {
-                    // Active workspace: Elongated gold/amber capsule pill (24px wide, 8px tall)
+                    // Active workspace: Elongated accent capsule pill (24px wide, 8px tall)
                     div()
                         .w(px(24.0))
                         .h(px(8.0))
                         .rounded(px(4.0))
-                        .bg(hsla(45.0 / 360.0, 0.90, 0.60, 1.0))
+                        .bg(beskar_theme::Theme::accent())
                         .shadow_sm()
                 } else {
                     // Inactive workspace: Subtle 8px circular dot
@@ -92,10 +92,10 @@ impl RenderOnce for WorkspacesWidget {
                         .w(px(8.0))
                         .h(px(8.0))
                         .rounded_full()
-                        .bg(hsla(240.0 / 360.0, 0.08, 0.40, 0.60))
+                        .bg(beskar_theme::Theme::subtle_border())
                         .hover(|style| {
                             style
-                                .bg(hsla(0.0, 0.0, 0.90, 0.90))
+                                .bg(beskar_theme::Theme::text_secondary())
                                 .cursor_pointer()
                         })
                         .when_some(on_select_cb, |el, cb| {

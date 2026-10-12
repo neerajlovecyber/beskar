@@ -49,6 +49,9 @@ pub struct BarState {
     pub animated_center_width: Option<f32>,
     pub cava_bands: Option<[u8; 4]>,
     pub tray_items: Vec<beskar_core::models::TrayItem>,
+    pub modules_left: Option<Vec<beskar_core::config::BarModule>>,
+    pub modules_center: Option<Vec<beskar_core::config::BarModule>>,
+    pub modules_right: Option<Vec<beskar_core::config::BarModule>>,
 }
 
 /// Callbacks for interactive bar actions.
@@ -85,6 +88,7 @@ pub struct BeskarBar {
     padding_x: Pixels,
     is_island_cluster: bool,
     is_convex: bool,
+    geometry: Option<crate::convex::ConvexGeometry>,
 }
 
 impl Default for BeskarBar {
@@ -102,7 +106,13 @@ impl BeskarBar {
             padding_x: px(12.0),
             is_island_cluster: false,
             is_convex: false,
+            geometry: None,
         }
+    }
+
+    pub fn geometry(mut self, geom: crate::convex::ConvexGeometry) -> Self {
+        self.geometry = Some(geom);
+        self
     }
 
     pub fn convex(mut self, convex: bool) -> Self {
@@ -136,6 +146,25 @@ impl BeskarBar {
         use crate::widgets::{DynamicCenterWidget, VitalsWidget, WorkspacesWidget};
 
         let is_convex = state.is_convex;
+
+        let mod_left = state.modules_left.unwrap_or_else(|| vec![
+            beskar_core::config::BarModule::BrandStar,
+            beskar_core::config::BarModule::Workspaces,
+            beskar_core::config::BarModule::ActiveWindow,
+        ]);
+        let _mod_center = state.modules_center.unwrap_or_else(|| vec![
+            beskar_core::config::BarModule::Clock,
+            beskar_core::config::BarModule::Media,
+        ]);
+        let mod_right = state.modules_right.unwrap_or_else(|| vec![
+            beskar_core::config::BarModule::Tray,
+            beskar_core::config::BarModule::QuickControls,
+            beskar_core::config::BarModule::Vitals,
+            beskar_core::config::BarModule::Power,
+        ]);
+
+        let has_win = mod_left.contains(&beskar_core::config::BarModule::ActiveWindow);
+
         let mut ws_widget = WorkspacesWidget::new(state.workspaces, state.active_ws);
         if let Some(handler) = actions.on_select_ws {
             ws_widget = ws_widget.on_select(move |id| (handler)(id));
@@ -156,11 +185,11 @@ impl BeskarBar {
             .rounded_md()
             .text_xs()
             .font_weight(FontWeight::BOLD)
-            .text_color(hsla(45.0 / 360.0, 0.90, 0.60, 1.0))
+            .text_color(beskar_theme::Theme::accent())
             .hover(|s| {
                 s.cursor_pointer()
                     .bg(beskar_theme::Theme::bg_secondary())
-                    .text_color(hsla(45.0 / 360.0, 1.0, 0.75, 1.0))
+                    .text_color(beskar_theme::Theme::accent())
             })
             .on_mouse_down(MouseButton::Left, move |_, _, _| {
                 if let Some(handler) = on_star.as_ref() {
@@ -174,11 +203,8 @@ impl BeskarBar {
             })
             .child("✦");
 
-        let left_pill = IslandPill::new()
-            .convex(is_convex)
-            .child(star_badge)
-            .child(ws_widget)
-            .when_some(state.active_window, |pill, win| {
+        let active_win_element = if has_win {
+            state.active_window.and_then(|win| {
                 let title_text = win
                     .title
                     .as_deref()
@@ -187,7 +213,7 @@ impl BeskarBar {
                     .unwrap_or("");
 
                 if title_text.is_empty() {
-                    return pill;
+                    return None;
                 }
 
                 let icon = resolve_window_icon(win.app_id.as_deref(), win.title.as_deref());
@@ -201,7 +227,7 @@ impl BeskarBar {
 
                 let on_win_clk = actions.on_window_click.clone();
                 let on_win_cls = actions.on_window_close.clone();
-                pill.child(
+                Some(
                     div()
                         .flex()
                         .items_center()
@@ -209,7 +235,7 @@ impl BeskarBar {
                         .ml(px(8.0))
                         .pl(px(8.0))
                         .border_l_1()
-                        .border_color(hsla(0.0, 0.0, 1.0, 0.12))
+                        .border_color(beskar_theme::Theme::subtle_border())
                         .cursor_pointer()
                         .hover(|s| s.bg(beskar_theme::Theme::bg_secondary()).rounded_md())
                         .when_some(on_win_clk, |el, cb| {
@@ -221,17 +247,46 @@ impl BeskarBar {
                         .child(
                             Icon::new(icon)
                                 .size(px(13.0))
-                                .text_color(hsla(0.0, 0.0, 0.75, 1.0)),
+                                .text_color(beskar_theme::Theme::text_secondary()),
                         )
                         .child(
                             div()
                                 .text_xs()
                                 .font_weight(FontWeight::MEDIUM)
-                                .text_color(hsla(0.0, 0.0, 0.85, 1.0))
+                                .text_color(beskar_theme::Theme::fg())
                                 .child(short_title),
                         ),
                 )
-            });
+            })
+        } else {
+            None
+        };
+
+        let mut star_badge = Some(star_badge);
+        let mut ws_widget = Some(ws_widget);
+        let mut active_win_element = active_win_element;
+
+        let mut left_pill = IslandPill::new().convex(is_convex);
+        for m in &mod_left {
+            match m {
+                beskar_core::config::BarModule::BrandStar => {
+                    if let Some(badge) = star_badge.take() {
+                        left_pill = left_pill.child(badge);
+                    }
+                }
+                beskar_core::config::BarModule::Workspaces => {
+                    if let Some(ws) = ws_widget.take() {
+                        left_pill = left_pill.child(ws);
+                    }
+                }
+                beskar_core::config::BarModule::ActiveWindow => {
+                    if let Some(win_el) = active_win_element.take() {
+                        left_pill = left_pill.child(win_el);
+                    }
+                }
+                _ => {}
+            }
+        }
 
         let mut center_widget = DynamicCenterWidget::new(state.time_str)
             .date(state.date_str)
@@ -262,7 +317,8 @@ impl BeskarBar {
         let mut vitals_widget = VitalsWidget::new(state.volume_percent, state.battery_percent)
             .muted(state.is_muted)
             .charging(state.is_charging)
-            .tray(state.tray_items);
+            .tray(state.tray_items)
+            .modules(mod_right);
         if let Some(handler) = actions.on_volume_click {
             vitals_widget = vitals_widget.on_volume_click(move || (handler)());
         }
@@ -351,6 +407,9 @@ impl BeskarBar {
             animated_center_width,
             cava_bands,
             tray_items,
+            modules_left: None,
+            modules_center: None,
+            modules_right: None,
         };
         let actions = BarActions {
             on_select_ws,
@@ -432,7 +491,7 @@ impl RenderOnce for BeskarBar {
     fn render(self, _window: &mut Window, _cx: &mut App) -> impl IntoElement {
         if self.is_island_cluster {
             // minflair IslandBar mode: Left Pill, Center Dynamic Island, and Right Pill
-            // sit grouped together as a floating tri-capsule island cluster at the top center!
+            // sit grouped together as a floating tri-capsule island cluster at the top center
             div()
                 .relative()
                 .size_full()
@@ -444,68 +503,50 @@ impl RenderOnce for BeskarBar {
                 .children(self.center)
                 .children(self.right)
         } else {
-            // minflair ConvexBar mode: Left Notch, Center Notch, and Right Notch
-            // connected with the continuous top bezel bridge
-            let mut container = div()
+            // Industry Standard Desktop Shell Architecture (gpui-shell, Waybar, Hyprpanel):
+            // - Center section: Exactly centered at the screen's 50% midpoint.
+            // - Left section: Pinned to start edge, sizes 100% naturally to its contained items.
+            // - Right section: Pinned to end edge, sizes 100% naturally to its contained items.
+            // Left and Right are NEVER forced to equal widths or padded with artificial voids.
+            div()
                 .relative()
                 .size_full()
-                .flex()
-                .items_start()
-                .px(self.padding_x);
-
-            if self.is_convex {
-                use crate::convex::{ConvexBarShape, ConvexGeometry};
-                let geom = ConvexGeometry {
-                    width: 1920.0,
-                    height: 40.0,
-                    left_w: 330.0,
-                    center_x: 820.0,
-                    center_w: 280.0,
-                    right_w: 340.0,
-                    top_bezel: 2.0,
-                    flare_width: 16.0,
-                    flare_height: 14.0,
-                    bottom_radius: 14.0,
-                    center_bottom_radius: 14.0,
-                    center_height: 40.0,
-                    base_height: 40.0,
-                };
-                container = container.child(
+                .when(self.is_convex, |this| {
+                    this.border_b_1().border_color(beskar_theme::Theme::subtle_border())
+                })
+                // 1. Center Section: True-centered on the display
+                .child(
                     div()
                         .absolute()
                         .inset_0()
-                        .child(ConvexBarShape::new(
-                            geom,
-                            beskar_theme::Theme::bg(),
-                            beskar_theme::Theme::border(),
-                        )),
-                );
-            }
-
-            container
-                // Left region: Left Island Notch / Pill
-                .child(
-                    div()
                         .flex()
-                        .flex_1()
-                        .items_start()
-                        .justify_start()
-                        .children(self.left),
-                )
-                // Center region: Dynamic Center Island Notch / Pill
-                .child(
-                    div()
-                        .flex()
-                        .items_start()
+                        .items_center()
                         .justify_center()
                         .children(self.center),
                 )
-                // Right region: Right Island Notch / Pill
+                // 2. Left Section: Pinned to start, natural shrink-to-fit width
                 .child(
                     div()
+                        .absolute()
+                        .top_0()
+                        .bottom_0()
+                        .left_0()
+                        .pl(self.padding_x)
                         .flex()
-                        .flex_1()
-                        .items_start()
+                        .items_center()
+                        .justify_start()
+                        .children(self.left),
+                )
+                // 3. Right Section: Pinned to end, natural shrink-to-fit width
+                .child(
+                    div()
+                        .absolute()
+                        .top_0()
+                        .bottom_0()
+                        .right_0()
+                        .pr(self.padding_x)
+                        .flex()
+                        .items_center()
                         .justify_end()
                         .children(self.right),
                 )

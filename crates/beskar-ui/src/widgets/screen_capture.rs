@@ -164,7 +164,7 @@ impl RenderOnce for ScreenCaptureWidget {
                     .justify_between()
                     .pb(px(8.0))
                     .border_b_1()
-                    .border_color(hsla(0.0, 0.0, 1.0, 0.08))
+                    .border_color(beskar_theme::Theme::subtle_border())
                     .child(
                         div()
                             .flex()
@@ -209,9 +209,9 @@ impl RenderOnce for ScreenCaptureWidget {
                             .bg(beskar_theme::Theme::bg_secondary())
                             .border_1()
                             .border_color(if is_rec_btn {
-                                hsla(0.0, 0.75, 0.55, 0.35)
+                                beskar_theme::Theme::danger_alpha(0.35)
                             } else {
-                                hsla(0.0, 0.0, 1.0, 0.06)
+                                beskar_theme::Theme::card_border()
                             })
                             .flex()
                             .flex_col()
@@ -220,7 +220,7 @@ impl RenderOnce for ScreenCaptureWidget {
                             .gap(px(6.0))
                             .hover(move |s| {
                                 s.bg(if is_rec_btn {
-                                    hsla(0.0, 0.8, 0.45, 0.25)
+                                    beskar_theme::Theme::danger_alpha(0.25)
                                 } else {
                                     beskar_theme::Theme::bg_accent()
                                 })
@@ -236,7 +236,7 @@ impl RenderOnce for ScreenCaptureWidget {
                                 Icon::new(icon)
                                     .size(px(20.0))
                                     .text_color(if is_rec_btn {
-                                        hsla(0.0, 0.85, 0.60, 1.0)
+                                        beskar_theme::Theme::danger()
                                     } else {
                                         beskar_theme::Theme::accent()
                                     }),

@@ -92,6 +92,104 @@ impl Theme {
     pub fn shadow() -> gpui_kit::Hsla {
         gpui_kit::hsla(0.0, 0.0, 0.0, 0.75)
     }
+
+    /// Secondary foreground text
+    #[inline]
+    pub fn text_secondary() -> gpui_kit::Hsla {
+        crate::engine::ThemeEngine::current().text_secondary.into()
+    }
+
+    /// Status success color
+    #[inline]
+    pub fn success() -> gpui_kit::Hsla {
+        crate::engine::ThemeEngine::current().success.into()
+    }
+
+    #[inline]
+    pub fn success_alpha(alpha: f32) -> gpui_kit::Hsla {
+        let mut c = crate::engine::ThemeEngine::current().success;
+        c.a = alpha;
+        c.into()
+    }
+
+    /// Status warning color
+    #[inline]
+    pub fn warning() -> gpui_kit::Hsla {
+        crate::engine::ThemeEngine::current().warning.into()
+    }
+
+    #[inline]
+    pub fn warning_alpha(alpha: f32) -> gpui_kit::Hsla {
+        let mut c = crate::engine::ThemeEngine::current().warning;
+        c.a = alpha;
+        c.into()
+    }
+
+    /// Status danger / alert color
+    #[inline]
+    pub fn danger() -> gpui_kit::Hsla {
+        crate::engine::ThemeEngine::current().danger.into()
+    }
+
+    #[inline]
+    pub fn danger_alpha(alpha: f32) -> gpui_kit::Hsla {
+        let mut c = crate::engine::ThemeEngine::current().danger;
+        c.a = alpha;
+        c.into()
+    }
+
+    /// Informational / Bluetooth accent color
+    #[inline]
+    pub fn info() -> gpui_kit::Hsla {
+        crate::engine::ThemeEngine::current().info.into()
+    }
+
+    #[inline]
+    pub fn info_alpha(alpha: f32) -> gpui_kit::Hsla {
+        let mut c = crate::engine::ThemeEngine::current().info;
+        c.a = alpha;
+        c.into()
+    }
+
+    /// Primary accent with specified alpha
+    #[inline]
+    pub fn accent_alpha(alpha: f32) -> gpui_kit::Hsla {
+        let mut c = crate::engine::ThemeEngine::current().accent;
+        c.a = alpha;
+        c.into()
+    }
+
+    /// High-level card background surface
+    #[inline]
+    pub fn card_bg() -> gpui_kit::Hsla {
+        let mut s = crate::engine::ThemeEngine::current().surface_bg;
+        s.a = 0.94;
+        s.into()
+    }
+
+    /// Card boundary border
+    #[inline]
+    pub fn card_border() -> gpui_kit::Hsla {
+        gpui_kit::hsla(240.0 / 360.0, 0.10, 1.0, 0.14)
+    }
+
+    /// Subtle divider border (8%-12% alpha)
+    #[inline]
+    pub fn subtle_border() -> gpui_kit::Hsla {
+        gpui_kit::hsla(0.0, 0.0, 1.0, 0.10)
+    }
+
+    /// Transparent glass fill (white tinted by alpha)
+    #[inline]
+    pub fn glass_fill(alpha: f32) -> gpui_kit::Hsla {
+        gpui_kit::hsla(0.0, 0.0, 1.0, alpha)
+    }
+
+    /// Transparent glass dark fill (black tinted by alpha)
+    #[inline]
+    pub fn glass_dark(alpha: f32) -> gpui_kit::Hsla {
+        gpui_kit::hsla(0.0, 0.0, 0.0, alpha)
+    }
 }
 
 /// Aesthetic Theme Tokens combining Suzuha's dark acrylic surfaces with iRiS's gold/amber & neutral palette.
@@ -115,6 +213,7 @@ pub struct ThemeTokens {
     pub success: HslaColor,
     pub warning: HslaColor,
     pub danger: HslaColor,
+    pub info: HslaColor,
 
     // Geometry & Motion Parameters (from iRiS & Suzuha)
     pub bar_height: f32,
@@ -147,6 +246,7 @@ impl Default for ThemeTokens {
             success: HslaColor::new(142.0, 0.70, 0.55, 1.0),
             warning: HslaColor::new(42.0, 0.90, 0.55, 1.0),
             danger: HslaColor::new(350.0, 0.85, 0.60, 1.0),
+            info: HslaColor::new(210.0, 0.85, 0.60, 1.0),
 
             // Geometry tokens
             bar_height: 44.0,

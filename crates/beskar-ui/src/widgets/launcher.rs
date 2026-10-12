@@ -258,7 +258,7 @@ impl RenderOnce for LauncherWidget {
                             .bg(if is_current {
                                 theme_bg_secondary
                             } else {
-                                hsla(0.0, 0.0, 0.0, 0.0)
+                                gpui_kit::transparent_black()
                             })
                             .hover(move |s| {
                                 s.bg(theme_bg_secondary).cursor_pointer()

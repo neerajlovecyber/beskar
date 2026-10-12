@@ -24,6 +24,7 @@ pub struct VitalsWidget {
     is_wifi_connected: bool,
     is_bluetooth_connected: bool,
     tray_items: Vec<beskar_core::models::TrayItem>,
+    modules: Option<Vec<beskar_core::config::BarModule>>,
     on_volume_click: Option<Arc<dyn Fn() + Send + Sync>>,
     on_volume_scroll: Option<Arc<dyn Fn(i32) + Send + Sync>>,
     on_power_click: Option<Arc<dyn Fn() + Send + Sync>>,
@@ -45,6 +46,7 @@ impl VitalsWidget {
             is_wifi_connected: true,
             is_bluetooth_connected: true,
             tray_items: Vec::new(),
+            modules: None,
             on_volume_click: None,
             on_volume_scroll: None,
             on_power_click: None,
@@ -54,6 +56,11 @@ impl VitalsWidget {
             on_tray_click: None,
             on_tray_menu: None,
         }
+    }
+
+    pub fn modules(mut self, modules: Vec<beskar_core::config::BarModule>) -> Self {
+        self.modules = Some(modules);
+        self
     }
 
     pub fn on_tray_click(mut self, handler: impl Fn(String) + Send + Sync + 'static) -> Self {
@@ -141,11 +148,11 @@ impl RenderOnce for VitalsWidget {
         };
 
         let battery_color = if self.is_charging {
-            hsla(142.0 / 360.0, 0.85, 0.55, 1.0)
+            beskar_theme::Theme::success()
         } else if self.battery_percent <= 20 {
-            hsla(10.0 / 360.0, 0.85, 0.60, 1.0)
+            beskar_theme::Theme::danger()
         } else {
-            hsla(0.0, 0.0, 0.90, 1.0)
+            beskar_theme::Theme::fg()
         };
 
         let volume_icon = if self.is_muted {
@@ -155,9 +162,9 @@ impl RenderOnce for VitalsWidget {
         };
 
         let volume_color = if self.is_muted {
-            hsla(0.0, 0.0, 0.50, 1.0)
+            beskar_theme::Theme::muted()
         } else {
-            hsla(0.0, 0.0, 0.90, 1.0)
+            beskar_theme::Theme::fg()
         };
 
         let on_scroll = self.on_volume_scroll;
@@ -165,12 +172,17 @@ impl RenderOnce for VitalsWidget {
         let on_tray_clk = self.on_tray_click;
         let _on_tray_ctx = self.on_tray_menu;
 
+        let has_tray = self.modules.as_ref().map_or(true, |m| m.contains(&beskar_core::config::BarModule::Tray));
+        let has_controls = self.modules.as_ref().map_or(true, |m| m.contains(&beskar_core::config::BarModule::QuickControls));
+        let has_vitals = self.modules.as_ref().map_or(true, |m| m.contains(&beskar_core::config::BarModule::Vitals));
+        let has_power = self.modules.as_ref().map_or(true, |m| m.contains(&beskar_core::config::BarModule::Power));
+
         div()
             .flex()
             .items_center()
             .gap(px(6.0))
-            // Render tray icons if any registered
-            .when(!self.tray_items.is_empty(), |this| {
+            // Render tray icons if any registered and enabled
+            .when(has_tray && !self.tray_items.is_empty(), |this| {
                 let mut tray_row = div().flex().items_center().gap(px(4.0));
                 for item in self.tray_items {
                     let icon_name = infer_tray_icon(&item.id, &item.icon, &item.title);
@@ -193,7 +205,7 @@ impl RenderOnce for VitalsWidget {
                     );
                 }
                 this.child(tray_row)
-                    .child(div().w(px(1.0)).h(px(12.0)).bg(hsla(0.0, 0.0, 1.0, 0.12)))
+                    .child(div().w(px(1.0)).h(px(12.0)).bg(beskar_theme::Theme::subtle_border()))
             })
             // Recording badge: green pulsing dot + timer
             .when(is_recording, |this| {
@@ -202,137 +214,138 @@ impl RenderOnce for VitalsWidget {
                         .child(self.recording_time.unwrap_or_default()),
                 )
             })
-            // Sliders / Control Center button
-            .child(
-                Button::new("vitals-cc")
-                    .ghost()
-                    .compact()
-                    .icon(Icon::new(IconName::SlidersHorizontal).size(px(14.0)))
-                    .when_some(on_cc.clone(), |btn, cb| {
-                        btn.on_click(move |_, _, _| (cb)())
-                    }),
-            )
-            // Screen Capture quick trigger
-            .child(
-                Button::new("vitals-capture")
-                    .ghost()
-                    .compact()
-                    .icon(Icon::new(IconName::Camera).size(px(14.0)))
-                    .when_some(self.on_capture_click, |btn, cb| {
-                        btn.on_click(move |_, _, _| (cb)())
-                    }),
-            )
-            // Wallpaper Gallery quick trigger
-            .child(
-                Button::new("vitals-wallpaper")
-                    .ghost()
-                    .compact()
-                    .icon(Icon::new(IconName::Image).size(px(14.0)))
-                    .when_some(self.on_wallpaper_click, |btn, cb| {
-                        btn.on_click(move |_, _, _| (cb)())
-                    }),
-            )
-            // Volume icon & indicator with scroll-to-step volume support
-            .child(
-                div()
-                    .flex()
-                    .items_center()
-                    .gap(px(4.0))
-                    .px(px(6.0))
-                    .py(px(2.0))
-                    .rounded_md()
-                    .text_color(volume_color)
-                    .hover(|style| {
-                        style
-                            .bg(beskar_theme::Theme::bg_secondary())
-                            .text_color(hsla(0.0, 0.0, 1.0, 1.0))
-                            .cursor_pointer()
-                    })
-                    .when_some(on_vol, |el, cb| {
-                        el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
-                    })
-                    .when_some(on_scroll, |el, cb| {
-                        el.on_scroll_wheel(move |event, _, _| {
-                            let delta = if event.delta.pixel_delta(px(1.0)).y > px(0.0) { 2 } else { -2 };
-                            (cb)(delta);
+            // Quick Controls triggers (Control Center, Screen Capture, Wallpaper Gallery)
+            .when(has_controls, |this| {
+                this.child(
+                    Button::new("vitals-cc")
+                        .ghost()
+                        .compact()
+                        .icon(Icon::new(IconName::SlidersHorizontal).size(px(14.0)))
+                        .when_some(on_cc.clone(), |btn, cb| {
+                            btn.on_click(move |_, _, _| (cb)())
+                        }),
+                )
+                .child(
+                    Button::new("vitals-capture")
+                        .ghost()
+                        .compact()
+                        .icon(Icon::new(IconName::Camera).size(px(14.0)))
+                        .when_some(self.on_capture_click, |btn, cb| {
+                            btn.on_click(move |_, _, _| (cb)())
+                        }),
+                )
+                .child(
+                    Button::new("vitals-wallpaper")
+                        .ghost()
+                        .compact()
+                        .icon(Icon::new(IconName::Image).size(px(14.0)))
+                        .when_some(self.on_wallpaper_click, |btn, cb| {
+                            btn.on_click(move |_, _, _| (cb)())
+                        }),
+                )
+            })
+            // Hardware Vitals (Volume, Wi-Fi, Bluetooth, Battery)
+            .when(has_vitals, |this| {
+                this.child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap(px(4.0))
+                        .px(px(6.0))
+                        .py(px(2.0))
+                        .rounded_md()
+                        .text_color(volume_color)
+                        .hover(|style| {
+                            style
+                                .bg(beskar_theme::Theme::bg_secondary())
+                                .text_color(beskar_theme::Theme::fg())
+                                .cursor_pointer()
                         })
-                    })
-                    .child(Icon::new(volume_icon).size(px(14.0)).text_color(volume_color))
-                    .child(
-                        div()
-                            .text_xs()
-                            .font_weight(FontWeight::MEDIUM)
-                            .child(if self.is_muted {
-                                "Mute".to_string()
+                        .when_some(on_vol, |el, cb| {
+                            el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
+                        })
+                        .when_some(on_scroll, |el, cb| {
+                            el.on_scroll_wheel(move |event, _, _| {
+                                let delta = if event.delta.pixel_delta(px(1.0)).y > px(0.0) { 2 } else { -2 };
+                                (cb)(delta);
+                            })
+                        })
+                        .child(Icon::new(volume_icon).size(px(14.0)).text_color(volume_color))
+                        .child(
+                            div()
+                                .text_xs()
+                                .font_weight(FontWeight::MEDIUM)
+                                .child(if self.is_muted {
+                                    "Mute".to_string()
+                                } else {
+                                    format!("{}%", self.volume_percent)
+                                }),
+                        ),
+                )
+                .child(
+                    Button::new("vitals-wifi")
+                        .ghost()
+                        .compact()
+                        .icon(
+                            Icon::new(if self.is_wifi_connected {
+                                IconName::Wifi
                             } else {
-                                format!("{}%", self.volume_percent)
-                            }),
-                    ),
-            )
-            // Network Wi-Fi icon & trigger
-            .child(
-                Button::new("vitals-wifi")
-                    .ghost()
-                    .compact()
-                    .icon(
-                        Icon::new(if self.is_wifi_connected {
-                            IconName::Wifi
-                        } else {
-                            IconName::WifiOff
+                                IconName::WifiOff
+                            })
+                            .size(px(14.0)),
+                        )
+                        .when_some(on_cc.clone(), |btn, cb| {
+                            btn.on_click(move |_, _, _| (cb)())
+                        }),
+                )
+                .child(
+                    Button::new("vitals-bluetooth")
+                        .ghost()
+                        .compact()
+                        .icon(Icon::new(IconName::Bluetooth).size(px(14.0)))
+                        .when_some(on_cc.clone(), |btn, cb| {
+                            btn.on_click(move |_, _, _| (cb)())
+                        }),
+                )
+                .child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap(px(4.0))
+                        .px(px(6.0))
+                        .py(px(2.0))
+                        .rounded_md()
+                        .text_color(battery_color)
+                        .hover(|style| {
+                            style
+                                .bg(beskar_theme::Theme::bg_secondary())
+                                .cursor_pointer()
                         })
-                        .size(px(14.0)),
-                    )
-                    .when_some(on_cc.clone(), |btn, cb| {
-                        btn.on_click(move |_, _, _| (cb)())
-                    }),
-            )
-            // Bluetooth icon & trigger
-            .child(
-                Button::new("vitals-bluetooth")
-                    .ghost()
-                    .compact()
-                    .icon(Icon::new(IconName::Bluetooth).size(px(14.0)))
-                    .when_some(on_cc.clone(), |btn, cb| {
-                        btn.on_click(move |_, _, _| (cb)())
-                    }),
-            )
-            // Battery icon & percentage
-            .child(
-                div()
-                    .flex()
-                    .items_center()
-                    .gap(px(4.0))
-                    .px(px(6.0))
-                    .py(px(2.0))
-                    .rounded_md()
-                    .text_color(battery_color)
-                    .hover(|style| {
-                        style
-                            .bg(beskar_theme::Theme::bg_secondary())
-                            .cursor_pointer()
-                    })
-                    .when_some(on_cc.clone(), |el, cb| {
-                        el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
-                    })
-                    .child(Icon::new(battery_icon).size(px(14.0)).text_color(battery_color))
-                    .child(
-                        div()
-                            .text_xs()
-                            .font_weight(FontWeight::MEDIUM)
-                            .child(format!("{}%", self.battery_percent)),
-                    ),
-            )
-            // Power button
-            .child(
-                Button::new("vitals-power")
-                    .danger()
-                    .ghost()
-                    .compact()
-                    .icon(Icon::new(IconName::Power).size(px(14.0)))
-                    .when_some(on_pwr, |btn, cb| {
-                        btn.on_click(move |_, _, _| (cb)())
-                    }),
-            )
+                        .when_some(on_cc.clone(), |el, cb| {
+                            el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
+                        })
+                        .child(Icon::new(battery_icon).size(px(14.0)).text_color(battery_color))
+                        .child(
+                            div()
+                                .text_xs()
+                                .font_weight(FontWeight::MEDIUM)
+                                .child(format!("{}%", self.battery_percent)),
+                        ),
+                )
+            })
+            // Power button trigger
+            .when(has_power, |this| {
+                this.child(
+                    Button::new("vitals-power")
+                        .danger()
+                        .ghost()
+                        .compact()
+                        .icon(Icon::new(IconName::Power).size(px(14.0)))
+                        .when_some(on_pwr, |btn, cb| {
+                            btn.on_click(move |_, _, _| (cb)())
+                        }),
+                )
+            })
     }
 }
 

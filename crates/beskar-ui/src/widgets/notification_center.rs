@@ -94,7 +94,7 @@ impl RenderOnce for NotificationCenterWidget {
                     .justify_between()
                     .pb(px(10.0))
                     .border_b_1()
-                    .border_color(hsla(0.0, 0.0, 1.0, 0.08))
+                    .border_color(beskar_theme::Theme::subtle_border())
                     .child(
                         div()
                             .flex()
@@ -188,11 +188,11 @@ fn render_empty_state() -> impl IntoElement {
                 .w(px(44.0))
                 .h(px(44.0))
                 .rounded_full()
-                .bg(hsla(140.0 / 360.0, 0.70, 0.45, 0.18))
+                .bg(beskar_theme::Theme::success_alpha(0.18))
                 .flex()
                 .items_center()
                 .justify_center()
-                .text_color(hsla(140.0 / 360.0, 0.85, 0.60, 1.0))
+                .text_color(beskar_theme::Theme::success())
                 .child(Icon::new(IconName::Check).size(px(24.0))),
         )
         .child(
@@ -233,14 +233,14 @@ fn render_notification_list(
                 .bg(beskar_theme::Theme::bg_secondary())
                 .border_1()
                 .border_color(if is_critical {
-                    hsla(0.0, 0.8, 0.55, 0.45)
+                    beskar_theme::Theme::danger_alpha(0.45)
                 } else {
-                    hsla(0.0, 0.0, 1.0, 0.06)
+                    beskar_theme::Theme::card_border()
                 })
                 .flex()
                 .flex_col()
                 .gap(px(6.0))
-                .hover(|s| s.bg(hsla(0.0, 0.0, 1.0, 0.08)))
+                .hover(|s| s.bg(beskar_theme::Theme::bg_tertiary()))
                 // App Pill & Timestamp
                 .child(
                     div()
@@ -270,7 +270,7 @@ fn render_notification_list(
                                         .font_weight(FontWeight::BOLD)
                                         .text_color(beskar_theme::Theme::fg())
                                         .child(item.app_name),
-                                ),
+                                )
                         )
                         .child(
                             div()
@@ -293,7 +293,7 @@ fn render_notification_list(
                                             .items_center()
                                             .justify_center()
                                             .text_color(beskar_theme::Theme::muted())
-                                            .hover(|s| s.text_color(hsla(0.0, 0.9, 0.6, 1.0)).cursor_pointer())
+                                            .hover(|s| s.text_color(beskar_theme::Theme::danger()).cursor_pointer())
                                             .on_mouse_down(MouseButton::Left, move |_, _, _| (cb)(id))
                                             .child(Icon::new(IconName::X).size(px(10.0))),
                                     )

@@ -171,7 +171,7 @@ impl RenderOnce for MusicPlayerWidget {
                                     .w(px(20.0))
                                     .h(px(20.0))
                                     .rounded_md()
-                                    .bg(hsla(45.0 / 360.0, 0.90, 0.55, 0.20))
+                                    .bg(beskar_theme::Theme::accent_alpha(0.20))
                                     .flex()
                                     .items_center()
                                     .justify_center()
@@ -211,7 +211,7 @@ impl RenderOnce for MusicPlayerWidget {
                             .rounded(px(16.0))
                             .bg(beskar_theme::Theme::bg_secondary())
                             .border_1()
-                            .border_color(hsla(0.0, 0.0, 1.0, 0.08))
+                            .border_color(beskar_theme::Theme::subtle_border())
                             .flex()
                             .items_center()
                             .justify_center()
@@ -388,7 +388,7 @@ fn render_progress_bar(progress: f32, on_seek: Option<Arc<dyn Fn(f32) + Send + S
         .w_full()
         .h(px(6.0))
         .rounded_full()
-        .bg(hsla(0.0, 0.0, 1.0, 0.12))
+        .bg(beskar_theme::Theme::card_border())
         .hover(|s| s.cursor_pointer())
         .when_some(on_seek, |el, cb| {
             el.on_mouse_down(MouseButton::Left, move |event, _window, _cx| {

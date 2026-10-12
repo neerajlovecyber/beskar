@@ -237,9 +237,9 @@ impl RenderOnce for ControlCenterWidget {
             .p(px(16.0))
             .rounded(px(20.0))
             // Frosted Obsidian Acrylic Glass
-            .bg(hsla(240.0 / 360.0, 0.14, 0.08, 0.94))
+            .bg(beskar_theme::Theme::card_bg())
             .border_1()
-            .border_color(hsla(240.0 / 360.0, 0.10, 1.0, 0.14))
+            .border_color(beskar_theme::Theme::card_border())
             .shadow_xl()
             .flex()
             .flex_col()
@@ -254,7 +254,7 @@ impl RenderOnce for ControlCenterWidget {
                         div()
                             .text_sm()
                             .font_weight(FontWeight::BOLD)
-                            .text_color(hsla(0.0, 0.0, 0.95, 1.0))
+                            .text_color(beskar_theme::Theme::fg())
                             .child("Control Center"),
                     )
                     .when_some(on_close, |this, cb| {
@@ -282,15 +282,15 @@ impl RenderOnce for ControlCenterWidget {
                             .p(px(10.0))
                             .rounded(px(14.0))
                             .bg(if self.is_wifi_on {
-                                hsla(45.0 / 360.0, 0.90, 0.60, 0.18)
+                                beskar_theme::Theme::accent_alpha(0.18)
                             } else {
-                                hsla(0.0, 0.0, 1.0, 0.05)
+                                beskar_theme::Theme::glass_fill(0.05)
                             })
                             .border_1()
                             .border_color(if self.is_wifi_on {
-                                hsla(45.0 / 360.0, 0.90, 0.60, 0.40)
+                                beskar_theme::Theme::accent_alpha(0.40)
                             } else {
-                                hsla(0.0, 0.0, 1.0, 0.08)
+                                beskar_theme::Theme::subtle_border()
                             })
                             .flex()
                             .items_center()
@@ -312,9 +312,9 @@ impl RenderOnce for ControlCenterWidget {
                                             .flex_shrink_0()
                                             .rounded_full()
                                             .bg(if self.is_wifi_on {
-                                                hsla(45.0 / 360.0, 0.90, 0.60, 1.0)
+                                                beskar_theme::Theme::accent()
                                             } else {
-                                                hsla(0.0, 0.0, 1.0, 0.10)
+                                                beskar_theme::Theme::glass_fill(0.10)
                                             })
                                             .flex()
                                             .items_center()
@@ -323,9 +323,9 @@ impl RenderOnce for ControlCenterWidget {
                                                 Icon::new(IconName::Wifi)
                                                     .size(px(14.0))
                                                     .text_color(if self.is_wifi_on {
-                                                        hsla(0.0, 0.0, 0.10, 1.0)
+                                                        beskar_theme::Theme::glass_dark(0.90)
                                                     } else {
-                                                        hsla(0.0, 0.0, 0.60, 1.0)
+                                                        beskar_theme::Theme::muted()
                                                     }),
                                             ),
                                     )
@@ -338,13 +338,13 @@ impl RenderOnce for ControlCenterWidget {
                                                 div()
                                                     .text_xs()
                                                     .font_weight(FontWeight::BOLD)
-                                                    .text_color(hsla(0.0, 0.0, 0.95, 1.0))
+                                                    .text_color(beskar_theme::Theme::fg())
                                                     .child("Wi-Fi"),
                                             )
                                             .child(
                                                 div()
                                                     .text_xs()
-                                                    .text_color(hsla(0.0, 0.0, 0.60, 1.0))
+                                                    .text_color(beskar_theme::Theme::muted())
                                                     .overflow_hidden()
                                                     .whitespace_nowrap()
                                                     .text_ellipsis()
@@ -396,15 +396,15 @@ impl RenderOnce for ControlCenterWidget {
                             .p(px(10.0))
                             .rounded(px(14.0))
                             .bg(if self.is_bt_on {
-                                hsla(210.0 / 360.0, 0.85, 0.55, 0.18)
+                                beskar_theme::Theme::info_alpha(0.18)
                             } else {
-                                hsla(0.0, 0.0, 1.0, 0.05)
+                                beskar_theme::Theme::glass_fill(0.05)
                             })
                             .border_1()
                             .border_color(if self.is_bt_on {
-                                hsla(210.0 / 360.0, 0.85, 0.55, 0.40)
+                                beskar_theme::Theme::info_alpha(0.40)
                             } else {
-                                hsla(0.0, 0.0, 1.0, 0.08)
+                                beskar_theme::Theme::subtle_border()
                             })
                             .flex()
                             .items_center()
@@ -426,9 +426,9 @@ impl RenderOnce for ControlCenterWidget {
                                             .flex_shrink_0()
                                             .rounded_full()
                                             .bg(if self.is_bt_on {
-                                                hsla(210.0 / 360.0, 0.85, 0.55, 1.0)
+                                                beskar_theme::Theme::info()
                                             } else {
-                                                hsla(0.0, 0.0, 1.0, 0.10)
+                                                beskar_theme::Theme::glass_fill(0.10)
                                             })
                                             .flex()
                                             .items_center()
@@ -437,9 +437,9 @@ impl RenderOnce for ControlCenterWidget {
                                                 Icon::new(IconName::Bluetooth)
                                                     .size(px(14.0))
                                                     .text_color(if self.is_bt_on {
-                                                        hsla(0.0, 0.0, 1.0, 1.0)
+                                                        beskar_theme::Theme::fg()
                                                     } else {
-                                                        hsla(0.0, 0.0, 0.60, 1.0)
+                                                        beskar_theme::Theme::muted()
                                                     }),
                                             ),
                                     )
@@ -452,13 +452,13 @@ impl RenderOnce for ControlCenterWidget {
                                                 div()
                                                     .text_xs()
                                                     .font_weight(FontWeight::BOLD)
-                                                    .text_color(hsla(0.0, 0.0, 0.95, 1.0))
+                                                    .text_color(beskar_theme::Theme::fg())
                                                     .child("Bluetooth"),
                                             )
                                             .child(
                                                 div()
                                                     .text_xs()
-                                                    .text_color(hsla(0.0, 0.0, 0.60, 1.0))
+                                                    .text_color(beskar_theme::Theme::muted())
                                                     .overflow_hidden()
                                                     .whitespace_nowrap()
                                                     .text_ellipsis()
@@ -509,9 +509,9 @@ impl RenderOnce for ControlCenterWidget {
                     div()
                         .p(px(10.0))
                         .rounded(px(12.0))
-                        .bg(hsla(0.0, 0.0, 1.0, 0.05))
+                        .bg(beskar_theme::Theme::glass_fill(0.05))
                         .border_1()
-                        .border_color(hsla(0.0, 0.0, 1.0, 0.10))
+                        .border_color(beskar_theme::Theme::subtle_border())
                         .flex()
                         .flex_col()
                         .gap(px(6.0))
@@ -519,7 +519,7 @@ impl RenderOnce for ControlCenterWidget {
                             div()
                                 .text_xs()
                                 .font_weight(FontWeight::BOLD)
-                                .text_color(hsla(45.0 / 360.0, 0.90, 0.60, 1.0))
+                                .text_color(beskar_theme::Theme::accent())
                                 .child("Available Wi-Fi Networks"),
                         )
                         .child(
@@ -532,7 +532,7 @@ impl RenderOnce for ControlCenterWidget {
                                     .child(
                                         div()
                                             .text_xs()
-                                            .text_color(hsla(0.0, 0.0, 0.60, 1.0))
+                                            .text_color(beskar_theme::Theme::muted())
                                             .child("Scanning networks..."),
                                     )
                                     .into_any_element()
@@ -565,16 +565,16 @@ impl RenderOnce for ControlCenterWidget {
                                                                 Icon::new(IconName::Wifi)
                                                                     .size(px(12.0))
                                                                     .text_color(if ap.is_active {
-                                                                        hsla(142.0 / 360.0, 0.85, 0.55, 1.0)
+                                                                        beskar_theme::Theme::success()
                                                                     } else {
-                                                                        hsla(0.0, 0.0, 0.70, 1.0)
+                                                                        beskar_theme::Theme::text_secondary()
                                                                     }),
                                                             )
                                                             .child(
                                                                 div()
                                                                     .text_xs()
                                                                     .font_weight(if ap.is_active { FontWeight::BOLD } else { FontWeight::NORMAL })
-                                                                    .text_color(hsla(0.0, 0.0, 0.90, 1.0))
+                                                                    .text_color(beskar_theme::Theme::fg())
                                                                     .child(ap.ssid.clone()),
                                                             ),
                                                     )
@@ -597,9 +597,9 @@ impl RenderOnce for ControlCenterWidget {
                     div()
                         .p(px(10.0))
                         .rounded(px(12.0))
-                        .bg(hsla(0.0, 0.0, 1.0, 0.05))
+                        .bg(beskar_theme::Theme::glass_fill(0.05))
                         .border_1()
-                        .border_color(hsla(0.0, 0.0, 1.0, 0.10))
+                        .border_color(beskar_theme::Theme::subtle_border())
                         .flex()
                         .flex_col()
                         .gap(px(6.0))
@@ -607,7 +607,7 @@ impl RenderOnce for ControlCenterWidget {
                             div()
                                 .text_xs()
                                 .font_weight(FontWeight::BOLD)
-                                .text_color(hsla(210.0 / 360.0, 0.85, 0.65, 1.0))
+                                .text_color(beskar_theme::Theme::info())
                                 .child("Paired Bluetooth Devices"),
                         )
                         .child(
@@ -620,7 +620,7 @@ impl RenderOnce for ControlCenterWidget {
                                     .child(
                                         div()
                                             .text_xs()
-                                            .text_color(hsla(0.0, 0.0, 0.60, 1.0))
+                                            .text_color(beskar_theme::Theme::muted())
                                             .child("Scanning Bluetooth devices..."),
                                     )
                                     .into_any_element()
@@ -650,7 +650,7 @@ impl RenderOnce for ControlCenterWidget {
                                             .justify_between()
                                             .p(px(6.0))
                                             .rounded(px(8.0))
-                                            .bg(hsla(0.0, 0.0, 1.0, 0.03))
+                                            .bg(beskar_theme::Theme::glass_fill(0.03))
                                             .child(
                                                 div()
                                                     .flex()
@@ -660,15 +660,15 @@ impl RenderOnce for ControlCenterWidget {
                                                         Icon::new(IconName::Bluetooth)
                                                             .size(px(12.0))
                                                             .text_color(if is_conn {
-                                                                hsla(142.0 / 360.0, 0.85, 0.55, 1.0)
+                                                                beskar_theme::Theme::success()
                                                             } else {
-                                                                hsla(0.0, 0.0, 0.60, 1.0)
+                                                                beskar_theme::Theme::muted()
                                                             }),
                                                     )
                                                     .child(
                                                         div()
                                                             .text_xs()
-                                                            .text_color(hsla(0.0, 0.0, 0.90, 1.0))
+                                                            .text_color(beskar_theme::Theme::fg())
                                                             .child(dev.name.clone()),
                                                     ),
                                             )
@@ -690,9 +690,9 @@ impl RenderOnce for ControlCenterWidget {
                 div()
                     .p(px(12.0))
                     .rounded(px(14.0))
-                    .bg(hsla(0.0, 0.0, 1.0, 0.04))
+                    .bg(beskar_theme::Theme::glass_fill(0.04))
                     .border_1()
-                    .border_color(hsla(0.0, 0.0, 1.0, 0.08))
+                    .border_color(beskar_theme::Theme::subtle_border())
                     .flex()
                     .flex_col()
                     .gap(px(8.0))
@@ -717,7 +717,7 @@ impl RenderOnce for ControlCenterWidget {
                                                     IconName::Volume2
                                                 })
                                                 .size(px(14.0))
-                                                .text_color(hsla(0.0, 0.0, 0.90, 1.0)),
+                                                .text_color(beskar_theme::Theme::fg()),
                                             )
                                             .when_some(on_mute, |btn, cb| {
                                                 btn.on_click(move |_, _, _| (cb)())
@@ -727,7 +727,7 @@ impl RenderOnce for ControlCenterWidget {
                                         div()
                                             .text_xs()
                                             .font_weight(FontWeight::MEDIUM)
-                                            .text_color(hsla(0.0, 0.0, 0.90, 1.0))
+                                            .text_color(beskar_theme::Theme::fg())
                                             .child("Master Volume"),
                                     ),
                             )
@@ -766,7 +766,7 @@ impl RenderOnce for ControlCenterWidget {
                             .w_full()
                             .h(px(8.0))
                             .rounded_full()
-                            .bg(hsla(0.0, 0.0, 1.0, 0.10))
+                            .bg(beskar_theme::Theme::glass_fill(0.10))
                             .overflow_hidden()
                             .child(
                                 div()
@@ -774,9 +774,9 @@ impl RenderOnce for ControlCenterWidget {
                                     .w(relative(self.volume_percent as f32 / 100.0))
                                     .rounded_full()
                                     .bg(if self.is_muted {
-                                        hsla(0.0, 0.0, 0.40, 1.0)
+                                        beskar_theme::Theme::muted()
                                     } else {
-                                        hsla(45.0 / 360.0, 0.90, 0.60, 1.0)
+                                        beskar_theme::Theme::accent()
                                     }),
                             ),
                     ),
@@ -786,9 +786,9 @@ impl RenderOnce for ControlCenterWidget {
                 div()
                     .p(px(12.0))
                     .rounded(px(14.0))
-                    .bg(hsla(0.0, 0.0, 1.0, 0.04))
+                    .bg(beskar_theme::Theme::glass_fill(0.04))
                     .border_1()
-                    .border_color(hsla(0.0, 0.0, 1.0, 0.08))
+                    .border_color(beskar_theme::Theme::subtle_border())
                     .flex()
                     .flex_col()
                     .gap(px(8.0))
@@ -805,13 +805,13 @@ impl RenderOnce for ControlCenterWidget {
                                     .child(
                                         Icon::new(IconName::Sun)
                                             .size(px(14.0))
-                                            .text_color(hsla(45.0 / 360.0, 0.90, 0.60, 1.0)),
+                                            .text_color(beskar_theme::Theme::accent()),
                                     )
                                     .child(
                                         div()
                                             .text_xs()
                                             .font_weight(FontWeight::MEDIUM)
-                                            .text_color(hsla(0.0, 0.0, 0.90, 1.0))
+                                            .text_color(beskar_theme::Theme::fg())
                                             .child("Display Brightness"),
                                     ),
                             )
@@ -850,14 +850,14 @@ impl RenderOnce for ControlCenterWidget {
                             .w_full()
                             .h(px(8.0))
                             .rounded_full()
-                            .bg(hsla(0.0, 0.0, 1.0, 0.10))
+                            .bg(beskar_theme::Theme::glass_fill(0.10))
                             .overflow_hidden()
                             .child(
                                 div()
                                     .h_full()
                                     .w(relative(self.brightness_percent as f32 / 100.0))
                                     .rounded_full()
-                                    .bg(hsla(45.0 / 360.0, 0.90, 0.60, 1.0)),
+                                    .bg(beskar_theme::Theme::accent()),
                             ),
                     ),
             )
@@ -866,9 +866,9 @@ impl RenderOnce for ControlCenterWidget {
                 div()
                     .p(px(10.0))
                     .rounded(px(14.0))
-                    .bg(hsla(0.0, 0.0, 1.0, 0.04))
+                    .bg(beskar_theme::Theme::glass_fill(0.04))
                     .border_1()
-                    .border_color(hsla(0.0, 0.0, 1.0, 0.08))
+                    .border_color(beskar_theme::Theme::subtle_border())
                     .flex()
                     .flex_col()
                     .gap(px(8.0))
@@ -876,7 +876,7 @@ impl RenderOnce for ControlCenterWidget {
                         div()
                             .text_xs()
                             .font_weight(FontWeight::MEDIUM)
-                            .text_color(hsla(0.0, 0.0, 0.80, 1.0))
+                            .text_color(beskar_theme::Theme::text_secondary())
                             .child("Power Profile"),
                     )
                     .child(
@@ -912,9 +912,9 @@ impl RenderOnce for ControlCenterWidget {
                 div()
                     .p(px(10.0))
                     .rounded(px(14.0))
-                    .bg(hsla(0.0, 0.0, 1.0, 0.04))
+                    .bg(beskar_theme::Theme::glass_fill(0.04))
                     .border_1()
-                    .border_color(hsla(0.0, 0.0, 1.0, 0.08))
+                    .border_color(beskar_theme::Theme::subtle_border())
                     .flex()
                     .items_center()
                     .justify_between()
@@ -931,16 +931,16 @@ impl RenderOnce for ControlCenterWidget {
                                 })
                                 .size(px(16.0))
                                 .text_color(if self.is_charging {
-                                    hsla(142.0 / 360.0, 0.85, 0.55, 1.0)
+                                    beskar_theme::Theme::success()
                                 } else {
-                                    hsla(0.0, 0.0, 0.90, 1.0)
+                                    beskar_theme::Theme::fg()
                                 }),
                             )
                             .child(
                                 div()
                                     .text_xs()
                                     .font_weight(FontWeight::MEDIUM)
-                                    .text_color(hsla(0.0, 0.0, 0.85, 1.0))
+                                    .text_color(beskar_theme::Theme::fg())
                                     .child(if self.is_charging {
                                         "Battery Charging"
                                     } else {

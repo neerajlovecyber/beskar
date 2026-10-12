@@ -55,12 +55,12 @@ impl RenderOnce for NotificationToastWidget {
             .p(px(12.0))
             .rounded(px(16.0))
             // Acrylic Glass surface
-            .bg(hsla(220.0 / 360.0, 0.22, 0.10, 0.88))
+            .bg(beskar_theme::Theme::bg())
             .border_1()
             .border_color(if is_critical {
-                hsla(0.0, 0.75, 0.55, 0.45)
+                beskar_theme::Theme::danger_alpha(0.45)
             } else {
-                hsla(0.0, 0.0, 1.0, 0.14)
+                beskar_theme::Theme::card_border()
             })
             .shadow_lg()
             // Header: App info + close button
@@ -85,16 +85,16 @@ impl RenderOnce for NotificationToastWidget {
                                     .items_center()
                                     .justify_center()
                                     .bg(if is_critical {
-                                        hsla(0.0, 0.75, 0.45, 0.40)
+                                        beskar_theme::Theme::danger_alpha(0.40)
                                     } else {
-                                        hsla(215.0 / 360.0, 0.50, 0.30, 0.40)
+                                        beskar_theme::Theme::info_alpha(0.40)
                                     })
                                     .text_xs()
                                     .font_weight(FontWeight::BOLD)
                                     .text_color(if is_critical {
-                                        hsla(0.0, 0.90, 0.70, 1.0)
+                                        beskar_theme::Theme::danger()
                                     } else {
-                                        hsla(215.0 / 360.0, 0.90, 0.70, 1.0)
+                                        beskar_theme::Theme::info()
                                     })
                                     .child(if is_critical { "!" } else { "✦" }),
                             )
@@ -103,7 +103,7 @@ impl RenderOnce for NotificationToastWidget {
                                 div()
                                     .text_xs()
                                     .font_weight(FontWeight::BOLD)
-                                    .text_color(hsla(220.0 / 360.0, 0.15, 0.80, 1.0))
+                                    .text_color(beskar_theme::Theme::fg())
                                     .child(if notif.app_name.is_empty() {
                                         "Notification".to_string()
                                     } else {
@@ -133,7 +133,7 @@ impl RenderOnce for NotificationToastWidget {
                         .w_full()
                         .text_sm()
                         .font_weight(FontWeight::BOLD)
-                        .text_color(hsla(0.0, 0.0, 0.98, 1.0))
+                        .text_color(beskar_theme::Theme::fg())
                         .mb(px(4.0))
                         .child(notif.summary),
                 )
@@ -145,7 +145,7 @@ impl RenderOnce for NotificationToastWidget {
                         .w_full()
                         .text_xs()
                         .line_height(relative(1.3))
-                        .text_color(hsla(220.0 / 360.0, 0.15, 0.75, 0.90))
+                        .text_color(beskar_theme::Theme::text_secondary())
                         .mb(px(6.0))
                         .child(notif.body),
                 )

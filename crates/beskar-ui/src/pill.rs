@@ -76,9 +76,24 @@ impl RenderOnce for IslandPill {
                     })
             })
             .when(is_convex, |this| {
-                // In convex mode, the outer ConvexBarShape canvas provides the notch silhouette,
-                // Bézier fillet curves, background fill, and boundary border.
+                // In convex mode, the pill anchors cleanly to the top display edge as a notch
+                let mut b = beskar_theme::Theme::bg();
+                b.a = (b.a * 0.96).clamp(0.0, 1.0);
                 this.h(px(38.0))
+                    .bg(b)
+                    .border_b_1()
+                    .border_x_1()
+                    .border_color(beskar_theme::Theme::border())
+                    .rounded_b(px(14.0))
+                    .shadow_md()
+                    .when(self.is_interactive, |this| {
+                        this.hover(|style| {
+                            style
+                                .bg(beskar_theme::Theme::bg_secondary())
+                                .border_color(beskar_theme::Theme::accent())
+                                .shadow_lg()
+                        })
+                    })
             })
             .children(self.content)
     }

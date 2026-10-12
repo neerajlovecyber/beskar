@@ -230,17 +230,17 @@ impl RenderOnce for ClipboardWidget {
                             .items_center()
                             .gap(px(10.0))
                             .bg(if is_selected {
-                                hsla(0.0, 0.0, 1.0, 0.12)
+                                beskar_theme::Theme::card_border()
                             } else {
-                                hsla(0.0, 0.0, 1.0, 0.02)
+                                gpui_kit::transparent_black()
                             })
                             .border_1()
                             .border_color(if is_selected {
                                 accent_color
                             } else {
-                                hsla(0.0, 0.0, 1.0, 0.04)
+                                beskar_theme::Theme::subtle_border()
                             })
-                            .hover(|s| s.bg(hsla(0.0, 0.0, 1.0, 0.08)).cursor_pointer())
+                            .hover(|s| s.bg(beskar_theme::Theme::bg_secondary()).cursor_pointer())
                             .when_some(on_sel, |el, cb| {
                                 el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)(idx))
                             })
@@ -266,11 +266,7 @@ impl RenderOnce for ClipboardWidget {
                                     .flex_1()
                                     .overflow_hidden()
                                     .text_sm()
-                                    .text_color(if is_selected {
-                                        fg_color
-                                    } else {
-                                        hsla(0.0, 0.0, 0.85, 1.0)
-                                    })
+                                    .text_color(fg_color)
                                     .child(if item.text.len() > 80 {
                                         format!("{}...", &item.text[..80])
                                     } else {
@@ -307,7 +303,7 @@ impl RenderOnce for ClipboardWidget {
                     .px(px(16.0))
                     .border_t_1()
                     .border_color(border_color)
-                    .bg(hsla(0.0, 0.0, 0.0, 0.20))
+                    .bg(beskar_theme::Theme::glass_dark(0.20))
                     .flex()
                     .items_center()
                     .justify_between()

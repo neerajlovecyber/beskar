@@ -18,6 +18,47 @@ pub struct ConvexGeometry {
     pub base_height: f32,
 }
 
+impl ConvexGeometry {
+    /// Dynamically compute responsive notch geometry matching minflair's layout math.
+    /// Ensures notches wrap their contents with proper Bézier clearances without cutting icons or titles.
+    pub fn auto_calculate(
+        screen_width: f32,
+        bar_height: f32,
+        left_w: f32,
+        center_w: f32,
+        right_w: f32,
+    ) -> Self {
+        let flare_width = 16.0;
+        let flare_height = 14.0;
+        let bottom_radius = 14.0;
+        let top_bezel = 2.0;
+        let min_bridge = 20.0;
+
+        let left_w = left_w.max(60.0);
+        let center_w = center_w.max(120.0);
+        let right_w = right_w.max(60.0);
+
+        // Center notch is positioned at screen center, with safety boundary against left notch
+        let center_x = ((screen_width - center_w) * 0.5).max(left_w + min_bridge);
+
+        Self {
+            width: screen_width,
+            height: bar_height,
+            left_w,
+            center_x,
+            center_w,
+            right_w,
+            top_bezel,
+            flare_width,
+            flare_height,
+            bottom_radius,
+            center_bottom_radius: bottom_radius,
+            center_height: bar_height,
+            base_height: bar_height,
+        }
+    }
+}
+
 impl Default for ConvexGeometry {
     fn default() -> Self {
         Self {
@@ -126,7 +167,7 @@ pub fn trace_convex_notch(
     );
 
     // 5. Bridge 2
-    let rx = (w - rw).max(cx + cw);
+    let rx = (w - rw).max(cx + cw + 16.0);
     builder.line_to(pt(rx, tb));
 
     // 6. Flare down into right notch
@@ -185,7 +226,13 @@ impl RenderOnce for ConvexBarShape {
                 let w = f32::from(bounds.size.width);
                 let mut dynamic_geom = geom;
                 dynamic_geom.width = w;
-                dynamic_geom.center_x = (w - dynamic_geom.center_w) * 0.5;
+                let min_bridge = 16.0;
+                let natural_cx = (w - dynamic_geom.center_w) * 0.5;
+                dynamic_geom.center_x = natural_cx.max(dynamic_geom.left_w + min_bridge);
+                let max_rx = w - dynamic_geom.right_w;
+                if max_rx < dynamic_geom.center_x + dynamic_geom.center_w + min_bridge {
+                    dynamic_geom.right_w = (w - (dynamic_geom.center_x + dynamic_geom.center_w + min_bridge)).max(60.0);
+                }
 
                 // 1. Fill path
                 let mut fill_builder = PathBuilder::fill();

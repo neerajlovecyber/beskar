@@ -131,7 +131,7 @@ impl RenderOnce for DynamicCenterWidget {
             .child(
                 Icon::new(if is_day { IconName::Sun } else { IconName::Moon })
                     .size(px(13.0))
-                    .text_color(if is_day { hsla(45.0 / 360.0, 0.95, 0.60, 1.0) } else { hsla(220.0 / 360.0, 0.85, 0.70, 1.0) })
+                    .text_color(if is_day { beskar_theme::Theme::accent() } else { beskar_theme::Theme::info() })
             )
             // When no media is playing, show subtle date badge next to time
             .when(!has_media && self.date_str.is_some(), |this| {
@@ -139,7 +139,7 @@ impl RenderOnce for DynamicCenterWidget {
                     div()
                         .text_xs()
                         .font_weight(FontWeight::MEDIUM)
-                        .text_color(hsla(0.0, 0.0, 0.65, 1.0))
+                        .text_color(beskar_theme::Theme::text_secondary())
                         .child(self.date_str.unwrap_or_default()),
                 )
                 .child(
@@ -147,7 +147,7 @@ impl RenderOnce for DynamicCenterWidget {
                         .w(px(3.0))
                         .h(px(3.0))
                         .rounded_full()
-                        .bg(hsla(45.0 / 360.0, 0.90, 0.60, 0.80)),
+                        .bg(beskar_theme::Theme::accent_alpha(0.80)),
                 )
             })
             .child(
@@ -166,7 +166,7 @@ impl RenderOnce for DynamicCenterWidget {
                     div()
                         .w(px(1.0))
                         .h(px(12.0))
-                        .bg(hsla(0.0, 0.0, 1.0, 0.20)),
+                        .bg(beskar_theme::Theme::subtle_border()),
                 )
                 .child(
                     div()
@@ -174,19 +174,19 @@ impl RenderOnce for DynamicCenterWidget {
                         .items_center()
                         .gap(px(6.0))
                         .text_xs()
-                        .text_color(hsla(45.0 / 360.0, 0.95, 0.65, 1.0))
+                        .text_color(beskar_theme::Theme::accent())
                         .child(Icon::new(IconName::Bell).size(px(12.0)))
                         .child(
                             div()
                                 .font_weight(FontWeight::SEMIBOLD)
-                                .text_color(hsla(0.0, 0.0, 0.95, 1.0))
+                                .text_color(beskar_theme::Theme::fg())
                                 .child(notif_title),
                         )
                         .child(
                             div()
                                 .max_w(px(180.0))
                                 .overflow_hidden()
-                                .text_color(hsla(0.0, 0.0, 0.70, 1.0))
+                                .text_color(beskar_theme::Theme::text_secondary())
                                 .child(notif_body),
                         ),
                 )
@@ -218,7 +218,7 @@ impl RenderOnce for DynamicCenterWidget {
                     div()
                         .w(px(1.0))
                         .h(px(12.0))
-                        .bg(hsla(0.0, 0.0, 1.0, 0.20)),
+                        .bg(beskar_theme::Theme::subtle_border()),
                 )
                 .child(
                     // 4-bar dynamic audio equalizer matching reference screenshot
@@ -263,7 +263,7 @@ impl RenderOnce for DynamicCenterWidget {
                         .items_center()
                         .gap(px(6.0))
                         .text_xs()
-                        .text_color(hsla(0.0, 0.0, 0.85, 1.0))
+                        .text_color(beskar_theme::Theme::fg())
                         .child(
                             Button::new("dyn-play-pause")
                                 .ghost()

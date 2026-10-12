@@ -200,6 +200,7 @@ impl ThemeEngine {
             success: to_hsla_color(166, 227, 161, 255),
             warning: to_hsla_color(249, 226, 175, 255),
             danger: to_hsla_color(243, 139, 168, 255),
+            info: default.info,
 
             bar_height: default.bar_height,
             pill_idle_height: default.pill_idle_height,

@@ -96,7 +96,7 @@ impl RenderOnce for DashboardWidget {
                     .justify_between()
                     .pb(px(12.0))
                     .border_b_1()
-                    .border_color(hsla(0.0, 0.0, 1.0, 0.08))
+                    .border_color(beskar_theme::Theme::subtle_border())
                     .child(
                         div()
                             .flex()
@@ -107,7 +107,7 @@ impl RenderOnce for DashboardWidget {
                                     .w(px(32.0))
                                     .h(px(32.0))
                                     .rounded_lg()
-                                    .bg(hsla(45.0 / 360.0, 0.90, 0.55, 0.20))
+                                    .bg(beskar_theme::Theme::accent_alpha(0.20))
                                     .flex()
                                     .items_center()
                                     .justify_center()
@@ -197,7 +197,7 @@ fn render_profile_card(
         .rounded(px(16.0))
         .bg(beskar_theme::Theme::bg_secondary())
         .border_1()
-        .border_color(hsla(0.0, 0.0, 1.0, 0.06))
+        .border_color(beskar_theme::Theme::card_border())
         // Avatar + Name Header
         .child(
             div()
@@ -212,9 +212,9 @@ fn render_profile_card(
                         .rounded_full()
                         .p(px(2.0))
                         .bg(if is_fetching {
-                            hsla(45.0 / 360.0, 0.95, 0.55, 1.0)
+                            beskar_theme::Theme::accent()
                         } else {
-                            hsla(210.0 / 360.0, 0.85, 0.55, 0.80)
+                            beskar_theme::Theme::info()
                         })
                         .flex()
                         .items_center()
@@ -224,7 +224,7 @@ fn render_profile_card(
                                 .w_full()
                                 .h_full()
                                 .rounded_full()
-                                .bg(hsla(220.0 / 360.0, 0.30, 0.12, 1.0))
+                                .bg(beskar_theme::Theme::card_bg())
                                 .flex()
                                 .items_center()
                                 .justify_center()
@@ -267,7 +267,7 @@ fn render_profile_card(
                 .px(px(8.0))
                 .py(px(8.0))
                 .rounded_lg()
-                .bg(hsla(0.0, 0.0, 0.0, 0.25))
+                .bg(beskar_theme::Theme::glass_dark(0.25))
                 .child(stat_pill("Repos", profile.public_repos.to_string()))
                 .child(stat_pill("Followers", profile.followers.to_string()))
                 .child(stat_pill("Stars", profile.total_stars.to_string()))
@@ -281,9 +281,9 @@ fn render_profile_card(
                 .gap(px(4.0))
                 .p(px(10.0))
                 .rounded_lg()
-                .bg(hsla(0.0, 0.0, 1.0, 0.04))
+                .bg(beskar_theme::Theme::glass_fill(0.04))
                 .border_1()
-                .border_color(hsla(0.0, 0.0, 1.0, 0.06))
+                .border_color(beskar_theme::Theme::card_border())
                 .child(
                     div()
                         .flex()
@@ -339,7 +339,7 @@ fn render_profile_card(
                         .child(
                             div()
                                 .text_xs()
-                                .text_color(hsla(0.0, 0.0, 0.75, 1.0))
+                                .text_color(beskar_theme::Theme::text_secondary())
                                 .child(top_lang),
                         ),
                 ),
@@ -410,7 +410,7 @@ fn render_updates_card(
         .rounded(px(14.0))
         .bg(beskar_theme::Theme::bg_secondary())
         .border_1()
-        .border_color(hsla(0.0, 0.0, 1.0, 0.06))
+        .border_color(beskar_theme::Theme::card_border())
         .child(
             div()
                 .flex()
@@ -424,7 +424,7 @@ fn render_updates_card(
                         .child(Icon::new(IconName::PackageCheck).size(px(16.0)).text_color(if has_updates {
                             beskar_theme::Theme::accent()
                         } else {
-                            hsla(140.0 / 360.0, 0.75, 0.50, 1.0)
+                            beskar_theme::Theme::success()
                         }))
                         .child(
                             div()
@@ -468,13 +468,13 @@ fn render_updates_card(
                         .child(
                             div()
                                 .text_xs()
-                                .text_color(hsla(0.0, 0.0, 0.75, 1.0))
+                                .text_color(beskar_theme::Theme::text_secondary())
                                 .child(format!("Pacman: {}", up.pacman_count)),
                         )
                         .child(
                             div()
                                 .text_xs()
-                                .text_color(hsla(0.0, 0.0, 0.75, 1.0))
+                                .text_color(beskar_theme::Theme::text_secondary())
                                 .child(format!("AUR: {}", up.aur_count)),
                         ),
                 )
@@ -500,7 +500,7 @@ fn render_quote_card() -> impl IntoElement {
         .rounded(px(14.0))
         .bg(beskar_theme::Theme::bg_secondary())
         .border_1()
-        .border_color(hsla(0.0, 0.0, 1.0, 0.06))
+        .border_color(beskar_theme::Theme::card_border())
         .child(
             div()
                 .flex()
@@ -519,7 +519,7 @@ fn render_quote_card() -> impl IntoElement {
             div()
                 .text_xs()
                 .italic()
-                .text_color(hsla(0.0, 0.0, 0.80, 1.0))
+                .text_color(beskar_theme::Theme::fg())
                 .child("\"Simplicity is prerequisite for reliability.\""),
         )
         .child(
@@ -546,7 +546,7 @@ fn render_contributions_heatmap(
         .rounded(px(16.0))
         .bg(beskar_theme::Theme::bg_secondary())
         .border_1()
-        .border_color(hsla(0.0, 0.0, 1.0, 0.06))
+        .border_color(beskar_theme::Theme::card_border())
         // Heatmap Header
         .child(
             div()
@@ -599,11 +599,11 @@ fn render_contributions_heatmap(
                                 0
                             };
                             let cell_color = match level {
-                                0 => hsla(220.0 / 360.0, 0.15, 0.16, 0.60),
-                                1 => hsla(140.0 / 360.0, 0.65, 0.32, 0.90),
-                                2 => hsla(140.0 / 360.0, 0.75, 0.45, 0.95),
-                                3 => hsla(140.0 / 360.0, 0.85, 0.58, 1.00),
-                                _ => hsla(140.0 / 360.0, 0.95, 0.70, 1.00),
+                                0 => beskar_theme::Theme::subtle_border(),
+                                1 => beskar_theme::Theme::success_alpha(0.35),
+                                2 => beskar_theme::Theme::success_alpha(0.60),
+                                3 => beskar_theme::Theme::success_alpha(0.85),
+                                _ => beskar_theme::Theme::success(),
                             };
 
                             div()
@@ -613,7 +613,7 @@ fn render_contributions_heatmap(
                                 .bg(cell_color)
                                 .hover(move |s| {
                                     s.border_1()
-                                        .border_color(hsla(0.0, 0.0, 1.0, 0.9))
+                                        .border_color(beskar_theme::Theme::fg())
                                         .cursor_pointer()
                                 })
                         }))
@@ -632,11 +632,11 @@ fn render_contributions_heatmap(
                         .text_color(beskar_theme::Theme::muted())
                         .child("Less"),
                 )
-                .child(swatch(hsla(220.0 / 360.0, 0.15, 0.16, 0.60)))
-                .child(swatch(hsla(140.0 / 360.0, 0.65, 0.32, 0.90)))
-                .child(swatch(hsla(140.0 / 360.0, 0.75, 0.45, 0.95)))
-                .child(swatch(hsla(140.0 / 360.0, 0.85, 0.58, 1.00)))
-                .child(swatch(hsla(140.0 / 360.0, 0.95, 0.70, 1.00)))
+                .child(swatch(beskar_theme::Theme::subtle_border()))
+                .child(swatch(beskar_theme::Theme::success_alpha(0.35)))
+                .child(swatch(beskar_theme::Theme::success_alpha(0.60)))
+                .child(swatch(beskar_theme::Theme::success_alpha(0.85)))
+                .child(swatch(beskar_theme::Theme::success()))
                 .child(
                     div()
                         .text_xs()

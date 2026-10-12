@@ -179,7 +179,7 @@ impl RenderOnce for LockScreenWidget {
                             .flex()
                             .items_center()
                             .justify_between()
-                            .bg(hsla(0.0, 0.0, 0.0, 0.50))
+                            .bg(beskar_theme::Theme::glass_dark(0.50))
                             .border_1()
                             .border_color(if self.has_error {
                                 danger_color

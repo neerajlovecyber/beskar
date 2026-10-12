@@ -476,6 +476,7 @@ impl Render for DesktopBarView {
         });
 
         let active_notif = self.notifications.first().map(|n| (n.summary.clone(), n.body.clone()));
+        let cfg = beskar_core::config::ShellConfig::load();
         let state = beskar_ui::BarState {
             is_convex: self.is_convex,
             workspaces: self.workspaces.clone(),
@@ -492,6 +493,9 @@ impl Render for DesktopBarView {
             animated_center_width: Some(self.island_spring.current),
             cava_bands: self.cava_bands,
             tray_items: self.tray_items.clone(),
+            modules_left: Some(cfg.modules_left),
+            modules_center: Some(cfg.modules_center),
+            modules_right: Some(cfg.modules_right),
         };
         let actions = beskar_ui::BarActions {
             on_select_ws: Some(on_select_ws),
@@ -526,7 +530,8 @@ impl Render for DesktopBarView {
 fn bar_window_options(
     display_id: Option<DisplayId>,
     bar_height: f32,
-    bar_margin_top: f32,
+    bar_margin: f32,
+    bar_position: beskar_core::config::BarPosition,
     cx: &App,
 ) -> WindowOptions {
     let display_size = display_id
@@ -534,6 +539,17 @@ fn bar_window_options(
         .or_else(|| cx.primary_display())
         .map(|display| display.bounds().size)
         .unwrap_or_else(|| Size::new(px(1920.), px(1080.)));
+
+    let (anchor, margin) = match bar_position {
+        beskar_core::config::BarPosition::Top => (
+            LayerAnchor::LEFT | LayerAnchor::RIGHT | LayerAnchor::TOP,
+            Some((px(bar_margin), px(0.), px(0.), px(0.))),
+        ),
+        beskar_core::config::BarPosition::Bottom => (
+            LayerAnchor::LEFT | LayerAnchor::RIGHT | LayerAnchor::BOTTOM,
+            Some((px(0.), px(0.), px(bar_margin), px(0.))),
+        ),
+    };
 
     WindowOptions {
         display_id,
@@ -547,9 +563,9 @@ fn bar_window_options(
         kind: WindowKind::LayerShell(LayerShellOptions {
             namespace: "beskar-bar".to_string(),
             layer: Layer::Top,
-            anchor: LayerAnchor::LEFT | LayerAnchor::RIGHT | LayerAnchor::TOP,
-            exclusive_zone: Some(px(bar_height + bar_margin_top)),
-            margin: Some((px(bar_margin_top), px(0.), px(0.), px(0.))),
+            anchor,
+            exclusive_zone: Some(px(bar_height + bar_margin)),
+            margin,
             keyboard_interactivity: KeyboardInteractivity::None,
             ..Default::default()
         }),
@@ -610,11 +626,9 @@ async fn main() -> anyhow::Result<()> {
     });
 
     let is_convex = cfg.bar_style == beskar_core::config::BarStyleConfig::Convex;
-    let (bar_height, bar_margin_top) = if is_convex {
-        (40.0, 0.0)
-    } else {
-        (44.0, 8.0)
-    };
+    let bar_position = cfg.bar_position;
+    let bar_height = cfg.bar_height.max(28.0);
+    let bar_margin_top = if is_convex { 0.0 } else { 8.0 };
 
     // Run the GPUI application event loop WITH embedded AllAssets registered!
     gpui_kit::application()
@@ -644,6 +658,7 @@ async fn main() -> anyhow::Result<()> {
                             is_convex,
                             bar_height,
                             bar_margin_top,
+                            bar_position,
                             compositor.clone(),
                             cx,
                         );
@@ -658,6 +673,7 @@ async fn main() -> anyhow::Result<()> {
                                 is_convex,
                                 bar_height,
                                 bar_margin_top,
+                                bar_position,
                                 compositor.clone(),
                                 cx,
                             );
@@ -680,10 +696,11 @@ fn open_bar(
     is_convex: bool,
     bar_height: f32,
     bar_margin_top: f32,
+    bar_position: beskar_core::config::BarPosition,
     compositor: Arc<dyn CompositorBackend>,
     cx: &mut App,
 ) {
-    let options = bar_window_options(display_id, bar_height, bar_margin_top, cx);
+    let options = bar_window_options(display_id, bar_height, bar_margin_top, bar_position, cx);
     match cx.open_window(options, move |_window, cx| {
         cx.new(|cx| {
             DesktopBarView::new(
