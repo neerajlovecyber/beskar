@@ -46,7 +46,7 @@ pub fn available() -> bool {
     Connection::system().ok().and_then(|c| objects(&c)).is_some_and(|o| adapter(&o).is_some())
 }
 
-fn now(c: &Connection) -> SysValue {
+pub fn now(c: &Connection) -> SysValue {
     let Some(o) = objects(c) else { return SysValue::Map(vec![("present".into(), SysValue::Bool(false))]) };
     let Some((adapter_path, a)) = adapter(&o) else { return SysValue::Map(vec![("present".into(), SysValue::Bool(false))]) };
     let mut devices: Vec<(bool, bool, SysValue)> = o

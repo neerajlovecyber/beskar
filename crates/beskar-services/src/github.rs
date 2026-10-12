@@ -1,6 +1,6 @@
-use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::sync::Arc;
+use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -73,6 +73,7 @@ impl Default for GithubState {
 
 pub struct GithubService {
     state: Arc<RwLock<GithubState>>,
+    client: reqwest::Client,
 }
 
 impl Default for GithubService {
@@ -83,8 +84,15 @@ impl Default for GithubService {
 
 impl GithubService {
     pub fn new() -> Self {
+        let client = reqwest::Client::builder()
+            .user_agent("Beskar-Shell/0.1.0 (Linux; x86_64)")
+            .timeout(std::time::Duration::from_secs(8))
+            .build()
+            .unwrap_or_default();
+
         Self {
             state: Arc::new(RwLock::new(GithubState::default())),
+            client,
         }
     }
 
@@ -106,11 +114,11 @@ impl GithubService {
         let mut s = GithubState::default();
         if !username.is_empty() {
             s.username = username.to_string();
-            let cached_contribs = fetch_contributions_cached(username);
+            let cached_contribs = read_cached_contributions(username);
             if !cached_contribs.is_empty() {
                 s.contributions = cached_contribs;
             }
-            if let Some(prof) = fetch_profile_cached(username, None) {
+            if let Some(prof) = read_cached_profile(username) {
                 s.profile = prof;
             }
         }
@@ -124,7 +132,7 @@ impl GithubService {
         svc.read_state()
     }
 
-    /// Refresh GitHub data asynchronously
+    /// Refresh GitHub data asynchronously using pure reqwest async calls
     pub async fn fetch(&self, username: &str, token: Option<&str>) {
         let clean_user = username.trim().to_string();
         if clean_user.is_empty() {
@@ -137,20 +145,10 @@ impl GithubService {
             w.username = clean_user.clone();
         }
 
-        let user_clone = clean_user.clone();
-        let contributions = tokio::task::spawn_blocking(move || {
-            fetch_contributions_cached(&user_clone)
-        })
-        .await
-        .unwrap_or_else(|_| Vec::new());
-
-        let user_clone2 = clean_user.clone();
-        let tok = token.map(|s| s.to_string());
-        let profile = tokio::task::spawn_blocking(move || {
-            fetch_profile_cached(&user_clone2, tok.as_deref())
-        })
-        .await
-        .unwrap_or(None);
+        let (contributions, profile) = tokio::join!(
+            fetch_contributions_async(&self.client, &clean_user),
+            fetch_profile_async(&self.client, &clean_user, token)
+        );
 
         let mut w = self.state.write().await;
         w.is_fetching = false;
@@ -180,53 +178,63 @@ fn get_contrib_cache_file(username: &str) -> PathBuf {
     cache_dir().join(format!("github_contributions_{}.json", safe))
 }
 
-fn fetch_contributions_cached(username: &str) -> Vec<ContributionDay> {
+fn get_profile_cache_file(username: &str) -> PathBuf {
+    let safe: String = username.chars().filter(|c| c.is_alphanumeric() || *c == '-' || *c == '_').collect();
+    cache_dir().join(format!("github_profile_{}.json", safe))
+}
+
+fn read_cached_contributions(username: &str) -> Vec<ContributionDay> {
+    let cache_file = get_contrib_cache_file(username);
+    if cache_file.exists()
+        && let Ok(data) = std::fs::read_to_string(&cache_file)
+        && let Ok(parsed) = serde_json::from_str::<Vec<ContributionDay>>(&data)
+        && !parsed.is_empty()
+    {
+        return parsed;
+    }
+    generate_demo_contributions()
+}
+
+fn read_cached_profile(username: &str) -> Option<GithubProfile> {
+    let cache_file = get_profile_cache_file(username);
+    if cache_file.exists()
+        && let Ok(data) = std::fs::read_to_string(&cache_file)
+        && let Ok(parsed) = serde_json::from_str::<GithubProfile>(&data)
+    {
+        return Some(parsed);
+    }
+    None
+}
+
+async fn fetch_contributions_async(client: &reqwest::Client, username: &str) -> Vec<ContributionDay> {
     let cache_file = get_contrib_cache_file(username);
     if cache_file.exists()
         && let Ok(metadata) = std::fs::metadata(&cache_file)
-            && let Ok(modified) = metadata.modified()
-                && let Ok(elapsed) = modified.elapsed()
-                    && elapsed.as_secs() < 3600
-                        && let Ok(data) = std::fs::read_to_string(&cache_file)
-                            && let Ok(parsed) = serde_json::from_str::<Vec<ContributionDay>>(&data)
-                                && !parsed.is_empty() {
-                                    return parsed;
-                                }
+        && let Ok(modified) = metadata.modified()
+        && let Ok(elapsed) = modified.elapsed()
+        && elapsed.as_secs() < 3600
+        && let Ok(data) = std::fs::read_to_string(&cache_file)
+        && let Ok(parsed) = serde_json::from_str::<Vec<ContributionDay>>(&data)
+        && !parsed.is_empty()
+    {
+        return parsed;
+    }
 
     let url = format!("https://github.com/users/{}/contributions", username);
-    let output = std::process::Command::new("curl")
-        .args([
-            "-s",
-            "-L",
-            "--max-time",
-            "8",
-            "-H",
-            "User-Agent: Mozilla/5.0 (X11; Linux x86_64)",
-            &url,
-        ])
-        .output();
-
-    if let Ok(out) = output
-        && out.status.success() {
-            let html = String::from_utf8_lossy(&out.stdout);
-            let parsed = parse_github_contributions_html(&html);
-            if !parsed.is_empty() {
-                if let Ok(json) = serde_json::to_string(&parsed) {
-                    let _ = std::fs::write(&cache_file, json);
-                }
-                return parsed;
+    if let Ok(resp) = client.get(&url).send().await
+        && resp.status().is_success()
+        && let Ok(html) = resp.text().await
+    {
+        let parsed = parse_github_contributions_html(&html);
+        if !parsed.is_empty() {
+            if let Ok(json) = serde_json::to_string(&parsed) {
+                let _ = std::fs::write(&cache_file, json);
             }
+            return parsed;
         }
+    }
 
-    // If cache exists even if stale, fallback to it
-    if cache_file.exists()
-        && let Ok(data) = std::fs::read_to_string(&cache_file)
-            && let Ok(parsed) = serde_json::from_str::<Vec<ContributionDay>>(&data)
-                && !parsed.is_empty() {
-                    return parsed;
-                }
-
-    generate_demo_contributions()
+    read_cached_contributions(username)
 }
 
 fn parse_github_contributions_html(html: &str) -> Vec<ContributionDay> {
@@ -283,22 +291,25 @@ fn extract_attr(tag: &str, attr: &str) -> Option<String> {
     Some(tag[start..end].to_string())
 }
 
-fn fetch_profile_cached(username: &str, token: Option<&str>) -> Option<GithubProfile> {
+async fn fetch_profile_async(
+    client: &reqwest::Client,
+    username: &str,
+    token: Option<&str>,
+) -> Option<GithubProfile> {
     let url = format!("https://api.github.com/users/{}", username);
-    let mut cmd = std::process::Command::new("curl");
-    cmd.args(["-s", "-L", "--max-time", "8", "-H", "User-Agent: Beskar-Shell"]);
+    let mut req = client.get(&url);
     if let Some(tok) = token
-        && !tok.trim().is_empty() {
-            cmd.args(["-H", &format!("Authorization: Bearer {}", tok.trim())]);
-        }
-    cmd.arg(&url);
-
-    let output = cmd.output().ok()?;
-    if !output.status.success() {
-        return None;
+        && !tok.trim().is_empty()
+    {
+        req = req.bearer_auth(tok.trim());
     }
 
-    let val: serde_json::Value = serde_json::from_slice(&output.stdout).ok()?;
+    let resp = req.send().await.ok()?;
+    if !resp.status().is_success() {
+        return read_cached_profile(username);
+    }
+
+    let val: serde_json::Value = resp.json().await.ok()?;
     let name = val.get("name").and_then(|v| v.as_str()).unwrap_or(username).to_string();
     let bio = val.get("bio").and_then(|v| v.as_str()).unwrap_or("Developer").to_string();
     let location = val.get("location").and_then(|v| v.as_str()).unwrap_or("Earth").to_string();
@@ -308,13 +319,15 @@ fn fetch_profile_cached(username: &str, token: Option<&str>) -> Option<GithubPro
 
     let safe_user: String = username.chars().filter(|c| c.is_alphanumeric() || *c == '-' || *c == '_').collect();
     let local_avatar = cache_dir().join(format!("github_avatar_{}.png", safe_user));
-    if !avatar_url.is_empty() {
-        let _ = std::process::Command::new("curl")
-            .args(["-s", "-L", "--max-time", "6", "-o", local_avatar.to_str().unwrap_or(""), &avatar_url])
-            .output();
+    if !avatar_url.is_empty()
+        && let Ok(img_resp) = client.get(&avatar_url).send().await
+        && img_resp.status().is_success()
+        && let Ok(bytes) = img_resp.bytes().await
+    {
+        let _ = std::fs::write(&local_avatar, bytes);
     }
 
-    Some(GithubProfile {
+    let profile = GithubProfile {
         username: username.to_string(),
         name,
         bio,
@@ -330,7 +343,14 @@ fn fetch_profile_cached(username: &str, token: Option<&str>) -> Option<GithubPro
         top_repo_stars: public_repos * 4 + 10,
         top_repo_lang: "Rust".to_string(),
         total_commits: public_repos * 85 + 240,
-    })
+    };
+
+    let cache_file = get_profile_cache_file(username);
+    if let Ok(json) = serde_json::to_string(&profile) {
+        let _ = std::fs::write(&cache_file, json);
+    }
+
+    Some(profile)
 }
 
 pub fn generate_demo_contributions() -> Vec<ContributionDay> {
@@ -361,10 +381,10 @@ pub fn generate_demo_contributions() -> Vec<ContributionDay> {
         };
 
         days.push(ContributionDay {
-            date: format!("2026-W{:02}-D{}", week + 1, weekday + 1),
+            date: format!("2026-W{:02}-{}", week + 1, weekday + 1),
             count,
             level,
-            tooltip: format!("{} contributions on Day {}", count, i + 1),
+            tooltip: format!("{} contributions", count),
         });
     }
     days

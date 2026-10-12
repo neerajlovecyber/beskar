@@ -61,52 +61,63 @@ pub struct NetworkHelper;
 
 impl NetworkHelper {
     pub fn get_wifi_status() -> (bool, Option<String>) {
-        if let Ok(output) = std::process::Command::new("nmcli").args(["radio", "wifi"]).output() {
-            let is_on = String::from_utf8_lossy(&output.stdout).trim() == "enabled";
-            let mut ssid = None;
-            if is_on
-                && let Ok(out) = std::process::Command::new("nmcli")
-                    .args(["-t", "-f", "active,ssid", "dev", "wifi"])
-                    .output()
-                {
-                    let text = String::from_utf8_lossy(&out.stdout);
-                    for line in text.lines() {
-                        if line.starts_with("yes:") {
-                            let name = line.trim_start_matches("yes:").trim().to_string();
-                            if !name.is_empty() {
-                                ssid = Some(name);
-                                break;
+        if networkmanager::available() {
+            if let Ok(c) = zbus::blocking::Connection::system() {
+                if let Some(nm) = zbus::blocking::Proxy::new(&c, "org.freedesktop.NetworkManager", "/org/freedesktop/NetworkManager", "org.freedesktop.NetworkManager").ok() {
+                    let is_on = nm.get_property::<bool>("WirelessEnabled").unwrap_or(false);
+                    let mut active_ssid = None;
+                    if is_on {
+                        if let Ok(primary) = nm.get_property::<zbus::zvariant::OwnedObjectPath>("PrimaryConnection") {
+                            if primary.as_str() != "/" {
+                                if let Ok(act) = zbus::blocking::Proxy::new(&c, "org.freedesktop.NetworkManager", primary.as_str(), "org.freedesktop.NetworkManager.Connection.Active") {
+                                    let t = act.get_property::<String>("Type").unwrap_or_default();
+                                    if t == "802-11-wireless" {
+                                        active_ssid = act.get_property::<String>("Id").ok();
+                                    }
+                                }
                             }
                         }
                     }
+                    return (is_on, active_ssid);
                 }
-            (is_on, ssid)
-        } else {
-            (true, None)
+            }
         }
+        (true, None)
     }
 
     pub fn scan_networks() -> Vec<WifiAccessPoint> {
         let mut list = Vec::new();
-        if let Ok(out) = std::process::Command::new("nmcli")
-            .args(["-t", "-f", "SSID,SIGNAL,SECURITY,IN-USE", "dev", "wifi"])
-            .output()
-        {
-            let text = String::from_utf8_lossy(&out.stdout);
-            for line in text.lines() {
-                let parts: Vec<&str> = line.split(':').collect();
-                if parts.len() >= 4 {
-                    let ssid = parts[0].trim().to_string();
-                    if !ssid.is_empty() && !list.iter().any(|w: &WifiAccessPoint| w.ssid == ssid) {
-                        let signal = parts[1].trim().parse::<u8>().unwrap_or(50);
-                        let security = parts[2].trim().to_string();
-                        let is_active = parts[3].trim() == "*";
-                        list.push(WifiAccessPoint {
-                            ssid,
-                            signal,
-                            security,
-                            is_active,
-                        });
+        if networkmanager::available() {
+            if let Ok(c) = zbus::blocking::Connection::system() {
+                let dev_paths = networkmanager::wifi_devices(&c);
+                for dev in dev_paths {
+                    if let Ok(w) = zbus::blocking::Proxy::new(&c, "org.freedesktop.NetworkManager", dev.as_str(), "org.freedesktop.NetworkManager.Device.Wireless") {
+                        let active: Option<zbus::zvariant::OwnedObjectPath> = w.get_property("ActiveAccessPoint").ok();
+                        let points: Vec<zbus::zvariant::OwnedObjectPath> = w.call("GetAllAccessPoints", &()).unwrap_or_default();
+                        for ap in points {
+                            if let Ok(p) = zbus::blocking::Proxy::new(&c, "org.freedesktop.NetworkManager", ap.as_str(), "org.freedesktop.NetworkManager.AccessPoint") {
+                                let ssid = p.get_property::<Vec<u8>>("Ssid").map(|b| String::from_utf8_lossy(&b).into_owned()).unwrap_or_default();
+                                if ssid.is_empty() {
+                                    continue;
+                                }
+                                let signal = p.get_property::<u8>("Strength").unwrap_or(50);
+                                let flags = |k: &str| p.get_property::<u32>(k).unwrap_or(0);
+                                let secure = flags("WpaFlags") != 0 || flags("RsnFlags") != 0 || flags("Flags") & 1 != 0;
+                                let is_active = active.as_ref().is_some_and(|a| a == &ap);
+
+                                if let Some(existing) = list.iter_mut().find(|x: &&mut WifiAccessPoint| x.ssid == ssid) {
+                                    existing.signal = existing.signal.max(signal);
+                                    existing.is_active |= is_active;
+                                } else {
+                                    list.push(WifiAccessPoint {
+                                        ssid,
+                                        signal,
+                                        security: if secure { "WPA2/WPA3".to_string() } else { "Open".to_string() },
+                                        is_active,
+                                    });
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -122,18 +133,16 @@ impl NetworkHelper {
     }
 
     pub fn connect(ssid: &str, password: Option<&str>) {
-        let mut cmd = std::process::Command::new("nmcli");
-        cmd.args(["dev", "wifi", "connect", ssid]);
-        if let Some(pw) = password
-            && !pw.is_empty() {
-                cmd.args(["password", pw]);
-            }
-        let _ = cmd.spawn();
+        let args = if let Some(pw) = password {
+            vec![SysValue::Text(ssid.to_string()), SysValue::Text(pw.to_string())]
+        } else {
+            vec![SysValue::Text(ssid.to_string())]
+        };
+        let _ = networkmanager::command("network.connect", &args);
     }
 
     pub fn toggle_wifi(current_on: bool) {
-        let arg = if current_on { "off" } else { "on" };
-        let _ = std::process::Command::new("nmcli").args(["radio", "wifi", arg]).spawn();
+        let _ = networkmanager::command("network.wifi", &[SysValue::Bool(!current_on)]);
     }
 }
 
@@ -142,47 +151,56 @@ pub struct BluetoothHelper;
 
 impl BluetoothHelper {
     pub fn get_bluetooth_status() -> bool {
-        if let Ok(output) = std::process::Command::new("bluetoothctl").args(["show"]).output() {
-            let text = String::from_utf8_lossy(&output.stdout);
-            text.contains("Powered: yes")
-        } else {
-            false
+        if bluez::available() {
+            if let Ok(c) = zbus::blocking::Connection::system() {
+                let val = bluez::now(&c);
+                if let SysValue::Map(m) = val {
+                    return m.iter().find(|(k, _)| k == "powered").and_then(|(_, v)| match v {
+                        SysValue::Bool(b) => Some(*b),
+                        _ => None,
+                    }).unwrap_or(false);
+                }
+            }
         }
+        false
     }
 
     pub fn list_devices() -> Vec<BluetoothDeviceItem> {
         let mut list = Vec::new();
-        if let Ok(out) = std::process::Command::new("bluetoothctl").arg("devices").output() {
-            let text = String::from_utf8_lossy(&out.stdout);
-            for line in text.lines() {
-                let parts: Vec<&str> = line.split_whitespace().collect();
-                if parts.len() >= 3 && parts[0] == "Device" {
-                    let addr = parts[1].to_string();
-                    let name = parts[2..].join(" ");
-                    let mut is_connected = false;
-                    let mut battery = None;
+        if bluez::available() {
+            if let Ok(c) = zbus::blocking::Connection::system() {
+                let val = bluez::now(&c);
+                if let SysValue::Map(m) = val {
+                    if let Some((_, SysValue::List(devs))) = m.into_iter().find(|(k, _)| k == "devices") {
+                        for d in devs {
+                            if let SysValue::Map(fields) = d {
+                                let get_str = |k: &str| fields.iter().find(|(f, _)| f == k).and_then(|(_, v)| match v {
+                                    SysValue::Text(t) => Some(t.clone()),
+                                    _ => None,
+                                }).unwrap_or_default();
+                                let get_bool = |k: &str| fields.iter().find(|(f, _)| f == k).and_then(|(_, v)| match v {
+                                    SysValue::Bool(b) => Some(*b),
+                                    _ => None,
+                                }).unwrap_or(false);
+                                let get_num = |k: &str| fields.iter().find(|(f, _)| f == k).and_then(|(_, v)| match v {
+                                    SysValue::Num(n) => Some(*n),
+                                    _ => None,
+                                });
 
-                    if let Ok(info) = std::process::Command::new("bluetoothctl").args(["info", &addr]).output() {
-                        let info_str = String::from_utf8_lossy(&info.stdout);
-                        if info_str.contains("Connected: yes") {
-                            is_connected = true;
-                        }
-                        for l in info_str.lines() {
-                            if l.contains("Battery Percentage:")
-                                && let Some(pct_str) = l.split('(').nth(1)
-                                    && let Some(num) = pct_str.split('%').next()
-                                        && let Ok(v) = num.trim().parse::<u8>() {
-                                            battery = Some(v);
-                                        }
+                                let address = get_str("address");
+                                let name = get_str("name");
+                                let is_connected = get_bool("connected");
+                                let battery = get_num("battery").filter(|n| *n >= 0.0).map(|n| (n * 100.0).round() as u8);
+
+                                list.push(BluetoothDeviceItem {
+                                    address,
+                                    name,
+                                    is_connected,
+                                    battery_percent: battery,
+                                });
+                            }
                         }
                     }
-
-                    list.push(BluetoothDeviceItem {
-                        address: addr,
-                        name,
-                        is_connected,
-                        battery_percent: battery,
-                    });
                 }
             }
         }
@@ -197,16 +215,15 @@ impl BluetoothHelper {
     }
 
     pub fn connect(address: &str) {
-        let _ = std::process::Command::new("bluetoothctl").args(["connect", address]).spawn();
+        let _ = bluez::command("bluetooth.connect", &[SysValue::Text(address.to_string())]);
     }
 
     pub fn disconnect(address: &str) {
-        let _ = std::process::Command::new("bluetoothctl").args(["disconnect", address]).spawn();
+        let _ = bluez::command("bluetooth.disconnect", &[SysValue::Text(address.to_string())]);
     }
 
     pub fn toggle_bluetooth(current_on: bool) {
-        let arg = if current_on { "off" } else { "on" };
-        let _ = std::process::Command::new("bluetoothctl").args(["power", arg]).spawn();
+        let _ = bluez::command("bluetooth.power", &[SysValue::Bool(!current_on)]);
     }
 }
 

@@ -18,3 +18,6 @@ serde_json.workspace = true
 pulseaudio.workspace = true
 image = { version = "0.25.10", features = ["png", "jpeg", "webp"] }
 libc = "0.2.190"
+freedesktop-desktop-entry.workspace = true
+freedesktop-icons.workspace = true
+reqwest.workspace = true

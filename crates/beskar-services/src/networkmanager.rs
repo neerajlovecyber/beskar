@@ -43,7 +43,7 @@ fn present(c: &Connection) -> bool {
     proxy(c, NM_PATH, NM).is_some_and(|p| p.get_property::<u32>("State").is_ok())
 }
 
-fn wifi_devices(c: &Connection) -> Vec<OwnedObjectPath> {
+pub fn wifi_devices(c: &Connection) -> Vec<OwnedObjectPath> {
     let Some(nm) = proxy(c, NM_PATH, NM) else { return Vec::new() };
     let devices: Vec<OwnedObjectPath> = nm.call("GetDevices", &()).unwrap_or_default();
     devices
