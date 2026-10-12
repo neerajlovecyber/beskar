@@ -4,7 +4,7 @@ pub mod pill;
 pub mod spring;
 pub mod widgets;
 
-pub use bar::BeskarBar;
+pub use bar::{BarActions, BarState, BeskarBar};
 pub use convex::{ConvexBarShape, ConvexGeometry};
 pub use pill::IslandPill;
 pub use spring::{SpringConfig, SpringValue};

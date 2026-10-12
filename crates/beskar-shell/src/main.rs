@@ -366,16 +366,16 @@ impl Render for DesktopBarView {
         let comp = self.compositor.clone();
         let on_select_ws = Arc::new(move |id: u64| {
             let c = comp.clone();
-            std::thread::spawn(move || {
-                let _ = futures::executor::block_on(async { c.focus_workspace(id).await });
+            tokio::spawn(async move {
+                let _ = c.focus_workspace(id).await;
             });
         });
 
         let comp_scroll = self.compositor.clone();
         let on_scroll_ws = Arc::new(move |dir: i32| {
             let c = comp_scroll.clone();
-            std::thread::spawn(move || {
-                let _ = futures::executor::block_on(async { c.scroll_workspace(dir).await });
+            tokio::spawn(async move {
+                let _ = c.scroll_workspace(dir).await;
             });
         });
 
@@ -433,7 +433,7 @@ impl Render for DesktopBarView {
         });
 
         let on_tray_click = Arc::new(|id: String| {
-            std::thread::spawn(move || {
+            tokio::task::spawn_blocking(move || {
                 let _ = beskar_services::tray::command(
                     "tray.activate",
                     &[beskar_services::sysvalue::SysValue::Text(id)],
@@ -442,7 +442,7 @@ impl Render for DesktopBarView {
         });
 
         let on_tray_menu = Arc::new(|id: String| {
-            std::thread::spawn(move || {
+            tokio::task::spawn_blocking(move || {
                 let _ = beskar_services::tray::command(
                     "tray.context",
                     &[beskar_services::sysvalue::SysValue::Text(id)],
@@ -450,58 +450,75 @@ impl Render for DesktopBarView {
             });
         });
 
-        let on_window_click = Arc::new(|| {
-            let _ = std::process::Command::new("niri")
-                .args(["msg", "action", "fullscreen-window"])
-                .spawn();
+        let comp_close = self.compositor.clone();
+        let active_win_id = self.active_window.as_ref().map(|w| w.id);
+        let on_window_close = Arc::new(move || {
+            if let Some(id) = active_win_id {
+                let c = comp_close.clone();
+                tokio::spawn(async move {
+                    let _ = c.close_window(id).await;
+                });
+            } else {
+                tokio::task::spawn_blocking(|| {
+                    let _ = std::process::Command::new("niri")
+                        .args(["msg", "action", "close-window"])
+                        .spawn();
+                });
+            }
         });
 
-        let on_window_close = Arc::new(|| {
-            let _ = std::process::Command::new("niri")
-                .args(["msg", "action", "close-window"])
-                .spawn();
+        let on_window_click = Arc::new(|| {
+            tokio::task::spawn_blocking(|| {
+                let _ = std::process::Command::new("niri")
+                    .args(["msg", "action", "fullscreen-window"])
+                    .spawn();
+            });
         });
 
         let active_notif = self.notifications.first().map(|n| (n.summary.clone(), n.body.clone()));
+        let state = beskar_ui::BarState {
+            is_convex: self.is_convex,
+            workspaces: self.workspaces.clone(),
+            active_ws: Some(self.active_ws),
+            active_window: self.active_window.clone(),
+            time_str: self.time_str.clone(),
+            date_str: Some(self.date_str.clone()),
+            media: self.media.clone(),
+            notification: active_notif,
+            volume_percent: self.volume_percent,
+            is_muted: self.is_muted,
+            battery_percent: self.battery_percent,
+            is_charging: self.is_charging,
+            animated_center_width: Some(self.island_spring.current),
+            cava_bands: self.cava_bands,
+            tray_items: self.tray_items.clone(),
+        };
+        let actions = beskar_ui::BarActions {
+            on_select_ws: Some(on_select_ws),
+            on_scroll_ws: Some(on_scroll_ws),
+            on_play_pause: Some(on_play_pause),
+            on_volume_click: Some(on_volume_click),
+            on_volume_scroll: Some(on_volume_scroll),
+            on_control_center_click: Some(on_control_center_click),
+            on_power_click: Some(on_power_click),
+            on_launcher_click: Some(on_launcher_click),
+            on_clock_click: Some(on_clock_click),
+            on_dashboard_click: Some(on_dashboard_click),
+            on_music_click: Some(on_music_click),
+            on_capture_click: Some(on_capture_click),
+            on_wallpaper_click: Some(on_wallpaper_click),
+            on_tray_click: Some(on_tray_click),
+            on_tray_menu: Some(on_tray_menu),
+            on_window_click: Some(on_window_click),
+            on_window_close: Some(on_window_close),
+        };
+
         div()
             .relative()
             .size_full()
             .flex()
             .items_center()
-            .child(BeskarBar::live_islands(
-                self.is_convex,
-                self.workspaces.clone(),
-                Some(self.active_ws),
-                self.active_window.clone(),
-                &self.time_str,
-                Some(self.date_str.clone()),
-                self.media.clone(),
-                active_notif,
-                self.volume_percent,
-                self.is_muted,
-                self.battery_percent,
-                self.is_charging,
-                Some(self.island_spring.current),
-                self.cava_bands,
-                self.tray_items.clone(),
-                Some(on_select_ws),
-                Some(on_scroll_ws),
-                Some(on_play_pause),
-                Some(on_volume_click),
-                Some(on_volume_scroll),
-                Some(on_control_center_click),
-                Some(on_power_click),
-                Some(on_launcher_click),
-                Some(on_clock_click),
-                Some(on_dashboard_click),
-                Some(on_music_click),
-                Some(on_capture_click),
-                Some(on_wallpaper_click),
-                Some(on_tray_click),
-                Some(on_tray_menu),
-                Some(on_window_click),
-                Some(on_window_close),
-            ))
+            .child(BeskarBar::from_state(state, actions))
     }
 }
 

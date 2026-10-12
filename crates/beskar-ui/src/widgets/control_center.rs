@@ -2,6 +2,7 @@ use beskar_services::{BluetoothDeviceItem, WifiAccessPoint};
 use gpui_kit::assets::IconName;
 use gpui_kit::component::button::{Button, ButtonVariants};
 use gpui_kit::component::switch::Switch;
+use gpui_kit::component::tag::Tag;
 use gpui_kit::component::Icon;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
@@ -232,7 +233,7 @@ impl RenderOnce for ControlCenterWidget {
         };
 
         div()
-            .w(px(330.0))
+            .w(px(390.0))
             .p(px(16.0))
             .rounded(px(20.0))
             // Frosted Obsidian Acrylic Glass
@@ -299,6 +300,7 @@ impl RenderOnce for ControlCenterWidget {
                                     .flex()
                                     .items_center()
                                     .gap(px(8.0))
+                                    .min_w_0()
                                     .cursor_pointer()
                                     .when_some(on_wifi.clone(), |el, cb| {
                                         el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
@@ -307,6 +309,7 @@ impl RenderOnce for ControlCenterWidget {
                                         div()
                                             .w(px(28.0))
                                             .h(px(28.0))
+                                            .flex_shrink_0()
                                             .rounded_full()
                                             .bg(if self.is_wifi_on {
                                                 hsla(45.0 / 360.0, 0.90, 0.60, 1.0)
@@ -330,6 +333,7 @@ impl RenderOnce for ControlCenterWidget {
                                         div()
                                             .flex()
                                             .flex_col()
+                                            .min_w_0()
                                             .child(
                                                 div()
                                                     .text_xs()
@@ -341,6 +345,9 @@ impl RenderOnce for ControlCenterWidget {
                                                 div()
                                                     .text_xs()
                                                     .text_color(hsla(0.0, 0.0, 0.60, 1.0))
+                                                    .overflow_hidden()
+                                                    .whitespace_nowrap()
+                                                    .text_ellipsis()
                                                     .child(wifi_label),
                                             ),
                                     ),
@@ -349,7 +356,8 @@ impl RenderOnce for ControlCenterWidget {
                                 div()
                                     .flex()
                                     .items_center()
-                                    .gap(px(6.0))
+                                    .gap(px(4.0))
+                                    .flex_shrink_0()
                                     .child(
                                         Switch::new("cc-wifi-switch")
                                             .checked(self.is_wifi_on)
@@ -363,26 +371,20 @@ impl RenderOnce for ControlCenterWidget {
                                             }),
                                     )
                                     .child(
-                                        div()
-                                            .w(px(18.0))
-                                            .h(px(18.0))
-                                            .flex()
-                                            .items_center()
-                                            .justify_center()
-                                            .rounded_full()
-                                            .hover(|s| s.bg(hsla(0.0, 0.0, 1.0, 0.15)).cursor_pointer())
-                                            .when_some(on_wifi_list, |el, cb| {
-                                                el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
-                                            })
-                                            .child(
+                                        Button::new("cc-wifi-chevron")
+                                            .ghost()
+                                            .compact()
+                                            .icon(
                                                 Icon::new(if self.show_wifi_list {
                                                     IconName::ChevronUp
                                                 } else {
                                                     IconName::ChevronDown
                                                 })
-                                                .size(px(12.0))
-                                                .text_color(hsla(0.0, 0.0, 0.60, 1.0)),
-                                            ),
+                                                .size(px(12.0)),
+                                            )
+                                            .when_some(on_wifi_list, |btn, cb| {
+                                                btn.on_click(move |_, _, _| (cb)())
+                                            }),
                                     ),
                             ),
                     )
@@ -412,6 +414,7 @@ impl RenderOnce for ControlCenterWidget {
                                     .flex()
                                     .items_center()
                                     .gap(px(8.0))
+                                    .min_w_0()
                                     .cursor_pointer()
                                     .when_some(on_bt.clone(), |el, cb| {
                                         el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
@@ -420,6 +423,7 @@ impl RenderOnce for ControlCenterWidget {
                                         div()
                                             .w(px(28.0))
                                             .h(px(28.0))
+                                            .flex_shrink_0()
                                             .rounded_full()
                                             .bg(if self.is_bt_on {
                                                 hsla(210.0 / 360.0, 0.85, 0.55, 1.0)
@@ -443,6 +447,7 @@ impl RenderOnce for ControlCenterWidget {
                                         div()
                                             .flex()
                                             .flex_col()
+                                            .min_w_0()
                                             .child(
                                                 div()
                                                     .text_xs()
@@ -454,6 +459,9 @@ impl RenderOnce for ControlCenterWidget {
                                                 div()
                                                     .text_xs()
                                                     .text_color(hsla(0.0, 0.0, 0.60, 1.0))
+                                                    .overflow_hidden()
+                                                    .whitespace_nowrap()
+                                                    .text_ellipsis()
                                                     .child(bt_label),
                                             ),
                                     ),
@@ -462,7 +470,8 @@ impl RenderOnce for ControlCenterWidget {
                                 div()
                                     .flex()
                                     .items_center()
-                                    .gap(px(6.0))
+                                    .gap(px(4.0))
+                                    .flex_shrink_0()
                                     .child(
                                         Switch::new("cc-bt-switch")
                                             .checked(self.is_bt_on)
@@ -476,26 +485,20 @@ impl RenderOnce for ControlCenterWidget {
                                             }),
                                     )
                                     .child(
-                                        div()
-                                            .w(px(18.0))
-                                            .h(px(18.0))
-                                            .flex()
-                                            .items_center()
-                                            .justify_center()
-                                            .rounded_full()
-                                            .hover(|s| s.bg(hsla(0.0, 0.0, 1.0, 0.15)).cursor_pointer())
-                                            .when_some(on_bt_list, |el, cb| {
-                                                el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
-                                            })
-                                            .child(
+                                        Button::new("cc-bt-chevron")
+                                            .ghost()
+                                            .compact()
+                                            .icon(
                                                 Icon::new(if self.show_bt_list {
                                                     IconName::ChevronUp
                                                 } else {
                                                     IconName::ChevronDown
                                                 })
-                                                .size(px(12.0))
-                                                .text_color(hsla(0.0, 0.0, 0.60, 1.0)),
-                                            ),
+                                                .size(px(12.0)),
+                                            )
+                                            .when_some(on_bt_list, |btn, cb| {
+                                                btn.on_click(move |_, _, _| (cb)())
+                                            }),
                                     ),
                             ),
                     ),
@@ -541,47 +544,47 @@ impl RenderOnce for ControlCenterWidget {
                                     .gap(px(4.0))
                                     .max_h(px(180.0))
                                     .overflow_y_scroll()
-                                    .children(self.wifi_networks.iter().map(|ap| {
+                                    .children(self.wifi_networks.iter().enumerate().map(|(idx, ap)| {
                                         let ssid_clone = ap.ssid.clone();
                                         let on_c = on_connect.clone();
-                                        div()
-                                            .flex()
-                                            .items_center()
-                                            .justify_between()
-                                            .p(px(6.0))
-                                            .rounded(px(8.0))
-                                            .hover(|s| s.bg(hsla(0.0, 0.0, 1.0, 0.10)).cursor_pointer())
-                                            .when_some(on_c, move |el, cb| {
-                                                el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)(ssid_clone.clone()))
-                                            })
+                                        Button::new(("cc-wifi-item", idx))
+                                            .ghost()
+                                            .w_full()
                                             .child(
                                                 div()
                                                     .flex()
                                                     .items_center()
-                                                    .gap(px(6.0))
-                                                    .child(
-                                                        Icon::new(IconName::Wifi)
-                                                            .size(px(12.0))
-                                                            .text_color(if ap.is_active {
-                                                                hsla(142.0 / 360.0, 0.85, 0.55, 1.0)
-                                                            } else {
-                                                                hsla(0.0, 0.0, 0.70, 1.0)
-                                                            }),
-                                                    )
+                                                    .justify_between()
+                                                    .w_full()
                                                     .child(
                                                         div()
-                                                            .text_xs()
-                                                            .font_weight(if ap.is_active { FontWeight::BOLD } else { FontWeight::NORMAL })
-                                                            .text_color(hsla(0.0, 0.0, 0.90, 1.0))
-                                                            .child(ap.ssid.clone()),
+                                                            .flex()
+                                                            .items_center()
+                                                            .gap(px(6.0))
+                                                            .child(
+                                                                Icon::new(IconName::Wifi)
+                                                                    .size(px(12.0))
+                                                                    .text_color(if ap.is_active {
+                                                                        hsla(142.0 / 360.0, 0.85, 0.55, 1.0)
+                                                                    } else {
+                                                                        hsla(0.0, 0.0, 0.70, 1.0)
+                                                                    }),
+                                                            )
+                                                            .child(
+                                                                div()
+                                                                    .text_xs()
+                                                                    .font_weight(if ap.is_active { FontWeight::BOLD } else { FontWeight::NORMAL })
+                                                                    .text_color(hsla(0.0, 0.0, 0.90, 1.0))
+                                                                    .child(ap.ssid.clone()),
+                                                            ),
+                                                    )
+                                                    .child(
+                                                        Tag::secondary().child(format!("{}%", ap.signal)),
                                                     ),
                                             )
-                                            .child(
-                                                div()
-                                                    .text_xs()
-                                                    .text_color(hsla(0.0, 0.0, 0.55, 1.0))
-                                                    .child(format!("{}%", ap.signal)),
-                                            )
+                                            .when_some(on_c, move |btn, cb| {
+                                                btn.on_click(move |_, _, _| (cb)(ssid_clone.clone()))
+                                            })
                                     }))
                                     .into_any_element()
                             },
@@ -629,13 +632,25 @@ impl RenderOnce for ControlCenterWidget {
                                     .gap(px(4.0))
                                     .max_h(px(180.0))
                                     .overflow_y_scroll()
-                                    .children(self.bt_devices.iter().map(|dev| {
+                                    .children(self.bt_devices.iter().enumerate().map(|(idx, dev)| {
+                                        let is_conn = dev.is_connected;
+                                        let dev_label = if is_conn {
+                                            if let Some(bat) = dev.battery_percent {
+                                                format!("Connected ({}%)", bat)
+                                            } else {
+                                                "Connected".to_string()
+                                            }
+                                        } else {
+                                            "Disconnected".to_string()
+                                        };
                                         div()
+                                            .id(SharedString::from(format!("cc-bt-dev-{}", idx)))
                                             .flex()
                                             .items_center()
                                             .justify_between()
                                             .p(px(6.0))
                                             .rounded(px(8.0))
+                                            .bg(hsla(0.0, 0.0, 1.0, 0.03))
                                             .child(
                                                 div()
                                                     .flex()
@@ -644,7 +659,7 @@ impl RenderOnce for ControlCenterWidget {
                                                     .child(
                                                         Icon::new(IconName::Bluetooth)
                                                             .size(px(12.0))
-                                                            .text_color(if dev.is_connected {
+                                                            .text_color(if is_conn {
                                                                 hsla(142.0 / 360.0, 0.85, 0.55, 1.0)
                                                             } else {
                                                                 hsla(0.0, 0.0, 0.60, 1.0)
@@ -658,22 +673,11 @@ impl RenderOnce for ControlCenterWidget {
                                                     ),
                                             )
                                             .child(
-                                                div()
-                                                    .text_xs()
-                                                    .text_color(if dev.is_connected {
-                                                        hsla(142.0 / 360.0, 0.85, 0.55, 1.0)
-                                                    } else {
-                                                        hsla(0.0, 0.0, 0.50, 1.0)
-                                                    })
-                                                    .child(if dev.is_connected {
-                                                        if let Some(bat) = dev.battery_percent {
-                                                            format!("Connected ({}%)", bat)
-                                                        } else {
-                                                            "Connected".to_string()
-                                                        }
-                                                    } else {
-                                                        "Disconnected".to_string()
-                                                    }),
+                                                if is_conn {
+                                                    Tag::primary().child(dev_label)
+                                                } else {
+                                                    Tag::secondary().child(dev_label)
+                                                },
                                             )
                                     }))
                                     .into_any_element()
@@ -703,12 +707,10 @@ impl RenderOnce for ControlCenterWidget {
                                     .items_center()
                                     .gap(px(6.0))
                                     .child(
-                                        div()
-                                            .hover(|s| s.cursor_pointer())
-                                            .when_some(on_mute, |el, cb| {
-                                                el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
-                                            })
-                                            .child(
+                                        Button::new("cc-vol-mute")
+                                            .ghost()
+                                            .compact()
+                                            .icon(
                                                 Icon::new(if self.is_muted {
                                                     IconName::VolumeX
                                                 } else {
@@ -716,7 +718,10 @@ impl RenderOnce for ControlCenterWidget {
                                                 })
                                                 .size(px(14.0))
                                                 .text_color(hsla(0.0, 0.0, 0.90, 1.0)),
-                                            ),
+                                            )
+                                            .when_some(on_mute, |btn, cb| {
+                                                btn.on_click(move |_, _, _| (cb)())
+                                            }),
                                     )
                                     .child(
                                         div()
@@ -732,55 +737,25 @@ impl RenderOnce for ControlCenterWidget {
                                     .items_center()
                                     .gap(px(6.0))
                                     .child(
-                                        div()
-                                            .id("cc-vol-down")
-                                            .w(px(22.0))
-                                            .h(px(22.0))
-                                            .rounded(px(6.0))
-                                            .flex()
-                                            .items_center()
-                                            .justify_center()
-                                            .bg(hsla(0.0, 0.0, 1.0, 0.08))
-                                            .hover(|s| s.bg(hsla(0.0, 0.0, 1.0, 0.18)).cursor_pointer())
-                                            .when_some(on_vol.clone(), |el, cb| {
-                                                el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)(-5))
-                                            })
-                                            .child(
-                                                div()
-                                                    .text_xs()
-                                                    .font_weight(FontWeight::BOLD)
-                                                    .text_color(hsla(0.0, 0.0, 0.85, 1.0))
-                                                    .child("-"),
-                                            ),
+                                        Button::new("cc-vol-down")
+                                            .ghost()
+                                            .compact()
+                                            .label("-")
+                                            .when_some(on_vol.clone(), |btn, cb| {
+                                                btn.on_click(move |_, _, _| (cb)(-5))
+                                            }),
                                     )
                                     .child(
-                                        div()
-                                            .text_xs()
-                                            .font_weight(FontWeight::BOLD)
-                                            .text_color(hsla(45.0 / 360.0, 0.90, 0.60, 1.0))
-                                            .child(format!("{}%", self.volume_percent)),
+                                        Tag::secondary().child(format!("{}%", self.volume_percent)),
                                     )
                                     .child(
-                                        div()
-                                            .id("cc-vol-up")
-                                            .w(px(22.0))
-                                            .h(px(22.0))
-                                            .rounded(px(6.0))
-                                            .flex()
-                                            .items_center()
-                                            .justify_center()
-                                            .bg(hsla(0.0, 0.0, 1.0, 0.08))
-                                            .hover(|s| s.bg(hsla(0.0, 0.0, 1.0, 0.18)).cursor_pointer())
-                                            .when_some(on_vol, |el, cb| {
-                                                el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)(5))
-                                            })
-                                            .child(
-                                                div()
-                                                    .text_xs()
-                                                    .font_weight(FontWeight::BOLD)
-                                                    .text_color(hsla(0.0, 0.0, 0.85, 1.0))
-                                                    .child("+"),
-                                            ),
+                                        Button::new("cc-vol-up")
+                                            .ghost()
+                                            .compact()
+                                            .label("+")
+                                            .when_some(on_vol, |btn, cb| {
+                                                btn.on_click(move |_, _, _| (cb)(5))
+                                            }),
                                     ),
                             ),
                     )
@@ -788,6 +763,7 @@ impl RenderOnce for ControlCenterWidget {
                     .child(
                         div()
                             .relative()
+                            .w_full()
                             .h(px(8.0))
                             .rounded_full()
                             .bg(hsla(0.0, 0.0, 1.0, 0.10))
@@ -795,7 +771,7 @@ impl RenderOnce for ControlCenterWidget {
                             .child(
                                 div()
                                     .h_full()
-                                    .w(px((self.volume_percent as f32 / 100.0) * 306.0))
+                                    .w(relative(self.volume_percent as f32 / 100.0))
                                     .rounded_full()
                                     .bg(if self.is_muted {
                                         hsla(0.0, 0.0, 0.40, 1.0)
@@ -845,55 +821,25 @@ impl RenderOnce for ControlCenterWidget {
                                     .items_center()
                                     .gap(px(6.0))
                                     .child(
-                                        div()
-                                            .id("cc-bright-down")
-                                            .w(px(22.0))
-                                            .h(px(22.0))
-                                            .rounded(px(6.0))
-                                            .flex()
-                                            .items_center()
-                                            .justify_center()
-                                            .bg(hsla(0.0, 0.0, 1.0, 0.08))
-                                            .hover(|s| s.bg(hsla(0.0, 0.0, 1.0, 0.18)).cursor_pointer())
-                                            .when_some(on_bright.clone(), |el, cb| {
-                                                el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)(-5))
-                                            })
-                                            .child(
-                                                div()
-                                                    .text_xs()
-                                                    .font_weight(FontWeight::BOLD)
-                                                    .text_color(hsla(0.0, 0.0, 0.85, 1.0))
-                                                    .child("-"),
-                                            ),
+                                        Button::new("cc-bright-down")
+                                            .ghost()
+                                            .compact()
+                                            .label("-")
+                                            .when_some(on_bright.clone(), |btn, cb| {
+                                                btn.on_click(move |_, _, _| (cb)(-5))
+                                            }),
                                     )
                                     .child(
-                                        div()
-                                            .text_xs()
-                                            .font_weight(FontWeight::BOLD)
-                                            .text_color(hsla(45.0 / 360.0, 0.90, 0.60, 1.0))
-                                            .child(format!("{}%", self.brightness_percent)),
+                                        Tag::secondary().child(format!("{}%", self.brightness_percent)),
                                     )
                                     .child(
-                                        div()
-                                            .id("cc-bright-up")
-                                            .w(px(22.0))
-                                            .h(px(22.0))
-                                            .rounded(px(6.0))
-                                            .flex()
-                                            .items_center()
-                                            .justify_center()
-                                            .bg(hsla(0.0, 0.0, 1.0, 0.08))
-                                            .hover(|s| s.bg(hsla(0.0, 0.0, 1.0, 0.18)).cursor_pointer())
-                                            .when_some(on_bright, |el, cb| {
-                                                el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)(5))
-                                            })
-                                            .child(
-                                                div()
-                                                    .text_xs()
-                                                    .font_weight(FontWeight::BOLD)
-                                                    .text_color(hsla(0.0, 0.0, 0.85, 1.0))
-                                                    .child("+"),
-                                            ),
+                                        Button::new("cc-bright-up")
+                                            .ghost()
+                                            .compact()
+                                            .label("+")
+                                            .when_some(on_bright, |btn, cb| {
+                                                btn.on_click(move |_, _, _| (cb)(5))
+                                            }),
                                     ),
                             ),
                     )
@@ -901,6 +847,7 @@ impl RenderOnce for ControlCenterWidget {
                     .child(
                         div()
                             .relative()
+                            .w_full()
                             .h(px(8.0))
                             .rounded_full()
                             .bg(hsla(0.0, 0.0, 1.0, 0.10))
@@ -908,7 +855,7 @@ impl RenderOnce for ControlCenterWidget {
                             .child(
                                 div()
                                     .h_full()
-                                    .w(px((self.brightness_percent as f32 / 100.0) * 306.0))
+                                    .w(relative(self.brightness_percent as f32 / 100.0))
                                     .rounded_full()
                                     .bg(hsla(45.0 / 360.0, 0.90, 0.60, 1.0)),
                             ),
@@ -946,39 +893,17 @@ impl RenderOnce for ControlCenterWidget {
                                 };
                                 let on_p = on_profile.clone();
                                 let prof_str = prof.to_string();
-                                div()
+                                let btn = Button::new(SharedString::from(format!("prof-{}", prof)))
                                     .flex_1()
-                                    .h(px(26.0))
-                                    .rounded(px(8.0))
-                                    .flex()
-                                    .items_center()
-                                    .justify_center()
-                                    .bg(if is_active {
-                                        hsla(45.0 / 360.0, 0.90, 0.60, 0.25)
-                                    } else {
-                                        hsla(0.0, 0.0, 1.0, 0.06)
-                                    })
-                                    .border_1()
-                                    .border_color(if is_active {
-                                        hsla(45.0 / 360.0, 0.90, 0.60, 0.50)
-                                    } else {
-                                        hsla(0.0, 0.0, 1.0, 0.08)
-                                    })
-                                    .hover(|s| s.bg(hsla(0.0, 0.0, 1.0, 0.14)).cursor_pointer())
-                                    .when_some(on_p, move |el, cb| {
-                                        el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)(prof_str.clone()))
-                                    })
-                                    .child(
-                                        div()
-                                            .text_xs()
-                                            .font_weight(if is_active { FontWeight::BOLD } else { FontWeight::NORMAL })
-                                            .text_color(if is_active {
-                                                hsla(45.0 / 360.0, 0.90, 0.60, 1.0)
-                                            } else {
-                                                hsla(0.0, 0.0, 0.75, 1.0)
-                                            })
-                                            .child(label),
-                                    )
+                                    .label(label);
+                                let btn = if is_active {
+                                    btn.primary()
+                                } else {
+                                    btn.ghost()
+                                };
+                                btn.when_some(on_p, move |b, cb| {
+                                    b.on_click(move |_, _, _| (cb)(prof_str.clone()))
+                                })
                             })),
                     ),
             )
@@ -1024,15 +949,11 @@ impl RenderOnce for ControlCenterWidget {
                             ),
                     )
                     .child(
-                        div()
-                            .text_xs()
-                            .font_weight(FontWeight::BOLD)
-                            .text_color(if self.is_charging {
-                                hsla(142.0 / 360.0, 0.85, 0.55, 1.0)
-                            } else {
-                                hsla(0.0, 0.0, 0.95, 1.0)
-                            })
-                            .child(format!("{}%", self.battery_percent)),
+                        if self.is_charging {
+                            Tag::primary().child(format!("{}%", self.battery_percent))
+                        } else {
+                            Tag::secondary().child(format!("{}%", self.battery_percent))
+                        },
                     ),
             )
             // ── Quick Actions Footer ──
@@ -1044,7 +965,7 @@ impl RenderOnce for ControlCenterWidget {
                     .when_some(on_launcher, |this, cb| {
                         this.child(
                             Button::new("cc-action-launcher")
-                                .ghost()
+                                .secondary()
                                 .flex_1()
                                 .icon(Icon::new(IconName::Search).size(px(12.0)))
                                 .label("Apps")
@@ -1056,7 +977,7 @@ impl RenderOnce for ControlCenterWidget {
                     .when_some(on_clipboard, |this, cb| {
                         this.child(
                             Button::new("cc-action-clipboard")
-                                .ghost()
+                                .secondary()
                                 .flex_1()
                                 .icon(Icon::new(IconName::ClipboardList).size(px(12.0)))
                                 .label("Clips")
@@ -1068,7 +989,7 @@ impl RenderOnce for ControlCenterWidget {
                     .when_some(on_settings, |this, cb| {
                         this.child(
                             Button::new("cc-action-settings")
-                                .ghost()
+                                .secondary()
                                 .flex_1()
                                 .icon(Icon::new(IconName::Settings).size(px(12.0)))
                                 .label("Settings")
@@ -1080,7 +1001,7 @@ impl RenderOnce for ControlCenterWidget {
                     .when_some(on_power, |this, cb| {
                         this.child(
                             Button::new("cc-action-power")
-                                .ghost()
+                                .secondary()
                                 .flex_1()
                                 .icon(Icon::new(IconName::Power).size(px(12.0)))
                                 .label("Power")

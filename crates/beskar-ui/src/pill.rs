@@ -58,30 +58,27 @@ impl RenderOnce for IslandPill {
             .items_center()
             .px(self.padding_x)
             .py(self.padding_y)
-            .when(is_convex, |s| s.rounded_b(px(14.0)))
-            .when(!is_convex, |s| s.rounded(px(18.0)))
-            // Dynamic acrylic core from active Theme
-            .bg(if is_convex {
-                beskar_theme::Theme::bg()
-            } else {
+            .when(!is_convex, |this| {
                 let mut b = beskar_theme::Theme::bg();
                 b.a = (b.a * 0.90).clamp(0.0, 1.0);
-                b
+                this.rounded(px(18.0))
+                    .bg(b)
+                    .border_1()
+                    .border_color(beskar_theme::Theme::border())
+                    .shadow_md()
+                    .when(self.is_interactive, |this| {
+                        this.hover(|style| {
+                            style
+                                .bg(beskar_theme::Theme::bg_secondary())
+                                .border_color(beskar_theme::Theme::accent())
+                                .shadow_lg()
+                        })
+                    })
             })
-            // Outer 1px perimeter boundary with subtle sheen
-            .border_1()
-            .border_color(beskar_theme::Theme::border())
-            // Soft atmospheric drop shadow (elevation depth)
-            .shadow_md()
-            .when(self.is_interactive, |this| {
-                this.hover(|style| {
-                    style
-                        // Elevated surface luminance on cursor hover
-                        .bg(beskar_theme::Theme::bg_secondary())
-                        // Accent edge reflection
-                        .border_color(beskar_theme::Theme::accent())
-                        .shadow_lg()
-                })
+            .when(is_convex, |this| {
+                // In convex mode, the outer ConvexBarShape canvas provides the notch silhouette,
+                // Bézier fillet curves, background fill, and boundary border.
+                this.h(px(38.0))
             })
             .children(self.content)
     }
