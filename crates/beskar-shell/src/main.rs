@@ -1,5 +1,5 @@
-mod overlay_host;
-mod overlays;
+pub mod modules;
+pub mod panel_host;
 
 use std::sync::Arc;
 use beskar_compositor::detect_compositor;
@@ -138,7 +138,7 @@ impl DesktopBarView {
                     this.tray_items = snap.tray;
                     this.notifications = snap.notifications.clone();
                     this.island_spring.set_target(target_width);
-                    overlays::sync_notification_toasts(snap.notifications, cx);
+                    modules::sync_notification_toasts(snap.notifications, cx);
                     cx.notify();
                 });
                 if res.is_err() {
@@ -181,37 +181,37 @@ impl DesktopBarView {
                 let res = this.update(cx, |_this, cx| {
                     match action {
                         BarAction::ToggleControlCenter => {
-                            overlays::toggle_control_center(cx);
+                            modules::toggle_control_center(cx);
                         }
                         BarAction::ToggleLauncher => {
-                            overlays::toggle_launcher(cx);
+                            modules::toggle_launcher(cx);
                         }
                         BarAction::TogglePowerMenu => {
-                            overlays::toggle_power_menu(cx);
+                            modules::toggle_power_menu(cx);
                         }
                         BarAction::ToggleSettings => {
-                            overlays::toggle_settings(cx);
+                            modules::toggle_settings(cx);
                         }
                         BarAction::ToggleLockScreen => {
-                            overlays::toggle_lockscreen(cx);
+                            modules::toggle_lockscreen(cx);
                         }
                         BarAction::ToggleClipboard => {
-                            overlays::toggle_clipboard(cx);
+                            modules::toggle_clipboard(cx);
                         }
                         BarAction::ToggleDashboard => {
-                            overlays::toggle_dashboard(cx);
+                            modules::toggle_dashboard(cx);
                         }
                         BarAction::ToggleMusic => {
-                            overlays::toggle_music(cx);
+                            modules::toggle_music(cx);
                         }
                         BarAction::ToggleNotificationCenter => {
-                            overlays::toggle_notification_center(cx);
+                            modules::toggle_notification_center(cx);
                         }
                         BarAction::ToggleScreenCapture => {
-                            overlays::toggle_screencapture(cx);
+                            modules::toggle_screencapture(cx);
                         }
                         BarAction::ToggleWallpaperSelector => {
-                            overlays::toggle_wallpaper_selector(cx);
+                            modules::toggle_wallpaper_selector(cx);
                         }
                     }
                 });
@@ -636,6 +636,7 @@ async fn main() -> anyhow::Result<()> {
         .run(move |cx| {
             gpui_kit::init(cx);
             gpui_kit::component::Theme::change(gpui_kit::component::ThemeMode::Dark, None, cx);
+            modules::register_all_modules();
 
             let initial_workspaces = initial_workspaces;
             let active_ws = active_ws;
