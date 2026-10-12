@@ -1,6 +1,7 @@
 use beskar_core::config::{BarStyleConfig, ShellConfig, ThemePresetConfig};
 use beskar_services::audio::AudioService;
 use beskar_services::battery::BatteryService;
+pub mod helpers;
 pub mod pages;
 pub mod view;
 

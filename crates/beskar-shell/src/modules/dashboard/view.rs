@@ -1,4 +1,6 @@
-use beskar_services::github::{ContributionDay, GithubProfile, GithubState};
+use std::sync::Arc;
+
+use beskar_services::github::GithubState;
 use beskar_services::updates::SystemUpdatesState;
 use gpui_kit::assets::IconName;
 use gpui_kit::component::button::{Button, ButtonVariants};
@@ -6,7 +8,9 @@ use gpui_kit::component::tag::Tag;
 use gpui_kit::component::Icon;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
-use std::sync::Arc;
+
+use super::heatmap::render_contributions_heatmap;
+use super::profile::render_profile_card;
 
 /// Developer Dashboard Widget featuring:
 /// - 52-week (364-cell) GitHub contribution heatmap grid with tonal levels
@@ -176,223 +180,6 @@ impl RenderOnce for DashboardWidget {
     }
 }
 
-/// Profile Card with avatar, rotating ring indicator, and statistics
-fn render_profile_card(
-    profile: &GithubProfile,
-    is_fetching: bool,
-    on_refresh: Option<Arc<dyn Fn() + Send + Sync>>,
-    on_open: Option<Arc<dyn Fn() + Send + Sync>>,
-) -> impl IntoElement {
-    let top_repo = profile.top_repo_name.clone();
-    let top_desc = profile.top_repo_desc.clone();
-    let top_stars = profile.top_repo_stars;
-    let top_lang = profile.top_repo_lang.clone();
-
-    div()
-        .w(px(320.0))
-        .flex()
-        .flex_col()
-        .gap(px(12.0))
-        .p(px(14.0))
-        .rounded(px(16.0))
-        .bg(beskar_theme::Theme::bg_secondary())
-        .border_1()
-        .border_color(beskar_theme::Theme::card_border())
-        // Avatar + Name Header
-        .child(
-            div()
-                .flex()
-                .items_center()
-                .gap(px(12.0))
-                // Circular Avatar with Gradient Ring
-                .child(
-                    div()
-                        .w(px(52.0))
-                        .h(px(52.0))
-                        .rounded_full()
-                        .p(px(2.0))
-                        .bg(if is_fetching {
-                            beskar_theme::Theme::accent()
-                        } else {
-                            beskar_theme::Theme::info()
-                        })
-                        .flex()
-                        .items_center()
-                        .justify_center()
-                        .child(
-                            div()
-                                .w_full()
-                                .h_full()
-                                .rounded_full()
-                                .bg(beskar_theme::Theme::card_bg())
-                                .flex()
-                                .items_center()
-                                .justify_center()
-                                .text_color(beskar_theme::Theme::accent())
-                                .child(Icon::new(IconName::Github).size(px(26.0))),
-                        ),
-                )
-                .child(
-                    div()
-                        .flex()
-                        .flex_col()
-                        .flex_1()
-                        .child(
-                            div()
-                                .text_sm()
-                                .font_weight(FontWeight::BOLD)
-                                .text_color(beskar_theme::Theme::fg())
-                                .child(profile.name.clone()),
-                        )
-                        .child(
-                            div()
-                                .text_xs()
-                                .text_color(beskar_theme::Theme::accent())
-                                .child(format!("@{}", profile.username)),
-                        )
-                        .child(
-                            div()
-                                .text_xs()
-                                .text_color(beskar_theme::Theme::muted())
-                                .child(profile.bio.clone()),
-                        ),
-                ),
-        )
-        // Profile Stats Counters (Repos, Followers, Stars, Forks)
-        .child(
-            div()
-                .flex()
-                .items_center()
-                .justify_between()
-                .px(px(8.0))
-                .py(px(8.0))
-                .rounded_lg()
-                .bg(beskar_theme::Theme::glass_dark(0.25))
-                .child(stat_pill("Repos", profile.public_repos.to_string()))
-                .child(stat_pill("Followers", profile.followers.to_string()))
-                .child(stat_pill("Stars", profile.total_stars.to_string()))
-                .child(stat_pill("Forks", profile.total_forks.to_string())),
-        )
-        // Top Repository Showcase Card
-        .child(
-            div()
-                .flex()
-                .flex_col()
-                .gap(px(4.0))
-                .p(px(10.0))
-                .rounded_lg()
-                .bg(beskar_theme::Theme::glass_fill(0.04))
-                .border_1()
-                .border_color(beskar_theme::Theme::card_border())
-                .child(
-                    div()
-                        .flex()
-                        .items_center()
-                        .justify_between()
-                        .child(
-                            div()
-                                .flex()
-                                .items_center()
-                                .gap(px(6.0))
-                                .child(Icon::new(IconName::FolderGit2).size(px(12.0)).text_color(beskar_theme::Theme::accent()))
-                                .child(
-                                    div()
-                                        .text_xs()
-                                        .font_weight(FontWeight::SEMIBOLD)
-                                        .text_color(beskar_theme::Theme::fg())
-                                        .child(top_repo),
-                                ),
-                        )
-                        .child(
-                            div()
-                                .flex()
-                                .items_center()
-                                .gap(px(3.0))
-                                .text_color(beskar_theme::Theme::accent())
-                                .child(Icon::new(IconName::Star).size(px(10.0)))
-                                .child(
-                                    div()
-                                        .text_xs()
-                                        .child(top_stars.to_string()),
-                                ),
-                        ),
-                )
-                .child(
-                    div()
-                        .text_xs()
-                        .text_color(beskar_theme::Theme::muted())
-                        .child(top_desc),
-                )
-                .child(
-                    div()
-                        .flex()
-                        .items_center()
-                        .gap(px(4.0))
-                        .pt(px(2.0))
-                        .child(
-                            div()
-                                .w(px(6.0))
-                                .h(px(6.0))
-                                .rounded_full()
-                                .bg(beskar_theme::Theme::accent()),
-                        )
-                        .child(
-                            div()
-                                .text_xs()
-                                .text_color(beskar_theme::Theme::text_secondary())
-                                .child(top_lang),
-                        ),
-                ),
-        )
-        // Profile Action Buttons
-        .child(
-            div()
-                .flex()
-                .items_center()
-                .gap(px(8.0))
-                .pt(px(4.0))
-                .child(
-                    Button::new("dash-gh-profile")
-                        .primary()
-                        .compact()
-                        .label("GitHub Profile")
-                        .icon(Icon::new(IconName::ExternalLink).size(px(12.0)))
-                        .when_some(on_open, |btn, cb| {
-                            btn.on_click(move |_, _, _| (cb)())
-                        }),
-                )
-                .child(
-                    Button::new("dash-gh-refresh")
-                        .ghost()
-                        .compact()
-                        .icon(Icon::new(IconName::RefreshCw).size(px(12.0)))
-                        .when_some(on_refresh, |btn, cb| {
-                            btn.on_click(move |_, _, _| (cb)())
-                        }),
-                ),
-        )
-}
-
-fn stat_pill(label: &'static str, value: String) -> impl IntoElement {
-    div()
-        .flex()
-        .flex_col()
-        .items_center()
-        .child(
-            div()
-                .text_xs()
-                .font_weight(FontWeight::BOLD)
-                .text_color(beskar_theme::Theme::fg())
-                .child(value),
-        )
-        .child(
-            div()
-                .text_xs()
-                .text_color(beskar_theme::Theme::muted())
-                .child(label),
-        )
-}
-
 /// Updates Card matching Minflair's UpdatesCard.qml
 fn render_updates_card(
     up: &SystemUpdatesState,
@@ -449,48 +236,64 @@ fn render_updates_card(
                                 Button::new("dash-up-refresh")
                                     .ghost()
                                     .compact()
-                                    .icon(Icon::new(IconName::RefreshCw).size(px(10.0)))
+                                    .icon(Icon::new(IconName::RefreshCw).size(px(12.0)))
                                     .on_click(move |_, _, _| (cb)()),
                             )
                         }),
                 ),
         )
+        // Detail row (Pacman / AUR breakdown)
         .child(
             div()
                 .flex()
                 .items_center()
                 .justify_between()
+                .text_xs()
+                .text_color(beskar_theme::Theme::muted())
+                .child(format!("Repo: {} • AUR: {}", up.pacman_count, up.aur_count))
                 .child(
                     div()
                         .flex()
                         .items_center()
-                        .gap(px(12.0))
+                        .gap(px(4.0))
                         .child(
                             div()
-                                .text_xs()
-                                .text_color(beskar_theme::Theme::text_secondary())
-                                .child(format!("Pacman: {}", up.pacman_count)),
+                                .w(px(6.0))
+                                .h(px(6.0))
+                                .rounded_full()
+                                .bg(if up.is_checking {
+                                    beskar_theme::Theme::accent()
+                                } else if has_updates {
+                                    beskar_theme::Theme::warning()
+                                } else {
+                                    beskar_theme::Theme::success()
+                                }),
                         )
-                        .child(
-                            div()
-                                .text_xs()
-                                .text_color(beskar_theme::Theme::text_secondary())
-                                .child(format!("AUR: {}", up.aur_count)),
-                        ),
-                )
-                .when_some(on_run_update, |el, cb| {
-                    el.child(
-                        Button::new("dash-up-run")
-                            .primary()
-                            .compact()
-                            .label("Upgrade Now")
-                            .on_click(move |_, _, _| (cb)()),
-                    )
-                }),
+                        .child(if up.is_checking {
+                            "Checking..."
+                        } else if has_updates {
+                            "Updates available"
+                        } else {
+                            "System fresh"
+                        }),
+                ),
         )
+        // Action: Run updates button if available
+        .when(has_updates, |el| {
+            el.child(
+                Button::new("dash-run-up")
+                    .primary()
+                    .compact()
+                    .label(format!("Update All ({})", total))
+                    .icon(Icon::new(IconName::Download).size(px(12.0)))
+                    .when_some(on_run_update, |btn, cb| {
+                        btn.on_click(move |_, _, _| (cb)())
+                    }),
+            )
+        })
 }
 
-/// Motivational developer quote card
+/// Developer Quote Card matching Minflair's QuoteCard.qml
 fn render_quote_card() -> impl IntoElement {
     div()
         .flex()
@@ -528,128 +331,4 @@ fn render_quote_card() -> impl IntoElement {
                 .text_color(beskar_theme::Theme::muted())
                 .child("— Edsger W. Dijkstra"),
         )
-}
-
-/// 52-Week GitHub Heatmap Grid matching GithubContributionsWidget.qml
-fn render_contributions_heatmap(
-    username: &str,
-    contributions: &[ContributionDay],
-) -> impl IntoElement {
-    let total_sum: u32 = contributions.iter().map(|c| c.count).sum();
-    let column_count = contributions.len().div_ceil(7);
-
-    div()
-        .flex()
-        .flex_col()
-        .gap(px(10.0))
-        .p(px(14.0))
-        .rounded(px(16.0))
-        .bg(beskar_theme::Theme::bg_secondary())
-        .border_1()
-        .border_color(beskar_theme::Theme::card_border())
-        // Heatmap Header
-        .child(
-            div()
-                .flex()
-                .items_center()
-                .justify_between()
-                .child(
-                    div()
-                        .flex()
-                        .items_center()
-                        .gap(px(8.0))
-                        .child(Icon::new(IconName::Activity).size(px(16.0)).text_color(beskar_theme::Theme::accent()))
-                        .child(
-                            div()
-                                .text_xs()
-                                .font_weight(FontWeight::BOLD)
-                                .text_color(beskar_theme::Theme::fg())
-                                .child("Contribution Activity"),
-                        )
-                        .child(
-                            div()
-                                .text_xs()
-                                .text_color(beskar_theme::Theme::muted())
-                                .child(format!("({} in the last year)", total_sum)),
-                        ),
-                )
-                .child(
-                    div()
-                        .text_xs()
-                        .text_color(beskar_theme::Theme::accent())
-                        .child(format!("github.com/{}", username)),
-                ),
-        )
-        // 52-Week Grid of 7 rows
-        .child(
-            div()
-                .flex()
-                .gap(px(3.0))
-                .overflow_x_hidden()
-                .children((0..column_count).map(|col_idx| {
-                    div()
-                        .flex()
-                        .flex_col()
-                        .gap(px(3.0))
-                        .children((0..7).map(move |row_idx| {
-                            let idx = col_idx * 7 + row_idx;
-                            let level = if idx < contributions.len() {
-                                contributions[idx].level
-                            } else {
-                                0
-                            };
-                            let cell_color = match level {
-                                0 => beskar_theme::Theme::subtle_border(),
-                                1 => beskar_theme::Theme::success_alpha(0.35),
-                                2 => beskar_theme::Theme::success_alpha(0.60),
-                                3 => beskar_theme::Theme::success_alpha(0.85),
-                                _ => beskar_theme::Theme::success(),
-                            };
-
-                            div()
-                                .w(px(10.0))
-                                .h(px(10.0))
-                                .rounded_xs()
-                                .bg(cell_color)
-                                .hover(move |s| {
-                                    s.border_1()
-                                        .border_color(beskar_theme::Theme::fg())
-                                        .cursor_pointer()
-                                })
-                        }))
-                })),
-        )
-        // Heatmap Legend (Less -> Swatches -> More)
-        .child(
-            div()
-                .flex()
-                .items_center()
-                .justify_end()
-                .gap(px(4.0))
-                .child(
-                    div()
-                        .text_xs()
-                        .text_color(beskar_theme::Theme::muted())
-                        .child("Less"),
-                )
-                .child(swatch(beskar_theme::Theme::subtle_border()))
-                .child(swatch(beskar_theme::Theme::success_alpha(0.35)))
-                .child(swatch(beskar_theme::Theme::success_alpha(0.60)))
-                .child(swatch(beskar_theme::Theme::success_alpha(0.85)))
-                .child(swatch(beskar_theme::Theme::success()))
-                .child(
-                    div()
-                        .text_xs()
-                        .text_color(beskar_theme::Theme::muted())
-                        .child("More"),
-                ),
-        )
-}
-
-fn swatch(color: Hsla) -> impl IntoElement {
-    div()
-        .w(px(8.0))
-        .h(px(8.0))
-        .rounded_xs()
-        .bg(color)
 }

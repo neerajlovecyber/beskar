@@ -115,9 +115,9 @@ impl Render for ScreenCaptureView {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::CaptureMode;
 
-    #[test]
+    #[core::prelude::v1::test]
     fn test_capture_mode_properties() {
         assert_eq!(CaptureMode::FullScreen.label(), "Full Screen");
         assert_eq!(CaptureMode::SelectArea.label(), "Select Area");

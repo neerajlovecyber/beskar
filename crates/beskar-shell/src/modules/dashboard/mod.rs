@@ -1,5 +1,7 @@
+pub mod heatmap;
+pub mod profile;
 pub mod view;
-use self::view::DashboardWidget;
+pub use self::view::DashboardWidget;
 use gpui_kit::*;
 
 use crate::panel_host::{PanelHost, PanelModule};
