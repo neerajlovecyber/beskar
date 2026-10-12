@@ -9,7 +9,7 @@ pub use convex::{ConvexBarShape, ConvexGeometry};
 pub use pill::IslandPill;
 pub use spring::{SpringConfig, SpringValue};
 pub use widgets::{
-    CaptureMode, ClipboardWidget, ControlCenterWidget, DashboardWidget, DynamicCenterWidget, LauncherWidget, LockScreenWidget,
+    CaptureMode, ClipboardWidget, DashboardWidget, DynamicCenterWidget, LauncherWidget, LockScreenWidget,
     MusicPlayerWidget, NotificationCenterWidget, NotificationToastWidget, PowerAction, PowerMenuWidget, ScreenCaptureWidget,
     SettingsCategory, SettingsConfig, SettingsWidget, VitalsWidget, WallpaperItem, WallpaperSelectorWidget, WorkspacesWidget,
 };

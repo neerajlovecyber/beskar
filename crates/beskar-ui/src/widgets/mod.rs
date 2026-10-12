@@ -1,5 +1,4 @@
 pub mod clipboard;
-pub mod control_center;
 pub mod dashboard;
 pub mod dynamic_center;
 pub mod launcher;
@@ -15,7 +14,6 @@ pub mod wallpaper_selector;
 pub mod workspaces;
 
 pub use clipboard::ClipboardWidget;
-pub use control_center::ControlCenterWidget;
 pub use dashboard::DashboardWidget;
 pub use dynamic_center::DynamicCenterWidget;
 pub use launcher::LauncherWidget;
