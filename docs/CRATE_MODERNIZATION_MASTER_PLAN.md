@@ -304,13 +304,16 @@ graph TD
 [Phase 5: Audio Engine (pulseaudio)] ─────> DONE
                   │
                   ▼
-[Phase 6: UI Wiring & Live Dynamic] ──────> READY
+[Phase 6: Bar Performance & Pure-Rust MPRIS] -> READY
                   │
                   ▼
-[Phase 7: Multi-Monitor LayerShell] ──────> PLANNED
+[Phase 7: UI Wiring & Live Dynamic] ──────> PLANNED
                   │
                   ▼
-[Phase 8: Native D-Bus SNI Tray Menus] ───> PLANNED
+[Phase 8: Multi-Monitor LayerShell] ──────> PLANNED
+                  │
+                  ▼
+[Phase 9: Native D-Bus SNI Tray Menus] ───> PLANNED
 ```
 
 | Phase | Milestone | Primary Crate | Subprocesses Removed | Target Files | Status |
@@ -321,9 +324,10 @@ graph TD
 | **3** | **Wayland Clipboard Manager** | `arboard = "3.6"` | `cliphist`, `wl-copy` | `clipboard.rs`, `clipboard/view.rs` | **DONE** |
 | **4** | **Hyprland Compositor IPC** | `hyprland = "0.4.0-beta.3"` | N/A (adds Hyprland support) | `hyprland.rs`, `detector.rs` | **DONE** |
 | **5** | **Pure-Rust Audio Stream** | `pulseaudio = "0.3"` | `wpctl`, custom packet parser | `audio.rs`, `control_center/view.rs` | **DONE** |
-| **6** | **UI Wiring & Live Dynamic Integration** | `tokio::sync::watch`, `gpui` | External polling scripts | `bar/`, `wallpaper_selector/`, `sliders.rs` | **READY** |
-| **7** | **Multi-Monitor LayerShell Instances** | `gpui` LayerShell, `references/gpui-shell` | Single-screen limitation | `bar/mod.rs`, `compositor/` | **PLANNED** |
-| **8** | **Native D-Bus SNI Tray Menus** | `zbus`, `references/icebar` | Dummy `0,0` context menu clicks | `tray.rs`, `modules/tray/` | **PLANNED** |
+| **6** | **Bar Performance & Pure-Rust MPRIS** | `zbus`, coalesced event stream | `playerctl`, `canberra-gtk-play`, blocking IPC | `mpris.rs`, `sound.rs`, `niri.rs`, `main.rs` | **READY** |
+| **7** | **UI Wiring & Live Dynamic Integration** | `tokio::sync::watch`, `gpui` | External polling scripts | `bar/`, `wallpaper_selector/`, `sliders.rs` | **PLANNED** |
+| **8** | **Multi-Monitor LayerShell Instances** | `gpui` LayerShell, `references/gpui-shell` | Single-screen limitation | `bar/mod.rs`, `compositor/` | **PLANNED** |
+| **9** | **Native D-Bus SNI Tray Menus** | `zbus`, `references/icebar` | Dummy `0,0` context menu clicks | `tray.rs`, `modules/tray/` | **PLANNED** |
 
 ---
 
