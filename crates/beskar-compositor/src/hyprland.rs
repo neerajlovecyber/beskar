@@ -57,7 +57,7 @@ impl CompositorBackend for HyprlandBackend {
                 listener.add_workspace_changed_handler(move |evt| {
                     let ws_id = evt.id.max(1) as u64;
                     debug!("Hyprland workspace changed to #{}", ws_id);
-                    let _ = tx.blocking_send(CompositorEvent::WorkspaceFocused(ws_id));
+                    let _ = tx.try_send(CompositorEvent::WorkspaceFocused(ws_id));
 
                     // Refresh all workspaces
                     if let Ok(workspaces) = Workspaces::get() {
@@ -76,7 +76,7 @@ impl CompositorBackend for HyprlandBackend {
                                 }
                             })
                             .collect();
-                        let _ = tx.blocking_send(CompositorEvent::WorkspacesChanged(list));
+                        let _ = tx.try_send(CompositorEvent::WorkspacesChanged(list));
                     }
                 });
             }
@@ -92,7 +92,7 @@ impl CompositorBackend for HyprlandBackend {
                         workspace_id: None,
                         is_focused: true,
                     });
-                    let _ = tx.blocking_send(CompositorEvent::WindowFocused(win));
+                    let _ = tx.try_send(CompositorEvent::WindowFocused(win));
                 });
             }
 
@@ -114,13 +114,13 @@ impl CompositorBackend for HyprlandBackend {
             {
                 let tx = tx.clone();
                 listener.add_monitor_added_handler(move |_| {
-                    let _ = tx.blocking_send(CompositorEvent::OutputsChanged);
+                    let _ = tx.try_send(CompositorEvent::OutputsChanged);
                 });
             }
             {
                 let tx = tx.clone();
                 listener.add_monitor_removed_handler(move |_| {
-                    let _ = tx.blocking_send(CompositorEvent::OutputsChanged);
+                    let _ = tx.try_send(CompositorEvent::OutputsChanged);
                 });
             }
 
@@ -244,7 +244,7 @@ impl HyprlandBackend {
                     }
                 })
                 .collect();
-            let _ = tx.blocking_send(CompositorEvent::WindowsChanged(list));
+            let _ = tx.try_send(CompositorEvent::WindowsChanged(list));
         }
     }
 }

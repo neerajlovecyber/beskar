@@ -235,8 +235,11 @@ impl DesktopBarView {
                     is_playing = this.media.as_ref().is_some_and(|m| m.2);
                 });
 
-                let sleep_ms = if is_playing { 60 } else { 350 };
-                tokio::time::sleep(tokio::time::Duration::from_millis(sleep_ms)).await;
+                let sleep_ms = if is_playing { 60 } else { 500 };
+                let _ = cx
+                    .background_executor()
+                    .timer(std::time::Duration::from_millis(sleep_ms))
+                    .await;
 
                 if is_playing {
                     tick = tick.wrapping_add(1);
@@ -273,8 +276,8 @@ impl DesktopBarView {
         })
         .detach();
 
-        // 6. Live Niri Compositor Event Stream
-        let (tx, mut rx) = tokio::sync::mpsc::channel(64);
+        // 6. Live Niri Compositor Event Stream (256-event buffer with non-blocking dispatch)
+        let (tx, mut rx) = tokio::sync::mpsc::channel(256);
         let comp_listener = compositor.clone();
         tokio::spawn(async move {
             let _ = comp_listener.start_listener(tx).await;
@@ -285,17 +288,22 @@ impl DesktopBarView {
                 let res = this.update(cx, |this, cx| {
                     match event {
                         beskar_core::events::CompositorEvent::WorkspacesChanged(workspaces) => {
-                            if let Some(active) =
-                                workspaces.iter().find(|w| w.is_focused || w.is_active)
-                            {
-                                this.active_ws = active.id;
+                            let active = workspaces
+                                .iter()
+                                .find(|w| w.is_focused || w.is_active)
+                                .map(|w| w.id)
+                                .unwrap_or(this.active_ws);
+                            if this.workspaces != workspaces || this.active_ws != active {
+                                this.active_ws = active;
+                                this.workspaces = workspaces;
+                                cx.notify();
                             }
-                            this.workspaces = workspaces;
-                            cx.notify();
                         }
                         beskar_core::events::CompositorEvent::WorkspaceFocused(id) => {
-                            this.active_ws = id;
-                            cx.notify();
+                            if this.active_ws != id {
+                                this.active_ws = id;
+                                cx.notify();
+                            }
                         }
                         beskar_core::events::CompositorEvent::WindowFocused(active_win) => {
                             if this.active_window != active_win {

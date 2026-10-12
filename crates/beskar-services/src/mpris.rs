@@ -1,10 +1,19 @@
 use anyhow::Result;
 use beskar_core::events::ServiceEvent;
 use beskar_core::models::MediaState;
-use std::process::Command;
+use std::collections::HashMap;
 use tokio::sync::mpsc;
 use tracing::info;
+use zbus::blocking::{fdo::DBusProxy, Connection, MessageIterator, Proxy};
+use zbus::zvariant::OwnedValue;
+use zbus::MatchRule;
 
+const PREFIX: &str = "org.mpris.MediaPlayer2.";
+const PATH: &str = "/org/mpris/MediaPlayer2";
+const PLAYER: &str = "org.mpris.MediaPlayer2.Player";
+
+/// Pure-Rust MPRIS media monitoring and control engine using direct D-Bus protocol (zbus).
+/// Eradicates all `playerctl` CLI subprocesses and blocking I/O on the UI thread.
 pub struct MprisService;
 
 impl Default for MprisService {
@@ -18,75 +27,248 @@ impl MprisService {
         Self
     }
 
-    /// Read active media player metadata and playback status
+    fn list_players(c: &Connection) -> Vec<String> {
+        let Ok(bus) = DBusProxy::new(c) else {
+            return Vec::new();
+        };
+        let mut names: Vec<String> = bus
+            .list_names()
+            .unwrap_or_default()
+            .into_iter()
+            .map(|n| n.to_string())
+            .filter(|n| n.starts_with(PREFIX) && !n.ends_with("playerctld"))
+            .collect();
+        names.sort();
+        names
+    }
+
+    fn active_player_proxy(c: &Connection) -> Option<(String, Proxy<'static>, bool)> {
+        let players = Self::list_players(c);
+        let mut fallback = None;
+
+        for name in players {
+            let Ok(p) = Proxy::new(c, name.clone(), PATH, PLAYER) else {
+                continue;
+            };
+            let is_playing = p
+                .get_property::<String>("PlaybackStatus")
+                .is_ok_and(|s| s == "Playing");
+
+            if is_playing {
+                return Some((name, p, true));
+            }
+            if fallback.is_none() {
+                fallback = Some((name, p, false));
+            }
+        }
+        fallback
+    }
+
+    fn parse_text(v: &OwnedValue) -> String {
+        if let Ok(s) = <&str>::try_from(v) {
+            return s.to_string();
+        }
+        if let Ok(l) = <Vec<String>>::try_from(v.clone()) {
+            return l.join(", ");
+        }
+        String::new()
+    }
+
+    fn parse_duration_ms(v: &OwnedValue) -> u64 {
+        let us = i64::try_from(v)
+            .ok()
+            .or_else(|| u64::try_from(v).ok().map(|n| n as i64))
+            .unwrap_or(0);
+        (us.max(0) / 1000) as u64
+    }
+
+    /// Read active media player metadata and playback status via pure D-Bus queries.
     pub fn read_state() -> Option<MediaState> {
-        let output = Command::new("playerctl")
-            .args(["metadata", "--format", "{{status}}:::{{artist}}:::{{title}}:::{{playerName}}"])
-            .output()
-            .ok()?;
+        let conn = Connection::session().ok()?;
+        let (bus_name, proxy, is_playing) = Self::active_player_proxy(&conn)?;
 
-        if !output.status.success() {
-            return None;
-        }
+        let metadata: HashMap<String, OwnedValue> =
+            proxy.get_property("Metadata").unwrap_or_default();
+        let title = metadata.get("xesam:title").map(Self::parse_text);
+        let artist = metadata
+            .get("xesam:artist")
+            .map(Self::parse_text)
+            .filter(|s| !s.is_empty());
+        let album = metadata
+            .get("xesam:album")
+            .map(Self::parse_text)
+            .filter(|s| !s.is_empty());
+        let art_url = metadata
+            .get("mpris:artUrl")
+            .map(Self::parse_text)
+            .filter(|s| !s.is_empty());
+        let duration_ms = metadata
+            .get("mpris:length")
+            .map(Self::parse_duration_ms)
+            .unwrap_or(0);
 
-        let line = String::from_utf8_lossy(&output.stdout);
-        let trimmed = line.trim();
-        if trimmed.is_empty() {
-            return None;
-        }
+        let position_us = proxy
+            .get_property::<OwnedValue>("Position")
+            .ok()
+            .and_then(|v| {
+                i64::try_from(&v)
+                    .ok()
+                    .or_else(|| u64::try_from(&v).ok().map(|n| n as i64))
+            })
+            .unwrap_or(0);
+        let position_ms = (position_us.max(0) / 1000) as u64;
 
-        let parts: Vec<&str> = trimmed.split(":::").collect();
-        if parts.len() < 3 {
-            return None;
-        }
+        let player_name = bus_name
+            .trim_start_matches(PREFIX)
+            .split('.')
+            .next()
+            .unwrap_or("Media")
+            .to_string();
 
-        let status = parts[0].trim();
-        let artist = parts[1].trim();
-        let title = parts[2].trim();
-        let player = if parts.len() > 3 { parts[3].trim() } else { "Media" };
-
-        if title.is_empty() {
+        if title.as_deref().unwrap_or("").is_empty() {
             return None;
         }
 
         Some(MediaState {
-            player_name: player.to_string(),
-            title: Some(title.to_string()),
-            artist: if artist.is_empty() { None } else { Some(artist.to_string()) },
-            album: None,
-            is_playing: status.eq_ignore_ascii_case("Playing"),
-            art_url: None,
-            position_ms: 0,
-            duration_ms: 0,
+            player_name,
+            title,
+            artist,
+            album,
+            is_playing,
+            art_url,
+            position_ms,
+            duration_ms,
         })
     }
 
+    /// Toggle playback on the active media player via D-Bus method call.
     pub fn play_pause() {
-        let _ = Command::new("playerctl").arg("play-pause").spawn();
-    }
-
-    pub fn next() {
-        let _ = Command::new("playerctl").arg("next").spawn();
-    }
-
-    pub fn previous() {
-        let _ = Command::new("playerctl").arg("previous").spawn();
-    }
-
-    pub async fn start_listener(&self, tx: mpsc::Sender<ServiceEvent>) -> Result<()> {
-        info!("MPRIS media monitoring listener starting");
-        let mut last_state = None;
-        loop {
-            let current = Self::read_state();
-            if last_state != current {
-                last_state = current.clone();
-                if let Some(media) = current {
-                    let _ = tx.send(ServiceEvent::Media(media)).await;
-                } else {
-                    let _ = tx.send(ServiceEvent::Media(MediaState::default())).await;
+        tokio::task::spawn_blocking(|| {
+            if let Ok(conn) = Connection::session() {
+                if let Some((_, proxy, _)) = Self::active_player_proxy(&conn) {
+                    let _ = proxy.call_method("PlayPause", &());
                 }
             }
-            tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
+        });
+    }
+
+    /// Skip to next track on the active media player via D-Bus method call.
+    pub fn next() {
+        tokio::task::spawn_blocking(|| {
+            if let Ok(conn) = Connection::session() {
+                if let Some((_, proxy, _)) = Self::active_player_proxy(&conn) {
+                    let _ = proxy.call_method("Next", &());
+                }
+            }
+        });
+    }
+
+    /// Skip to previous track on the active media player via D-Bus method call.
+    pub fn previous() {
+        tokio::task::spawn_blocking(|| {
+            if let Ok(conn) = Connection::session() {
+                if let Some((_, proxy, _)) = Self::active_player_proxy(&conn) {
+                    let _ = proxy.call_method("Previous", &());
+                }
+            }
+        });
+    }
+
+    /// Pure reactive D-Bus signal listener (PropertiesChanged, Seeked, NameOwnerChanged).
+    pub async fn start_listener(&self, tx: mpsc::Sender<ServiceEvent>) -> Result<()> {
+        info!("MPRIS reactive D-Bus signal listener starting (pure-Rust)");
+
+        let (wake_tx, mut wake_rx) = tokio::sync::mpsc::channel::<()>(16);
+
+        std::thread::Builder::new()
+            .name("mpris-dbus-signals".into())
+            .spawn(move || {
+                let Ok(conn) = Connection::session() else {
+                    return;
+                };
+
+                let rules = [
+                    MatchRule::builder()
+                        .msg_type(zbus::message::Type::Signal)
+                        .interface("org.freedesktop.DBus.Properties")
+                        .and_then(|b| b.member("PropertiesChanged"))
+                        .and_then(|b| b.path(PATH))
+                        .map(|b| b.build()),
+                    MatchRule::builder()
+                        .msg_type(zbus::message::Type::Signal)
+                        .interface(PLAYER)
+                        .and_then(|b| b.member("Seeked"))
+                        .and_then(|b| b.path(PATH))
+                        .map(|b| b.build()),
+                    MatchRule::builder()
+                        .msg_type(zbus::message::Type::Signal)
+                        .interface("org.freedesktop.DBus")
+                        .and_then(|b| b.member("NameOwnerChanged"))
+                        .and_then(|b| b.arg0ns(PREFIX.trim_end_matches('.')))
+                        .map(|b| b.build()),
+                ];
+
+                for rule in rules.into_iter().flatten() {
+                    let (c, w_tx) = (conn.clone(), wake_tx.clone());
+                    std::thread::spawn(move || {
+                        let Ok(messages) = MessageIterator::for_match_rule(rule, &c, Some(16))
+                        else {
+                            return;
+                        };
+                        for _ in messages {
+                            if w_tx.blocking_send(()).is_err() {
+                                break;
+                            }
+                        }
+                    });
+                }
+            })?;
+
+        // Send initial state immediately
+        let initial = Self::read_state().unwrap_or_default();
+        let _ = tx.send(ServiceEvent::Media(initial)).await;
+
+        let mut last_state = Self::read_state();
+        while wake_rx.recv().await.is_some() {
+            // Debounce rapid bursts of D-Bus signals (e.g. metadata + position + status)
+            tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+            while wake_rx.try_recv().is_ok() {}
+
+            let current = Self::read_state();
+            if current != last_state {
+                last_state = current.clone();
+                let event = current.unwrap_or_default();
+                if tx.send(ServiceEvent::Media(event)).await.is_err() {
+                    break;
+                }
+            }
         }
+
+        Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_mpris_read_state_does_not_panic() {
+        // Even when no media player is active, read_state should return gracefully
+        let state = MprisService::read_state();
+        if let Some(media) = state {
+            assert!(!media.player_name.is_empty());
+        }
+    }
+
+    #[test]
+    fn test_mpris_parse_helpers() {
+        use zbus::zvariant::Value;
+        let title_val = Value::from("Test Song Title").try_to_owned().unwrap();
+        assert_eq!(MprisService::parse_text(&title_val), "Test Song Title");
+
+        let duration_us = OwnedValue::from(240_000_000i64); // 240 seconds
+        assert_eq!(MprisService::parse_duration_ms(&duration_us), 240_000);
+    }
+}
+

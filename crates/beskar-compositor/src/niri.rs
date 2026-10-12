@@ -129,6 +129,9 @@ impl CompositorBackend for NiriBackend {
 
             let _ = reader.get_ref().shutdown(std::net::Shutdown::Write);
             let mut state = EventStreamState::default();
+            let mut last_workspaces: Option<Vec<WorkspaceInfo>> = None;
+            let mut last_windows: Option<Vec<WindowInfo>> = None;
+            let mut last_active_win: Option<Option<WindowInfo>> = None;
 
             loop {
                 line.clear();
@@ -179,9 +182,19 @@ impl CompositorBackend for NiriBackend {
 
                 let active_win = windows.iter().find(|w| w.is_focused).cloned();
 
-                let _ = tx.blocking_send(CompositorEvent::WorkspacesChanged(workspaces));
-                let _ = tx.blocking_send(CompositorEvent::WindowsChanged(windows));
-                let _ = tx.blocking_send(CompositorEvent::WindowFocused(active_win));
+                // Deduplicate and dispatch non-blockingly so the socket reader never halts
+                if last_workspaces.as_ref() != Some(&workspaces) {
+                    last_workspaces = Some(workspaces.clone());
+                    let _ = tx.try_send(CompositorEvent::WorkspacesChanged(workspaces));
+                }
+                if last_windows.as_ref() != Some(&windows) {
+                    last_windows = Some(windows.clone());
+                    let _ = tx.try_send(CompositorEvent::WindowsChanged(windows));
+                }
+                if last_active_win.as_ref() != Some(&active_win) {
+                    last_active_win = Some(active_win.clone());
+                    let _ = tx.try_send(CompositorEvent::WindowFocused(active_win));
+                }
             }
 
             info!("Niri event stream loop terminated");
