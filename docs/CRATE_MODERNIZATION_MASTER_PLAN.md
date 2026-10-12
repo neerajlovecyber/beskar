@@ -302,6 +302,15 @@ graph TD
                   │
                   ▼
 [Phase 5: Audio Engine (pulseaudio)] ─────> DONE
+                  │
+                  ▼
+[Phase 6: UI Wiring & Live Dynamic] ──────> READY
+                  │
+                  ▼
+[Phase 7: Multi-Monitor LayerShell] ──────> PLANNED
+                  │
+                  ▼
+[Phase 8: Native D-Bus SNI Tray Menus] ───> PLANNED
 ```
 
 | Phase | Milestone | Primary Crate | Subprocesses Removed | Target Files | Status |
@@ -312,12 +321,17 @@ graph TD
 | **3** | **Wayland Clipboard Manager** | `arboard = "3.6"` | `cliphist`, `wl-copy` | `clipboard.rs`, `clipboard/view.rs` | **DONE** |
 | **4** | **Hyprland Compositor IPC** | `hyprland = "0.4.0-beta.3"` | N/A (adds Hyprland support) | `hyprland.rs`, `detector.rs` | **DONE** |
 | **5** | **Pure-Rust Audio Stream** | `pulseaudio = "0.3"` | `wpctl`, custom packet parser | `audio.rs`, `control_center/view.rs` | **DONE** |
+| **6** | **UI Wiring & Live Dynamic Integration** | `tokio::sync::watch`, `gpui` | External polling scripts | `bar/`, `wallpaper_selector/`, `sliders.rs` | **READY** |
+| **7** | **Multi-Monitor LayerShell Instances** | `gpui` LayerShell, `references/gpui-shell` | Single-screen limitation | `bar/mod.rs`, `compositor/` | **PLANNED** |
+| **8** | **Native D-Bus SNI Tray Menus** | `zbus`, `references/icebar` | Dummy `0,0` context menu clicks | `tray.rs`, `modules/tray/` | **PLANNED** |
 
 ---
 
 ## 6. Verification & Quality Gates
 
-Each sub-plan execution must strictly pass three validation gates:
+Each sub-plan execution must strictly pass four validation gates:
 1. **File Length Compliance**: No file exceeds 500 lines of code.
 2. **Compiler Purity**: `cargo check --workspace` finishes with `0 warnings` and `0 errors`.
 3. **Automated Test Suite**: `cargo test --workspace` passes all unit and integration tests.
+4. **Zero Main-Thread Blocking**: All I/O occurs on background tasks or async channels.
+
