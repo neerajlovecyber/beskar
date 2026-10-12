@@ -99,7 +99,7 @@ impl DesktopBarView {
         .detach();
 
         let has_initial_media = initial_media.is_some();
-        let initial_target_w = if has_initial_media { 320.0 } else { 120.0 };
+        let initial_target_w = if has_initial_media { 320.0 } else { 180.0 };
         let island_spring = beskar_ui::SpringValue::new(initial_target_w, beskar_ui::SpringConfig::spatial());
 
         // 2. Reactive SystemHub: instant updates for audio, battery, and media
@@ -126,7 +126,7 @@ impl DesktopBarView {
                 } else if media.is_some() {
                     320.0
                 } else {
-                    120.0
+                    180.0
                 };
 
                 let res = this.update(cx, |this, cx| {
@@ -635,6 +635,7 @@ async fn main() -> anyhow::Result<()> {
         .with_assets(AllAssets)
         .run(move |cx| {
             gpui_kit::init(cx);
+            gpui_kit::component::Theme::change(gpui_kit::component::ThemeMode::Dark, None, cx);
 
             let initial_workspaces = initial_workspaces;
             let active_ws = active_ws;

@@ -194,7 +194,11 @@ impl RenderOnce for VitalsWidget {
                         Button::new(SharedString::from(format!("tray-btn-{}", item.id)))
                             .ghost()
                             .compact()
-                            .icon(Icon::new(icon_name).size(px(14.0)))
+                            .icon(
+                                Icon::new(icon_name)
+                                    .size(px(14.0))
+                                    .text_color(beskar_theme::Theme::fg()),
+                            )
                             .on_click(move |_, _, _| {
                                 if let Some(ref cb) = on_tc {
                                     cb(item_id_left.clone());
@@ -220,7 +224,11 @@ impl RenderOnce for VitalsWidget {
                     Button::new("vitals-cc")
                         .ghost()
                         .compact()
-                        .icon(Icon::new(IconName::SlidersHorizontal).size(px(14.0)))
+                        .icon(
+                            Icon::new(IconName::SlidersHorizontal)
+                                .size(px(14.0))
+                                .text_color(beskar_theme::Theme::fg()),
+                        )
                         .when_some(on_cc.clone(), |btn, cb| {
                             btn.on_click(move |_, _, _| (cb)())
                         }),
@@ -229,7 +237,11 @@ impl RenderOnce for VitalsWidget {
                     Button::new("vitals-capture")
                         .ghost()
                         .compact()
-                        .icon(Icon::new(IconName::Camera).size(px(14.0)))
+                        .icon(
+                            Icon::new(IconName::Camera)
+                                .size(px(14.0))
+                                .text_color(beskar_theme::Theme::fg()),
+                        )
                         .when_some(self.on_capture_click, |btn, cb| {
                             btn.on_click(move |_, _, _| (cb)())
                         }),
@@ -238,7 +250,11 @@ impl RenderOnce for VitalsWidget {
                     Button::new("vitals-wallpaper")
                         .ghost()
                         .compact()
-                        .icon(Icon::new(IconName::Image).size(px(14.0)))
+                        .icon(
+                            Icon::new(IconName::Image)
+                                .size(px(14.0))
+                                .text_color(beskar_theme::Theme::fg()),
+                        )
                         .when_some(self.on_wallpaper_click, |btn, cb| {
                             btn.on_click(move |_, _, _| (cb)())
                         }),
@@ -292,7 +308,12 @@ impl RenderOnce for VitalsWidget {
                             } else {
                                 IconName::WifiOff
                             })
-                            .size(px(14.0)),
+                            .size(px(14.0))
+                            .text_color(if self.is_wifi_connected {
+                                beskar_theme::Theme::fg()
+                            } else {
+                                beskar_theme::Theme::muted()
+                            }),
                         )
                         .when_some(on_cc.clone(), |btn, cb| {
                             btn.on_click(move |_, _, _| (cb)())
@@ -302,7 +323,15 @@ impl RenderOnce for VitalsWidget {
                     Button::new("vitals-bluetooth")
                         .ghost()
                         .compact()
-                        .icon(Icon::new(IconName::Bluetooth).size(px(14.0)))
+                        .icon(
+                            Icon::new(IconName::Bluetooth)
+                                .size(px(14.0))
+                                .text_color(if self.is_bluetooth_connected {
+                                    beskar_theme::Theme::accent()
+                                } else {
+                                    beskar_theme::Theme::muted()
+                                }),
+                        )
                         .when_some(on_cc.clone(), |btn, cb| {
                             btn.on_click(move |_, _, _| (cb)())
                         }),
@@ -340,7 +369,11 @@ impl RenderOnce for VitalsWidget {
                         .danger()
                         .ghost()
                         .compact()
-                        .icon(Icon::new(IconName::Power).size(px(14.0)))
+                        .icon(
+                            Icon::new(IconName::Power)
+                                .size(px(14.0))
+                                .text_color(beskar_theme::Theme::danger()),
+                        )
                         .when_some(on_pwr, |btn, cb| {
                             btn.on_click(move |_, _, _| (cb)())
                         }),

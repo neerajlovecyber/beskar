@@ -110,19 +110,19 @@ impl RenderOnce for DynamicCenterWidget {
             .gap(px(10.0));
 
         if let Some(w) = self.width {
-            container = container.w(w);
+            container = container.min_w(w);
         }
 
         let hour = chrono::Local::now().format("%H").to_string().parse::<u32>().unwrap_or(12);
         let is_day = (6..18).contains(&hour);
 
-        // Primary Clock & Date Pill
+        // Primary Clock & Date Pill with comfortable, balanced spacing
         let clock_content = div()
             .flex()
             .items_center()
-            .gap(px(6.0))
-            .px(px(6.0))
-            .py(px(2.0))
+            .gap(px(8.0))
+            .px(px(10.0))
+            .py(px(3.0))
             .rounded_md()
             .hover(|s| s.bg(beskar_theme::Theme::bg_secondary()).cursor_pointer())
             .when_some(on_clock_click, |el, cb| {
@@ -144,6 +144,7 @@ impl RenderOnce for DynamicCenterWidget {
                 )
                 .child(
                     div()
+                        .mx(px(3.0))
                         .w(px(3.0))
                         .h(px(3.0))
                         .rounded_full()
