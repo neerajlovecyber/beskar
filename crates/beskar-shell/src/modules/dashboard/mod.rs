@@ -1,4 +1,5 @@
-use beskar_ui::DashboardWidget;
+pub mod view;
+use self::view::DashboardWidget;
 use gpui_kit::*;
 
 use crate::panel_host::{PanelHost, PanelModule};

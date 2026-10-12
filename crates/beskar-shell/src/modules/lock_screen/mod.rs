@@ -1,4 +1,5 @@
-use beskar_ui::LockScreenWidget;
+pub mod view;
+use self::view::LockScreenWidget;
 use gpui_kit::layer_shell::KeyboardInteractivity;
 use gpui_kit::*;
 

@@ -1,4 +1,5 @@
-use beskar_ui::MusicPlayerWidget;
+pub mod view;
+use self::view::MusicPlayerWidget;
 use gpui_kit::*;
 
 use crate::panel_host::{PanelHost, PanelModule};

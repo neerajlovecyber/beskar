@@ -1,4 +1,5 @@
-use beskar_ui::{WallpaperItem, WallpaperSelectorWidget};
+pub mod view;
+pub use self::view::{WallpaperItem, WallpaperSelectorWidget};
 use gpui_kit::*;
 
 use crate::panel_host::{PanelHost, PanelModule};
@@ -118,5 +119,16 @@ impl Render for WallpaperSelectorView {
                             }),
                     ),
             )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_wallpaper_discovery() {
+        let walls = WallpaperSelectorWidget::discover_wallpapers();
+        assert!(walls.is_empty() || !walls[0].name.is_empty());
     }
 }

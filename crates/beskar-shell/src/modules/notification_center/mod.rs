@@ -1,5 +1,9 @@
+pub mod toast;
+pub mod view;
+
 use beskar_core::models::NotificationItem;
-use beskar_ui::{NotificationCenterWidget, NotificationToastWidget};
+use self::toast::NotificationToastWidget;
+use self::view::NotificationCenterWidget;
 use gpui_kit::layer_shell::{
     Anchor as LayerAnchor, KeyboardInteractivity, Layer, LayerShellOptions,
 };

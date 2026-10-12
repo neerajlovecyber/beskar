@@ -1,4 +1,5 @@
-use beskar_ui::{CaptureMode, ScreenCaptureWidget};
+pub mod view;
+pub use self::view::{CaptureMode, ScreenCaptureWidget};
 use gpui_kit::*;
 
 use crate::panel_host::{PanelHost, PanelModule};
@@ -109,5 +110,18 @@ impl Render for ScreenCaptureView {
                             }),
                     ),
             )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_capture_mode_properties() {
+        assert_eq!(CaptureMode::FullScreen.label(), "Full Screen");
+        assert_eq!(CaptureMode::SelectArea.label(), "Select Area");
+        assert_eq!(CaptureMode::ExtractTextOcr.label(), "Extract Text (OCR)");
+        assert_eq!(CaptureMode::RecordToggle.label(), "Screen Record");
     }
 }

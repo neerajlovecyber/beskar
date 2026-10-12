@@ -1,7 +1,10 @@
 use beskar_core::config::{BarStyleConfig, ShellConfig, ThemePresetConfig};
 use beskar_services::audio::AudioService;
 use beskar_services::battery::BatteryService;
-use beskar_ui::{SettingsCategory, SettingsConfig, SettingsWidget};
+pub mod pages;
+pub mod view;
+
+pub use self::view::{SettingsCategory, SettingsConfig, SettingsWidget};
 use gpui_kit::*;
 
 use crate::panel_host::{PanelHost, PanelModule};
