@@ -74,15 +74,10 @@ impl PanelModule for ControlCenterView {
 
 impl ControlCenterView {
     pub fn new(cx: &mut Context<Self>) -> Self {
-        let aud = AudioService::read_state();
-        let bat = BatteryService::new().read_state();
-        let (is_wifi_on, wifi_ssid) = beskar_services::NetworkHelper::get_wifi_status();
-        let is_bt_on = beskar_services::BluetoothHelper::get_bluetooth_status();
-        let brightness_percent = beskar_services::BacklightService::get_brightness();
-        let active_power_profile = beskar_services::PowerProfilesService::get_profile();
         let focus_handle = cx.focus_handle();
         let (msg_tx, mut msg_rx) = tokio::sync::mpsc::unbounded_channel::<ControlCenterMsg>();
         let bus = beskar_services::HardwareBus::new_linux();
+        let bus_init = bus.clone();
 
         cx.spawn(async move |this, cx| {
             while let Some(msg) = msg_rx.recv().await {
@@ -125,15 +120,12 @@ impl ControlCenterView {
                     }
                     ControlCenterMsg::ChangeVolume(delta) => {
                         let _ = this.update(cx, |this, cx| {
-                            let new_vol = (this.volume_percent as i32 + delta).clamp(0, 100) as u8;
-                            this.volume_percent = new_vol;
+                            this.volume_percent = (this.volume_percent as i32 + delta).clamp(0, 100) as u8;
                             this.is_muted = false;
                             cx.notify();
                         });
                         let bus_clone = bus.clone();
-                        tokio::spawn(async move {
-                            let _ = bus_clone.set_audio_volume(delta).await;
-                        });
+                        tokio::spawn(async move { let _ = bus_clone.set_audio_volume(delta).await; });
                     }
                     ControlCenterMsg::SetVolumePercent(pct) => {
                         let _ = this.update(cx, |this, cx| {
@@ -142,9 +134,7 @@ impl ControlCenterView {
                             cx.notify();
                         });
                         let bus_clone = bus.clone();
-                        tokio::spawn(async move {
-                            let _ = bus_clone.set_audio_volume_percent(pct).await;
-                        });
+                        tokio::spawn(async move { let _ = bus_clone.set_audio_volume_percent(pct).await; });
                     }
                     ControlCenterMsg::ToggleMute => {
                         let _ = this.update(cx, |this, cx| {
@@ -152,32 +142,29 @@ impl ControlCenterView {
                             cx.notify();
                         });
                         let bus_clone = bus.clone();
-                        tokio::spawn(async move {
-                            let _ = bus_clone.toggle_audio_mute().await;
-                        });
+                        tokio::spawn(async move { let _ = bus_clone.toggle_audio_mute().await; });
                     }
                     ControlCenterMsg::SelectAudioSink(sink_name) => {
-                        beskar_services::AudioService::set_default_sink(&sink_name);
-                        let updated = beskar_services::AudioService::list_sinks();
-                        let _ = this.update(cx, |this, cx| {
-                            this.sinks = updated;
-                            cx.notify();
-                        });
+                        let this_weak = this.clone();
+                        cx.spawn(async move |cx| {
+                            let sinks = tokio::task::spawn_blocking(move || {
+                                beskar_services::AudioService::set_default_sink(&sink_name);
+                                beskar_services::AudioService::list_sinks()
+                            }).await.unwrap_or_default();
+                            let _ = this_weak.update(cx, |this, cx| {
+                                this.sinks = sinks;
+                                cx.notify();
+                            });
+                        }).detach();
                     }
                     ControlCenterMsg::ChangeBrightness(delta) => {
-                        let new_bright = this
-                            .update(cx, |t, _| {
-                                (t.brightness_percent as i32 + delta).clamp(5, 100) as u8
-                            })
-                            .unwrap_or(50);
+                        let new_bright = this.update(cx, |t, _| (t.brightness_percent as i32 + delta).clamp(5, 100) as u8).unwrap_or(50);
                         let _ = this.update(cx, |this, cx| {
                             this.brightness_percent = new_bright;
                             cx.notify();
                         });
                         let bus_clone = bus.clone();
-                        tokio::spawn(async move {
-                            let _ = bus_clone.set_brightness(new_bright).await;
-                        });
+                        tokio::spawn(async move { let _ = bus_clone.set_brightness(new_bright).await; });
                     }
                     ControlCenterMsg::SetBrightnessPercent(pct) => {
                         let _ = this.update(cx, |this, cx| {
@@ -185,9 +172,7 @@ impl ControlCenterView {
                             cx.notify();
                         });
                         let bus_clone = bus.clone();
-                        tokio::spawn(async move {
-                            let _ = bus_clone.set_brightness(pct).await;
-                        });
+                        tokio::spawn(async move { let _ = bus_clone.set_brightness(pct).await; });
                     }
                     ControlCenterMsg::SetPowerProfile(prof) => {
                         let prof_clone = prof.clone();
@@ -196,9 +181,7 @@ impl ControlCenterView {
                             cx.notify();
                         });
                         let bus_clone = bus.clone();
-                        tokio::spawn(async move {
-                            let _ = bus_clone.set_power_profile(&prof_clone).await;
-                        });
+                        tokio::spawn(async move { let _ = bus_clone.set_power_profile(&prof_clone).await; });
                     }
                     ControlCenterMsg::ToggleWifiList => {
                         let will_show = this
@@ -266,60 +249,52 @@ impl ControlCenterView {
         })
         .detach();
 
-        let vol_initial = aud.volume;
-        let volume_slider = cx.new(|_| {
-            SliderState::new()
-                .min(0.0)
-                .max(100.0)
-                .step(1.0)
-                .default_value(vol_initial)
-        });
+        cx.spawn(async move |this, cx| {
+            let (vol, muted) = bus_init.get_audio_volume().await;
+            let (is_wifi, ssid) = bus_init.get_wifi_state().await;
+            let is_bt = bus_init.get_bluetooth_state().await;
+            let bright = bus_init.get_brightness().await;
+            let profile = bus_init.get_power_profile().await;
+            let bat = tokio::task::spawn_blocking(|| BatteryService::new().read_state())
+                .await
+                .unwrap_or_default();
+            let sinks = tokio::task::spawn_blocking(AudioService::list_sinks)
+                .await
+                .unwrap_or_default();
 
-        let brightness_slider = cx.new(|_| {
-            SliderState::new()
-                .min(5.0)
-                .max(100.0)
-                .step(1.0)
-                .default_value(brightness_percent.clamp(5, 100) as f32)
-        });
+            let _ = this.update(cx, |this, cx| {
+                this.volume_percent = vol;
+                this.is_muted = muted;
+                this.is_wifi_on = is_wifi;
+                this.wifi_ssid = ssid;
+                this.is_bt_on = is_bt;
+                this.brightness_percent = bright;
+                this.active_power_profile = profile;
+                this.battery_percent = bat.percentage.round() as u8;
+                this.is_charging = bat.is_charging;
+                this.sinks = sinks;
+                this.volume_slider = Self::make_volume_slider(vol as f32, cx, this.msg_tx.clone(), &mut this._subscriptions);
+                this.brightness_slider = Self::make_brightness_slider(bright as f32, cx, this.msg_tx.clone(), &mut this._subscriptions);
+                cx.notify();
+            });
+        })
+        .detach();
 
         let mut subs = Vec::new();
-
-        let tx_vol = msg_tx.clone();
-        subs.push(cx.subscribe(
-            &volume_slider,
-            move |_this, _slider, event: &SliderEvent, _cx| {
-                let val = match event {
-                    SliderEvent::Change(v) | SliderEvent::Release(v) => v.end(),
-                };
-                let pct = val.round().clamp(0.0, 100.0) as u8;
-                let _ = tx_vol.send(ControlCenterMsg::SetVolumePercent(pct));
-            },
-        ));
-
-        let tx_bright = msg_tx.clone();
-        subs.push(cx.subscribe(
-            &brightness_slider,
-            move |_this, _slider, event: &SliderEvent, _cx| {
-                let val = match event {
-                    SliderEvent::Change(v) | SliderEvent::Release(v) => v.end(),
-                };
-                let pct = val.round().clamp(5.0, 100.0) as u8;
-                let _ = tx_bright.send(ControlCenterMsg::SetBrightnessPercent(pct));
-            },
-        ));
+        let volume_slider = Self::make_volume_slider(80.0, cx, msg_tx.clone(), &mut subs);
+        let brightness_slider = Self::make_brightness_slider(100.0, cx, msg_tx.clone(), &mut subs);
 
         Self {
-            volume_percent: vol_initial as u8,
-            battery_percent: bat.percentage.round() as u8,
-            is_muted: aud.is_muted,
-            is_charging: bat.is_charging,
-            brightness_percent,
-            active_power_profile,
-            is_wifi_on,
-            wifi_ssid,
-            is_bt_on,
-            sinks: AudioService::list_sinks(),
+            volume_percent: 80,
+            battery_percent: 100,
+            is_muted: false,
+            is_charging: false,
+            brightness_percent: 100,
+            active_power_profile: "balanced".to_string(),
+            is_wifi_on: true,
+            wifi_ssid: None,
+            is_bt_on: false,
+            sinks: Vec::new(),
             wifi_networks: Vec::new(),
             bt_devices: Vec::new(),
             show_wifi_list: false,
@@ -331,6 +306,24 @@ impl ControlCenterView {
             msg_tx,
         }
     }
+
+    fn make_volume_slider(val: f32, cx: &mut Context<Self>, tx: tokio::sync::mpsc::UnboundedSender<ControlCenterMsg>, subs: &mut Vec<Subscription>) -> Entity<SliderState> {
+        let slider = cx.new(|_| SliderState::new().min(0.0).max(100.0).step(1.0).default_value(val));
+        subs.push(cx.subscribe(&slider, move |_this, _slider, event: &SliderEvent, _cx| {
+            let v = match event { SliderEvent::Change(v) | SliderEvent::Release(v) => v.end() };
+            let _ = tx.send(ControlCenterMsg::SetVolumePercent(v.round().clamp(0.0, 100.0) as u8));
+        }));
+        slider
+    }
+
+    fn make_brightness_slider(val: f32, cx: &mut Context<Self>, tx: tokio::sync::mpsc::UnboundedSender<ControlCenterMsg>, subs: &mut Vec<Subscription>) -> Entity<SliderState> {
+        let slider = cx.new(|_| SliderState::new().min(5.0).max(100.0).step(1.0).default_value(val.clamp(5.0, 100.0)));
+        subs.push(cx.subscribe(&slider, move |_this, _slider, event: &SliderEvent, _cx| {
+            let v = match event { SliderEvent::Change(v) | SliderEvent::Release(v) => v.end() };
+            let _ = tx.send(ControlCenterMsg::SetBrightnessPercent(v.round().clamp(5.0, 100.0) as u8));
+        }));
+        slider
+    }
 }
 
 impl Render for ControlCenterView {
@@ -339,7 +332,8 @@ impl Render for ControlCenterView {
         let (tx_wifi, tx_bt, tx_mute, tx_prof) = (tx.clone(), tx.clone(), tx.clone(), tx.clone());
         let (tx_wlist, tx_blist, tx_conn, tx_sink) = (tx.clone(), tx.clone(), tx.clone(), tx.clone());
         let (tx_launcher, tx_clipboard, tx_power, tx_settings, tx_close) =
-            (tx.clone(), tx.clone(), tx.clone(), tx.clone(), tx);
+            (tx.clone(), tx.clone(), tx.clone(), tx.clone(), tx.clone());
+        let (tx_backdrop, tx_esc) = (tx.clone(), tx);
 
         let wifi_label = self.wifi_ssid.clone().unwrap_or_else(|| {
             if self.is_wifi_on {
@@ -364,14 +358,12 @@ impl Render for ControlCenterView {
             .pr(px(16.0))
             .track_focus(&self.focus_handle)
             .key_context("ControlCenter")
-            .on_mouse_down(MouseButton::Left, move |_, window, _cx| {
-                PanelHost::forget(ControlCenterView::ID);
-                window.remove_window();
+            .on_mouse_down(MouseButton::Left, move |_, _, _| {
+                let _ = tx_backdrop.send(ControlCenterMsg::Close);
             })
-            .on_key_down(cx.listener(|_, event: &KeyDownEvent, window, cx| {
+            .on_key_down(cx.listener(move |_, event: &KeyDownEvent, _, cx| {
                 if event.keystroke.key == "escape" {
-                    PanelHost::forget(ControlCenterView::ID);
-                    window.remove_window();
+                    let _ = tx_esc.send(ControlCenterMsg::Close);
                     cx.stop_propagation();
                 }
             }))

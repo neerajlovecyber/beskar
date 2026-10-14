@@ -27,12 +27,25 @@ impl PanelModule for ClipboardView {
 
 impl ClipboardView {
     pub fn new(cx: &mut Context<Self>) -> Self {
-        let items = beskar_services::ClipboardService::list_history(50);
         let focus_handle = cx.focus_handle();
+
+        cx.spawn(async move |this, cx| {
+            let items = tokio::task::spawn_blocking(|| {
+                beskar_services::ClipboardService::list_history(50)
+            })
+            .await
+            .unwrap_or_default();
+
+            let _ = this.update(cx, |this, cx| {
+                this.items = items;
+                cx.notify();
+            });
+        })
+        .detach();
 
         Self {
             query: String::new(),
-            items,
+            items: Vec::new(),
             selected_idx: 0,
             focus_handle,
         }

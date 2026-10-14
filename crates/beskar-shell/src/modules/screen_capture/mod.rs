@@ -27,11 +27,25 @@ impl PanelModule for ScreenCaptureView {
 impl ScreenCaptureView {
     pub fn new(cx: &mut Context<Self>) -> Self {
         let focus_handle = cx.focus_handle();
-        let check = std::process::Command::new("pidof")
-            .arg("wf-recorder")
-            .output();
-        let is_recording = check.map(|o| o.status.success()).unwrap_or(false);
         let (msg_tx, mut msg_rx) = tokio::sync::mpsc::unbounded_channel::<ScreenCapMsg>();
+
+        cx.spawn(async move |this, cx| {
+            let is_rec = tokio::task::spawn_blocking(|| {
+                std::process::Command::new("pidof")
+                    .arg("wf-recorder")
+                    .output()
+                    .map(|o| o.status.success())
+                    .unwrap_or(false)
+            })
+            .await
+            .unwrap_or(false);
+
+            let _ = this.update(cx, |this, cx| {
+                this.is_recording = is_rec;
+                cx.notify();
+            });
+        })
+        .detach();
 
         cx.spawn(async move |_this, cx| {
             while let Some(msg) = msg_rx.recv().await {
@@ -56,7 +70,7 @@ impl ScreenCaptureView {
         .detach();
 
         Self {
-            is_recording,
+            is_recording: false,
             focus_handle,
             msg_tx,
         }
