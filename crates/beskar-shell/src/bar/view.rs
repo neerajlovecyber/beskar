@@ -22,6 +22,7 @@ pub enum BarAction {
     ToggleNotificationCenter,
     ToggleScreenCapture,
     ToggleWallpaperSelector,
+    OpenTrayMenu(String),
 }
 
 pub struct DesktopBarView {
@@ -230,6 +231,9 @@ impl DesktopBarView {
                         }
                         BarAction::ToggleWallpaperSelector => {
                             modules::toggle_wallpaper_selector(cx);
+                        }
+                        BarAction::OpenTrayMenu(key) => {
+                            modules::open_tray_menu(key, cx);
                         }
                     }
                 });

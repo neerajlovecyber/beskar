@@ -41,6 +41,7 @@ pub use power_profiles::PowerProfilesService;
 pub use mpris::MprisService;
 pub use sound::SoundService;
 pub use sysvalue::SysValue;
+pub use tray::TrayService;
 pub use updates::{SystemUpdatesState, UpdateService};
 
 

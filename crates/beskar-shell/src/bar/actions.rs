@@ -91,13 +91,9 @@ pub fn build_bar_actions(
         });
     });
 
-    let on_tray_menu = Arc::new(|id: String| {
-        tokio::task::spawn_blocking(move || {
-            let _ = beskar_services::tray::command(
-                "tray.context",
-                &[beskar_services::sysvalue::SysValue::Text(id)],
-            );
-        });
+    let atx_tray_menu = action_tx.clone();
+    let on_tray_menu = Arc::new(move |id: String| {
+        let _ = atx_tray_menu.send(BarAction::OpenTrayMenu(id));
     });
 
     let comp_close = compositor;

@@ -313,7 +313,7 @@ graph TD
 [Phase 8: Multi-Monitor LayerShell] ──────> DONE
                   │
                   ▼
-[Phase 9: Native D-Bus SNI Tray Menus] ───> READY
+[Phase 9: Native D-Bus SNI Tray Menus] ───> DONE
 ```
 
 | Phase | Milestone | Primary Crate | Subprocesses Removed | Target Files | Status |
@@ -327,7 +327,7 @@ graph TD
 | **6** | **Bar Performance & Pure-Rust MPRIS** | `zbus`, coalesced event stream | `playerctl`, `canberra-gtk-play`, blocking IPC | `mpris.rs`, `sound.rs`, `niri.rs`, `main.rs` | **DONE** |
 | **7** | **UI Wiring & Live Dynamic Integration** | `tokio::sync::watch`, `gpui` | External polling scripts | `bar/`, `wallpaper_selector/`, `sliders.rs` | **DONE** |
 | **8** | **Multi-Monitor LayerShell Instances** | `gpui` LayerShell, `references/gpui-shell` | Single-screen limitation | `bar/mod.rs`, `compositor/` | **DONE** |
-| **9** | **Native D-Bus SNI Tray Menus** | `zbus`, `references/icebar` | Dummy `0,0` context menu clicks | `tray.rs`, `modules/tray/` | **READY** |
+| **9** | **Native D-Bus SNI Tray Menus** | `zbus`, `references/icebar` | Dummy `0,0` context menu clicks | `tray.rs`, `modules/tray_menu/` | **DONE** |
 
 ---
 

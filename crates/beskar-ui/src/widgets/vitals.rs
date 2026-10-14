@@ -184,7 +184,7 @@ impl RenderOnce for VitalsWidget {
         let on_scroll = self.on_volume_scroll;
 
         let on_tray_clk = self.on_tray_click;
-        let _on_tray_ctx = self.on_tray_menu;
+        let on_tray_ctx = self.on_tray_menu;
 
         let has_tray = self.modules.as_ref().map_or(true, |m| m.contains(&beskar_core::config::BarModule::Tray));
         let has_controls = self.modules.as_ref().map_or(true, |m| m.contains(&beskar_core::config::BarModule::QuickControls));
@@ -200,26 +200,25 @@ impl RenderOnce for VitalsWidget {
                 let mut tray_row = div().flex().items_center().gap(px(4.0));
                 for item in self.tray_items {
                     let icon_name = infer_tray_icon(&item.id, &item.icon, &item.title);
-                    let item_id_left = item.id.clone();
-                    let on_tc = on_tray_clk.clone();
-                    let on_cc_fallback = on_cc.clone();
+                    let (id_l, id_r) = (item.id.clone(), item.id.clone());
+                    let (on_tc, on_ctx, on_cc_fb) = (on_tray_clk.clone(), on_tray_ctx.clone(), on_cc.clone());
 
                     tray_row = tray_row.child(
-                        Button::new(SharedString::from(format!("tray-btn-{}", item.id)))
-                            .ghost()
-                            .compact()
-                            .icon(
-                                Icon::new(icon_name)
-                                    .size(px(14.0))
-                                    .text_color(beskar_theme::Theme::fg()),
-                            )
-                            .on_click(move |_, _, _| {
-                                if let Some(ref cb) = on_tc {
-                                    cb(item_id_left.clone());
-                                } else if let Some(ref cb) = on_cc_fallback {
-                                    cb();
-                                }
-                            }),
+                        div()
+                            .on_mouse_down(MouseButton::Right, move |_, _, cx| {
+                                cx.stop_propagation();
+                                if let Some(ref cb) = on_ctx { cb(id_r.clone()); }
+                            })
+                            .child(
+                                Button::new(SharedString::from(format!("tray-btn-{}", item.id)))
+                                    .ghost()
+                                    .compact()
+                                    .icon(Icon::new(icon_name).size(px(14.0)).text_color(beskar_theme::Theme::fg()))
+                                    .on_click(move |_, _, _| {
+                                        if let Some(ref cb) = on_tc { cb(id_l.clone()); }
+                                        else if let Some(ref cb) = on_cc_fb { cb(); }
+                                    }),
+                            ),
                     );
                 }
                 this.child(tray_row)

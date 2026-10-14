@@ -13,6 +13,7 @@ pub mod notification_center;
 pub mod power_menu;
 pub mod screen_capture;
 pub mod settings;
+pub mod tray_menu;
 pub mod wallpaper_selector;
 
 pub use clipboard::ClipboardView;
@@ -28,6 +29,7 @@ pub use notification_center::{
 pub use power_menu::PowerMenuView;
 pub use screen_capture::ScreenCaptureView;
 pub use settings::SettingsView;
+pub use tray_menu::{open_tray_menu, TrayMenuView};
 pub use wallpaper_selector::WallpaperSelectorView;
 
 use crate::panel_host::PanelHost;
@@ -46,6 +48,7 @@ pub fn register_all_modules() {
     PanelHost::register::<wallpaper_selector::WallpaperSelectorView>();
     PanelHost::register::<lock_screen::LockScreenView>();
     PanelHost::register::<dashboard::DashboardView>();
+    PanelHost::register::<tray_menu::TrayMenuView>();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -320,3 +320,137 @@ pub fn command(what: &str, args: &[SysValue]) -> Result<(), String> {
     };
     result.map(|_| ()).map_err(|e| e.to_string())
 }
+
+use beskar_core::models::TrayMenuItem;
+
+/// Convert a SysValue representation of a menu node into a strongly-typed TrayMenuItem.
+pub fn parse_menu_item(val: &SysValue) -> Option<TrayMenuItem> {
+    let SysValue::Map(m) = val else { return None };
+    let mut id = 0;
+    let mut label = String::new();
+    let mut enabled = true;
+    let mut is_separator = false;
+    let mut checked = None;
+    let mut children = Vec::new();
+
+    for (k, v) in m {
+        match (k.as_str(), v) {
+            ("id", SysValue::Num(n)) => id = *n as i32,
+            ("label", SysValue::Text(t)) => label = t.clone(),
+            ("enabled", SysValue::Bool(b)) => enabled = *b,
+            ("separator", SysValue::Bool(b)) => is_separator = *b,
+            ("checked", SysValue::Bool(b)) => checked = Some(*b),
+            ("children", SysValue::List(list)) => {
+                children = list.iter().filter_map(parse_menu_item).collect();
+            }
+            _ => {}
+        }
+    }
+
+    Some(TrayMenuItem {
+        id,
+        label,
+        enabled,
+        is_separator,
+        checked,
+        children,
+    })
+}
+
+/// Fetch the strongly-typed D-Bus menu tree for a given tray item key.
+pub fn fetch_menu_items(key: &str) -> Vec<TrayMenuItem> {
+    match query("tray.menu", &[SysValue::Text(key.to_string())]) {
+        Ok(SysValue::List(items)) => items.iter().filter_map(|item| parse_menu_item(item)).collect(),
+        _ => Vec::new(),
+    }
+}
+
+/// Strongly-typed async facade for StatusNotifierItem and DBusMenu interactions.
+pub struct TrayService;
+
+impl TrayService {
+    /// Fetch the DBus menu tree for a tray item asynchronously.
+    pub async fn fetch_menu(key: &str) -> Vec<TrayMenuItem> {
+        let key = key.to_string();
+        tokio::task::spawn_blocking(move || fetch_menu_items(&key))
+            .await
+            .unwrap_or_default()
+    }
+
+    /// Activate a clicked menu item by its DBus id.
+    pub async fn click_menu_item(key: &str, id: i32) -> Result<(), String> {
+        let key = key.to_string();
+        tokio::task::spawn_blocking(move || {
+            command(
+                "tray.menu_click",
+                &[SysValue::Text(key), SysValue::Num(id as f64)],
+            )
+        })
+        .await
+        .map_err(|e| e.to_string())?
+    }
+
+    /// Trigger default activate (left-click) on a tray item.
+    pub async fn activate(key: &str) -> Result<(), String> {
+        let key = key.to_string();
+        tokio::task::spawn_blocking(move || {
+            command("tray.activate", &[SysValue::Text(key)])
+        })
+        .await
+        .map_err(|e| e.to_string())?
+    }
+
+    /// Trigger secondary activate (middle-click) on a tray item.
+    pub async fn secondary(key: &str) -> Result<(), String> {
+        let key = key.to_string();
+        tokio::task::spawn_blocking(move || {
+            command("tray.secondary", &[SysValue::Text(key)])
+        })
+        .await
+        .map_err(|e| e.to_string())?
+    }
+
+    /// Trigger context menu (right-click) on a tray item.
+    pub async fn context(key: &str) -> Result<(), String> {
+        let key = key.to_string();
+        tokio::task::spawn_blocking(move || {
+            command("tray.context", &[SysValue::Text(key)])
+        })
+        .await
+        .map_err(|e| e.to_string())?
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_menu_item_tree() {
+        let child = SysValue::Map(vec![
+            ("id".to_string(), SysValue::Num(2.0)),
+            ("label".to_string(), SysValue::Text("Mute Audio".to_string())),
+            ("enabled".to_string(), SysValue::Bool(true)),
+            ("separator".to_string(), SysValue::Bool(false)),
+            ("checked".to_string(), SysValue::Bool(true)),
+            ("children".to_string(), SysValue::List(Vec::new())),
+        ]);
+
+        let parent = SysValue::Map(vec![
+            ("id".to_string(), SysValue::Num(1.0)),
+            ("label".to_string(), SysValue::Text("Preferences".to_string())),
+            ("enabled".to_string(), SysValue::Bool(true)),
+            ("separator".to_string(), SysValue::Bool(false)),
+            ("children".to_string(), SysValue::List(vec![child])),
+        ]);
+
+        let parsed = parse_menu_item(&parent).expect("failed to parse menu item");
+        assert_eq!(parsed.id, 1);
+        assert_eq!(parsed.label, "Preferences");
+        assert_eq!(parsed.children.len(), 1);
+        assert_eq!(parsed.children[0].id, 2);
+        assert_eq!(parsed.children[0].label, "Mute Audio");
+        assert_eq!(parsed.children[0].checked, Some(true));
+    }
+}
+

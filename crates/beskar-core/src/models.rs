@@ -121,6 +121,12 @@ pub struct ClipboardEntry {
     pub is_image: bool,
 }
 
-
-
-
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub struct TrayMenuItem {
+    pub id: i32,
+    pub label: String,
+    pub enabled: bool,
+    pub is_separator: bool,
+    pub checked: Option<bool>,
+    pub children: Vec<TrayMenuItem>,
+}
