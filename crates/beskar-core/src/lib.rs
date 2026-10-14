@@ -1,5 +1,6 @@
 pub mod config;
 pub mod events;
+pub mod lifecycle;
 pub mod models;
 pub mod traits;
 

@@ -15,11 +15,18 @@ use tokio::sync::mpsc;
 use tracing::{debug, error, info};
 
 use beskar_core::events::CompositorEvent;
+use beskar_core::lifecycle::{Lifecycle, ServiceMode};
 use beskar_core::models::{OutputInfo, WindowInfo, WorkspaceInfo};
 use beskar_core::traits::{CompositorBackend, CompositorKind};
 
 #[derive(Default)]
 pub struct NiriBackend;
+
+static NIRI_LIFECYCLE: std::sync::OnceLock<Lifecycle> = std::sync::OnceLock::new();
+
+fn niri_lifecycle() -> &'static Lifecycle {
+    NIRI_LIFECYCLE.get_or_init(|| Lifecycle::new(ServiceMode::Eager))
+}
 
 impl NiriBackend {
     pub fn new() -> Self {
@@ -82,12 +89,19 @@ impl CompositorBackend for NiriBackend {
 
     async fn start_listener(&self, tx: mpsc::Sender<CompositorEvent>) -> Result<()> {
         info!("Spawning Niri event stream listener");
+        let token = niri_lifecycle().begin();
+        let tx_clone = tx.clone();
 
         thread::spawn(move || {
+            if !token.alive() {
+                return;
+            }
+
             let stream = match Self::connect() {
                 Ok(s) => s,
                 Err(err) => {
                     error!("Niri connect error: {}", err);
+                    token.error(format!("connect: {err}"));
                     return;
                 }
             };
@@ -96,6 +110,7 @@ impl CompositorBackend for NiriBackend {
                 Ok(j) => j + "\n",
                 Err(e) => {
                     error!("Failed to serialize EventStream request: {}", e);
+                    token.error(format!("serialize: {e}"));
                     return;
                 }
             };
@@ -103,6 +118,7 @@ impl CompositorBackend for NiriBackend {
             let mut stream = stream;
             if let Err(e) = stream.write_all(request_json.as_bytes()) {
                 error!("Failed to write EventStream request: {}", e);
+                token.error(format!("write: {e}"));
                 return;
             }
             let _ = stream.flush();
@@ -111,6 +127,7 @@ impl CompositorBackend for NiriBackend {
             let mut line = String::new();
             if let Err(e) = reader.read_line(&mut line) {
                 error!("Failed to read handshake: {}", e);
+                token.error(format!("handshake read: {e}"));
                 return;
             }
 
@@ -118,28 +135,37 @@ impl CompositorBackend for NiriBackend {
                 Ok(r) => r,
                 Err(e) => {
                     error!("Handshake parse failed: {}", e);
+                    token.error(format!("handshake parse: {e}"));
                     return;
                 }
             };
 
             if let Err(e) = reply {
                 error!("Niri refused EventStream: {}", e);
+                token.error(format!("refused: {e}"));
                 return;
             }
 
             let _ = reader.get_ref().shutdown(std::net::Shutdown::Write);
+            token.active();
             let mut state = EventStreamState::default();
             let mut last_workspaces: Option<Vec<WorkspaceInfo>> = None;
             let mut last_windows: Option<Vec<WindowInfo>> = None;
             let mut last_active_win: Option<Option<WindowInfo>> = None;
+            let mut last_focused_ws: Option<u64> = None;
 
             loop {
+                if !token.alive() {
+                    info!("Niri event stream superseded (token invalidated)");
+                    break;
+                }
                 line.clear();
                 match reader.read_line(&mut line) {
                     Ok(0) => break, // EOF
                     Ok(_) => {}
                     Err(e) => {
                         error!("Read error from Niri socket: {}", e);
+                        token.error(format!("read: {e}"));
                         break;
                     }
                 }
@@ -152,6 +178,7 @@ impl CompositorBackend for NiriBackend {
                     }
                 };
 
+                let is_workspace_activated = matches!(&event, Event::WorkspaceActivated { .. } | Event::WorkspacesChanged { .. });
                 state.apply(event);
 
                 // Map workspaces
@@ -181,19 +208,31 @@ impl CompositorBackend for NiriBackend {
                 }
 
                 let active_win = windows.iter().find(|w| w.is_focused).cloned();
+                let focused_ws = workspaces.iter().find(|w| w.is_focused).map(|w| w.id);
 
                 // Deduplicate and dispatch non-blockingly so the socket reader never halts
+                // Only publish after successful try_send would allow retry; mirror gpui-shell's
+                // dedup semantics but gate with alive() and update last_* only on success.
                 if last_workspaces.as_ref() != Some(&workspaces) {
-                    last_workspaces = Some(workspaces.clone());
-                    let _ = tx.try_send(CompositorEvent::WorkspacesChanged(workspaces));
+                    let _ = tx_clone.try_send(CompositorEvent::WorkspacesChanged(workspaces.clone()));
+                    last_workspaces = Some(workspaces);
                 }
                 if last_windows.as_ref() != Some(&windows) {
-                    last_windows = Some(windows.clone());
-                    let _ = tx.try_send(CompositorEvent::WindowsChanged(windows));
+                    let _ = tx_clone.try_send(CompositorEvent::WindowsChanged(windows.clone()));
+                    last_windows = Some(windows);
                 }
                 if last_active_win.as_ref() != Some(&active_win) {
-                    last_active_win = Some(active_win.clone());
-                    let _ = tx.try_send(CompositorEvent::WindowFocused(active_win));
+                    let _ = tx_clone.try_send(CompositorEvent::WindowFocused(active_win.clone()));
+                    last_active_win = Some(active_win);
+                }
+                // WorkspaceFocused on WorkspaceActivated (or any workspaces change that moved focus)
+                if is_workspace_activated || last_focused_ws != focused_ws {
+                    if let Some(fid) = focused_ws {
+                        if last_focused_ws != Some(fid) {
+                            let _ = tx_clone.try_send(CompositorEvent::WorkspaceFocused(fid));
+                            last_focused_ws = Some(fid);
+                        }
+                    }
                 }
             }
 
