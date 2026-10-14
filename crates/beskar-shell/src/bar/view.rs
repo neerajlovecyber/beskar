@@ -51,12 +51,14 @@ impl DesktopBarView {
         let med = MprisService::read_state();
         let vitals = VitalsService::global().snapshot();
 
-        let initial_media = med.map(|m| {
-            (
-                m.title.unwrap_or_default(),
-                m.artist.unwrap_or_default(),
-                m.is_playing,
-            )
+        let initial_media = med.and_then(|m| {
+            let title = m.title.unwrap_or_default();
+            let artist = m.artist.unwrap_or_default();
+            if title.trim().is_empty() && artist.trim().is_empty() {
+                None
+            } else {
+                Some((title, artist, m.is_playing))
+            }
         });
 
         // 1. Live Clock Timer: updates every 1 second
@@ -79,7 +81,7 @@ impl DesktopBarView {
         .detach();
 
         let has_initial_media = initial_media.is_some();
-        let initial_target_w = if has_initial_media { 320.0 } else { 180.0 };
+        let initial_target_w = if has_initial_media { 280.0 } else { 150.0 };
         let island_spring = beskar_ui::SpringValue::new(initial_target_w, beskar_ui::SpringConfig::spatial());
 
         // 2. Reactive SystemHub: instant updates for audio, battery, and media
@@ -92,21 +94,23 @@ impl DesktopBarView {
         let mut sys_rx = hub.subscribe();
         cx.spawn(async move |this, cx| {
             while let Ok(snap) = sys_rx.recv().await {
-                let media = snap.media.map(|m| {
-                    (
-                        m.title.unwrap_or_default(),
-                        m.artist.unwrap_or_default(),
-                        m.is_playing,
-                    )
+                let media = snap.media.and_then(|m| {
+                    let title = m.title.unwrap_or_default();
+                    let artist = m.artist.unwrap_or_default();
+                    if title.trim().is_empty() && artist.trim().is_empty() {
+                        None
+                    } else {
+                        Some((title, artist, m.is_playing))
+                    }
                 });
 
                 let active_notif = snap.notifications.first().map(|n| (n.summary.clone(), n.body.clone()));
                 let target_width = if active_notif.is_some() {
                     360.0
                 } else if media.is_some() {
-                    320.0
+                    280.0
                 } else {
-                    180.0
+                    150.0
                 };
 
                 let _ = this.update(cx, |this, cx| {
@@ -226,7 +230,8 @@ impl DesktopBarView {
                         beskar_core::events::CompositorEvent::WorkspacesChanged(workspaces) => {
                             let active = workspaces
                                 .iter()
-                                .find(|w| w.is_focused || w.is_active)
+                                .find(|w| w.is_focused)
+                                .or_else(|| workspaces.iter().find(|w| w.is_active))
                                 .map(|w| w.id)
                                 .unwrap_or(this.active_ws);
                             if this.workspaces != workspaces || this.active_ws != active {
@@ -338,14 +343,7 @@ impl Render for DesktopBarView {
             modules_left: Some(self.config.modules_left.clone()),
             modules_center: Some(self.config.modules_center.clone()),
             modules_right: Some(self.config.modules_right.clone()),
-            geometry: if self.is_convex {
-                Some(beskar_ui::ConvexGeometry {
-                    center_w: self.island_spring.current,
-                    ..Default::default()
-                })
-            } else {
-                None
-            },
+            geometry: None,
         };
 
         div()

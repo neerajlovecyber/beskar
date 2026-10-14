@@ -45,34 +45,35 @@ impl RenderOnce for WorkspacesWidget {
         let on_select = self.on_select;
         let on_scroll = self.on_scroll;
 
-        let active_ws = self
-            .active_id
-            .or_else(|| {
-                self.workspaces
-                    .iter()
-                    .find(|w| w.is_focused || w.is_active)
-                    .map(|w| w.id)
-            })
+        // Determine the single active workspace ID (preferring focused workspace)
+        let active_ws_id = self
+            .workspaces
+            .iter()
+            .find(|w| w.is_focused)
+            .map(|w| w.id)
+            .or(self.active_id)
+            .or_else(|| self.workspaces.first().map(|w| w.id))
             .unwrap_or(1);
 
-        // Find highest occupied workspace index or id (matching Minflair maxOccupiedWsId)
+        // Find the index (1-based) of the active workspace
+        let active_slot_idx = self
+            .workspaces
+            .iter()
+            .find(|w| w.id == active_ws_id)
+            .map(|w| w.idx as u64)
+            .unwrap_or(active_ws_id.max(1));
+
+        // Find highest occupied workspace index (matching Minflair maxOccupiedWsId)
         let max_occupied_ws = self
             .workspaces
             .iter()
             .filter(|w| w.has_windows)
-            .map(|w| (w.idx as u64).max(w.id))
+            .map(|w| w.idx as u64)
             .max()
             .unwrap_or(1);
 
-        let active_slot_num = self
-            .workspaces
-            .iter()
-            .find(|w| w.id == active_ws || (w.idx as u64) == active_ws || w.is_focused || w.is_active)
-            .map(|w| (w.idx as u64).max(1))
-            .unwrap_or(active_ws.max(1));
-
         // Visible count calculation from Minflair: Math.min(10, Math.max(Math.max(activeWsId, maxOccupiedWsId) + 1, 5))
-        let visible_count = 10.min((active_slot_num.max(max_occupied_ws) + 1).max(5));
+        let visible_count = 10.min((active_slot_idx.max(max_occupied_ws) + 1).max(5));
 
         div()
             .flex()
@@ -93,15 +94,18 @@ impl RenderOnce for WorkspacesWidget {
                 })
             })
             .children((1..=visible_count).map(|slot_idx| {
-                // Find matching workspace by idx or id
+                // Find matching workspace by idx (1-based slot)
                 let ws_match = self
                     .workspaces
                     .iter()
-                    .find(|w| (w.idx as u64) == slot_idx || w.id == slot_idx);
+                    .find(|w| (w.idx as u64) == slot_idx || (self.workspaces.len() == 1 && w.id == slot_idx));
 
-                let is_active = ws_match.map_or(slot_idx == active_slot_num, |w| {
-                    w.id == active_ws || (w.idx as u64) == active_ws || w.is_focused || w.is_active
-                });
+                // A slot is active IF AND ONLY IF it represents the single active workspace
+                let is_active = if let Some(ws) = ws_match {
+                    ws.id == active_ws_id
+                } else {
+                    slot_idx == active_slot_idx
+                };
 
                 let has_windows = ws_match.map_or(false, |w| w.has_windows);
                 let target_id = ws_match.map_or(slot_idx, |w| w.id);

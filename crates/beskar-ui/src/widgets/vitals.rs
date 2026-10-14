@@ -21,7 +21,9 @@ pub struct VitalsWidget {
     is_muted: bool,
     battery_percent: u8,
     is_charging: bool,
+    #[allow(dead_code)]
     is_wifi_connected: bool,
+    #[allow(dead_code)]
     is_bluetooth_connected: bool,
     tray_items: Vec<beskar_core::models::TrayItem>,
     cpu_usage: Option<f32>,
@@ -188,7 +190,7 @@ impl RenderOnce for VitalsWidget {
 
         let has_tray = self.modules.as_ref().map_or(true, |m| m.contains(&beskar_core::config::BarModule::Tray));
         let has_controls = self.modules.as_ref().map_or(true, |m| m.contains(&beskar_core::config::BarModule::QuickControls));
-        let has_vitals = self.modules.as_ref().map_or(true, |m| m.contains(&beskar_core::config::BarModule::Vitals));
+        let _has_vitals = self.modules.as_ref().map_or(true, |m| m.contains(&beskar_core::config::BarModule::Vitals));
         let has_power = self.modules.as_ref().map_or(true, |m| m.contains(&beskar_core::config::BarModule::Power));
 
         let mut capsule = div()
@@ -238,215 +240,102 @@ impl RenderOnce for VitalsWidget {
             );
         }
 
-        // 3. Quick Controls triggers (Control Center, Screen Capture, Wallpaper Gallery)
+        // 2. Volume indicator with mute awareness and scroll support
+        capsule = capsule.child(
+            div()
+                .flex()
+                .items_center()
+                .gap(px(4.0))
+                .px(px(6.0))
+                .py(px(2.0))
+                .rounded_md()
+                .text_color(volume_color)
+                .hover(|style| {
+                    style
+                        .bg(beskar_theme::Theme::bg_secondary())
+                        .text_color(beskar_theme::Theme::fg())
+                        .cursor_pointer()
+                })
+                .when_some(on_vol, |el, cb| {
+                    el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
+                })
+                .when_some(on_scroll, |el, cb| {
+                    el.on_scroll_wheel(move |event, _, _| {
+                        let delta = if event.delta.pixel_delta(px(1.0)).y > px(0.0) { 2 } else { -2 };
+                        (cb)(delta);
+                    })
+                })
+                .child(Icon::new(volume_icon).size(px(13.0)).text_color(volume_color))
+                .child(
+                    div()
+                        .text_xs()
+                        .font_weight(FontWeight::MEDIUM)
+                        .child(if self.is_muted {
+                            "Mute".to_string()
+                        } else {
+                            format!("{}%", self.volume_percent)
+                        }),
+                ),
+        );
+
+        // 3. Battery indicator
+        capsule = capsule.child(
+            div()
+                .flex()
+                .items_center()
+                .gap(px(4.0))
+                .px(px(6.0))
+                .py(px(2.0))
+                .rounded_md()
+                .text_color(battery_color)
+                .hover(|style| {
+                    style
+                        .bg(beskar_theme::Theme::bg_secondary())
+                        .cursor_pointer()
+                })
+                .when_some(on_cc.clone(), |el, cb| {
+                    el.on_mouse_down(MouseButton::Left, move |_, window, cx| (cb)(window, cx))
+                })
+                .child(Icon::new(battery_icon).size(px(13.0)).text_color(battery_color))
+                .child(
+                    div()
+                        .text_xs()
+                        .font_weight(FontWeight::MEDIUM)
+                        .child(format!("{}%", self.battery_percent)),
+                ),
+        );
+
+        // 4. Control Center button (tune/sliders)
         if has_controls {
-            capsule = capsule
-                .child(
-                    Button::new("vitals-cc")
-                        .ghost()
-                        .compact()
-                        .icon(
-                            Icon::new(IconName::SlidersHorizontal)
-                                .size(px(14.0))
-                                .text_color(beskar_theme::Theme::fg()),
-                        )
-                        .when_some(on_cc.clone(), |btn, cb| {
-                            btn.on_click(move |_, window, cx| (cb)(window, cx))
-                        }),
-                )
-                .child(
-                    Button::new("vitals-capture")
-                        .ghost()
-                        .compact()
-                        .icon(
-                            Icon::new(IconName::Camera)
-                                .size(px(14.0))
-                                .text_color(beskar_theme::Theme::fg()),
-                        )
-                        .when_some(self.on_capture_click, |btn, cb| {
-                            btn.on_click(move |_, window, cx| (cb)(window, cx))
-                        }),
-                )
-                .child(
-                    Button::new("vitals-wallpaper")
-                        .ghost()
-                        .compact()
-                        .icon(
-                            Icon::new(IconName::Image)
-                                .size(px(14.0))
-                                .text_color(beskar_theme::Theme::fg()),
-                        )
-                        .when_some(self.on_wallpaper_click, |btn, cb| {
-                            btn.on_click(move |_, window, cx| (cb)(window, cx))
-                        }),
-                );
-        }
-
-        // 4. Hardware Vitals (CPU, RAM, Volume, Wi-Fi, Bluetooth, Battery)
-        if has_vitals {
-            if let Some(cpu) = self.cpu_usage {
-                let color = if cpu > 80.0 {
-                    beskar_theme::Theme::danger()
-                } else if cpu > 50.0 {
-                    beskar_theme::Theme::warning()
-                } else {
-                    beskar_theme::Theme::fg()
-                };
-                capsule = capsule.child(
-                    div()
-                        .flex()
-                        .items_center()
-                        .gap(px(3.0))
-                        .px(px(4.0))
-                        .py(px(2.0))
-                        .rounded_md()
-                        .text_color(color)
-                        .hover(|s| s.bg(beskar_theme::Theme::bg_secondary()))
-                        .child(Icon::new(IconName::Cpu).size(px(13.0)).text_color(color))
-                        .child(
-                            div()
-                                .text_xs()
-                                .font_weight(FontWeight::MEDIUM)
-                                .child(format!("{:.0}%", cpu)),
-                        ),
-                );
-            }
-
-            if let Some(ram) = self.ram_usage {
-                let color = if ram > 85.0 {
-                    beskar_theme::Theme::danger()
-                } else if ram > 70.0 {
-                    beskar_theme::Theme::warning()
-                } else {
-                    beskar_theme::Theme::fg()
-                };
-                capsule = capsule.child(
-                    div()
-                        .flex()
-                        .items_center()
-                        .gap(px(3.0))
-                        .px(px(4.0))
-                        .py(px(2.0))
-                        .rounded_md()
-                        .text_color(color)
-                        .hover(|s| s.bg(beskar_theme::Theme::bg_secondary()))
-                        .child(Icon::new(IconName::HardDrive).size(px(13.0)).text_color(color))
-                        .child(
-                            div()
-                                .text_xs()
-                                .font_weight(FontWeight::MEDIUM)
-                                .child(format!("{:.0}%", ram)),
-                        ),
-                );
-            }
-
-            // Volume indicator with mute awareness and scroll support
             capsule = capsule.child(
-                div()
-                    .flex()
-                    .items_center()
-                    .gap(px(4.0))
-                    .px(px(5.0))
-                    .py(px(2.0))
-                    .rounded_md()
-                    .text_color(volume_color)
-                    .hover(|style| {
-                        style
-                            .bg(beskar_theme::Theme::bg_secondary())
-                            .text_color(beskar_theme::Theme::fg())
-                            .cursor_pointer()
-                    })
-                    .when_some(on_vol, |el, cb| {
-                        el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
-                    })
-                    .when_some(on_scroll, |el, cb| {
-                        el.on_scroll_wheel(move |event, _, _| {
-                            let delta = if event.delta.pixel_delta(px(1.0)).y > px(0.0) { 2 } else { -2 };
-                            (cb)(delta);
-                        })
-                    })
-                    .child(Icon::new(volume_icon).size(px(14.0)).text_color(volume_color))
-                    .child(
-                        div()
-                            .text_xs()
-                            .font_weight(FontWeight::MEDIUM)
-                            .child(if self.is_muted {
-                                "Mute".to_string()
-                            } else {
-                                format!("{}%", self.volume_percent)
-                            }),
-                    ),
-            );
-
-            // Wi-Fi
-            capsule = capsule.child(
-                Button::new("vitals-wifi")
+                Button::new("vitals-cc")
                     .ghost()
                     .compact()
                     .icon(
-                        Icon::new(if self.is_wifi_connected {
-                            IconName::Wifi
-                        } else {
-                            IconName::WifiOff
-                        })
-                        .size(px(14.0))
-                        .text_color(if self.is_wifi_connected {
-                            beskar_theme::Theme::fg()
-                        } else {
-                            beskar_theme::Theme::muted()
-                        }),
+                        Icon::new(IconName::SlidersHorizontal)
+                            .size(px(13.0))
+                            .text_color(beskar_theme::Theme::fg()),
                     )
                     .when_some(on_cc.clone(), |btn, cb| {
                         btn.on_click(move |_, window, cx| (cb)(window, cx))
                     }),
             );
-
-            // Bluetooth
-            capsule = capsule.child(
-                Button::new("vitals-bluetooth")
-                    .ghost()
-                    .compact()
-                    .icon(
-                        Icon::new(IconName::Bluetooth)
-                            .size(px(14.0))
-                            .text_color(if self.is_bluetooth_connected {
-                                beskar_theme::Theme::accent()
-                            } else {
-                                beskar_theme::Theme::muted()
-                            }),
-                    )
-                    .when_some(on_cc.clone(), |btn, cb| {
-                        btn.on_click(move |_, window, cx| (cb)(window, cx))
-                    }),
-            );
-
-            // Battery
-            capsule = capsule.child(
-                div()
-                    .flex()
-                    .items_center()
-                    .gap(px(4.0))
-                    .px(px(5.0))
-                    .py(px(2.0))
-                    .rounded_md()
-                    .text_color(battery_color)
-                    .hover(|style| {
-                        style
-                            .bg(beskar_theme::Theme::bg_secondary())
-                            .cursor_pointer()
-                    })
-                    .when_some(on_cc.clone(), |el, cb| {
-                        el.on_mouse_down(MouseButton::Left, move |_, window, cx| (cb)(window, cx))
-                    })
-                    .child(Icon::new(battery_icon).size(px(14.0)).text_color(battery_color))
-                    .child(
-                        div()
-                            .text_xs()
-                            .font_weight(FontWeight::MEDIUM)
-                            .child(format!("{}%", self.battery_percent)),
-                    ),
-            );
         }
+
+        // 5. Notifications Bell button
+        capsule = capsule.child(
+            Button::new("vitals-bell")
+                .ghost()
+                .compact()
+                .icon(
+                    Icon::new(IconName::Bell)
+                        .size(px(13.0))
+                        .text_color(beskar_theme::Theme::fg()),
+                )
+                .when_some(on_cc.clone(), |btn, cb| {
+                    btn.on_click(move |_, window, cx| (cb)(window, cx))
+                }),
+        );
 
         // Standalone 28x28 circular Power button matching BarRightSection.qml
         let power_button = if has_power {

@@ -101,6 +101,7 @@ impl BeskarBar {
         });
 
         let has_win = mod_left.contains(&beskar_core::config::BarModule::ActiveWindow);
+        let ws_count = state.workspaces.len();
 
         let mut ws_widget = WorkspacesWidget::new(state.workspaces, state.active_ws);
         if let Some(handler) = actions.on_select_ws {
@@ -141,7 +142,7 @@ impl BeskarBar {
             .child("✦");
 
         let active_win_element = if has_win {
-            state.active_window.and_then(|win| {
+            state.active_window.as_ref().and_then(|win| {
                 let title_text = win
                     .title
                     .as_deref()
@@ -154,8 +155,8 @@ impl BeskarBar {
                 }
 
                 let icon = resolve_window_icon(win.app_id.as_deref(), win.title.as_deref());
-                let short_title = if title_text.chars().count() > 24 {
-                    let mut s: String = title_text.chars().take(24).collect();
+                let short_title = if title_text.chars().count() > 18 {
+                    let mut s: String = title_text.chars().take(18).collect();
                     s.push('…');
                     s
                 } else {
@@ -171,6 +172,8 @@ impl BeskarBar {
                         .gap(px(6.0))
                         .ml(px(8.0))
                         .pl(px(8.0))
+                        .max_w(px(140.0))
+                        .overflow_hidden()
                         .border_l_1()
                         .border_color(beskar_theme::Theme::subtle_border())
                         .cursor_pointer()
@@ -251,6 +254,7 @@ impl BeskarBar {
         }
         let center_pill = IslandPill::new().convex(is_convex).child(center_widget);
 
+        let tray_count = state.tray_items.len();
         let mut vitals_widget = VitalsWidget::new(state.volume_percent, state.battery_percent)
             .muted(state.is_muted)
             .charging(state.is_charging)
@@ -284,13 +288,26 @@ impl BeskarBar {
         }
         let right_pill = IslandPill::new().convex(is_convex).child(vitals_widget);
 
-        let geom = state.geometry.unwrap_or_else(|| {
-            let center_w = state.animated_center_width.unwrap_or(260.0);
-            crate::convex::ConvexGeometry {
-                center_w,
-                ..Default::default()
-            }
-        });
+        // Dynamic notch geometry calculation matching actual rendered components
+        let has_active_win = has_win && state.active_window.is_some();
+        let left_content_w = 32.0 /* Star */
+            + (ws_count.max(5).min(10) as f32 * 18.0 + 36.0) /* Workspaces */
+            + if has_active_win { 150.0 } else { 0.0 };
+        let left_w = (left_content_w + 48.0).max(220.0);
+
+        let center_w = state.animated_center_width.unwrap_or(150.0).max(140.0);
+
+        let tray_w = (tray_count as f32 * 26.0) + if tray_count > 0 { 12.0 } else { 0.0 };
+        let right_content_w = tray_w + 160.0 /* status capsule */ + 36.0 /* power button */;
+        let right_w = (right_content_w + 48.0).max(250.0);
+
+        let geom = {
+            let mut g = state.geometry.unwrap_or_default();
+            g.left_w = left_w;
+            g.center_w = center_w;
+            g.right_w = right_w;
+            g
+        };
 
         Self::new()
             .convex(is_convex)

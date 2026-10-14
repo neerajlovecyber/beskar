@@ -91,7 +91,10 @@ impl DynamicCenterWidget {
 
 impl RenderOnce for DynamicCenterWidget {
     fn render(self, _window: &mut Window, _cx: &mut App) -> impl IntoElement {
-        let has_media = self.media_title.is_some();
+        let has_media = self
+            .media_title
+            .as_deref()
+            .map_or(false, |t| !t.trim().is_empty());
         let has_notification = self.notification.is_some();
         let on_play_pause = self.on_play_pause;
         let on_clock_click = self.on_clock_click;
