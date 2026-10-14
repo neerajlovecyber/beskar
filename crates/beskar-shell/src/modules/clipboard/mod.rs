@@ -7,7 +7,7 @@ use gpui_kit::component::Icon;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 
-use crate::panel_host::{PanelHost, PanelModule};
+use crate::panel_host::{KeyboardInteractivity, LayerAnchor, PanelHost, PanelModule};
 
 /// Dedicated, autonomous View for Clipboard History
 pub struct ClipboardView {
@@ -19,6 +19,22 @@ pub struct ClipboardView {
 
 impl PanelModule for ClipboardView {
     const ID: &'static str = "clipboard";
+
+    fn size() -> Size<Pixels> {
+        Size::new(px(640.0), px(480.0))
+    }
+
+    fn anchor() -> LayerAnchor {
+        LayerAnchor::TOP
+    }
+
+    fn margin() -> (Pixels, Pixels, Pixels, Pixels) {
+        (px(90.0), px(0.0), px(0.0), px(0.0))
+    }
+
+    fn keyboard_interactivity() -> KeyboardInteractivity {
+        KeyboardInteractivity::Exclusive
+    }
 
     fn build(cx: &mut Context<Self>) -> Self {
         Self::new(cx)
@@ -103,17 +119,19 @@ impl Render for ClipboardView {
         let accent_color = Theme::accent();
 
         div()
-            .id("clipboard-backdrop")
-            .size_full()
+            .id("clipboard-card")
+            .w(px(640.0))
+            .h(px(480.0))
+            .bg(bg_color)
+            .border_1()
+            .border_color(border_color)
+            .rounded(px(18.0))
+            .shadow_xl()
             .flex()
-            .items_center()
-            .justify_center()
+            .flex_col()
+            .overflow_hidden()
             .track_focus(&self.focus_handle)
             .key_context("Clipboard")
-            .on_mouse_down(MouseButton::Left, move |_, window, _cx| {
-                PanelHost::forget(ClipboardView::ID);
-                window.remove_window();
-            })
             .on_key_down(cx.listener(move |this, event: &KeyDownEvent, _window, cx| {
                 let key = &event.keystroke.key;
                 let filtered = Self::filter_items(&this.items, &this.query);
@@ -163,21 +181,6 @@ impl Render for ClipboardView {
                     cx.stop_propagation();
                 }
             }))
-            .child(
-                div()
-                    .w(px(640.0))
-                    .h(px(480.0))
-                    .bg(bg_color)
-                    .border_1()
-                    .border_color(border_color)
-                    .rounded(px(18.0))
-                    .shadow_xl()
-                    .flex()
-                    .flex_col()
-                    .overflow_hidden()
-                    .on_mouse_down(MouseButton::Left, |_, _, cx| {
-                        cx.stop_propagation();
-                    })
                     // Search & Header
                     .child(
                         div()
@@ -388,7 +391,6 @@ impl Render for ClipboardView {
                                         this.clear_all(cx);
                                     })),
                             ),
-                    ),
-            )
+                    )
     }
 }

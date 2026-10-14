@@ -2,7 +2,7 @@ pub mod view;
 pub use self::view::{CaptureMode, ScreenCaptureWidget};
 use gpui_kit::*;
 
-use crate::panel_host::{PanelHost, PanelModule};
+use crate::panel_host::{LayerAnchor, PanelHost, PanelModule};
 
 #[derive(Debug, Clone)]
 enum ScreenCapMsg {
@@ -18,6 +18,18 @@ pub struct ScreenCaptureView {
 
 impl PanelModule for ScreenCaptureView {
     const ID: &'static str = "screen_capture";
+
+    fn size() -> Size<Pixels> {
+        Size::new(px(460.0), px(64.0))
+    }
+
+    fn anchor() -> LayerAnchor {
+        LayerAnchor::TOP
+    }
+
+    fn margin() -> (Pixels, Pixels, Pixels, Pixels) {
+        (px(80.0), px(0.0), px(0.0), px(0.0))
+    }
 
     fn build(cx: &mut Context<Self>) -> Self {
         Self::new(cx)
@@ -89,40 +101,26 @@ impl Render for ScreenCaptureView {
         let tx_close = self.msg_tx.clone();
 
         div()
-            .id("screen-capture-backdrop")
-            .size_full()
-            .flex()
-            .flex_col()
-            .items_center()
-            .pt(px(80.0))
+            .id("screen-capture-card")
+            .w(px(460.0))
+            .h(px(64.0))
             .track_focus(&self.focus_handle)
             .key_context("ScreenCaptureView")
-            .on_mouse_down(MouseButton::Left, move |_, window, _cx| {
-                PanelHost::forget(ScreenCaptureView::ID);
-                window.remove_window();
-            })
-            .on_key_down(cx.listener(|_this, event: &KeyDownEvent, window, cx| {
+            .on_key_down(cx.listener(|_this, event: &KeyDownEvent, _window, cx| {
                 if event.keystroke.key == "escape" {
-                    PanelHost::forget(ScreenCaptureView::ID);
-                    window.remove_window();
+                    PanelHost::close(cx);
                     cx.stop_propagation();
                 }
             }))
             .child(
-                div()
-                    .on_mouse_down(MouseButton::Left, |_, _, cx| {
-                        cx.stop_propagation();
+                ScreenCaptureWidget::new()
+                    .recording(self.is_recording)
+                    .on_trigger(move |mode| {
+                        let _ = tx_trig.send(ScreenCapMsg::Trigger(mode));
                     })
-                    .child(
-                        ScreenCaptureWidget::new()
-                            .recording(self.is_recording)
-                            .on_trigger(move |mode| {
-                                let _ = tx_trig.send(ScreenCapMsg::Trigger(mode));
-                            })
-                            .on_close(move || {
-                                let _ = tx_close.send(ScreenCapMsg::Close);
-                            }),
-                    ),
+                    .on_close(move || {
+                        let _ = tx_close.send(ScreenCapMsg::Close);
+                    }),
             )
     }
 }

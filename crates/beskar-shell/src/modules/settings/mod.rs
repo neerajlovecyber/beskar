@@ -8,7 +8,7 @@ pub mod view;
 pub use self::view::{SettingsCategory, SettingsConfig, SettingsWidget};
 use gpui_kit::*;
 
-use crate::panel_host::{PanelHost, PanelModule};
+use crate::panel_host::{LayerAnchor, PanelHost, PanelModule};
 
 #[derive(Debug, Clone)]
 enum SettingsMsg {
@@ -31,6 +31,18 @@ pub struct SettingsView {
 
 impl PanelModule for SettingsView {
     const ID: &'static str = "settings";
+
+    fn size() -> Size<Pixels> {
+        Size::new(px(760.0), px(520.0))
+    }
+
+    fn anchor() -> LayerAnchor {
+        LayerAnchor::TOP
+    }
+
+    fn margin() -> (Pixels, Pixels, Pixels, Pixels) {
+        (px(60.0), px(0.0), px(0.0), px(0.0))
+    }
 
     fn build(cx: &mut Context<Self>) -> Self {
         Self::new(cx)
@@ -145,56 +157,43 @@ impl Render for SettingsView {
         let tx_close = self.msg_tx.clone();
 
         div()
-            .id("settings-backdrop")
-            .size_full()
-            .flex()
-            .items_center()
-            .justify_center()
+            .id("settings-card")
+            .w(px(760.0))
+            .h(px(520.0))
             .track_focus(&self.focus_handle)
             .key_context("Settings")
-            .on_mouse_down(MouseButton::Left, move |_, window, _cx| {
-                PanelHost::forget(SettingsView::ID);
-                window.remove_window();
-            })
-            .on_key_down(cx.listener(|_, event: &KeyDownEvent, window, cx| {
+            .on_key_down(cx.listener(|_, event: &KeyDownEvent, _window, cx| {
                 if event.keystroke.key == "escape" {
-                    PanelHost::forget(SettingsView::ID);
-                    window.remove_window();
+                    PanelHost::close(cx);
                     cx.stop_propagation();
                 }
             }))
             .child(
-                div()
-                    .on_mouse_down(MouseButton::Left, |_, _, cx| {
-                        cx.stop_propagation();
+                SettingsWidget::new(self.config.clone())
+                    .on_select_category(move |cat| {
+                        let _ = tx_cat.send(SettingsMsg::SelectCategory(cat));
                     })
-                    .child(
-                        SettingsWidget::new(self.config.clone())
-                            .on_select_category(move |cat| {
-                                let _ = tx_cat.send(SettingsMsg::SelectCategory(cat));
-                            })
-                            .on_toggle_notch_mode(move |val| {
-                                let _ = tx_notch.send(SettingsMsg::ToggleNotch(val));
-                            })
-                            .on_toggle_window_title(move |val| {
-                                let _ = tx_win.send(SettingsMsg::ToggleWindowTitle(val));
-                            })
-                            .on_toggle_media_morph(move |val| {
-                                let _ = tx_media.send(SettingsMsg::ToggleMedia(val));
-                            })
-                            .on_select_accent(move |idx| {
-                                let _ = tx_accent.send(SettingsMsg::SelectAccent(idx));
-                            })
-                            .on_select_preset(move |preset| {
-                                let _ = tx_preset.send(SettingsMsg::SelectPreset(preset));
-                            })
-                            .on_test_notification(move || {
-                                let _ = tx_test.send(SettingsMsg::TestNotification);
-                            })
-                            .on_close(move || {
-                                let _ = tx_close.send(SettingsMsg::Close);
-                            }),
-                    ),
+                    .on_toggle_notch_mode(move |val| {
+                        let _ = tx_notch.send(SettingsMsg::ToggleNotch(val));
+                    })
+                    .on_toggle_window_title(move |val| {
+                        let _ = tx_win.send(SettingsMsg::ToggleWindowTitle(val));
+                    })
+                    .on_toggle_media_morph(move |val| {
+                        let _ = tx_media.send(SettingsMsg::ToggleMedia(val));
+                    })
+                    .on_select_accent(move |idx| {
+                        let _ = tx_accent.send(SettingsMsg::SelectAccent(idx));
+                    })
+                    .on_select_preset(move |preset| {
+                        let _ = tx_preset.send(SettingsMsg::SelectPreset(preset));
+                    })
+                    .on_test_notification(move || {
+                        let _ = tx_test.send(SettingsMsg::TestNotification);
+                    })
+                    .on_close(move || {
+                        let _ = tx_close.send(SettingsMsg::Close);
+                    }),
             )
     }
 }

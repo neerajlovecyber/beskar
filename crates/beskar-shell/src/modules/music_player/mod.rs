@@ -2,7 +2,7 @@ pub mod view;
 use self::view::MusicPlayerWidget;
 use gpui_kit::*;
 
-use crate::panel_host::{PanelHost, PanelModule};
+use crate::panel_host::{LayerAnchor, PanelHost, PanelModule};
 
 #[derive(Debug, Clone)]
 enum MusicMsg {
@@ -32,6 +32,18 @@ pub struct MusicPlayerView {
 
 impl PanelModule for MusicPlayerView {
     const ID: &'static str = "music_player";
+
+    fn size() -> Size<Pixels> {
+        Size::new(px(430.0), px(560.0))
+    }
+
+    fn anchor() -> LayerAnchor {
+        LayerAnchor::TOP
+    }
+
+    fn margin() -> (Pixels, Pixels, Pixels, Pixels) {
+        (px(48.0), px(0.0), px(0.0), px(0.0))
+    }
 
     fn build(cx: &mut Context<Self>) -> Self {
         Self::new(cx)
@@ -190,64 +202,48 @@ impl Render for MusicPlayerView {
         let tx_close = self.msg_tx.clone();
 
         div()
-            .id("music-player-backdrop")
-            .size_full()
-            .flex()
-            .flex_col()
-            .items_center()
-            .pt(px(60.0))
+            .id("music-player-card")
+            .w(px(430.0))
+            .max_h(px(560.0))
+            .overflow_y_scroll()
+            .pb(px(8.0))
             .track_focus(&self.focus_handle)
             .key_context("MusicPlayerView")
-            .on_mouse_down(MouseButton::Left, move |_, window, _cx| {
-                PanelHost::forget(MusicPlayerView::ID);
-                window.remove_window();
-            })
-            .on_key_down(cx.listener(|_this, event: &KeyDownEvent, window, cx| {
+            .on_key_down(cx.listener(|_this, event: &KeyDownEvent, _window, cx| {
                 if event.keystroke.key == "escape" {
-                    PanelHost::forget(MusicPlayerView::ID);
-                    window.remove_window();
+                    PanelHost::close(cx);
                     cx.stop_propagation();
                 }
             }))
             .child(
-                div()
-                    .id("music-card-wrapper")
-                    .max_h(px(600.0))
-                    .overflow_y_scroll()
-                    .pb(px(8.0))
-                    .on_mouse_down(MouseButton::Left, |_, _, cx| {
-                        cx.stop_propagation();
+                MusicPlayerWidget::new(self.title.clone(), self.artist.clone(), self.is_playing)
+                    .album(self.album.clone())
+                    .player_name(self.player_name.clone())
+                    .position(self.position_secs, self.duration_secs)
+                    .cava_bars(self.cava_bars.clone())
+                    .loop_mode(self.is_looping)
+                    .shuffle(self.is_shuffling)
+                    .on_play_pause(move || {
+                        let _ = tx_pp.send(MusicMsg::PlayPause);
                     })
-                    .child(
-                        MusicPlayerWidget::new(self.title.clone(), self.artist.clone(), self.is_playing)
-                            .album(self.album.clone())
-                            .player_name(self.player_name.clone())
-                            .position(self.position_secs, self.duration_secs)
-                            .cava_bars(self.cava_bars.clone())
-                            .loop_mode(self.is_looping)
-                            .shuffle(self.is_shuffling)
-                            .on_play_pause(move || {
-                                let _ = tx_pp.send(MusicMsg::PlayPause);
-                            })
-                            .on_prev(move || {
-                                let _ = tx_prev.send(MusicMsg::Prev);
-                            })
-                            .on_next(move || {
-                                let _ = tx_next.send(MusicMsg::Next);
-                            })
-                            .on_seek(move |frac| {
-                                let _ = tx_seek.send(MusicMsg::Seek(frac));
-                            })
-                            .on_toggle_loop(move || {
-                                let _ = tx_loop.send(MusicMsg::ToggleLoop);
-                            })
-                            .on_toggle_shuffle(move || {
-                                let _ = tx_shuf.send(MusicMsg::ToggleShuffle);
-                            })
-                            .on_close(move || {
-                                let _ = tx_close.send(MusicMsg::Close);
-                            }),
-                    ),
+                    .on_prev(move || {
+                        let _ = tx_prev.send(MusicMsg::Prev);
+                    })
+                    .on_next(move || {
+                        let _ = tx_next.send(MusicMsg::Next);
+                    })
+                    .on_seek(move |frac| {
+                        let _ = tx_seek.send(MusicMsg::Seek(frac));
+                    })
+                    .on_toggle_loop(move || {
+                        let _ = tx_loop.send(MusicMsg::ToggleLoop);
+                    })
+                    .on_toggle_shuffle(move || {
+                        let _ = tx_shuf.send(MusicMsg::ToggleShuffle);
+                    })
+                    .on_close(move || {
+                        let _ = tx_close.send(MusicMsg::Close);
+                    }),
             )
     }
 }

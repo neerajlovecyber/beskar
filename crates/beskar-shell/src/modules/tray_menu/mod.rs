@@ -10,7 +10,7 @@ use gpui_kit::component::Icon;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 
-use crate::panel_host::{PanelHost, PanelModule};
+use crate::panel_host::{LayerAnchor, PanelHost, PanelModule};
 
 static ACTIVE_TRAY_KEY: Mutex<Option<String>> = Mutex::new(None);
 
@@ -30,6 +30,18 @@ pub struct TrayMenuView {
 
 impl PanelModule for TrayMenuView {
     const ID: &'static str = "tray_menu";
+
+    fn size() -> Size<Pixels> {
+        Size::new(px(240.0), px(380.0))
+    }
+
+    fn anchor() -> LayerAnchor {
+        LayerAnchor::TOP | LayerAnchor::RIGHT
+    }
+
+    fn margin() -> (Pixels, Pixels, Pixels, Pixels) {
+        (px(48.0), px(16.0), px(0.0), px(0.0))
+    }
 
     fn build(cx: &mut Context<Self>) -> Self {
         let key = ACTIVE_TRAY_KEY
@@ -126,71 +138,55 @@ impl Render for TrayMenuView {
     fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
         let key = self.item_key.clone();
 
-        // LayerShell overlay: transparent backdrop dismisses on click
         div()
-            .relative()
-            .size_full()
-            .on_mouse_down(MouseButton::Left, |_, _, cx| {
-                PanelHost::close(cx);
-            })
+            .id("tray-menu-card")
+            .w(px(240.0))
+            .max_h(px(380.0))
+            .overflow_hidden()
+            .p(px(6.0))
+            .bg(Theme::card_bg())
+            .border_1()
+            .border_color(Theme::card_border())
+            .rounded(px(12.0))
+            .shadow_lg()
             .on_key_down(|event, _, cx| {
                 if event.keystroke.key == "escape" {
                     PanelHost::close(cx);
                 }
             })
-            // Floating dropdown card positioned at upper-right beneath bar
-            .child(
-                div()
-                    .absolute()
-                    .top(px(46.0))
-                    .right(px(16.0))
-                    .w(px(240.0))
-                    .max_h(px(400.0))
-                    .overflow_hidden()
-                    .p(px(6.0))
-                    .bg(Theme::card_bg())
-                    .border_1()
-                    .border_color(Theme::card_border())
-                    .rounded(px(12.0))
-                    .shadow_lg()
-                    .on_mouse_down(MouseButton::Left, |_, _, cx| {
-                        // Prevent click on menu body from closing scrim
-                        cx.stop_propagation();
-                    })
-                    .when(self.is_loading, |this| {
-                        this.flex()
-                            .items_center()
-                            .justify_center()
-                            .py(px(24.0))
-                            .gap(px(8.0))
-                            .child(Spinner::new())
-                            .child(
-                                div()
-                                    .text_size(px(12.0))
-                                    .text_color(Theme::muted())
-                                    .child("Loading menu..."),
-                            )
-                    })
-                    .when(!self.is_loading && self.menu_items.is_empty(), |this| {
-                        this.flex()
-                            .flex_col()
-                            .items_center()
-                            .justify_center()
-                            .py(px(16.0))
-                            .child(
-                                div()
-                                    .text_size(px(12.0))
-                                    .text_color(Theme::muted())
-                                    .child("No menu actions available"),
-                            )
-                    })
-                    .when(!self.is_loading && !self.menu_items.is_empty(), |this| {
-                        let mut col = div().flex().flex_col().gap(px(2.0));
-                        for item in &self.menu_items {
-                            col = col.child(self.render_menu_item(item, &key));
-                        }
-                        this.child(col)
-                    }),
-            )
+            .when(self.is_loading, |this| {
+                this.flex()
+                    .items_center()
+                    .justify_center()
+                    .py(px(24.0))
+                    .gap(px(8.0))
+                    .child(Spinner::new())
+                    .child(
+                        div()
+                            .text_size(px(12.0))
+                            .text_color(Theme::muted())
+                            .child("Loading menu..."),
+                    )
+            })
+            .when(!self.is_loading && self.menu_items.is_empty(), |this| {
+                this.flex()
+                    .flex_col()
+                    .items_center()
+                    .justify_center()
+                    .py(px(16.0))
+                    .child(
+                        div()
+                            .text_size(px(12.0))
+                            .text_color(Theme::muted())
+                            .child("No menu actions available"),
+                    )
+            })
+            .when(!self.is_loading && !self.menu_items.is_empty(), |this| {
+                let mut col = div().flex().flex_col().gap(px(2.0));
+                for item in &self.menu_items {
+                    col = col.child(self.render_menu_item(item, &key));
+                }
+                this.child(col)
+            })
     }
 }

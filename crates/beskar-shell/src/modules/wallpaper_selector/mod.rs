@@ -2,7 +2,7 @@ pub mod view;
 pub use self::view::{WallpaperItem, WallpaperSelectorWidget};
 use gpui_kit::*;
 
-use crate::panel_host::{PanelHost, PanelModule};
+use crate::panel_host::{LayerAnchor, PanelHost, PanelModule};
 
 #[derive(Debug, Clone)]
 enum WallpaperMsg {
@@ -19,6 +19,18 @@ pub struct WallpaperSelectorView {
 
 impl PanelModule for WallpaperSelectorView {
     const ID: &'static str = "wallpaper_selector";
+
+    fn size() -> Size<Pixels> {
+        Size::new(px(720.0), px(520.0))
+    }
+
+    fn anchor() -> LayerAnchor {
+        LayerAnchor::TOP
+    }
+
+    fn margin() -> (Pixels, Pixels, Pixels, Pixels) {
+        (px(60.0), px(0.0), px(0.0), px(0.0))
+    }
 
     fn build(cx: &mut Context<Self>) -> Self {
         Self::new(cx)
@@ -96,46 +108,31 @@ impl Render for WallpaperSelectorView {
         let tx_close = self.msg_tx.clone();
 
         div()
-            .id("wallpaper-selector-backdrop")
-            .size_full()
-            .flex()
-            .flex_col()
-            .items_center()
-            .pt(px(60.0))
+            .id("wallpaper-selector-card")
+            .w(px(720.0))
+            .max_h(px(520.0))
             .track_focus(&self.focus_handle)
             .key_context("WallpaperSelectorView")
-            .on_mouse_down(MouseButton::Left, move |_, window, _cx| {
-                PanelHost::forget(WallpaperSelectorView::ID);
-                window.remove_window();
-            })
-            .on_key_down(cx.listener(|this, event: &KeyDownEvent, window, cx| {
+            .on_key_down(cx.listener(|this, event: &KeyDownEvent, _window, cx| {
                 if event.keystroke.key == "escape" {
                     if !this.query.is_empty() {
                         this.query.clear();
                         cx.notify();
                     } else {
-                        PanelHost::forget(WallpaperSelectorView::ID);
-                        window.remove_window();
+                        PanelHost::close(cx);
                     }
                     cx.stop_propagation();
                 }
             }))
             .child(
-                div()
-                    .w(px(720.0))
-                    .on_mouse_down(MouseButton::Left, |_, _, cx| {
-                        cx.stop_propagation();
+                WallpaperSelectorWidget::new(self.wallpapers.clone())
+                    .query(&self.query)
+                    .on_select(move |path| {
+                        let _ = tx_sel.send(WallpaperMsg::Select(path));
                     })
-                    .child(
-                        WallpaperSelectorWidget::new(self.wallpapers.clone())
-                            .query(&self.query)
-                            .on_select(move |path| {
-                                let _ = tx_sel.send(WallpaperMsg::Select(path));
-                            })
-                            .on_close(move || {
-                                let _ = tx_close.send(WallpaperMsg::Close);
-                            }),
-                    ),
+                    .on_close(move || {
+                        let _ = tx_close.send(WallpaperMsg::Close);
+                    }),
             )
     }
 }

@@ -31,6 +31,18 @@ pub struct NotificationCenterView {
 impl PanelModule for NotificationCenterView {
     const ID: &'static str = "notification_center";
 
+    fn size() -> Size<Pixels> {
+        Size::new(px(380.0), px(700.0))
+    }
+
+    fn anchor() -> LayerAnchor {
+        LayerAnchor::TOP | LayerAnchor::RIGHT
+    }
+
+    fn margin() -> (Pixels, Pixels, Pixels, Pixels) {
+        (px(48.0), px(16.0), px(0.0), px(0.0))
+    }
+
     fn build(cx: &mut Context<Self>) -> Self {
         Self::new(cx)
     }
@@ -98,51 +110,34 @@ impl Render for NotificationCenterView {
         let tx_close = self.msg_tx.clone();
 
         div()
-            .id("notification-center-backdrop")
-            .size_full()
-            .flex()
-            .justify_end()
-            .pt(px(56.0))
-            .pr(px(16.0))
+            .id("notif-center-outer")
+            .w(px(380.0))
+            .max_h(px(700.0))
+            .overflow_y_scroll()
+            .pb(px(8.0))
             .track_focus(&self.focus_handle)
             .key_context("NotificationCenterView")
-            .on_mouse_down(MouseButton::Left, move |_, window, _cx| {
-                PanelHost::forget(NotificationCenterView::ID);
-                window.remove_window();
-            })
-            .on_key_down(cx.listener(|_this, event: &KeyDownEvent, window, cx| {
+            .on_key_down(cx.listener(|_this, event: &KeyDownEvent, _window, cx| {
                 if event.keystroke.key == "escape" {
-                    PanelHost::forget(NotificationCenterView::ID);
-                    window.remove_window();
+                    PanelHost::close(cx);
                     cx.stop_propagation();
                 }
             }))
             .child(
-                div()
-                    .id("notif-center-outer")
-                    .w(px(380.0))
-                    .max_h(px(700.0))
-                    .overflow_y_scroll()
-                    .pb(px(8.0))
-                    .on_mouse_down(MouseButton::Left, |_, _, cx| {
-                        cx.stop_propagation();
+                NotificationCenterWidget::new(self.notifications.clone())
+                    .dnd(self.is_dnd)
+                    .on_dismiss(move |id| {
+                        let _ = tx_d.send(NotifCenterMsg::Dismiss(id));
                     })
-                    .child(
-                        NotificationCenterWidget::new(self.notifications.clone())
-                            .dnd(self.is_dnd)
-                            .on_dismiss(move |id| {
-                                let _ = tx_d.send(NotifCenterMsg::Dismiss(id));
-                            })
-                            .on_clear_all(move || {
-                                let _ = tx_c.send(NotifCenterMsg::ClearAll);
-                            })
-                            .on_toggle_dnd(move || {
-                                let _ = tx_dnd.send(NotifCenterMsg::ToggleDnd);
-                            })
-                            .on_close(move || {
-                                let _ = tx_close.send(NotifCenterMsg::Close);
-                            }),
-                    ),
+                    .on_clear_all(move || {
+                        let _ = tx_c.send(NotifCenterMsg::ClearAll);
+                    })
+                    .on_toggle_dnd(move || {
+                        let _ = tx_dnd.send(NotifCenterMsg::ToggleDnd);
+                    })
+                    .on_close(move || {
+                        let _ = tx_close.send(NotifCenterMsg::Close);
+                    }),
             )
     }
 }

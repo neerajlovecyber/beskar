@@ -17,7 +17,7 @@ use crate::modules::clipboard::ClipboardView;
 use crate::modules::launcher::LauncherView;
 use crate::modules::power_menu::PowerMenuView;
 use crate::modules::settings::SettingsView;
-use crate::panel_host::{PanelHost, PanelModule};
+use crate::panel_host::{LayerAnchor, PanelHost, PanelModule};
 
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
@@ -66,6 +66,18 @@ pub struct ControlCenterView {
 
 impl PanelModule for ControlCenterView {
     const ID: &'static str = "control_center";
+
+    fn size() -> Size<Pixels> {
+        Size::new(px(390.0), px(760.0))
+    }
+
+    fn anchor() -> LayerAnchor {
+        LayerAnchor::TOP | LayerAnchor::RIGHT
+    }
+
+    fn margin() -> (Pixels, Pixels, Pixels, Pixels) {
+        (px(48.0), px(16.0), px(0.0), px(0.0))
+    }
 
     fn build(cx: &mut Context<Self>) -> Self {
         Self::new(cx)
@@ -333,7 +345,7 @@ impl Render for ControlCenterView {
         let (tx_wlist, tx_blist, tx_conn, tx_sink) = (tx.clone(), tx.clone(), tx.clone(), tx.clone());
         let (tx_launcher, tx_clipboard, tx_power, tx_settings, tx_close) =
             (tx.clone(), tx.clone(), tx.clone(), tx.clone(), tx.clone());
-        let (tx_backdrop, tx_esc) = (tx.clone(), tx);
+        let tx_esc = tx;
 
         let wifi_label = self.wifi_ssid.clone().unwrap_or_else(|| {
             if self.is_wifi_on {
@@ -350,17 +362,13 @@ impl Render for ControlCenterView {
         };
 
         div()
-            .id("control-center-backdrop")
-            .size_full()
-            .flex()
-            .justify_end()
-            .pt(px(56.0))
-            .pr(px(16.0))
+            .id("control-center-outer")
+            .w(px(390.0))
+            .max_h(px(760.0))
+            .overflow_y_scroll()
+            .pb(px(8.0))
             .track_focus(&self.focus_handle)
             .key_context("ControlCenter")
-            .on_mouse_down(MouseButton::Left, move |_, _, _| {
-                let _ = tx_backdrop.send(ControlCenterMsg::Close);
-            })
             .on_key_down(cx.listener(move |_, event: &KeyDownEvent, _, cx| {
                 if event.keystroke.key == "escape" {
                     let _ = tx_esc.send(ControlCenterMsg::Close);
@@ -369,110 +377,99 @@ impl Render for ControlCenterView {
             }))
             .child(
                 div()
-                    .id("cc-outer-scroll")
                     .w(px(390.0))
-                    .max_h(px(760.0))
-                    .overflow_y_scroll()
-                    .pb(px(8.0))
-                    .on_mouse_down(MouseButton::Left, |_, _, cx| {
-                        cx.stop_propagation();
+                    .p(px(16.0))
+                    .rounded(px(20.0))
+                    .bg(beskar_theme::Theme::card_bg())
+                    .border_1()
+                    .border_color(beskar_theme::Theme::card_border())
+                    .shadow_xl()
+                    .flex()
+                    .flex_col()
+                    .gap(px(12.0))
+                    // 1. Header
+                    .child(header::render_header(Some(Arc::new(move || {
+                        let _ = tx_close.send(ControlCenterMsg::Close);
+                    }))))
+                    // 2. Quick Toggles Grid
+                    .child(quick_toggles::render_quick_toggles(
+                        self.is_wifi_on,
+                        wifi_label,
+                        self.show_wifi_list,
+                        Some(Arc::new(move || {
+                            let _ = tx_wifi.send(ControlCenterMsg::ToggleWifi);
+                        })),
+                        Some(Arc::new(move || {
+                            let _ = tx_wlist.send(ControlCenterMsg::ToggleWifiList);
+                        })),
+                        self.is_bt_on,
+                        bt_label,
+                        self.show_bt_list,
+                        Some(Arc::new(move || {
+                            let _ = tx_bt.send(ControlCenterMsg::ToggleBluetooth);
+                        })),
+                        Some(Arc::new(move || {
+                            let _ = tx_blist.send(ControlCenterMsg::ToggleBtList);
+                        })),
+                    ))
+                    // 3. Expandable Wi-Fi List
+                    .when(self.show_wifi_list, |parent| {
+                        parent.child(wifi_list::render_wifi_list(
+                            &self.wifi_networks,
+                            Some(Arc::new(move |ssid| {
+                                let _ = tx_conn.send(ControlCenterMsg::ConnectWifi(ssid));
+                            })),
+                        ))
                     })
-                    .child(
-                        div()
-                            .w(px(390.0))
-                            .p(px(16.0))
-                            .rounded(px(20.0))
-                            .bg(beskar_theme::Theme::card_bg())
-                            .border_1()
-                            .border_color(beskar_theme::Theme::card_border())
-                            .shadow_xl()
-                            .flex()
-                            .flex_col()
-                            .gap(px(12.0))
-                            // 1. Header
-                            .child(header::render_header(Some(Arc::new(move || {
-                                let _ = tx_close.send(ControlCenterMsg::Close);
-                            }))))
-                            // 2. Quick Toggles Grid
-                            .child(quick_toggles::render_quick_toggles(
-                                self.is_wifi_on,
-                                wifi_label,
-                                self.show_wifi_list,
-                                Some(Arc::new(move || {
-                                    let _ = tx_wifi.send(ControlCenterMsg::ToggleWifi);
-                                })),
-                                Some(Arc::new(move || {
-                                    let _ = tx_wlist.send(ControlCenterMsg::ToggleWifiList);
-                                })),
-                                self.is_bt_on,
-                                bt_label,
-                                self.show_bt_list,
-                                Some(Arc::new(move || {
-                                    let _ = tx_bt.send(ControlCenterMsg::ToggleBluetooth);
-                                })),
-                                Some(Arc::new(move || {
-                                    let _ = tx_blist.send(ControlCenterMsg::ToggleBtList);
-                                })),
-                            ))
-                            // 3. Expandable Wi-Fi List
-                            .when(self.show_wifi_list, |parent| {
-                                parent.child(wifi_list::render_wifi_list(
-                                    &self.wifi_networks,
-                                    Some(Arc::new(move |ssid| {
-                                        let _ = tx_conn.send(ControlCenterMsg::ConnectWifi(ssid));
-                                    })),
-                                ))
-                            })
-                            // 4. Expandable Bluetooth List
-                            .when(self.show_bt_list, |parent| {
-                                parent.child(bt_list::render_bt_list(&self.bt_devices))
-                            })
-                            // 5. Volume Slider & Output Sink Selector
-                            .child(sliders::render_volume_card(
-                                self.volume_percent,
-                                self.is_muted,
-                                Some(&self.volume_slider),
-                                Some(Arc::new(move || {
-                                    let _ = tx_mute.send(ControlCenterMsg::ToggleMute);
-                                })),
-                                &self.sinks,
-                                Some(Arc::new(move |sink_name| {
-                                    let _ = tx_sink.send(ControlCenterMsg::SelectAudioSink(sink_name));
-                                })),
-                            ))
-                            // 6. Brightness Slider
-                            .child(sliders::render_brightness_card(
-                                self.brightness_percent,
-                                Some(&self.brightness_slider),
-                            ))
-                            // 7. Power Profile Selector
-                            .child(power_profiles::render_power_profiles(
-                                &self.active_power_profile,
-                                Some(Arc::new(move |prof| {
-                                    let _ = tx_prof.send(ControlCenterMsg::SetPowerProfile(prof));
-                                })),
-                            ))
-                            // 8. Battery Vitals
-                            .child(power_profiles::render_battery_card(
-                                self.battery_percent,
-                                self.is_charging,
-                            ))
-                            // 9. Quick Actions Footer
-                            .child(footer::render_footer(
-                                Some(Arc::new(move || {
-                                    let _ = tx_launcher.send(ControlCenterMsg::OpenLauncher);
-                                })),
-                                Some(Arc::new(move || {
-                                    let _ = tx_clipboard.send(ControlCenterMsg::OpenClipboard);
-                                })),
-                                Some(Arc::new(move || {
-                                    let _ = tx_settings.send(ControlCenterMsg::OpenSettings);
-                                })),
-                                Some(Arc::new(move || {
-                                    let _ = tx_power.send(ControlCenterMsg::OpenPower);
-                                })),
-                            )),
-                    ),
+                    // 4. Expandable Bluetooth List
+                    .when(self.show_bt_list, |parent| {
+                        parent.child(bt_list::render_bt_list(&self.bt_devices))
+                    })
+                    // 5. Volume Slider & Output Sink Selector
+                    .child(sliders::render_volume_card(
+                        self.volume_percent,
+                        self.is_muted,
+                        Some(&self.volume_slider),
+                        Some(Arc::new(move || {
+                            let _ = tx_mute.send(ControlCenterMsg::ToggleMute);
+                        })),
+                        &self.sinks,
+                        Some(Arc::new(move |sink_name| {
+                            let _ = tx_sink.send(ControlCenterMsg::SelectAudioSink(sink_name));
+                        })),
+                    ))
+                    // 6. Brightness Slider
+                    .child(sliders::render_brightness_card(
+                        self.brightness_percent,
+                        Some(&self.brightness_slider),
+                    ))
+                    // 7. Power Profile Selector
+                    .child(power_profiles::render_power_profiles(
+                        &self.active_power_profile,
+                        Some(Arc::new(move |prof| {
+                            let _ = tx_prof.send(ControlCenterMsg::SetPowerProfile(prof));
+                        })),
+                    ))
+                    // 8. Battery Vitals
+                    .child(power_profiles::render_battery_card(
+                        self.battery_percent,
+                        self.is_charging,
+                    ))
+                    // 9. Quick Actions Footer
+                    .child(footer::render_footer(
+                        Some(Arc::new(move || {
+                            let _ = tx_launcher.send(ControlCenterMsg::OpenLauncher);
+                        })),
+                        Some(Arc::new(move || {
+                            let _ = tx_clipboard.send(ControlCenterMsg::OpenClipboard);
+                        })),
+                        Some(Arc::new(move || {
+                            let _ = tx_settings.send(ControlCenterMsg::OpenSettings);
+                        })),
+                        Some(Arc::new(move || {
+                            let _ = tx_power.send(ControlCenterMsg::OpenPower);
+                        })),
+                    )),
             )
     }
 }

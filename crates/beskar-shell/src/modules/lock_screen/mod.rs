@@ -3,7 +3,7 @@ use self::view::LockScreenWidget;
 use gpui_kit::layer_shell::KeyboardInteractivity;
 use gpui_kit::*;
 
-use crate::panel_host::{PanelHost, PanelModule};
+use crate::panel_host::{LayerAnchor, PanelHost, PanelModule};
 
 /// Dedicated View for Fullscreen Lock Screen
 pub struct LockScreenView {
@@ -18,6 +18,18 @@ pub struct LockScreenView {
 
 impl PanelModule for LockScreenView {
     const ID: &'static str = "lock_screen";
+
+    fn size() -> Size<Pixels> {
+        Size::new(px(1920.0), px(1080.0))
+    }
+
+    fn anchor() -> LayerAnchor {
+        LayerAnchor::TOP | LayerAnchor::BOTTOM | LayerAnchor::LEFT | LayerAnchor::RIGHT
+    }
+
+    fn margin() -> (Pixels, Pixels, Pixels, Pixels) {
+        (px(0.0), px(0.0), px(0.0), px(0.0))
+    }
 
     fn keyboard_interactivity() -> KeyboardInteractivity {
         KeyboardInteractivity::Exclusive

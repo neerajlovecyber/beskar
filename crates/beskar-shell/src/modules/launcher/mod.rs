@@ -8,7 +8,7 @@ use gpui_kit::component::Icon;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 
-use crate::panel_host::{PanelHost, PanelModule};
+use crate::panel_host::{KeyboardInteractivity, LayerAnchor, PanelHost, PanelModule};
 
 /// Dedicated, autonomous View for the App Launcher
 pub struct LauncherView {
@@ -20,6 +20,22 @@ pub struct LauncherView {
 
 impl PanelModule for LauncherView {
     const ID: &'static str = "launcher";
+
+    fn size() -> Size<Pixels> {
+        Size::new(px(700.0), px(520.0))
+    }
+
+    fn anchor() -> LayerAnchor {
+        LayerAnchor::TOP
+    }
+
+    fn margin() -> (Pixels, Pixels, Pixels, Pixels) {
+        (px(90.0), px(0.0), px(0.0), px(0.0))
+    }
+
+    fn keyboard_interactivity() -> KeyboardInteractivity {
+        KeyboardInteractivity::Exclusive
+    }
 
     fn build(cx: &mut Context<Self>) -> Self {
         Self::new(cx)
@@ -117,18 +133,21 @@ impl Render for LauncherView {
         let theme_bg_secondary = Theme::bg_secondary();
 
         div()
-            .id("launcher-backdrop")
-            .size_full()
+            .id("launcher-card")
+            .w(px(700.0))
+            .max_h(px(520.0))
             .flex()
             .flex_col()
-            .items_center()
-            .pt(px(90.0))
+            .p(px(16.0))
+            .rounded(px(32.0))
+            .bg(theme_bg)
+            .border_1()
+            .border_color(theme_border)
+            .shadow_2xl()
+            .overflow_hidden()
+            .gap(px(12.0))
             .track_focus(&self.focus_handle)
             .key_context("Launcher")
-            .on_mouse_down(MouseButton::Left, move |_, window, _cx| {
-                PanelHost::forget(LauncherView::ID);
-                window.remove_window();
-            })
             .on_key_down(cx.listener(move |this, event: &KeyDownEvent, _window, cx| {
                 let key = &event.keystroke.key;
                 let filtered = Self::filter_and_rank(&this.apps, &this.query);
@@ -171,22 +190,6 @@ impl Render for LauncherView {
                     cx.stop_propagation();
                 }
             }))
-            .child(
-                div()
-                    .w(px(700.0))
-                    .flex()
-                    .flex_col()
-                    .p(px(16.0))
-                    .rounded(px(32.0))
-                    .bg(theme_bg)
-                    .border_1()
-                    .border_color(theme_border)
-                    .shadow_2xl()
-                    .overflow_hidden()
-                    .gap(px(12.0))
-                    .on_mouse_down(MouseButton::Left, |_, _, cx| {
-                        cx.stop_propagation();
-                    })
                     // Search Bar
                     .child(
                         div()
@@ -350,7 +353,6 @@ impl Render for LauncherView {
                                         this.child(Tag::secondary().child(cat))
                                     })
                             })),
-                    ),
-            )
+                    )
     }
 }

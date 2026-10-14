@@ -9,7 +9,7 @@
 //! - Focus traps and event propagation isolation
 //! - Dynamic string registration for IPC / CLI (`beskar-msg toggle <id>`)
 
-use gpui_kit::layer_shell::{
+pub use gpui_kit::layer_shell::{
     Anchor as LayerAnchor, KeyboardInteractivity, Layer, LayerShellOptions,
 };
 use gpui_kit::*;
@@ -22,9 +22,27 @@ pub trait PanelModule: Render + Sized + 'static {
     /// Unique identifier for this panel (e.g. "launcher", "control_center", "power_menu")
     const ID: &'static str;
 
+    /// Preferred window size (width, height) in logical pixels
+    fn size() -> Size<Pixels>;
+
+    /// Wayland LayerShell anchor flags (defaults to TOP | RIGHT)
+    fn anchor() -> LayerAnchor {
+        LayerAnchor::TOP | LayerAnchor::RIGHT
+    }
+
+    /// Wayland LayerShell margins: (top, right, bottom, left)
+    fn margin() -> (Pixels, Pixels, Pixels, Pixels) {
+        (px(48.0), px(16.0), px(0.0), px(0.0))
+    }
+
     /// Wayland keyboard interactivity mode (defaults to OnDemand, LockScreen uses Exclusive)
     fn keyboard_interactivity() -> KeyboardInteractivity {
         KeyboardInteractivity::OnDemand
+    }
+
+    /// Wayland layer (defaults to Overlay)
+    fn layer() -> Layer {
+        Layer::Overlay
     }
 
     /// Construct the panel view
@@ -58,16 +76,18 @@ impl PanelHost {
 
         let options = WindowOptions {
             titlebar: None,
+            window_bounds: Some(WindowBounds::Windowed(Bounds {
+                origin: point(px(0.), px(0.)),
+                size: M::size(),
+            })),
             app_id: Some(format!("beskar-{}", M::ID)),
             window_background: WindowBackgroundAppearance::Transparent,
             kind: WindowKind::LayerShell(LayerShellOptions {
                 namespace: format!("beskar-{}", M::ID),
-                layer: Layer::Overlay,
-                anchor: LayerAnchor::TOP
-                    | LayerAnchor::BOTTOM
-                    | LayerAnchor::LEFT
-                    | LayerAnchor::RIGHT,
+                layer: M::layer(),
+                anchor: M::anchor(),
                 exclusive_zone: None,
+                margin: Some(M::margin()),
                 keyboard_interactivity: M::keyboard_interactivity(),
                 ..Default::default()
             }),
@@ -166,3 +186,45 @@ impl PanelHost {
 
 /// Backwards compatibility alias while transitioning code
 pub type OverlayHost = PanelHost;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    struct MockPanel;
+
+    impl Render for MockPanel {
+        fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+            div()
+        }
+    }
+
+    impl PanelModule for MockPanel {
+        const ID: &'static str = "mock_panel";
+
+        fn size() -> Size<Pixels> {
+            Size::new(px(320.0), px(400.0))
+        }
+
+        fn build(_: &mut Context<Self>) -> Self {
+            MockPanel
+        }
+    }
+
+    #[test]
+    fn test_panel_module_defaults() {
+        assert_eq!(MockPanel::ID, "mock_panel");
+        assert_eq!(MockPanel::size(), Size::new(px(320.0), px(400.0)));
+        assert_eq!(MockPanel::anchor(), LayerAnchor::TOP | LayerAnchor::RIGHT);
+        assert_eq!(MockPanel::margin(), (px(48.0), px(16.0), px(0.0), px(0.0)));
+        assert_eq!(MockPanel::keyboard_interactivity(), KeyboardInteractivity::OnDemand);
+        assert_eq!(MockPanel::layer(), Layer::Overlay);
+    }
+
+    #[test]
+    fn test_panel_registration() {
+        PanelHost::register::<MockPanel>();
+        let guard = PANEL_REGISTRY.lock().unwrap();
+        assert!(guard.as_ref().unwrap().contains_key("mock_panel"));
+    }
+}

@@ -4,6 +4,8 @@ use gpui_kit::component::button::{Button, ButtonVariant, ButtonVariants};
 use gpui_kit::component::Icon;
 use gpui_kit::*;
 
+use gpui_kit::layer_shell::Anchor as LayerAnchor;
+
 use crate::panel_host::{PanelHost, PanelModule};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -73,6 +75,18 @@ pub struct PowerMenuView {
 impl PanelModule for PowerMenuView {
     const ID: &'static str = "power_menu";
 
+    fn size() -> Size<Pixels> {
+        Size::new(px(356.0), px(64.0))
+    }
+
+    fn anchor() -> LayerAnchor {
+        LayerAnchor::TOP | LayerAnchor::RIGHT
+    }
+
+    fn margin() -> (Pixels, Pixels, Pixels, Pixels) {
+        (px(48.0), px(16.0), px(0.0), px(0.0))
+    }
+
     fn build(cx: &mut Context<Self>) -> Self {
         Self::new(cx)
     }
@@ -113,17 +127,18 @@ impl Render for PowerMenuView {
         let cur_selected = self.selected_index;
 
         div()
-            .id("power-menu-backdrop")
-            .size_full()
-            .flex()
-            .items_center()
-            .justify_center()
+            .id("power-menu-container")
+            .relative()
+            .w(px(356.0))
+            .h(px(64.0))
+            .p(px(6.0))
+            .rounded(px(16.0))
+            .bg(Theme::bg())
+            .border_1()
+            .border_color(Theme::border())
+            .shadow_xl()
             .track_focus(&self.focus_handle)
             .key_context("PowerMenu")
-            .on_mouse_down(MouseButton::Left, move |_, window, _cx| {
-                PanelHost::forget(PowerMenuView::ID);
-                window.remove_window();
-            })
             .on_key_down(cx.listener(move |this, event: &KeyDownEvent, _window, cx| {
                 let key = &event.keystroke.key;
 
@@ -191,20 +206,7 @@ impl Render for PowerMenuView {
                     cx.stop_propagation();
                 }
             }))
-            .child(
-                div()
-                    .id("power-menu-container")
-                    .relative()
-                    .p(px(6.0))
-                    .rounded(px(16.0))
-                    .bg(Theme::bg())
-                    .border_1()
-                    .border_color(Theme::border())
-                    .shadow_xl()
-                    .on_mouse_down(MouseButton::Left, |_, _, cx| {
-                        cx.stop_propagation();
-                    })
-                    .child(if let Some(pending) = self.pending_action {
+            .child(if let Some(pending) = self.pending_action {
                         let is_critical = matches!(pending, PowerAction::Shutdown | PowerAction::Restart);
 
                         div()
@@ -360,7 +362,6 @@ impl Render for PowerMenuView {
                                             .child(action.label()),
                                     )
                             }))
-                    }),
-            )
+                    })
     }
 }

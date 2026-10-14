@@ -4,7 +4,7 @@ pub mod view;
 pub use self::view::DashboardWidget;
 use gpui_kit::*;
 
-use crate::panel_host::{PanelHost, PanelModule};
+use crate::panel_host::{LayerAnchor, PanelHost, PanelModule};
 
 #[derive(Debug, Clone)]
 enum DashboardMsg {
@@ -24,6 +24,18 @@ pub struct DashboardView {
 
 impl PanelModule for DashboardView {
     const ID: &'static str = "dashboard";
+
+    fn size() -> Size<Pixels> {
+        Size::new(px(780.0), px(680.0))
+    }
+
+    fn anchor() -> LayerAnchor {
+        LayerAnchor::TOP
+    }
+
+    fn margin() -> (Pixels, Pixels, Pixels, Pixels) {
+        (px(60.0), px(0.0), px(0.0), px(0.0))
+    }
 
     fn build(cx: &mut Context<Self>) -> Self {
         Self::new(cx)
@@ -116,52 +128,36 @@ impl Render for DashboardView {
         let tx_close = self.msg_tx.clone();
 
         div()
-            .id("dashboard-backdrop")
-            .size_full()
-            .flex()
-            .flex_col()
-            .items_center()
-            .pt(px(60.0))
+            .id("dashboard-card")
+            .w(px(780.0))
+            .max_h(px(680.0))
+            .overflow_y_scroll()
+            .pb(px(8.0))
             .track_focus(&self.focus_handle)
             .key_context("DashboardView")
-            .on_mouse_down(MouseButton::Left, move |_, window, _cx| {
-                PanelHost::forget(DashboardView::ID);
-                window.remove_window();
-            })
-            .on_key_down(cx.listener(|_this, event: &KeyDownEvent, window, cx| {
+            .on_key_down(cx.listener(|_this, event: &KeyDownEvent, _window, cx| {
                 if event.keystroke.key == "escape" {
-                    PanelHost::forget(DashboardView::ID);
-                    window.remove_window();
+                    PanelHost::close(cx);
                     cx.stop_propagation();
                 }
             }))
             .child(
-                div()
-                    .id("dashboard-card-wrapper")
-                    .max_h(px(740.0))
-                    .overflow_y_scroll()
-                    .pb(px(8.0))
-                    .on_mouse_down(MouseButton::Left, |_, _, cx| {
-                        cx.stop_propagation();
+                DashboardWidget::new(self.github_state.clone(), self.updates_state.clone())
+                    .on_refresh_github(move || {
+                        let _ = tx_gh.send(DashboardMsg::RefreshGithub);
                     })
-                    .child(
-                        DashboardWidget::new(self.github_state.clone(), self.updates_state.clone())
-                            .on_refresh_github(move || {
-                                let _ = tx_gh.send(DashboardMsg::RefreshGithub);
-                            })
-                            .on_refresh_updates(move || {
-                                let _ = tx_up.send(DashboardMsg::RefreshUpdates);
-                            })
-                            .on_run_update(move || {
-                                let _ = tx_run.send(DashboardMsg::RunUpdate);
-                            })
-                            .on_open_profile(move || {
-                                let _ = tx_prof.send(DashboardMsg::OpenProfile);
-                            })
-                            .on_close(move || {
-                                let _ = tx_close.send(DashboardMsg::Close);
-                            }),
-                    ),
+                    .on_refresh_updates(move || {
+                        let _ = tx_up.send(DashboardMsg::RefreshUpdates);
+                    })
+                    .on_run_update(move || {
+                        let _ = tx_run.send(DashboardMsg::RunUpdate);
+                    })
+                    .on_open_profile(move || {
+                        let _ = tx_prof.send(DashboardMsg::OpenProfile);
+                    })
+                    .on_close(move || {
+                        let _ = tx_close.send(DashboardMsg::Close);
+                    }),
             )
     }
 }
