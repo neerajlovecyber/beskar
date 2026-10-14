@@ -4,13 +4,11 @@ use beskar_core::models::WindowInfo;
 use beskar_core::traits::CompositorBackend;
 use beskar_services::{AudioService, MprisService};
 use beskar_ui::BarActions;
-
-use super::view::BarAction;
+use gpui_kit::{App, Window};
 
 /// Construct all interactive callbacks for the BeskarBar.
 pub fn build_bar_actions(
     compositor: Arc<dyn CompositorBackend>,
-    action_tx: tokio::sync::mpsc::UnboundedSender<BarAction>,
     active_window: Option<&WindowInfo>,
 ) -> BarActions {
     let comp = compositor.clone();
@@ -42,44 +40,36 @@ pub fn build_bar_actions(
         beskar_services::SoundService::play_volume_change();
     });
 
-    let atx_cc = action_tx.clone();
-    let on_control_center_click = Arc::new(move || {
-        let _ = atx_cc.send(BarAction::ToggleControlCenter);
+    let on_control_center_click = Arc::new(|_: &mut Window, cx: &mut App| {
+        crate::modules::toggle_control_center(cx);
     });
 
-    let atx_notif = action_tx.clone();
-    let on_clock_click = Arc::new(move || {
-        let _ = atx_notif.send(BarAction::ToggleNotificationCenter);
+    let on_clock_click = Arc::new(|_: &mut Window, cx: &mut App| {
+        crate::modules::toggle_notification_center(cx);
     });
 
-    let atx_music = action_tx.clone();
-    let on_music_click = Arc::new(move || {
-        let _ = atx_music.send(BarAction::ToggleMusic);
+    let on_music_click = Arc::new(|_: &mut Window, cx: &mut App| {
+        crate::modules::toggle_music(cx);
     });
 
-    let atx_dash = action_tx.clone();
-    let on_dashboard_click = Arc::new(move || {
-        let _ = atx_dash.send(BarAction::ToggleDashboard);
+    let on_dashboard_click = Arc::new(|_: &mut Window, cx: &mut App| {
+        crate::modules::toggle_dashboard(cx);
     });
 
-    let atx_cap = action_tx.clone();
-    let on_capture_click = Arc::new(move || {
-        let _ = atx_cap.send(BarAction::ToggleScreenCapture);
+    let on_capture_click = Arc::new(|_: &mut Window, cx: &mut App| {
+        crate::modules::toggle_screencapture(cx);
     });
 
-    let atx_wall = action_tx.clone();
-    let on_wallpaper_click = Arc::new(move || {
-        let _ = atx_wall.send(BarAction::ToggleWallpaperSelector);
+    let on_wallpaper_click = Arc::new(|_: &mut Window, cx: &mut App| {
+        crate::modules::toggle_wallpaper_selector(cx);
     });
 
-    let atx_l = action_tx.clone();
-    let on_launcher_click = Arc::new(move || {
-        let _ = atx_l.send(BarAction::ToggleLauncher);
+    let on_launcher_click = Arc::new(|_: &mut Window, cx: &mut App| {
+        crate::modules::toggle_launcher(cx);
     });
 
-    let atx_p = action_tx.clone();
-    let on_power_click = Arc::new(move || {
-        let _ = atx_p.send(BarAction::TogglePowerMenu);
+    let on_power_click = Arc::new(|_: &mut Window, cx: &mut App| {
+        crate::modules::toggle_power_menu(cx);
     });
 
     let on_tray_click = Arc::new(|id: String| {
@@ -91,9 +81,8 @@ pub fn build_bar_actions(
         });
     });
 
-    let atx_tray_menu = action_tx.clone();
-    let on_tray_menu = Arc::new(move |id: String| {
-        let _ = atx_tray_menu.send(BarAction::OpenTrayMenu(id));
+    let on_tray_menu = Arc::new(move |id: String, _: &mut Window, cx: &mut App| {
+        crate::modules::open_tray_menu(id, cx);
     });
 
     let comp_close = compositor;
@@ -141,3 +130,4 @@ pub fn build_bar_actions(
         on_window_close: Some(on_window_close),
     }
 }
+

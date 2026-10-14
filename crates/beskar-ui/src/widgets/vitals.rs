@@ -29,12 +29,12 @@ pub struct VitalsWidget {
     modules: Option<Vec<beskar_core::config::BarModule>>,
     on_volume_click: Option<Arc<dyn Fn() + Send + Sync>>,
     on_volume_scroll: Option<Arc<dyn Fn(i32) + Send + Sync>>,
-    on_power_click: Option<Arc<dyn Fn() + Send + Sync>>,
-    on_control_center_click: Option<Arc<dyn Fn() + Send + Sync>>,
-    on_capture_click: Option<Arc<dyn Fn() + Send + Sync>>,
-    on_wallpaper_click: Option<Arc<dyn Fn() + Send + Sync>>,
+    on_power_click: Option<Arc<dyn Fn(&mut Window, &mut App) + Send + Sync>>,
+    on_control_center_click: Option<Arc<dyn Fn(&mut Window, &mut App) + Send + Sync>>,
+    on_capture_click: Option<Arc<dyn Fn(&mut Window, &mut App) + Send + Sync>>,
+    on_wallpaper_click: Option<Arc<dyn Fn(&mut Window, &mut App) + Send + Sync>>,
     on_tray_click: Option<Arc<dyn Fn(String) + Send + Sync>>,
-    on_tray_menu: Option<Arc<dyn Fn(String) + Send + Sync>>,
+    on_tray_menu: Option<Arc<dyn Fn(String, &mut Window, &mut App) + Send + Sync>>,
 }
 
 impl VitalsWidget {
@@ -72,7 +72,7 @@ impl VitalsWidget {
         self
     }
 
-    pub fn on_tray_menu(mut self, handler: impl Fn(String) + Send + Sync + 'static) -> Self {
+    pub fn on_tray_menu(mut self, handler: impl Fn(String, &mut Window, &mut App) + Send + Sync + 'static) -> Self {
         self.on_tray_menu = Some(Arc::new(handler));
         self
     }
@@ -113,22 +113,22 @@ impl VitalsWidget {
         self
     }
 
-    pub fn on_power_click(mut self, handler: impl Fn() + Send + Sync + 'static) -> Self {
+    pub fn on_power_click(mut self, handler: impl Fn(&mut Window, &mut App) + Send + Sync + 'static) -> Self {
         self.on_power_click = Some(Arc::new(handler));
         self
     }
 
-    pub fn on_control_center_click(mut self, handler: impl Fn() + Send + Sync + 'static) -> Self {
+    pub fn on_control_center_click(mut self, handler: impl Fn(&mut Window, &mut App) + Send + Sync + 'static) -> Self {
         self.on_control_center_click = Some(Arc::new(handler));
         self
     }
 
-    pub fn on_capture_click(mut self, handler: impl Fn() + Send + Sync + 'static) -> Self {
+    pub fn on_capture_click(mut self, handler: impl Fn(&mut Window, &mut App) + Send + Sync + 'static) -> Self {
         self.on_capture_click = Some(Arc::new(handler));
         self
     }
 
-    pub fn on_wallpaper_click(mut self, handler: impl Fn() + Send + Sync + 'static) -> Self {
+    pub fn on_wallpaper_click(mut self, handler: impl Fn(&mut Window, &mut App) + Send + Sync + 'static) -> Self {
         self.on_wallpaper_click = Some(Arc::new(handler));
         self
     }
@@ -205,18 +205,18 @@ impl RenderOnce for VitalsWidget {
 
                     tray_row = tray_row.child(
                         div()
-                            .on_mouse_down(MouseButton::Right, move |_, _, cx| {
+                            .on_mouse_down(MouseButton::Right, move |_, window, cx| {
                                 cx.stop_propagation();
-                                if let Some(ref cb) = on_ctx { cb(id_r.clone()); }
+                                if let Some(ref cb) = on_ctx { cb(id_r.clone(), window, cx); }
                             })
                             .child(
                                 Button::new(SharedString::from(format!("tray-btn-{}", item.id)))
                                     .ghost()
                                     .compact()
                                     .icon(Icon::new(icon_name).size(px(14.0)).text_color(beskar_theme::Theme::fg()))
-                                    .on_click(move |_, _, _| {
+                                    .on_click(move |_, window, cx| {
                                         if let Some(ref cb) = on_tc { cb(id_l.clone()); }
-                                        else if let Some(ref cb) = on_cc_fb { cb(); }
+                                        else if let Some(ref cb) = on_cc_fb { cb(window, cx); }
                                     }),
                             ),
                     );
@@ -243,7 +243,7 @@ impl RenderOnce for VitalsWidget {
                                 .text_color(beskar_theme::Theme::fg()),
                         )
                         .when_some(on_cc.clone(), |btn, cb| {
-                            btn.on_click(move |_, _, _| (cb)())
+                            btn.on_click(move |_, window, cx| (cb)(window, cx))
                         }),
                 )
                 .child(
@@ -256,7 +256,7 @@ impl RenderOnce for VitalsWidget {
                                 .text_color(beskar_theme::Theme::fg()),
                         )
                         .when_some(self.on_capture_click, |btn, cb| {
-                            btn.on_click(move |_, _, _| (cb)())
+                            btn.on_click(move |_, window, cx| (cb)(window, cx))
                         }),
                 )
                 .child(
@@ -269,7 +269,7 @@ impl RenderOnce for VitalsWidget {
                                 .text_color(beskar_theme::Theme::fg()),
                         )
                         .when_some(self.on_wallpaper_click, |btn, cb| {
-                            btn.on_click(move |_, _, _| (cb)())
+                            btn.on_click(move |_, window, cx| (cb)(window, cx))
                         }),
                 )
             })
@@ -385,7 +385,7 @@ impl RenderOnce for VitalsWidget {
                             }),
                         )
                         .when_some(on_cc.clone(), |btn, cb| {
-                            btn.on_click(move |_, _, _| (cb)())
+                            btn.on_click(move |_, window, cx| (cb)(window, cx))
                         }),
                 )
                 .child(
@@ -402,7 +402,7 @@ impl RenderOnce for VitalsWidget {
                                 }),
                         )
                         .when_some(on_cc.clone(), |btn, cb| {
-                            btn.on_click(move |_, _, _| (cb)())
+                            btn.on_click(move |_, window, cx| (cb)(window, cx))
                         }),
                 )
                 .child(
@@ -420,7 +420,7 @@ impl RenderOnce for VitalsWidget {
                                 .cursor_pointer()
                         })
                         .when_some(on_cc.clone(), |el, cb| {
-                            el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
+                            el.on_mouse_down(MouseButton::Left, move |_, window, cx| (cb)(window, cx))
                         })
                         .child(Icon::new(battery_icon).size(px(14.0)).text_color(battery_color))
                         .child(
@@ -444,7 +444,7 @@ impl RenderOnce for VitalsWidget {
                                 .text_color(beskar_theme::Theme::danger()),
                         )
                         .when_some(on_pwr, |btn, cb| {
-                            btn.on_click(move |_, _, _| (cb)())
+                            btn.on_click(move |_, window, cx| (cb)(window, cx))
                         }),
                 )
             })

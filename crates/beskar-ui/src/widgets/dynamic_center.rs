@@ -25,8 +25,8 @@ pub struct DynamicCenterWidget {
     width: Option<Pixels>,
     cava_bands: Option<[u8; 4]>,
     on_play_pause: Option<Arc<dyn Fn() + Send + Sync>>,
-    on_clock_click: Option<Arc<dyn Fn() + Send + Sync>>,
-    on_media_click: Option<Arc<dyn Fn() + Send + Sync>>,
+    on_clock_click: Option<Arc<dyn Fn(&mut Window, &mut App) + Send + Sync>>,
+    on_media_click: Option<Arc<dyn Fn(&mut Window, &mut App) + Send + Sync>>,
 }
 
 impl DynamicCenterWidget {
@@ -78,12 +78,12 @@ impl DynamicCenterWidget {
         self
     }
 
-    pub fn on_clock_click(mut self, handler: impl Fn() + Send + Sync + 'static) -> Self {
+    pub fn on_clock_click(mut self, handler: impl Fn(&mut Window, &mut App) + Send + Sync + 'static) -> Self {
         self.on_clock_click = Some(Arc::new(handler));
         self
     }
 
-    pub fn on_media_click(mut self, handler: impl Fn() + Send + Sync + 'static) -> Self {
+    pub fn on_media_click(mut self, handler: impl Fn(&mut Window, &mut App) + Send + Sync + 'static) -> Self {
         self.on_media_click = Some(Arc::new(handler));
         self
     }
@@ -126,7 +126,7 @@ impl RenderOnce for DynamicCenterWidget {
             .rounded_md()
             .hover(|s| s.bg(beskar_theme::Theme::bg_secondary()).cursor_pointer())
             .when_some(on_clock_click, |el, cb| {
-                el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
+                el.on_mouse_down(MouseButton::Left, move |_, window, cx| (cb)(window, cx))
             })
             .child(
                 Icon::new(if is_day { IconName::Sun } else { IconName::Moon })
@@ -283,7 +283,7 @@ impl RenderOnce for DynamicCenterWidget {
                                 .rounded_md()
                                 .hover(|s| s.bg(beskar_theme::Theme::bg_secondary()).cursor_pointer())
                                 .when_some(on_media, |el, cb| {
-                                    el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
+                                    el.on_mouse_down(MouseButton::Left, move |_, window, cx| (cb)(window, cx))
                                 })
                                 .child(media_text),
                         ),

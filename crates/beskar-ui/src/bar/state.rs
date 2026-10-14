@@ -66,6 +66,9 @@ pub struct BarState {
     pub modules_right: Option<Vec<beskar_core::config::BarModule>>,
 }
 
+pub type BarUiCallback = Arc<dyn Fn(&mut gpui_kit::Window, &mut gpui_kit::App) + Send + Sync>;
+pub type BarTrayMenuCallback = Arc<dyn Fn(String, &mut gpui_kit::Window, &mut gpui_kit::App) + Send + Sync>;
+
 /// Callbacks for interactive bar actions.
 #[derive(Clone, Default)]
 pub struct BarActions {
@@ -74,16 +77,17 @@ pub struct BarActions {
     pub on_play_pause: Option<Arc<dyn Fn() + Send + Sync>>,
     pub on_volume_click: Option<Arc<dyn Fn() + Send + Sync>>,
     pub on_volume_scroll: Option<Arc<dyn Fn(i32) + Send + Sync>>,
-    pub on_control_center_click: Option<Arc<dyn Fn() + Send + Sync>>,
-    pub on_power_click: Option<Arc<dyn Fn() + Send + Sync>>,
-    pub on_launcher_click: Option<Arc<dyn Fn() + Send + Sync>>,
-    pub on_clock_click: Option<Arc<dyn Fn() + Send + Sync>>,
-    pub on_dashboard_click: Option<Arc<dyn Fn() + Send + Sync>>,
-    pub on_music_click: Option<Arc<dyn Fn() + Send + Sync>>,
-    pub on_capture_click: Option<Arc<dyn Fn() + Send + Sync>>,
-    pub on_wallpaper_click: Option<Arc<dyn Fn() + Send + Sync>>,
+    pub on_control_center_click: Option<BarUiCallback>,
+    pub on_power_click: Option<BarUiCallback>,
+    pub on_launcher_click: Option<BarUiCallback>,
+    pub on_clock_click: Option<BarUiCallback>,
+    pub on_dashboard_click: Option<BarUiCallback>,
+    pub on_music_click: Option<BarUiCallback>,
+    pub on_capture_click: Option<BarUiCallback>,
+    pub on_wallpaper_click: Option<BarUiCallback>,
     pub on_tray_click: Option<Arc<dyn Fn(String) + Send + Sync>>,
-    pub on_tray_menu: Option<Arc<dyn Fn(String) + Send + Sync>>,
+    pub on_tray_menu: Option<BarTrayMenuCallback>,
     pub on_window_click: Option<Arc<dyn Fn() + Send + Sync>>,
     pub on_window_close: Option<Arc<dyn Fn() + Send + Sync>>,
 }
+

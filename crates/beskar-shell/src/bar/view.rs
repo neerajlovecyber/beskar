@@ -9,22 +9,6 @@ use gpui_kit::*;
 
 use crate::modules;
 
-#[allow(dead_code, clippy::enum_variant_names)]
-pub enum BarAction {
-    ToggleControlCenter,
-    ToggleLauncher,
-    TogglePowerMenu,
-    ToggleSettings,
-    ToggleLockScreen,
-    ToggleClipboard,
-    ToggleDashboard,
-    ToggleMusic,
-    ToggleNotificationCenter,
-    ToggleScreenCapture,
-    ToggleWallpaperSelector,
-    OpenTrayMenu(String),
-}
-
 pub struct DesktopBarView {
     workspaces: Vec<WorkspaceInfo>,
     active_ws: u64,
@@ -42,7 +26,6 @@ pub struct DesktopBarView {
     island_spring: beskar_ui::SpringValue,
     tray_items: Vec<beskar_core::models::TrayItem>,
     notifications: Vec<NotificationItem>,
-    action_tx: tokio::sync::mpsc::UnboundedSender<BarAction>,
     compositor: Arc<dyn CompositorBackend>,
     is_convex: bool,
     config: beskar_core::config::ShellConfig,
@@ -86,14 +69,11 @@ impl DesktopBarView {
                 let now = Local::now();
                 let time = now.format("%-I:%M %p").to_string();
                 let date = now.format("%a %b %-d").to_string();
-                let res = this.update(cx, |this, cx| {
+                let _ = this.update(cx, |this, cx| {
                     this.time_str = time;
                     this.date_str = date;
                     cx.notify();
                 });
-                if res.is_err() {
-                    break;
-                }
             }
         })
         .detach();
@@ -129,7 +109,7 @@ impl DesktopBarView {
                     180.0
                 };
 
-                let res = this.update(cx, |this, cx| {
+                let _ = this.update(cx, |this, cx| {
                     this.battery_percent = snap.battery.percentage.round() as u8;
                     this.is_charging = snap.battery.is_charging;
                     this.volume_percent = (snap.audio.volume * 100.0).round() as u8;
@@ -141,9 +121,6 @@ impl DesktopBarView {
                     modules::sync_notification_toasts(snap.notifications, cx);
                     cx.notify();
                 });
-                if res.is_err() {
-                    break;
-                }
             }
         })
         .detach();
@@ -155,14 +132,11 @@ impl DesktopBarView {
                 let snap = vitals_rx.borrow().clone();
                 let cpu = snap.cpu.global_usage_percent;
                 let ram = snap.memory.usage_percent;
-                let res = this.update(cx, |this, cx| {
+                let _ = this.update(cx, |this, cx| {
                     this.cpu_percent = Some(cpu);
                     this.ram_percent = Some(ram);
                     cx.notify();
                 });
-                if res.is_err() {
-                    break;
-                }
             }
         })
         .detach();
@@ -171,16 +145,13 @@ impl DesktopBarView {
         cx.spawn(async move |this, cx| {
             loop {
                 let mut is_animating = false;
-                let res = this.update(cx, |this, cx| {
+                let _ = this.update(cx, |this, cx| {
                     if !this.island_spring.is_settled() {
                         this.island_spring.step(1.0 / 60.0);
                         is_animating = true;
                         cx.notify();
                     }
                 });
-                if res.is_err() {
-                    break;
-                }
 
                 let sleep_duration = if is_animating {
                     std::time::Duration::from_millis(16) // 60 FPS during motion
@@ -193,58 +164,7 @@ impl DesktopBarView {
         })
         .detach();
 
-        // 5. UI Actions Channel (e.g. Control Center toggle)
-        let (action_tx, mut action_rx) = tokio::sync::mpsc::unbounded_channel::<BarAction>();
-        cx.spawn(async move |this, cx| {
-            while let Some(action) = action_rx.recv().await {
-                let res = this.update(cx, |_this, cx| {
-                    match action {
-                        BarAction::ToggleControlCenter => {
-                            modules::toggle_control_center(cx);
-                        }
-                        BarAction::ToggleLauncher => {
-                            modules::toggle_launcher(cx);
-                        }
-                        BarAction::TogglePowerMenu => {
-                            modules::toggle_power_menu(cx);
-                        }
-                        BarAction::ToggleSettings => {
-                            modules::toggle_settings(cx);
-                        }
-                        BarAction::ToggleLockScreen => {
-                            modules::toggle_lockscreen(cx);
-                        }
-                        BarAction::ToggleClipboard => {
-                            modules::toggle_clipboard(cx);
-                        }
-                        BarAction::ToggleDashboard => {
-                            modules::toggle_dashboard(cx);
-                        }
-                        BarAction::ToggleMusic => {
-                            modules::toggle_music(cx);
-                        }
-                        BarAction::ToggleNotificationCenter => {
-                            modules::toggle_notification_center(cx);
-                        }
-                        BarAction::ToggleScreenCapture => {
-                            modules::toggle_screencapture(cx);
-                        }
-                        BarAction::ToggleWallpaperSelector => {
-                            modules::toggle_wallpaper_selector(cx);
-                        }
-                        BarAction::OpenTrayMenu(key) => {
-                            modules::open_tray_menu(key, cx);
-                        }
-                    }
-                });
-                if res.is_err() {
-                    break;
-                }
-            }
-        })
-        .detach();
-
-        // 6. CAVA spectrum audio equalizer loop (4 bands for Dynamic Center island)
+        // 5. CAVA spectrum audio equalizer loop (4 bands for Dynamic Center island)
         cx.spawn(async move |this, cx| {
             let mut tick: u32 = 0;
             loop {
@@ -263,7 +183,7 @@ impl DesktopBarView {
                     tick = tick.wrapping_add(1);
                 }
 
-                let res = this.update(cx, |this, cx| {
+                let _ = this.update(cx, |this, cx| {
                     if this.media.as_ref().is_some_and(|m| m.2) {
                         let b0 = (((tick as f32 * 0.20).sin().abs() * 70.0) + 20.0) as u8;
                         let b1 = (((tick as f32 * 0.28).cos().abs() * 80.0) + 15.0) as u8;
@@ -276,25 +196,23 @@ impl DesktopBarView {
                         cx.notify();
                     }
                 });
-                if res.is_err() {
-                    break;
-                }
             }
         })
         .detach();
 
-        // 7. Systemd logind Session Lock Listener
-        let atx_lock = action_tx.clone();
+        // 6. Systemd logind Session Lock Listener
         let (lock_tx, mut lock_rx) = tokio::sync::mpsc::unbounded_channel::<()>();
         beskar_services::listen_logind_lock(lock_tx);
-        cx.spawn(async move |_this, _cx| {
+        cx.spawn(async move |this, cx| {
             while let Some(()) = lock_rx.recv().await {
-                let _ = atx_lock.send(BarAction::ToggleLockScreen);
+                let _ = this.update(cx, |_this, cx| {
+                    crate::modules::toggle_lockscreen(cx);
+                });
             }
         })
         .detach();
 
-        // 8. Live Compositor Event Stream (256-event buffer with non-blocking dispatch)
+        // 7. Live Compositor Event Stream (256-event buffer with non-blocking dispatch)
         let (tx, mut rx) = tokio::sync::mpsc::channel(256);
         let comp_listener = compositor.clone();
         tokio::spawn(async move {
@@ -303,7 +221,7 @@ impl DesktopBarView {
 
         cx.spawn(async move |this, cx| {
             while let Some(event) = rx.recv().await {
-                let res = this.update(cx, |this, cx| {
+                let _ = this.update(cx, |this, cx| {
                     match event {
                         beskar_core::events::CompositorEvent::WorkspacesChanged(workspaces) => {
                             let active = workspaces
@@ -339,14 +257,11 @@ impl DesktopBarView {
                         _ => {}
                     }
                 });
-                if res.is_err() {
-                    break;
-                }
             }
         })
         .detach();
 
-        // 9. Reactive Config Change Listener (Live Theme & Bar Style Switching)
+        // 8. Reactive Config Change Listener (Live Theme & Bar Style Switching)
         let mut cfg_rx = beskar_core::config::subscribe_config();
         cx.spawn(async move |this, cx| {
             while let Ok(cfg) = cfg_rx.recv().await {
@@ -358,14 +273,11 @@ impl DesktopBarView {
                 });
 
                 let is_convex = cfg.bar_style == beskar_core::config::BarStyleConfig::Convex;
-                let res = this.update(cx, |this, cx| {
+                let _ = this.update(cx, |this, cx| {
                     this.is_convex = is_convex;
                     this.config = cfg;
                     cx.notify();
                 });
-                if res.is_err() {
-                    break;
-                }
             }
         })
         .detach();
@@ -390,7 +302,6 @@ impl DesktopBarView {
             island_spring,
             tray_items: Vec::new(),
             notifications: Vec::new(),
-            action_tx,
             compositor,
             is_convex,
             config: initial_cfg,
@@ -402,7 +313,6 @@ impl Render for DesktopBarView {
     fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
         let actions = crate::bar::actions::build_bar_actions(
             self.compositor.clone(),
-            self.action_tx.clone(),
             self.active_window.as_ref(),
         );
 
@@ -438,3 +348,4 @@ impl Render for DesktopBarView {
             .child(BeskarBar::from_state(state, actions))
     }
 }
+

@@ -128,14 +128,14 @@ impl BeskarBar {
                     .bg(beskar_theme::Theme::bg_secondary())
                     .text_color(beskar_theme::Theme::accent())
             })
-            .on_mouse_down(MouseButton::Left, move |_, _, _| {
+            .on_mouse_down(MouseButton::Left, move |_, window, cx| {
                 if let Some(handler) = on_star.as_ref() {
-                    handler();
+                    handler(window, cx);
                 }
             })
-            .on_mouse_down(MouseButton::Right, move |_, _, _| {
+            .on_mouse_down(MouseButton::Right, move |_, window, cx| {
                 if let Some(handler) = on_dash.as_ref() {
-                    handler();
+                    handler(window, cx);
                 }
             })
             .child("✦");
@@ -241,13 +241,13 @@ impl BeskarBar {
             center_widget = center_widget.on_play_pause(move || (handler)());
         }
         if let Some(handler) = actions.on_clock_click {
-            center_widget = center_widget.on_clock_click(move || (handler)());
+            center_widget = center_widget.on_clock_click(move |window, cx| (handler)(window, cx));
         }
         if let Some(handler) = actions.on_music_click {
-            center_widget = center_widget.on_media_click(move || (handler)());
+            center_widget = center_widget.on_media_click(move |window, cx| (handler)(window, cx));
         } else if let Some(ref handler) = actions.on_control_center_click {
             let h = handler.clone();
-            center_widget = center_widget.on_media_click(move || (h)());
+            center_widget = center_widget.on_media_click(move |window, cx| (h)(window, cx));
         }
         let center_pill = IslandPill::new().convex(is_convex).child(center_widget);
 
@@ -265,22 +265,22 @@ impl BeskarBar {
             vitals_widget = vitals_widget.on_volume_scroll(move |delta| (handler)(delta));
         }
         if let Some(handler) = actions.on_control_center_click {
-            vitals_widget = vitals_widget.on_control_center_click(move || (handler)());
+            vitals_widget = vitals_widget.on_control_center_click(move |window, cx| (handler)(window, cx));
         }
         if let Some(handler) = actions.on_capture_click {
-            vitals_widget = vitals_widget.on_capture_click(move || (handler)());
+            vitals_widget = vitals_widget.on_capture_click(move |window, cx| (handler)(window, cx));
         }
         if let Some(handler) = actions.on_wallpaper_click {
-            vitals_widget = vitals_widget.on_wallpaper_click(move || (handler)());
+            vitals_widget = vitals_widget.on_wallpaper_click(move |window, cx| (handler)(window, cx));
         }
         if let Some(handler) = actions.on_power_click {
-            vitals_widget = vitals_widget.on_power_click(move || (handler)());
+            vitals_widget = vitals_widget.on_power_click(move |window, cx| (handler)(window, cx));
         }
         if let Some(handler) = actions.on_tray_click {
             vitals_widget = vitals_widget.on_tray_click(move |id| (handler)(id));
         }
         if let Some(handler) = actions.on_tray_menu {
-            vitals_widget = vitals_widget.on_tray_menu(move |id| (handler)(id));
+            vitals_widget = vitals_widget.on_tray_menu(move |id, window, cx| (handler)(id, window, cx));
         }
         let right_pill = IslandPill::new().convex(is_convex).child(vitals_widget);
 
@@ -314,16 +314,16 @@ impl BeskarBar {
         on_play_pause: Option<Arc<dyn Fn() + Send + Sync>>,
         on_volume_click: Option<Arc<dyn Fn() + Send + Sync>>,
         on_volume_scroll: Option<Arc<dyn Fn(i32) + Send + Sync>>,
-        on_control_center_click: Option<Arc<dyn Fn() + Send + Sync>>,
-        on_power_click: Option<Arc<dyn Fn() + Send + Sync>>,
-        on_launcher_click: Option<Arc<dyn Fn() + Send + Sync>>,
-        on_clock_click: Option<Arc<dyn Fn() + Send + Sync>>,
-        on_dashboard_click: Option<Arc<dyn Fn() + Send + Sync>>,
-        on_music_click: Option<Arc<dyn Fn() + Send + Sync>>,
-        on_capture_click: Option<Arc<dyn Fn() + Send + Sync>>,
-        on_wallpaper_click: Option<Arc<dyn Fn() + Send + Sync>>,
+        on_control_center_click: Option<crate::bar::state::BarUiCallback>,
+        on_power_click: Option<crate::bar::state::BarUiCallback>,
+        on_launcher_click: Option<crate::bar::state::BarUiCallback>,
+        on_clock_click: Option<crate::bar::state::BarUiCallback>,
+        on_dashboard_click: Option<crate::bar::state::BarUiCallback>,
+        on_music_click: Option<crate::bar::state::BarUiCallback>,
+        on_capture_click: Option<crate::bar::state::BarUiCallback>,
+        on_wallpaper_click: Option<crate::bar::state::BarUiCallback>,
         on_tray_click: Option<Arc<dyn Fn(String) + Send + Sync>>,
-        on_tray_menu: Option<Arc<dyn Fn(String) + Send + Sync>>,
+        on_tray_menu: Option<crate::bar::state::BarTrayMenuCallback>,
         on_window_click: Option<Arc<dyn Fn() + Send + Sync>>,
         on_window_close: Option<Arc<dyn Fn() + Send + Sync>>,
     ) -> Self {
