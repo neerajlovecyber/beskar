@@ -34,6 +34,7 @@ sysinfo = { version = "0.33", default-features = false, features = ["component",
 notify = "8.0"
 arboard = { version = "3.6", default-features = false, features = ["wayland-data-control"] }
 hyprland = "0.4.0-beta.3"
+uuid = { version = "1.16", features = ["v5"] }
 
 # Workspace crates
 beskar-core = { path = "crates/beskar-core" }

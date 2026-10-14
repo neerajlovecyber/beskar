@@ -1,4 +1,4 @@
-#![recursion_limit = "1024"]
+#![recursion_limit = "4096"]
 
 pub mod bar;
 pub mod modules;
@@ -19,6 +19,10 @@ async fn main() -> anyhow::Result<()> {
 
     let compositor = detect_compositor();
     info!("Active compositor backend: {:?}", compositor.kind());
+
+    if let Ok(outputs) = compositor.get_outputs().await {
+        bar::update_cached_outputs(outputs);
+    }
 
     // Query initial workspace list from active compositor session
     let (initial_workspaces, active_ws) = match compositor.get_workspaces().await {
@@ -120,6 +124,23 @@ async fn main() -> anyhow::Result<()> {
                         );
                         last_display_ids = current_ids;
                         let comp = comp_hotplug.clone();
+
+                        if let Ok(outputs) = comp.get_outputs().await {
+                            bar::update_cached_outputs(outputs);
+                        }
+
+                        let workspaces = comp.get_workspaces().await.unwrap_or_default();
+                        let active = workspaces
+                            .iter()
+                            .find(|w| w.is_focused || w.is_active)
+                            .map(|w| w.id)
+                            .unwrap_or(1);
+                        let window = comp
+                            .get_windows()
+                            .await
+                            .ok()
+                            .and_then(|wins| wins.into_iter().find(|w| w.is_focused));
+
                         let _ = cx.update(move |cx| {
                             let cfg = beskar_core::config::ShellConfig::load();
                             let is_convex = cfg.bar_style == beskar_core::config::BarStyleConfig::Convex;
@@ -128,9 +149,9 @@ async fn main() -> anyhow::Result<()> {
                             let bar_margin_top = if is_convex { 0.0 } else { 8.0 };
 
                             bar::reload_bars(
-                                Vec::new(),
-                                1,
-                                None,
+                                workspaces,
+                                active,
+                                window,
                                 is_convex,
                                 bar_height,
                                 bar_margin_top,

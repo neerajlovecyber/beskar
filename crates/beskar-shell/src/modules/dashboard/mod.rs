@@ -90,9 +90,11 @@ impl DashboardView {
                             .detach();
                     }
                     DashboardMsg::OpenProfile => {
-                        let _ = std::process::Command::new("xdg-open")
-                            .arg("https://github.com")
-                            .spawn();
+                        tokio::task::spawn_blocking(|| {
+                            let _ = std::process::Command::new("xdg-open")
+                                .arg("https://github.com")
+                                .spawn();
+                        });
                     }
                     DashboardMsg::Close => {
                         let _ = this.update(cx, |_, cx| {

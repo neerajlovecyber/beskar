@@ -142,9 +142,11 @@ impl MusicPlayerView {
                         beskar_services::MprisService::next();
                     }
                     MusicMsg::Seek(fraction) => {
-                        let _ = std::process::Command::new("playerctl")
-                            .args(["position", &format!("{:.1}", fraction * 200.0)])
-                            .spawn();
+                        tokio::task::spawn_blocking(move || {
+                            let _ = std::process::Command::new("playerctl")
+                                .args(["position", &format!("{:.1}", fraction * 200.0)])
+                                .spawn();
+                        });
                     }
                     MusicMsg::ToggleLoop => {
                         let _ = this.update(cx, |this, cx| {

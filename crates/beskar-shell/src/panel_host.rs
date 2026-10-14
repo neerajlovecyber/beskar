@@ -288,6 +288,7 @@ mod tests {
     use super::*;
 
     struct MockPanel;
+    #[allow(dead_code)]
     struct MockLeftPanel;
 
     impl Render for MockPanel {
@@ -328,7 +329,7 @@ mod tests {
         }
     }
 
-    #[test]
+    #[core::prelude::v1::test]
     fn test_panel_module_defaults() {
         assert_eq!(MockPanel::ID, "mock_panel");
         assert_eq!(MockPanel::slot(), Slot::Focus);
@@ -339,7 +340,7 @@ mod tests {
         assert_eq!(MockPanel::layer(), Layer::Overlay);
     }
 
-    #[test]
+    #[core::prelude::v1::test]
     fn test_panel_registration() {
         PanelHost::register::<MockPanel>();
         let guard = PANEL_REGISTRY.lock().unwrap();
@@ -348,7 +349,7 @@ mod tests {
         assert_eq!(sguard.as_ref().unwrap().get("mock_panel"), Some(&Slot::Focus));
     }
 
-    #[test]
+    #[core::prelude::v1::test]
     fn test_slot_idx() {
         assert_eq!(Slot::Focus.idx(), 0);
         assert_eq!(Slot::Left.idx(), 1);
@@ -356,7 +357,7 @@ mod tests {
         assert_eq!(Slot::Right.idx(), 3);
     }
 
-    #[test]
+    #[core::prelude::v1::test]
     fn test_slot_distinctness() {
         assert_ne!(Slot::Focus, Slot::Left);
         assert_ne!(Slot::Right, Slot::Center);

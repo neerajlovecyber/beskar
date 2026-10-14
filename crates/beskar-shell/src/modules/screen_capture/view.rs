@@ -50,44 +50,46 @@ impl CaptureMode {
             .map(|d| d.as_secs())
             .unwrap_or(0);
         let target_file = format!("{}/Screenshot_{}.png", shot_dir, timestamp);
+        let mode = *self;
 
-        match self {
-            CaptureMode::FullScreen => {
-                let cmd = format!("grim \"{}\" && wl-copy < \"{}\"", target_file, target_file);
-                let _ = std::process::Command::new("sh").args(["-c", &cmd]).spawn();
-            }
-            CaptureMode::FullScreen3s => {
-                let cmd = format!("sleep 3 && grim \"{}\" && wl-copy < \"{}\"", target_file, target_file);
-                let _ = std::process::Command::new("sh").args(["-c", &cmd]).spawn();
-            }
-            CaptureMode::SelectArea => {
-                let cmd = format!("grim -g \"$(slurp)\" \"{}\" && wl-copy < \"{}\"", target_file, target_file);
-                let _ = std::process::Command::new("sh").args(["-c", &cmd]).spawn();
-            }
-            CaptureMode::SelectArea3s => {
-                let cmd = format!("sleep 3 && grim -g \"$(slurp)\" \"{}\" && wl-copy < \"{}\"", target_file, target_file);
-                let _ = std::process::Command::new("sh").args(["-c", &cmd]).spawn();
-            }
-            CaptureMode::ActiveWindow => {
-                let cmd = format!("grim -g \"$(slurp)\" \"{}\" && wl-copy < \"{}\"", target_file, target_file);
-                let _ = std::process::Command::new("sh").args(["-c", &cmd]).spawn();
-            }
-            CaptureMode::ExtractTextOcr => {
-                let cmd = "grim -g \"$(slurp)\" /tmp/ocr_snip.png && tesseract /tmp/ocr_snip.png stdout | wl-copy";
-                let _ = std::process::Command::new("sh").args(["-c", cmd]).spawn();
-            }
-            CaptureMode::RecordToggle => {
-                // If wf-recorder is running, kill it; otherwise start recording
-                let check = std::process::Command::new("pidof").arg("wf-recorder").output();
-                if check.map(|o| o.status.success()).unwrap_or(false) {
-                    let _ = std::process::Command::new("pkill").arg("wf-recorder").spawn();
-                    return;
+        tokio::task::spawn_blocking(move || {
+            match mode {
+                CaptureMode::FullScreen => {
+                    let cmd = format!("grim \"{}\" && wl-copy < \"{}\"", target_file, target_file);
+                    let _ = std::process::Command::new("sh").args(["-c", &cmd]).spawn();
                 }
-                let rec_file = format!("{}/Recording_{}.mp4", shot_dir, timestamp);
-                let cmd = format!("wf-recorder -g \"$(slurp)\" -f \"{}\"", rec_file);
-                let _ = std::process::Command::new("sh").args(["-c", &cmd]).spawn();
+                CaptureMode::FullScreen3s => {
+                    let cmd = format!("sleep 3 && grim \"{}\" && wl-copy < \"{}\"", target_file, target_file);
+                    let _ = std::process::Command::new("sh").args(["-c", &cmd]).spawn();
+                }
+                CaptureMode::SelectArea => {
+                    let cmd = format!("grim -g \"$(slurp)\" \"{}\" && wl-copy < \"{}\"", target_file, target_file);
+                    let _ = std::process::Command::new("sh").args(["-c", &cmd]).spawn();
+                }
+                CaptureMode::SelectArea3s => {
+                    let cmd = format!("sleep 3 && grim -g \"$(slurp)\" \"{}\" && wl-copy < \"{}\"", target_file, target_file);
+                    let _ = std::process::Command::new("sh").args(["-c", &cmd]).spawn();
+                }
+                CaptureMode::ActiveWindow => {
+                    let cmd = format!("grim -g \"$(slurp)\" \"{}\" && wl-copy < \"{}\"", target_file, target_file);
+                    let _ = std::process::Command::new("sh").args(["-c", &cmd]).spawn();
+                }
+                CaptureMode::ExtractTextOcr => {
+                    let cmd = "grim -g \"$(slurp)\" /tmp/ocr_snip.png && tesseract /tmp/ocr_snip.png stdout | wl-copy";
+                    let _ = std::process::Command::new("sh").args(["-c", cmd]).spawn();
+                }
+                CaptureMode::RecordToggle => {
+                    let check = std::process::Command::new("pidof").arg("wf-recorder").output();
+                    if check.map(|o| o.status.success()).unwrap_or(false) {
+                        let _ = std::process::Command::new("pkill").arg("wf-recorder").spawn();
+                        return;
+                    }
+                    let rec_file = format!("{}/Recording_{}.mp4", shot_dir, timestamp);
+                    let cmd = format!("wf-recorder -g \"$(slurp)\" -f \"{}\"", rec_file);
+                    let _ = std::process::Command::new("sh").args(["-c", &cmd]).spawn();
+                }
             }
-        }
+        });
     }
 }
 

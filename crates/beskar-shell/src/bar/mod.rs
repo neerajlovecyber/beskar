@@ -34,6 +34,50 @@ pub fn display_id_for_window(window: &Window) -> Option<DisplayId> {
         .copied()
 }
 
+static CACHED_OUTPUTS: Mutex<Option<Vec<beskar_core::models::OutputInfo>>> = Mutex::new(None);
+
+/// Update cached compositor outputs for monitor resolution and fractional scale lookups.
+pub fn update_cached_outputs(outputs: Vec<beskar_core::models::OutputInfo>) {
+    if let Ok(mut guard) = CACHED_OUTPUTS.lock() {
+        *guard = Some(outputs);
+    }
+}
+
+/// Logical (scale-corrected) size of the monitor backing a gpui display.
+///
+/// Prefer this over `PlatformDisplay::bounds()` for anything that has to
+/// match the real screen extent. gpui derives its display bounds from the
+/// integer `wl_output.scale`, and Wayland's core output protocol carries no
+/// fractional scale - a screen running at 1.5 advertises 2, so gpui reports
+/// two thirds of the true logical size.
+pub fn logical_display_size(display_id: Option<DisplayId>, cx: &App) -> Size<Pixels> {
+    if let Some(display) = display_id.and_then(|id| cx.find_display(id)) {
+        if let Ok(display_uuid) = display.uuid() {
+            if let Ok(guard) = CACHED_OUTPUTS.lock() {
+                if let Some(ref outputs) = *guard {
+                    let matched = outputs.iter().find(|out| {
+                        uuid::Uuid::new_v5(&uuid::Uuid::NAMESPACE_DNS, out.name.as_bytes())
+                            == display_uuid
+                    });
+                    if let Some(out) = matched {
+                        if out.scale > 0.0 && out.width > 0 && out.height > 0 {
+                            return Size::new(
+                                px(out.width as f32 / out.scale as f32),
+                                px(out.height as f32 / out.scale as f32),
+                            );
+                        }
+                    }
+                }
+            }
+        }
+        return display.bounds().size;
+    }
+
+    cx.primary_display()
+        .map(|d| d.bounds().size)
+        .unwrap_or_else(|| Size::new(px(1920.0), px(1080.0)))
+}
+
 /// Build the LayerShell window options for the bar with fractional-scale pixel snapping.
 pub fn bar_window_options(
     display_id: Option<DisplayId>,
@@ -42,11 +86,7 @@ pub fn bar_window_options(
     bar_position: beskar_core::config::BarPosition,
     cx: &App,
 ) -> WindowOptions {
-    let display_size = display_id
-        .and_then(|id| cx.find_display(id))
-        .or_else(|| cx.primary_display())
-        .map(|display| display.bounds().size)
-        .unwrap_or_else(|| Size::new(px(1920.), px(1080.)));
+    let display_size = logical_display_size(display_id, cx);
 
     // Fractional scale pixel snapping: ensure integer pixels to prevent subpixel artifacts
     let snapped_width = px(display_size.width.as_f32().floor());

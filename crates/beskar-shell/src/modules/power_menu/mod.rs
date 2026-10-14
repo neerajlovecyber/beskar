@@ -110,7 +110,9 @@ impl PowerMenuView {
             PanelHost::toggle_by_id("lock_screen", cx);
         } else {
             let cmd = action.default_command();
-            let _ = std::process::Command::new("sh").args(["-c", cmd]).spawn();
+            tokio::task::spawn_blocking(move || {
+                let _ = std::process::Command::new("sh").args(["-c", cmd]).spawn();
+            });
             PanelHost::close(cx);
         }
     }

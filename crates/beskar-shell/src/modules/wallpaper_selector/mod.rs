@@ -48,12 +48,14 @@ impl WallpaperSelectorView {
                 match msg {
                     WallpaperMsg::Select(path) => {
                         let path_str = path.to_string_lossy().to_string();
-                        let _ = std::process::Command::new("swww")
-                            .args(["img", &path_str, "--transition-type", "wipe"])
-                            .spawn();
-                        let _ = std::process::Command::new("feh")
-                            .args(["--bg-fill", &path_str])
-                            .spawn();
+                        tokio::task::spawn_blocking(move || {
+                            let _ = std::process::Command::new("swww")
+                                .args(["img", &path_str, "--transition-type", "wipe"])
+                                .spawn();
+                            let _ = std::process::Command::new("feh")
+                                .args(["--bg-fill", &path_str])
+                                .spawn();
+                        });
 
                         let _ = this.update(cx, |_, cx| {
                             PanelHost::close(cx);
