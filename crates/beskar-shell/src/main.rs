@@ -1,4 +1,4 @@
-#![recursion_limit = "512"]
+#![recursion_limit = "1024"]
 
 pub mod bar;
 pub mod modules;
@@ -84,40 +84,63 @@ async fn main() -> anyhow::Result<()> {
                     .timer(std::time::Duration::from_millis(100))
                     .await;
 
-                cx.update(|cx| {
-                    let displays = cx.displays();
-                    if displays.is_empty() {
-                        info!("No displays found, opening bar on default display");
-                        bar::open_bar(
-                            None,
-                            initial_workspaces,
-                            active_ws,
-                            initial_window,
-                            is_convex,
-                            bar_height,
-                            bar_margin_top,
-                            bar_position,
-                            compositor.clone(),
-                            cx,
+                let _ = cx.update(|cx| {
+                    bar::open_all_bars(
+                        initial_workspaces,
+                        active_ws,
+                        initial_window,
+                        is_convex,
+                        bar_height,
+                        bar_margin_top,
+                        bar_position,
+                        compositor.clone(),
+                        cx,
+                    );
+                });
+
+                // Display hotplug reconciliation loop: detects connect/disconnect events
+                let comp_hotplug = compositor;
+                let mut last_display_ids = cx.update(|cx| {
+                    cx.displays().into_iter().map(|d| d.id()).collect::<Vec<_>>()
+                });
+
+                loop {
+                    cx.background_executor()
+                        .timer(std::time::Duration::from_millis(2000))
+                        .await;
+
+                    let current_ids = cx.update(|cx| {
+                        cx.displays().into_iter().map(|d| d.id()).collect::<Vec<_>>()
+                    });
+
+                    if current_ids != last_display_ids {
+                        info!(
+                            "Display hotplug detected (previously {:?}, now {:?}). Reconciling bars...",
+                            last_display_ids, current_ids
                         );
-                    } else {
-                        for d in displays {
-                            info!("Opening bar on display {:?}", d.id());
-                            bar::open_bar(
-                                Some(d.id()),
-                                initial_workspaces.clone(),
-                                active_ws,
-                                initial_window.clone(),
+                        last_display_ids = current_ids;
+                        let comp = comp_hotplug.clone();
+                        let _ = cx.update(move |cx| {
+                            let cfg = beskar_core::config::ShellConfig::load();
+                            let is_convex = cfg.bar_style == beskar_core::config::BarStyleConfig::Convex;
+                            let bar_position = cfg.bar_position;
+                            let bar_height = cfg.bar_height.max(28.0);
+                            let bar_margin_top = if is_convex { 0.0 } else { 8.0 };
+
+                            bar::reload_bars(
+                                Vec::new(),
+                                1,
+                                None,
                                 is_convex,
                                 bar_height,
                                 bar_margin_top,
                                 bar_position,
-                                compositor.clone(),
+                                comp,
                                 cx,
                             );
-                        }
+                        });
                     }
-                })
+                }
             })
             .detach();
         });
