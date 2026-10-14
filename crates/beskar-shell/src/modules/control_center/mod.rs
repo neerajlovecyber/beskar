@@ -30,6 +30,7 @@ enum ControlCenterMsg {
     ChangeBrightness(i32),
     SetBrightnessPercent(u8),
     SetPowerProfile(String),
+    SelectAudioSink(String),
     ToggleWifiList,
     ToggleBtList,
     ConnectWifi(String),
@@ -51,6 +52,7 @@ pub struct ControlCenterView {
     is_wifi_on: bool,
     wifi_ssid: Option<String>,
     is_bt_on: bool,
+    sinks: Vec<beskar_services::AudioSinkItem>,
     wifi_networks: Vec<beskar_services::WifiAccessPoint>,
     bt_devices: Vec<beskar_services::BluetoothDeviceItem>,
     show_wifi_list: bool,
@@ -154,6 +156,14 @@ impl ControlCenterView {
                             let _ = bus_clone.toggle_audio_mute().await;
                         });
                     }
+                    ControlCenterMsg::SelectAudioSink(sink_name) => {
+                        beskar_services::AudioService::set_default_sink(&sink_name);
+                        let updated = beskar_services::AudioService::list_sinks();
+                        let _ = this.update(cx, |this, cx| {
+                            this.sinks = updated;
+                            cx.notify();
+                        });
+                    }
                     ControlCenterMsg::ChangeBrightness(delta) => {
                         let new_bright = this
                             .update(cx, |t, _| {
@@ -246,31 +256,11 @@ impl ControlCenterView {
                         })
                         .detach();
                     }
-                    ControlCenterMsg::OpenLauncher => {
-                        let _ = this.update(cx, |_this, cx| {
-                            PanelHost::toggle::<LauncherView>(cx);
-                        });
-                    }
-                    ControlCenterMsg::OpenClipboard => {
-                        let _ = this.update(cx, |_this, cx| {
-                            PanelHost::toggle::<ClipboardView>(cx);
-                        });
-                    }
-                    ControlCenterMsg::OpenPower => {
-                        let _ = this.update(cx, |_this, cx| {
-                            PanelHost::toggle::<PowerMenuView>(cx);
-                        });
-                    }
-                    ControlCenterMsg::OpenSettings => {
-                        let _ = this.update(cx, |_this, cx| {
-                            PanelHost::toggle::<SettingsView>(cx);
-                        });
-                    }
-                    ControlCenterMsg::Close => {
-                        let _ = this.update(cx, |_this, cx| {
-                            PanelHost::close(cx);
-                        });
-                    }
+                    ControlCenterMsg::OpenLauncher => { let _ = this.update(cx, |_, cx| PanelHost::toggle::<LauncherView>(cx)); }
+                    ControlCenterMsg::OpenClipboard => { let _ = this.update(cx, |_, cx| PanelHost::toggle::<ClipboardView>(cx)); }
+                    ControlCenterMsg::OpenPower => { let _ = this.update(cx, |_, cx| PanelHost::toggle::<PowerMenuView>(cx)); }
+                    ControlCenterMsg::OpenSettings => { let _ = this.update(cx, |_, cx| PanelHost::toggle::<SettingsView>(cx)); }
+                    ControlCenterMsg::Close => { let _ = this.update(cx, |_, cx| PanelHost::close(cx)); }
                 }
             }
         })
@@ -329,6 +319,7 @@ impl ControlCenterView {
             is_wifi_on,
             wifi_ssid,
             is_bt_on,
+            sinks: AudioService::list_sinks(),
             wifi_networks: Vec::new(),
             bt_devices: Vec::new(),
             show_wifi_list: false,
@@ -344,18 +335,11 @@ impl ControlCenterView {
 
 impl Render for ControlCenterView {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let tx_wifi = self.msg_tx.clone();
-        let tx_bt = self.msg_tx.clone();
-        let tx_mute = self.msg_tx.clone();
-        let tx_prof = self.msg_tx.clone();
-        let tx_wlist = self.msg_tx.clone();
-        let tx_blist = self.msg_tx.clone();
-        let tx_conn = self.msg_tx.clone();
-        let tx_launcher = self.msg_tx.clone();
-        let tx_clipboard = self.msg_tx.clone();
-        let tx_power = self.msg_tx.clone();
-        let tx_settings = self.msg_tx.clone();
-        let tx_close = self.msg_tx.clone();
+        let tx = self.msg_tx.clone();
+        let (tx_wifi, tx_bt, tx_mute, tx_prof) = (tx.clone(), tx.clone(), tx.clone(), tx.clone());
+        let (tx_wlist, tx_blist, tx_conn, tx_sink) = (tx.clone(), tx.clone(), tx.clone(), tx.clone());
+        let (tx_launcher, tx_clipboard, tx_power, tx_settings, tx_close) =
+            (tx.clone(), tx.clone(), tx.clone(), tx.clone(), tx);
 
         let wifi_label = self.wifi_ssid.clone().unwrap_or_else(|| {
             if self.is_wifi_on {
@@ -451,13 +435,17 @@ impl Render for ControlCenterView {
                             .when(self.show_bt_list, |parent| {
                                 parent.child(bt_list::render_bt_list(&self.bt_devices))
                             })
-                            // 5. Volume Slider
+                            // 5. Volume Slider & Output Sink Selector
                             .child(sliders::render_volume_card(
                                 self.volume_percent,
                                 self.is_muted,
                                 Some(&self.volume_slider),
                                 Some(Arc::new(move || {
                                     let _ = tx_mute.send(ControlCenterMsg::ToggleMute);
+                                })),
+                                &self.sinks,
+                                Some(Arc::new(move |sink_name| {
+                                    let _ = tx_sink.send(ControlCenterMsg::SelectAudioSink(sink_name));
                                 })),
                             ))
                             // 6. Brightness Slider

@@ -13,6 +13,13 @@ use std::sync::{Arc, LazyLock, RwLock};
 use tokio::sync::mpsc;
 use tracing::{debug, info};
 
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct AudioSinkItem {
+    pub name: String,
+    pub description: String,
+    pub is_default: bool,
+}
+
 static CACHED_AUDIO_STATE: LazyLock<RwLock<AudioState>> = LazyLock::new(|| {
     RwLock::new(AudioState {
         volume: 0.8,
@@ -227,6 +234,50 @@ impl AudioService {
 
         if let Ok(mut lock) = CACHED_AUDIO_STATE.write() {
             lock.is_muted = !lock.is_muted;
+        }
+    }
+
+    /// Enumerate all audio output sinks over pure-Rust PulseAudio socket.
+    pub fn list_sinks() -> Vec<AudioSinkItem> {
+        if let Ok(mut pulse) = Pulse::connect("beskar sinks") {
+            if let Ok((server, sinks)) = pulse.state() {
+                let default_name = server.default_sink_name.as_ref();
+                return sinks
+                    .into_iter()
+                    .map(|s| {
+                        let is_default = Some(&s.name) == default_name;
+                        let desc = s
+                            .description
+                            .as_ref()
+                            .unwrap_or(&s.name)
+                            .to_string_lossy()
+                            .into_owned();
+                        AudioSinkItem {
+                            name: s.name.to_string_lossy().into_owned(),
+                            description: desc,
+                            is_default,
+                        }
+                    })
+                    .collect();
+            }
+        }
+
+        vec![AudioSinkItem {
+            name: "default".to_string(),
+            description: "Default Audio Output".to_string(),
+            is_default: true,
+        }]
+    }
+
+    /// Switch active audio output sink.
+    pub fn set_default_sink(sink_name: &str) {
+        if let Ok(mut pulse) = Pulse::connect("beskar sink") {
+            if let Ok(c_name) = CString::new(sink_name) {
+                let _ = pulse.ack(Command::SetDefaultSink(c_name));
+            }
+        }
+        if let Ok(mut lock) = CACHED_AUDIO_STATE.write() {
+            lock.default_sink_name = Some(sink_name.to_string());
         }
     }
 

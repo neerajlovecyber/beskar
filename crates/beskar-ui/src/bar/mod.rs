@@ -1,80 +1,11 @@
+pub mod state;
+pub use state::{resolve_window_icon, BarActions, BarState};
+
 use beskar_core::models::{WindowInfo, WorkspaceInfo};
-use gpui_kit::assets::IconName;
 use gpui_kit::component::Icon;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 use std::sync::Arc;
-
-fn resolve_window_icon(app_id: Option<&str>, title: Option<&str>) -> IconName {
-    let text = format!(
-        "{} {}",
-        app_id.unwrap_or_default().to_lowercase(),
-        title.unwrap_or_default().to_lowercase()
-    );
-
-    if text.contains("firefox") || text.contains("chrome") || text.contains("browser") {
-        IconName::Globe
-    } else if text.contains("term") || text.contains("kitty") || text.contains("alacritty") || text.contains("wezterm") {
-        IconName::Terminal
-    } else if text.contains("code") || text.contains("zed") || text.contains("nvim") || text.contains("vim") {
-        IconName::Code
-    } else if text.contains("files") || text.contains("folder") || text.contains("nautilus") || text.contains("thunar") || text.contains("dolphin") {
-        IconName::Folder
-    } else if text.contains("music") || text.contains("spotify") {
-        IconName::Music
-    } else if text.contains("discord") || text.contains("slack") || text.contains("telegram") {
-        IconName::MessageSquare
-    } else if text.contains("settings") {
-        IconName::Settings
-    } else {
-        IconName::AppWindow
-    }
-}
-
-/// Grouped snapshot of live system and shell telemetry for BeskarBar.
-#[derive(Clone, Default)]
-pub struct BarState {
-    pub is_convex: bool,
-    pub workspaces: Vec<WorkspaceInfo>,
-    pub active_ws: Option<u64>,
-    pub active_window: Option<WindowInfo>,
-    pub time_str: String,
-    pub date_str: Option<String>,
-    pub media: Option<(String, String, bool)>,
-    pub notification: Option<(String, String)>,
-    pub volume_percent: u8,
-    pub is_muted: bool,
-    pub battery_percent: u8,
-    pub is_charging: bool,
-    pub animated_center_width: Option<f32>,
-    pub cava_bands: Option<[u8; 4]>,
-    pub tray_items: Vec<beskar_core::models::TrayItem>,
-    pub modules_left: Option<Vec<beskar_core::config::BarModule>>,
-    pub modules_center: Option<Vec<beskar_core::config::BarModule>>,
-    pub modules_right: Option<Vec<beskar_core::config::BarModule>>,
-}
-
-/// Callbacks for interactive bar actions.
-#[derive(Clone, Default)]
-pub struct BarActions {
-    pub on_select_ws: Option<Arc<dyn Fn(u64) + Send + Sync>>,
-    pub on_scroll_ws: Option<Arc<dyn Fn(i32) + Send + Sync>>,
-    pub on_play_pause: Option<Arc<dyn Fn() + Send + Sync>>,
-    pub on_volume_click: Option<Arc<dyn Fn() + Send + Sync>>,
-    pub on_volume_scroll: Option<Arc<dyn Fn(i32) + Send + Sync>>,
-    pub on_control_center_click: Option<Arc<dyn Fn() + Send + Sync>>,
-    pub on_power_click: Option<Arc<dyn Fn() + Send + Sync>>,
-    pub on_launcher_click: Option<Arc<dyn Fn() + Send + Sync>>,
-    pub on_clock_click: Option<Arc<dyn Fn() + Send + Sync>>,
-    pub on_dashboard_click: Option<Arc<dyn Fn() + Send + Sync>>,
-    pub on_music_click: Option<Arc<dyn Fn() + Send + Sync>>,
-    pub on_capture_click: Option<Arc<dyn Fn() + Send + Sync>>,
-    pub on_wallpaper_click: Option<Arc<dyn Fn() + Send + Sync>>,
-    pub on_tray_click: Option<Arc<dyn Fn(String) + Send + Sync>>,
-    pub on_tray_menu: Option<Arc<dyn Fn(String) + Send + Sync>>,
-    pub on_window_click: Option<Arc<dyn Fn() + Send + Sync>>,
-    pub on_window_close: Option<Arc<dyn Fn() + Send + Sync>>,
-}
 
 /// Beskar Bar surface separating the top bar into 3 distinct layout regions:
 /// - [Left Island]: Workspaces & active tasks
@@ -147,21 +78,27 @@ impl BeskarBar {
 
         let is_convex = state.is_convex;
 
-        let mod_left = state.modules_left.unwrap_or_else(|| vec![
-            beskar_core::config::BarModule::BrandStar,
-            beskar_core::config::BarModule::Workspaces,
-            beskar_core::config::BarModule::ActiveWindow,
-        ]);
-        let _mod_center = state.modules_center.unwrap_or_else(|| vec![
-            beskar_core::config::BarModule::Clock,
-            beskar_core::config::BarModule::Media,
-        ]);
-        let mod_right = state.modules_right.unwrap_or_else(|| vec![
-            beskar_core::config::BarModule::Tray,
-            beskar_core::config::BarModule::QuickControls,
-            beskar_core::config::BarModule::Vitals,
-            beskar_core::config::BarModule::Power,
-        ]);
+        let mod_left = state.modules_left.unwrap_or_else(|| {
+            vec![
+                beskar_core::config::BarModule::BrandStar,
+                beskar_core::config::BarModule::Workspaces,
+                beskar_core::config::BarModule::ActiveWindow,
+            ]
+        });
+        let _mod_center = state.modules_center.unwrap_or_else(|| {
+            vec![
+                beskar_core::config::BarModule::Clock,
+                beskar_core::config::BarModule::Media,
+            ]
+        });
+        let mod_right = state.modules_right.unwrap_or_else(|| {
+            vec![
+                beskar_core::config::BarModule::Tray,
+                beskar_core::config::BarModule::QuickControls,
+                beskar_core::config::BarModule::Vitals,
+                beskar_core::config::BarModule::Power,
+            ]
+        });
 
         let has_win = mod_left.contains(&beskar_core::config::BarModule::ActiveWindow);
 
@@ -317,6 +254,8 @@ impl BeskarBar {
         let mut vitals_widget = VitalsWidget::new(state.volume_percent, state.battery_percent)
             .muted(state.is_muted)
             .charging(state.is_charging)
+            .cpu(state.cpu_usage)
+            .ram(state.ram_usage)
             .tray(state.tray_items)
             .modules(mod_right);
         if let Some(handler) = actions.on_volume_click {
@@ -352,10 +291,7 @@ impl BeskarBar {
             .right([right_pill.into_any_element()])
     }
 
-    /// Builds the signature 3-Island layout matching minflair and the reference screenshot:
-    /// - Left: Brand star badge + WorkspacesWidget inside an IslandPill
-    /// - Center: DynamicCenterWidget (Clock + MPRIS) inside an IslandPill
-    /// - Right: VitalsWidget (Recording + Controls + Audio/WiFi/Battery/Power) inside an IslandPill
+    /// Builds the signature 3-Island layout matching minflair and the reference screenshot
     #[allow(clippy::too_many_arguments)]
     pub fn live_islands(
         is_convex: bool,
@@ -404,6 +340,8 @@ impl BeskarBar {
             is_muted,
             battery_percent,
             is_charging,
+            cpu_usage: None,
+            ram_usage: None,
             animated_center_width,
             cava_bands,
             tray_items,
@@ -490,8 +428,6 @@ impl BeskarBar {
 impl RenderOnce for BeskarBar {
     fn render(self, _window: &mut Window, _cx: &mut App) -> impl IntoElement {
         if self.is_island_cluster {
-            // minflair IslandBar mode: Left Pill, Center Dynamic Island, and Right Pill
-            // sit grouped together as a floating tri-capsule island cluster at the top center
             div()
                 .relative()
                 .size_full()
@@ -503,18 +439,13 @@ impl RenderOnce for BeskarBar {
                 .children(self.center)
                 .children(self.right)
         } else {
-            // Industry Standard Desktop Shell Architecture (gpui-shell, Waybar, Hyprpanel):
-            // - Center section: Exactly centered at the screen's 50% midpoint.
-            // - Left section: Pinned to start edge, sizes 100% naturally to its contained items.
-            // - Right section: Pinned to end edge, sizes 100% naturally to its contained items.
-            // Left and Right are NEVER forced to equal widths or padded with artificial voids.
             div()
                 .relative()
                 .size_full()
                 .when(self.is_convex, |this| {
-                    this.border_b_1().border_color(beskar_theme::Theme::subtle_border())
+                    this.border_b_1()
+                        .border_color(beskar_theme::Theme::subtle_border())
                 })
-                // 1. Center Section: True-centered on the display
                 .child(
                     div()
                         .absolute()
@@ -524,7 +455,6 @@ impl RenderOnce for BeskarBar {
                         .justify_center()
                         .children(self.center),
                 )
-                // 2. Left Section: Pinned to start, natural shrink-to-fit width
                 .child(
                     div()
                         .absolute()
@@ -537,7 +467,6 @@ impl RenderOnce for BeskarBar {
                         .justify_start()
                         .children(self.left),
                 )
-                // 3. Right Section: Pinned to end, natural shrink-to-fit width
                 .child(
                     div()
                         .absolute()
@@ -553,4 +482,3 @@ impl RenderOnce for BeskarBar {
         }
     }
 }
-

@@ -57,6 +57,24 @@ impl WallpaperSelectorView {
         })
         .detach();
 
+        // Reactive FileWatcher subscription for live wallpaper additions and deletions
+        let mut watcher_rx = beskar_services::FileWatcherService::global().subscribe();
+        cx.spawn(async move |this, cx| {
+            while let Ok(event) = watcher_rx.recv().await {
+                if matches!(
+                    event,
+                    beskar_services::WatchEvent::WallpaperDirectoryChanged(_)
+                ) {
+                    let updated = WallpaperSelectorWidget::discover_wallpapers();
+                    let _ = this.update(cx, |this, cx| {
+                        this.wallpapers = updated;
+                        cx.notify();
+                    });
+                }
+            }
+        })
+        .detach();
+
         Self {
             wallpapers,
             query: String::new(),

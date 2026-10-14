@@ -28,7 +28,7 @@ pub use logind::listen_logind_lock;
 pub use vitals::{VitalsService, VitalsSnapshot, CpuMetrics, MemoryMetrics, DiskMetrics, ThermalMetrics};
 pub use watcher::{FileWatcherService, WatchEvent};
 
-pub use audio::AudioService;
+pub use audio::{AudioService, AudioSinkItem};
 pub use auth::verify as verify_password;
 pub use backlight::BacklightService;
 pub use battery::BatteryService;

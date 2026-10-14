@@ -24,6 +24,8 @@ pub struct VitalsWidget {
     is_wifi_connected: bool,
     is_bluetooth_connected: bool,
     tray_items: Vec<beskar_core::models::TrayItem>,
+    cpu_usage: Option<f32>,
+    ram_usage: Option<f32>,
     modules: Option<Vec<beskar_core::config::BarModule>>,
     on_volume_click: Option<Arc<dyn Fn() + Send + Sync>>,
     on_volume_scroll: Option<Arc<dyn Fn(i32) + Send + Sync>>,
@@ -46,6 +48,8 @@ impl VitalsWidget {
             is_wifi_connected: true,
             is_bluetooth_connected: true,
             tray_items: Vec::new(),
+            cpu_usage: None,
+            ram_usage: None,
             modules: None,
             on_volume_click: None,
             on_volume_scroll: None,
@@ -126,6 +130,16 @@ impl VitalsWidget {
 
     pub fn on_wallpaper_click(mut self, handler: impl Fn() + Send + Sync + 'static) -> Self {
         self.on_wallpaper_click = Some(Arc::new(handler));
+        self
+    }
+
+    pub fn cpu(mut self, usage: Option<f32>) -> Self {
+        self.cpu_usage = usage;
+        self
+    }
+
+    pub fn ram(mut self, usage: Option<f32>) -> Self {
+        self.ram_usage = usage;
         self
     }
 }
@@ -260,8 +274,64 @@ impl RenderOnce for VitalsWidget {
                         }),
                 )
             })
-            // Hardware Vitals (Volume, Wi-Fi, Bluetooth, Battery)
+            // Hardware Vitals (CPU, RAM, Volume, Wi-Fi, Bluetooth, Battery)
             .when(has_vitals, |this| {
+                let this = this
+                    .when_some(self.cpu_usage, |this, cpu| {
+                        let color = if cpu > 80.0 {
+                            beskar_theme::Theme::danger()
+                        } else if cpu > 50.0 {
+                            beskar_theme::Theme::warning()
+                        } else {
+                            beskar_theme::Theme::fg()
+                        };
+                        this.child(
+                            div()
+                                .flex()
+                                .items_center()
+                                .gap(px(3.0))
+                                .px(px(5.0))
+                                .py(px(2.0))
+                                .rounded_md()
+                                .text_color(color)
+                                .hover(|s| s.bg(beskar_theme::Theme::bg_secondary()))
+                                .child(Icon::new(IconName::Cpu).size(px(13.0)).text_color(color))
+                                .child(
+                                    div()
+                                        .text_xs()
+                                        .font_weight(FontWeight::MEDIUM)
+                                        .child(format!("{:.0}%", cpu)),
+                                ),
+                        )
+                    })
+                    .when_some(self.ram_usage, |this, ram| {
+                        let color = if ram > 85.0 {
+                            beskar_theme::Theme::danger()
+                        } else if ram > 70.0 {
+                            beskar_theme::Theme::warning()
+                        } else {
+                            beskar_theme::Theme::fg()
+                        };
+                        this.child(
+                            div()
+                                .flex()
+                                .items_center()
+                                .gap(px(3.0))
+                                .px(px(5.0))
+                                .py(px(2.0))
+                                .rounded_md()
+                                .text_color(color)
+                                .hover(|s| s.bg(beskar_theme::Theme::bg_secondary()))
+                                .child(Icon::new(IconName::HardDrive).size(px(13.0)).text_color(color))
+                                .child(
+                                    div()
+                                        .text_xs()
+                                        .font_weight(FontWeight::MEDIUM)
+                                        .child(format!("{:.0}%", ram)),
+                                ),
+                        )
+                    });
+
                 this.child(
                     div()
                         .flex()
