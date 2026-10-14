@@ -60,40 +60,25 @@ impl RenderOnce for IslandPill {
             .py(self.padding_y)
             .when(!is_convex, |this| {
                 let mut b = beskar_theme::Theme::bg();
-                b.a = (b.a * 0.90).clamp(0.0, 1.0);
-                this.rounded(px(18.0))
+                b.a = (b.a * 0.96).clamp(0.0, 1.0);
+                this.h(px(38.0))
+                    .rounded_full()
                     .bg(b)
                     .border_1()
-                    .border_color(beskar_theme::Theme::border())
-                    .shadow_md()
+                    .border_color(beskar_theme::Theme::subtle_border())
+                    .shadow_lg()
                     .when(self.is_interactive, |this| {
                         this.hover(|style| {
                             style
-                                .bg(beskar_theme::Theme::bg_secondary())
-                                .border_color(beskar_theme::Theme::accent())
+                                .border_color(beskar_theme::Theme::accent_alpha(0.35))
                                 .shadow_lg()
                         })
                     })
             })
             .when(is_convex, |this| {
-                // In convex mode, the pill anchors cleanly to the top display edge as a notch
-                let mut b = beskar_theme::Theme::bg();
-                b.a = (b.a * 0.96).clamp(0.0, 1.0);
+                // In convex mode, the Bézier notch is painted directly behind the sections
+                // Keep the pill content container transparent with no box seams
                 this.h(px(38.0))
-                    .bg(b)
-                    .border_b_1()
-                    .border_x_1()
-                    .border_color(beskar_theme::Theme::border())
-                    .rounded_b(px(14.0))
-                    .shadow_md()
-                    .when(self.is_interactive, |this| {
-                        this.hover(|style| {
-                            style
-                                .bg(beskar_theme::Theme::bg_secondary())
-                                .border_color(beskar_theme::Theme::accent())
-                                .shadow_lg()
-                        })
-                    })
             })
             .children(self.content)
     }

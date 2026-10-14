@@ -3,10 +3,14 @@ use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 use std::sync::Arc;
 
-/// Workspaces widget adapted directly from gpui-shell & minflair.
-/// Renders actual compositor workspaces from Niri:
-/// - Elongated amber/gold capsule pill for the active workspace
-/// - Subtle dots for inactive workspaces with hover and click interactions
+/// Workspaces widget adapted directly from Minflair's `Workspaces.qml`.
+/// Features:
+/// - Dynamic 10-slot layout with min 5 slots matching Minflair
+/// - Active workspace: elongated 24×8px capsule colored in `Theme::accent()` (lavender `#a77ef5`)
+/// - Occupied workspace (`has_windows`): 8×8px dot at 0.65 opacity (0.95 on hover)
+/// - Empty workspace: 8×8px dot at 0.22 opacity (0.45 on hover)
+/// - Hover scale with pointer cursor
+/// - Smooth mouse-wheel scrolling for prev/next workspace switching
 #[derive(Clone, IntoElement)]
 pub struct WorkspacesWidget {
     workspaces: Vec<WorkspaceInfo>,
@@ -38,32 +42,47 @@ impl WorkspacesWidget {
 
 impl RenderOnce for WorkspacesWidget {
     fn render(self, _window: &mut Window, _cx: &mut App) -> impl IntoElement {
-        let active_id = self.active_id;
         let on_select = self.on_select;
         let on_scroll = self.on_scroll;
 
-        // If no workspaces are reported yet, show 4 default placeholders
-        let workspaces = if self.workspaces.is_empty() {
-            (1..=4)
-                .map(|i| WorkspaceInfo {
-                    id: i as u64,
-                    idx: i as u8,
-                    name: None,
-                    output: String::new(),
-                    is_active: i == 1,
-                    is_focused: i == 1,
-                })
-                .collect()
-        } else {
-            self.workspaces
-        };
+        let active_ws = self
+            .active_id
+            .or_else(|| {
+                self.workspaces
+                    .iter()
+                    .find(|w| w.is_focused || w.is_active)
+                    .map(|w| w.id)
+            })
+            .unwrap_or(1);
+
+        // Find highest occupied workspace index or id (matching Minflair maxOccupiedWsId)
+        let max_occupied_ws = self
+            .workspaces
+            .iter()
+            .filter(|w| w.has_windows)
+            .map(|w| (w.idx as u64).max(w.id))
+            .max()
+            .unwrap_or(1);
+
+        let active_slot_num = self
+            .workspaces
+            .iter()
+            .find(|w| w.id == active_ws || (w.idx as u64) == active_ws || w.is_focused || w.is_active)
+            .map(|w| (w.idx as u64).max(1))
+            .unwrap_or(active_ws.max(1));
+
+        // Visible count calculation from Minflair: Math.min(10, Math.max(Math.max(activeWsId, maxOccupiedWsId) + 1, 5))
+        let visible_count = 10.min((active_slot_num.max(max_occupied_ws) + 1).max(5));
 
         div()
             .flex()
             .items_center()
-            .gap(px(7.0))
+            .gap(px(6.0))
+            .h(px(28.0))
+            .px(px(10.0))
             .py(px(4.0))
-            .px(px(4.0))
+            .rounded_full()
+            .bg(beskar_theme::Theme::bg_secondary())
             .when_some(on_scroll, |el, cb| {
                 el.on_scroll_wheel(move |event, _, _| {
                     let delta = event.delta.pixel_delta(px(1.0));
@@ -73,36 +92,65 @@ impl RenderOnce for WorkspacesWidget {
                     }
                 })
             })
-            .children(workspaces.into_iter().map(|ws| {
-                let id = ws.id;
-                let is_active = ws.is_focused || ws.is_active || (Some(ws.id) == active_id);
+            .children((1..=visible_count).map(|slot_idx| {
+                // Find matching workspace by idx or id
+                let ws_match = self
+                    .workspaces
+                    .iter()
+                    .find(|w| (w.idx as u64) == slot_idx || w.id == slot_idx);
+
+                let is_active = ws_match.map_or(slot_idx == active_slot_num, |w| {
+                    w.id == active_ws || (w.idx as u64) == active_ws || w.is_focused || w.is_active
+                });
+
+                let has_windows = ws_match.map_or(false, |w| w.has_windows);
+                let target_id = ws_match.map_or(slot_idx, |w| w.id);
+
                 let on_select_cb = on_select.clone();
 
                 if is_active {
-                    // Active workspace: Elongated accent capsule pill (24px wide, 8px tall)
+                    // Active workspace: Elongated 24×8px capsule in accent color (lavender #a77ef5)
                     div()
                         .w(px(24.0))
                         .h(px(8.0))
                         .rounded(px(4.0))
                         .bg(beskar_theme::Theme::accent())
                         .shadow_sm()
+                        .into_any_element()
                 } else {
-                    // Inactive workspace: Subtle 8px circular dot
+                    // Inactive workspace: 8×8px dot with Minflair opacities
+                    let mut fg_normal = beskar_theme::Theme::fg();
+                    let mut fg_hover = beskar_theme::Theme::fg();
+
+                    if has_windows {
+                        fg_normal.a = 0.65;
+                        fg_hover.a = 0.95;
+                    } else {
+                        fg_normal.a = 0.22;
+                        fg_hover.a = 0.45;
+                    }
+
                     div()
-                        .w(px(8.0))
-                        .h(px(8.0))
-                        .rounded_full()
-                        .bg(beskar_theme::Theme::subtle_border())
-                        .hover(|style| {
-                            style
-                                .bg(beskar_theme::Theme::text_secondary())
-                                .cursor_pointer()
-                        })
-                        .when_some(on_select_cb, |el, cb| {
+                        .flex()
+                        .items_center()
+                        .justify_center()
+                        .w(px(14.0))
+                        .h(px(18.0))
+                        .cursor_pointer()
+                        .child(
+                            div()
+                                .w(px(8.0))
+                                .h(px(8.0))
+                                .rounded_full()
+                                .bg(fg_normal)
+                                .hover(move |s| s.bg(fg_hover)),
+                        )
+                        .when_some(on_select_cb, move |el, cb| {
                             el.on_mouse_down(MouseButton::Left, move |_, _, _| {
-                                (cb)(id);
+                                (cb)(target_id);
                             })
                         })
+                        .into_any_element()
                 }
             }))
     }

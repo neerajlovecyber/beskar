@@ -64,6 +64,7 @@ pub struct BarState {
     pub modules_left: Option<Vec<beskar_core::config::BarModule>>,
     pub modules_center: Option<Vec<beskar_core::config::BarModule>>,
     pub modules_right: Option<Vec<beskar_core::config::BarModule>>,
+    pub geometry: Option<crate::convex::ConvexGeometry>,
 }
 
 pub type BarUiCallback = Arc<dyn Fn(&mut gpui_kit::Window, &mut gpui_kit::App) + Send + Sync>;

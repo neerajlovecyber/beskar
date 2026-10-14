@@ -191,49 +191,57 @@ impl RenderOnce for VitalsWidget {
         let has_vitals = self.modules.as_ref().map_or(true, |m| m.contains(&beskar_core::config::BarModule::Vitals));
         let has_power = self.modules.as_ref().map_or(true, |m| m.contains(&beskar_core::config::BarModule::Power));
 
-        div()
+        let mut capsule = div()
             .flex()
             .items_center()
             .gap(px(6.0))
-            // Render tray icons if any registered and enabled
-            .when(has_tray && !self.tray_items.is_empty(), |this| {
-                let mut tray_row = div().flex().items_center().gap(px(4.0));
-                for item in self.tray_items {
-                    let icon_name = infer_tray_icon(&item.id, &item.icon, &item.title);
-                    let (id_l, id_r) = (item.id.clone(), item.id.clone());
-                    let (on_tc, on_ctx, on_cc_fb) = (on_tray_clk.clone(), on_tray_ctx.clone(), on_cc.clone());
+            .h(px(28.0))
+            .px(px(8.0))
+            .rounded_full()
+            .bg(beskar_theme::Theme::bg_secondary());
 
-                    tray_row = tray_row.child(
-                        div()
-                            .on_mouse_down(MouseButton::Right, move |_, window, cx| {
-                                cx.stop_propagation();
-                                if let Some(ref cb) = on_ctx { cb(id_r.clone(), window, cx); }
-                            })
-                            .child(
-                                Button::new(SharedString::from(format!("tray-btn-{}", item.id)))
-                                    .ghost()
-                                    .compact()
-                                    .icon(Icon::new(icon_name).size(px(14.0)).text_color(beskar_theme::Theme::fg()))
-                                    .on_click(move |_, window, cx| {
-                                        if let Some(ref cb) = on_tc { cb(id_l.clone()); }
-                                        else if let Some(ref cb) = on_cc_fb { cb(window, cx); }
-                                    }),
-                            ),
-                    );
-                }
-                this.child(tray_row)
-                    .child(div().w(px(1.0)).h(px(12.0)).bg(beskar_theme::Theme::subtle_border()))
-            })
-            // Recording badge: green pulsing dot + timer
-            .when(is_recording, |this| {
-                this.child(
-                    Tag::danger()
-                        .child(self.recording_time.unwrap_or_default()),
-                )
-            })
-            // Quick Controls triggers (Control Center, Screen Capture, Wallpaper Gallery)
-            .when(has_controls, |this| {
-                this.child(
+        // 1. Render tray icons if any registered and enabled
+        if has_tray && !self.tray_items.is_empty() {
+            let mut tray_row = div().flex().items_center().gap(px(4.0));
+            for item in self.tray_items {
+                let icon_name = infer_tray_icon(&item.id, &item.icon, &item.title);
+                let (id_l, id_r) = (item.id.clone(), item.id.clone());
+                let (on_tc, on_ctx, on_cc_fb) = (on_tray_clk.clone(), on_tray_ctx.clone(), on_cc.clone());
+
+                tray_row = tray_row.child(
+                    div()
+                        .on_mouse_down(MouseButton::Right, move |_, window, cx| {
+                            cx.stop_propagation();
+                            if let Some(ref cb) = on_ctx { cb(id_r.clone(), window, cx); }
+                        })
+                        .child(
+                            Button::new(SharedString::from(format!("tray-btn-{}", item.id)))
+                                .ghost()
+                                .compact()
+                                .icon(Icon::new(icon_name).size(px(14.0)).text_color(beskar_theme::Theme::fg()))
+                                .on_click(move |_, window, cx| {
+                                    if let Some(ref cb) = on_tc { cb(id_l.clone()); }
+                                    else if let Some(ref cb) = on_cc_fb { cb(window, cx); }
+                                }),
+                        ),
+                );
+            }
+            capsule = capsule
+                .child(tray_row)
+                .child(div().w(px(1.0)).h(px(12.0)).bg(beskar_theme::Theme::subtle_border()));
+        }
+
+        // 2. Recording badge: pulsing dot + timer
+        if is_recording {
+            capsule = capsule.child(
+                Tag::danger().child(self.recording_time.unwrap_or_default()),
+            );
+        }
+
+        // 3. Quick Controls triggers (Control Center, Screen Capture, Wallpaper Gallery)
+        if has_controls {
+            capsule = capsule
+                .child(
                     Button::new("vitals-cc")
                         .ghost()
                         .compact()
@@ -271,183 +279,208 @@ impl RenderOnce for VitalsWidget {
                         .when_some(self.on_wallpaper_click, |btn, cb| {
                             btn.on_click(move |_, window, cx| (cb)(window, cx))
                         }),
-                )
-            })
-            // Hardware Vitals (CPU, RAM, Volume, Wi-Fi, Bluetooth, Battery)
-            .when(has_vitals, |this| {
-                let this = this
-                    .when_some(self.cpu_usage, |this, cpu| {
-                        let color = if cpu > 80.0 {
-                            beskar_theme::Theme::danger()
-                        } else if cpu > 50.0 {
-                            beskar_theme::Theme::warning()
-                        } else {
-                            beskar_theme::Theme::fg()
-                        };
-                        this.child(
-                            div()
-                                .flex()
-                                .items_center()
-                                .gap(px(3.0))
-                                .px(px(5.0))
-                                .py(px(2.0))
-                                .rounded_md()
-                                .text_color(color)
-                                .hover(|s| s.bg(beskar_theme::Theme::bg_secondary()))
-                                .child(Icon::new(IconName::Cpu).size(px(13.0)).text_color(color))
-                                .child(
-                                    div()
-                                        .text_xs()
-                                        .font_weight(FontWeight::MEDIUM)
-                                        .child(format!("{:.0}%", cpu)),
-                                ),
-                        )
-                    })
-                    .when_some(self.ram_usage, |this, ram| {
-                        let color = if ram > 85.0 {
-                            beskar_theme::Theme::danger()
-                        } else if ram > 70.0 {
-                            beskar_theme::Theme::warning()
-                        } else {
-                            beskar_theme::Theme::fg()
-                        };
-                        this.child(
-                            div()
-                                .flex()
-                                .items_center()
-                                .gap(px(3.0))
-                                .px(px(5.0))
-                                .py(px(2.0))
-                                .rounded_md()
-                                .text_color(color)
-                                .hover(|s| s.bg(beskar_theme::Theme::bg_secondary()))
-                                .child(Icon::new(IconName::HardDrive).size(px(13.0)).text_color(color))
-                                .child(
-                                    div()
-                                        .text_xs()
-                                        .font_weight(FontWeight::MEDIUM)
-                                        .child(format!("{:.0}%", ram)),
-                                ),
-                        )
-                    });
+                );
+        }
 
-                this.child(
+        // 4. Hardware Vitals (CPU, RAM, Volume, Wi-Fi, Bluetooth, Battery)
+        if has_vitals {
+            if let Some(cpu) = self.cpu_usage {
+                let color = if cpu > 80.0 {
+                    beskar_theme::Theme::danger()
+                } else if cpu > 50.0 {
+                    beskar_theme::Theme::warning()
+                } else {
+                    beskar_theme::Theme::fg()
+                };
+                capsule = capsule.child(
                     div()
                         .flex()
                         .items_center()
-                        .gap(px(4.0))
-                        .px(px(6.0))
+                        .gap(px(3.0))
+                        .px(px(4.0))
                         .py(px(2.0))
                         .rounded_md()
-                        .text_color(volume_color)
-                        .hover(|style| {
-                            style
-                                .bg(beskar_theme::Theme::bg_secondary())
-                                .text_color(beskar_theme::Theme::fg())
-                                .cursor_pointer()
-                        })
-                        .when_some(on_vol, |el, cb| {
-                            el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
-                        })
-                        .when_some(on_scroll, |el, cb| {
-                            el.on_scroll_wheel(move |event, _, _| {
-                                let delta = if event.delta.pixel_delta(px(1.0)).y > px(0.0) { 2 } else { -2 };
-                                (cb)(delta);
-                            })
-                        })
-                        .child(Icon::new(volume_icon).size(px(14.0)).text_color(volume_color))
+                        .text_color(color)
+                        .hover(|s| s.bg(beskar_theme::Theme::bg_secondary()))
+                        .child(Icon::new(IconName::Cpu).size(px(13.0)).text_color(color))
                         .child(
                             div()
                                 .text_xs()
                                 .font_weight(FontWeight::MEDIUM)
-                                .child(if self.is_muted {
-                                    "Mute".to_string()
-                                } else {
-                                    format!("{}%", self.volume_percent)
-                                }),
+                                .child(format!("{:.0}%", cpu)),
                         ),
-                )
-                .child(
-                    Button::new("vitals-wifi")
-                        .ghost()
-                        .compact()
-                        .icon(
-                            Icon::new(if self.is_wifi_connected {
-                                IconName::Wifi
+                );
+            }
+
+            if let Some(ram) = self.ram_usage {
+                let color = if ram > 85.0 {
+                    beskar_theme::Theme::danger()
+                } else if ram > 70.0 {
+                    beskar_theme::Theme::warning()
+                } else {
+                    beskar_theme::Theme::fg()
+                };
+                capsule = capsule.child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap(px(3.0))
+                        .px(px(4.0))
+                        .py(px(2.0))
+                        .rounded_md()
+                        .text_color(color)
+                        .hover(|s| s.bg(beskar_theme::Theme::bg_secondary()))
+                        .child(Icon::new(IconName::HardDrive).size(px(13.0)).text_color(color))
+                        .child(
+                            div()
+                                .text_xs()
+                                .font_weight(FontWeight::MEDIUM)
+                                .child(format!("{:.0}%", ram)),
+                        ),
+                );
+            }
+
+            // Volume indicator with mute awareness and scroll support
+            capsule = capsule.child(
+                div()
+                    .flex()
+                    .items_center()
+                    .gap(px(4.0))
+                    .px(px(5.0))
+                    .py(px(2.0))
+                    .rounded_md()
+                    .text_color(volume_color)
+                    .hover(|style| {
+                        style
+                            .bg(beskar_theme::Theme::bg_secondary())
+                            .text_color(beskar_theme::Theme::fg())
+                            .cursor_pointer()
+                    })
+                    .when_some(on_vol, |el, cb| {
+                        el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
+                    })
+                    .when_some(on_scroll, |el, cb| {
+                        el.on_scroll_wheel(move |event, _, _| {
+                            let delta = if event.delta.pixel_delta(px(1.0)).y > px(0.0) { 2 } else { -2 };
+                            (cb)(delta);
+                        })
+                    })
+                    .child(Icon::new(volume_icon).size(px(14.0)).text_color(volume_color))
+                    .child(
+                        div()
+                            .text_xs()
+                            .font_weight(FontWeight::MEDIUM)
+                            .child(if self.is_muted {
+                                "Mute".to_string()
                             } else {
-                                IconName::WifiOff
-                            })
+                                format!("{}%", self.volume_percent)
+                            }),
+                    ),
+            );
+
+            // Wi-Fi
+            capsule = capsule.child(
+                Button::new("vitals-wifi")
+                    .ghost()
+                    .compact()
+                    .icon(
+                        Icon::new(if self.is_wifi_connected {
+                            IconName::Wifi
+                        } else {
+                            IconName::WifiOff
+                        })
+                        .size(px(14.0))
+                        .text_color(if self.is_wifi_connected {
+                            beskar_theme::Theme::fg()
+                        } else {
+                            beskar_theme::Theme::muted()
+                        }),
+                    )
+                    .when_some(on_cc.clone(), |btn, cb| {
+                        btn.on_click(move |_, window, cx| (cb)(window, cx))
+                    }),
+            );
+
+            // Bluetooth
+            capsule = capsule.child(
+                Button::new("vitals-bluetooth")
+                    .ghost()
+                    .compact()
+                    .icon(
+                        Icon::new(IconName::Bluetooth)
                             .size(px(14.0))
-                            .text_color(if self.is_wifi_connected {
-                                beskar_theme::Theme::fg()
+                            .text_color(if self.is_bluetooth_connected {
+                                beskar_theme::Theme::accent()
                             } else {
                                 beskar_theme::Theme::muted()
                             }),
-                        )
-                        .when_some(on_cc.clone(), |btn, cb| {
-                            btn.on_click(move |_, window, cx| (cb)(window, cx))
-                        }),
-                )
-                .child(
-                    Button::new("vitals-bluetooth")
-                        .ghost()
-                        .compact()
-                        .icon(
-                            Icon::new(IconName::Bluetooth)
-                                .size(px(14.0))
-                                .text_color(if self.is_bluetooth_connected {
-                                    beskar_theme::Theme::accent()
-                                } else {
-                                    beskar_theme::Theme::muted()
-                                }),
-                        )
-                        .when_some(on_cc.clone(), |btn, cb| {
-                            btn.on_click(move |_, window, cx| (cb)(window, cx))
-                        }),
-                )
-                .child(
-                    div()
-                        .flex()
-                        .items_center()
-                        .gap(px(4.0))
-                        .px(px(6.0))
-                        .py(px(2.0))
-                        .rounded_md()
-                        .text_color(battery_color)
-                        .hover(|style| {
-                            style
-                                .bg(beskar_theme::Theme::bg_secondary())
-                                .cursor_pointer()
-                        })
-                        .when_some(on_cc.clone(), |el, cb| {
-                            el.on_mouse_down(MouseButton::Left, move |_, window, cx| (cb)(window, cx))
-                        })
-                        .child(Icon::new(battery_icon).size(px(14.0)).text_color(battery_color))
-                        .child(
-                            div()
-                                .text_xs()
-                                .font_weight(FontWeight::MEDIUM)
-                                .child(format!("{}%", self.battery_percent)),
-                        ),
-                )
-            })
-            // Power button trigger
-            .when(has_power, |this| {
-                this.child(
-                    Button::new("vitals-power")
-                        .danger()
-                        .ghost()
-                        .compact()
-                        .icon(
-                            Icon::new(IconName::Power)
-                                .size(px(14.0))
-                                .text_color(beskar_theme::Theme::danger()),
-                        )
-                        .when_some(on_pwr, |btn, cb| {
-                            btn.on_click(move |_, window, cx| (cb)(window, cx))
-                        }),
-                )
-            })
+                    )
+                    .when_some(on_cc.clone(), |btn, cb| {
+                        btn.on_click(move |_, window, cx| (cb)(window, cx))
+                    }),
+            );
+
+            // Battery
+            capsule = capsule.child(
+                div()
+                    .flex()
+                    .items_center()
+                    .gap(px(4.0))
+                    .px(px(5.0))
+                    .py(px(2.0))
+                    .rounded_md()
+                    .text_color(battery_color)
+                    .hover(|style| {
+                        style
+                            .bg(beskar_theme::Theme::bg_secondary())
+                            .cursor_pointer()
+                    })
+                    .when_some(on_cc.clone(), |el, cb| {
+                        el.on_mouse_down(MouseButton::Left, move |_, window, cx| (cb)(window, cx))
+                    })
+                    .child(Icon::new(battery_icon).size(px(14.0)).text_color(battery_color))
+                    .child(
+                        div()
+                            .text_xs()
+                            .font_weight(FontWeight::MEDIUM)
+                            .child(format!("{}%", self.battery_percent)),
+                    ),
+            );
+        }
+
+        // Standalone 28x28 circular Power button matching BarRightSection.qml
+        let power_button = if has_power {
+            let on_pwr_cb = on_pwr.clone();
+            Some(
+                div()
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .w(px(28.0))
+                    .h(px(28.0))
+                    .rounded_full()
+                    .bg(beskar_theme::Theme::bg_secondary())
+                    .cursor_pointer()
+                    .hover(|s| s.bg(beskar_theme::Theme::danger_alpha(0.20)))
+                    .when_some(on_pwr_cb, |el, cb| {
+                        el.on_mouse_down(MouseButton::Left, move |_, window, cx| (cb)(window, cx))
+                    })
+                    .child(
+                        Icon::new(IconName::Power)
+                            .size(px(14.0))
+                            .text_color(beskar_theme::Theme::danger()),
+                    ),
+            )
+        } else {
+            None
+        };
+
+        div()
+            .flex()
+            .items_center()
+            .gap(px(8.0))
+            .child(capsule)
+            .children(power_button)
     }
 }
 

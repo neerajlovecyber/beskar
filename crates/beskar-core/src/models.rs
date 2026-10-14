@@ -8,6 +8,8 @@ pub struct WorkspaceInfo {
     pub output: String,
     pub is_active: bool,
     pub is_focused: bool,
+    #[serde(default)]
+    pub has_windows: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

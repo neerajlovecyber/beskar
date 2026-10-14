@@ -73,6 +73,7 @@ impl CompositorBackend for HyprlandBackend {
                                     output: w.monitor,
                                     is_active: is_focused,
                                     is_focused,
+                                    has_windows: w.windows > 0,
                                 }
                             })
                             .collect();
@@ -147,6 +148,7 @@ impl CompositorBackend for HyprlandBackend {
                     output: w.monitor,
                     is_active: is_focused,
                     is_focused,
+                    has_windows: w.windows > 0,
                 }
             })
             .collect();

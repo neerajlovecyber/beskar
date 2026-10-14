@@ -181,23 +181,13 @@ impl CompositorBackend for NiriBackend {
                 let is_workspace_activated = matches!(&event, Event::WorkspaceActivated { .. } | Event::WorkspacesChanged { .. });
                 state.apply(event);
 
-                // Map workspaces
-                let mut workspaces = Vec::new();
-                for w in state.workspaces.workspaces.values() {
-                    workspaces.push(WorkspaceInfo {
-                        id: w.id,
-                        idx: w.idx,
-                        name: w.name.clone(),
-                        output: w.output.clone().unwrap_or_default(),
-                        is_active: w.is_active,
-                        is_focused: w.is_focused,
-                    });
-                }
-                workspaces.sort_by_key(|w| w.idx);
-
-                // Map windows
+                // Map windows first to know which workspaces are occupied
                 let mut windows = Vec::new();
+                let mut occupied_workspaces = std::collections::HashSet::new();
                 for win in state.windows.windows.values() {
+                    if let Some(ws_id) = win.workspace_id {
+                        occupied_workspaces.insert(ws_id);
+                    }
                     windows.push(WindowInfo {
                         id: win.id,
                         title: win.title.clone(),
@@ -206,6 +196,22 @@ impl CompositorBackend for NiriBackend {
                         is_focused: win.is_focused,
                     });
                 }
+
+                // Map workspaces
+                let mut workspaces = Vec::new();
+                for w in state.workspaces.workspaces.values() {
+                    let has_windows = occupied_workspaces.contains(&w.id);
+                    workspaces.push(WorkspaceInfo {
+                        id: w.id,
+                        idx: w.idx,
+                        name: w.name.clone(),
+                        output: w.output.clone().unwrap_or_default(),
+                        is_active: w.is_active,
+                        is_focused: w.is_focused,
+                        has_windows,
+                    });
+                }
+                workspaces.sort_by_key(|w| w.idx);
 
                 let active_win = windows.iter().find(|w| w.is_focused).cloned();
                 let focused_ws = workspaces.iter().find(|w| w.is_focused).map(|w| w.id);
@@ -248,15 +254,23 @@ impl CompositorBackend for NiriBackend {
             niri_ipc::Response::Workspaces(w) => w,
             other => anyhow::bail!("Unexpected response from niri: {:?}", other),
         };
+        let occupied_workspaces: std::collections::HashSet<u64> = match Self::query(Request::Windows) {
+            Ok(niri_ipc::Response::Windows(wins)) => wins.into_iter().filter_map(|w| w.workspace_id).collect(),
+            _ => std::collections::HashSet::new(),
+        };
         let mut list: Vec<WorkspaceInfo> = ws
             .into_iter()
-            .map(|w| WorkspaceInfo {
-                id: w.id,
-                idx: w.idx,
-                name: w.name,
-                output: w.output.unwrap_or_default(),
-                is_active: w.is_active,
-                is_focused: w.is_focused,
+            .map(|w| {
+                let has_windows = occupied_workspaces.contains(&w.id);
+                WorkspaceInfo {
+                    id: w.id,
+                    idx: w.idx,
+                    name: w.name,
+                    output: w.output.unwrap_or_default(),
+                    is_active: w.is_active,
+                    is_focused: w.is_focused,
+                    has_windows,
+                }
             })
             .collect();
         list.sort_by_key(|w| w.idx);

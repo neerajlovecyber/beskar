@@ -338,6 +338,14 @@ impl Render for DesktopBarView {
             modules_left: Some(self.config.modules_left.clone()),
             modules_center: Some(self.config.modules_center.clone()),
             modules_right: Some(self.config.modules_right.clone()),
+            geometry: if self.is_convex {
+                Some(beskar_ui::ConvexGeometry {
+                    center_w: self.island_spring.current,
+                    ..Default::default()
+                })
+            } else {
+                None
+            },
         };
 
         div()

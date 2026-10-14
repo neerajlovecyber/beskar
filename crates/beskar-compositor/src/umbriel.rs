@@ -58,6 +58,7 @@ impl CompositorBackend for UmbrielBackend {
                 output: "eDP-1".to_string(),
                 is_active: active == 1,
                 is_focused: active == 1,
+                has_windows: false,
             },
             WorkspaceInfo {
                 id: 2,
@@ -66,6 +67,7 @@ impl CompositorBackend for UmbrielBackend {
                 output: "eDP-1".to_string(),
                 is_active: active == 2,
                 is_focused: active == 2,
+                has_windows: false,
             },
             WorkspaceInfo {
                 id: 3,
@@ -74,6 +76,7 @@ impl CompositorBackend for UmbrielBackend {
                 output: "eDP-1".to_string(),
                 is_active: active == 3,
                 is_focused: active == 3,
+                has_windows: false,
             },
         ];
 
@@ -92,6 +95,7 @@ impl CompositorBackend for UmbrielBackend {
                 output: "eDP-1".to_string(),
                 is_active: active == 1,
                 is_focused: active == 1,
+                has_windows: false,
             },
             WorkspaceInfo {
                 id: 2,
@@ -100,6 +104,7 @@ impl CompositorBackend for UmbrielBackend {
                 output: "eDP-1".to_string(),
                 is_active: active == 2,
                 is_focused: active == 2,
+                has_windows: false,
             },
             WorkspaceInfo {
                 id: 3,
@@ -108,6 +113,7 @@ impl CompositorBackend for UmbrielBackend {
                 output: "eDP-1".to_string(),
                 is_active: active == 3,
                 is_focused: active == 3,
+                has_windows: false,
             },
         ])
     }

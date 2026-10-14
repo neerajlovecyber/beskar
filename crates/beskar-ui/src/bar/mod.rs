@@ -284,8 +284,17 @@ impl BeskarBar {
         }
         let right_pill = IslandPill::new().convex(is_convex).child(vitals_widget);
 
+        let geom = state.geometry.unwrap_or_else(|| {
+            let center_w = state.animated_center_width.unwrap_or(260.0);
+            crate::convex::ConvexGeometry {
+                center_w,
+                ..Default::default()
+            }
+        });
+
         Self::new()
             .convex(is_convex)
+            .geometry(geom)
             .left([left_pill.into_any_element()])
             .center([center_pill.into_any_element()])
             .right([right_pill.into_any_element()])
@@ -348,6 +357,7 @@ impl BeskarBar {
             modules_left: None,
             modules_center: None,
             modules_right: None,
+            geometry: None,
         };
         let actions = BarActions {
             on_select_ws,
@@ -385,6 +395,7 @@ impl BeskarBar {
                 output: String::new(),
                 is_active: i as u64 == active_ws,
                 is_focused: i as u64 == active_ws,
+                has_windows: false,
             })
             .collect();
 
@@ -439,12 +450,19 @@ impl RenderOnce for BeskarBar {
                 .children(self.center)
                 .children(self.right)
         } else {
+            let geom = self.geometry.unwrap_or_default();
             div()
                 .relative()
                 .size_full()
                 .when(self.is_convex, |this| {
-                    this.border_b_1()
-                        .border_color(beskar_theme::Theme::subtle_border())
+                    let fill = beskar_theme::Theme::bg();
+                    let border = beskar_theme::Theme::subtle_border();
+                    this.child(
+                        div()
+                            .absolute()
+                            .inset_0()
+                            .child(crate::convex::ConvexBarShape::new(geom, fill, border)),
+                    )
                 })
                 .child(
                     div()

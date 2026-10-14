@@ -229,29 +229,29 @@ pub struct ThemeTokens {
 impl Default for ThemeTokens {
     fn default() -> Self {
         Self {
-            // Dark obsidian frosted acrylic (Suzuha style)
-            surface_bg: HslaColor::new(240.0, 0.12, 0.08, 0.82),
-            surface_hover: HslaColor::new(240.0, 0.12, 0.14, 0.90),
-            surface_active: HslaColor::new(240.0, 0.15, 0.18, 0.95),
-            surface_border: HslaColor::new(240.0, 0.08, 1.0, 0.08),
-            surface_glow: HslaColor::new(45.0, 0.85, 0.65, 0.12),
+            // Minflair Obsidian void black (#030107) at 96% opacity
+            surface_bg: HslaColor::new(260.0, 0.75, 0.02, 0.96),
+            surface_hover: HslaColor::new(261.0, 0.35, 0.12, 0.92),
+            surface_active: HslaColor::new(261.0, 0.40, 0.18, 0.95),
+            surface_border: HslaColor::new(0.0, 0.0, 1.0, 0.08),
+            surface_glow: HslaColor::new(261.0, 0.87, 0.73, 0.18),
 
-            // Typography & iRiS Warm Amber/Gold Accents
-            text_primary: HslaColor::new(0.0, 0.0, 0.96, 1.0),
-            text_secondary: HslaColor::new(0.0, 0.0, 0.75, 1.0),
-            text_muted: HslaColor::new(0.0, 0.0, 0.45, 1.0),
-            accent: HslaColor::new(45.0, 0.90, 0.60, 1.0), // Amber gold from screenshot
-            accent_hover: HslaColor::new(45.0, 0.95, 0.68, 1.0),
+            // Minflair Typography & Radiant Lavender Accents (#a77ef5)
+            text_primary: HslaColor::new(0.0, 0.0, 0.92, 1.0),
+            text_secondary: HslaColor::new(260.0, 0.15, 0.72, 1.0),
+            text_muted: HslaColor::new(260.0, 0.10, 0.45, 1.0),
+            accent: HslaColor::new(261.0, 0.87, 0.73, 1.0), // Lavender #a77ef5
+            accent_hover: HslaColor::new(261.0, 0.92, 0.78, 1.0),
 
-            success: HslaColor::new(142.0, 0.70, 0.55, 1.0),
-            warning: HslaColor::new(42.0, 0.90, 0.55, 1.0),
-            danger: HslaColor::new(350.0, 0.85, 0.60, 1.0),
-            info: HslaColor::new(210.0, 0.85, 0.60, 1.0),
+            success: HslaColor::new(145.0, 0.70, 0.55, 1.0),
+            warning: HslaColor::new(42.0, 0.92, 0.58, 1.0),
+            danger: HslaColor::new(348.0, 0.85, 0.62, 1.0),
+            info: HslaColor::new(210.0, 0.85, 0.62, 1.0),
 
             // Geometry tokens
             bar_height: 44.0,
-            pill_idle_height: 34.0,
-            pill_corner_radius: 17.0,
+            pill_idle_height: 38.0,
+            pill_corner_radius: 19.0,
             notch_flare_width: 18.0,
             notch_flare_height: 16.0,
             notch_bottom_radius: 16.0,
