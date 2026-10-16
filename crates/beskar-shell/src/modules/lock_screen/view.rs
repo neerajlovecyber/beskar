@@ -15,7 +15,10 @@ pub struct LockScreenWidget {
     date_str: String,
     password_len: usize,
     has_error: bool,
+    is_checking: bool,
     wallpaper_path: Option<String>,
+    battery: Option<beskar_services::BatteryState>,
+    media_track: Option<beskar_services::MediaTrack>,
     on_unlock_attempt: Option<Arc<dyn Fn(String) + Send + Sync>>,
     on_cancel: Option<Arc<dyn Fn() + Send + Sync>>,
 }
@@ -32,7 +35,10 @@ impl LockScreenWidget {
             date_str: date_str.into(),
             password_len: 0,
             has_error: false,
+            is_checking: false,
             wallpaper_path: None,
+            battery: None,
+            media_track: None,
             on_unlock_attempt: None,
             on_cancel: None,
         }
@@ -48,8 +54,23 @@ impl LockScreenWidget {
         self
     }
 
+    pub fn checking(mut self, checking: bool) -> Self {
+        self.is_checking = checking;
+        self
+    }
+
     pub fn wallpaper(mut self, path: Option<String>) -> Self {
         self.wallpaper_path = path;
+        self
+    }
+
+    pub fn battery(mut self, battery: Option<beskar_services::BatteryState>) -> Self {
+        self.battery = battery;
+        self
+    }
+
+    pub fn media(mut self, media: Option<beskar_services::MediaTrack>) -> Self {
+        self.media_track = media;
         self
     }
 
@@ -84,6 +105,64 @@ impl RenderOnce for LockScreenWidget {
             .justify_center()
             // Deep obsidian atmospheric acrylic backdrop (darkened by 72% per Suzuha)
             .bg(beskar_theme::Theme::bg())
+            // Blurred wallpaper background if available
+            .when_some(self.wallpaper_path, |this, path| {
+                this.child(
+                    div()
+                        .absolute()
+                        .inset_0()
+                        .child(img(path).size_full().object_fit(ObjectFit::Cover))
+                        .child(div().absolute().inset_0().bg(gpui_kit::hsla(0.0, 0.0, 0.0, 0.40))),
+                )
+            })
+            // Top right status bar (Battery green badge + Wi-Fi)
+            .child(
+                div()
+                    .absolute()
+                    .top(px(32.0))
+                    .right(px(40.0))
+                    .flex()
+                    .items_center()
+                    .gap(px(10.0))
+                    .when_some(self.battery, |d, bat| {
+                        let is_charging = bat.is_charging;
+                        let pct = bat.percentage.round() as u32;
+                        d.child(
+                            div()
+                                .flex()
+                                .items_center()
+                                .gap(px(6.0))
+                                .px(px(8.0))
+                                .py(px(3.0))
+                                .rounded(px(6.0))
+                                .bg(beskar_theme::Theme::success_alpha(0.85))
+                                .child(
+                                    div()
+                                        .text_xs()
+                                        .font_weight(FontWeight::BOLD)
+                                        .text_color(beskar_theme::Theme::bg())
+                                        .child(format!("{}%", pct)),
+                                )
+                                .child(
+                                    svg()
+                                        .path(if is_charging {
+                                            "battery-charging.svg"
+                                        } else if pct <= 20 {
+                                            "battery-low.svg"
+                                        } else {
+                                            "battery-full.svg"
+                                        })
+                                        .size(px(14.0))
+                                        .text_color(beskar_theme::Theme::bg()),
+                                ),
+                        )
+                    })
+                    .child(
+                        Icon::new(IconName::Wifi)
+                            .size(px(16.0))
+                            .text_color(beskar_theme::Theme::fg()),
+                    ),
+            )
             // Top lock hint badge (Suzuha style)
             .child(
                 div()
@@ -101,7 +180,7 @@ impl RenderOnce for LockScreenWidget {
                     .flex()
                     .flex_col()
                     .items_center()
-                    .mb(px(40.0))
+                    .mb(px(20.0))
                     .child(
                         div()
                             .text_size(px(80.0))
@@ -119,6 +198,34 @@ impl RenderOnce for LockScreenWidget {
                             .child(self.date_str),
                     ),
             )
+            // Media / Lyrics strip
+            .when_some(self.media_track, |d, track| {
+                d.child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap(px(8.0))
+                        .mb(px(24.0))
+                        .px(px(16.0))
+                        .py(px(6.0))
+                        .rounded_full()
+                        .bg(beskar_theme::Theme::glass_fill(0.12))
+                        .border_1()
+                        .border_color(beskar_theme::Theme::card_border())
+                        .child(
+                            Icon::new(IconName::Music)
+                                .size(px(13.0))
+                                .text_color(beskar_theme::Theme::accent()),
+                        )
+                        .child(
+                            div()
+                                .text_xs()
+                                .font_weight(FontWeight::MEDIUM)
+                                .text_color(beskar_theme::Theme::fg())
+                                .child(format!("{} - {}", track.title, track.artist)),
+                        ),
+                )
+            })
             // Profile & Password Card (Frosted Glass Acrylic)
             .child(
                 div()
@@ -205,7 +312,7 @@ impl RenderOnce for LockScreenWidget {
                                 Button::new("unlock-submit")
                                     .primary()
                                     .compact()
-                                    .label("→")
+                                    .label(if self.is_checking { "…" } else { "→" })
                                     .when_some(on_unlock, |btn, cb| {
                                         btn.on_click(move |_, _, _| (cb)(String::new()))
                                     }),

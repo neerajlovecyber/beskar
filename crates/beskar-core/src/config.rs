@@ -94,6 +94,9 @@ fn default_exclusive_zone() -> f32 {
 fn default_idle_height() -> f32 {
     40.0
 }
+fn default_clock_format() -> String {
+    "%-I:%M %p".to_string()
+}
 
 fn default_modules_left() -> Vec<BarModule> {
     vec![
@@ -160,6 +163,12 @@ pub struct ShellConfig {
     pub exclusive_zone: f32,
     #[serde(default = "default_idle_height")]
     pub idle_height: f32,
+    #[serde(default = "default_clock_format")]
+    pub clock_format: String,
+    #[serde(default = "default_true")]
+    pub lockscreen_show_lyrics: bool,
+    #[serde(default = "default_true")]
+    pub lockscreen_blur: bool,
 }
 
 impl Default for ShellConfig {
@@ -186,6 +195,9 @@ impl Default for ShellConfig {
             margin_top: default_margin_top(),
             exclusive_zone: default_exclusive_zone(),
             idle_height: default_idle_height(),
+            clock_format: default_clock_format(),
+            lockscreen_show_lyrics: true,
+            lockscreen_blur: true,
         }
     }
 }

@@ -462,3 +462,189 @@ pub fn render_keybindings_page() -> gpui::Div {
                 )),
         )
 }
+
+// ── Apps Page ──
+pub fn render_apps_page() -> gpui::Div {
+    let apps = beskar_services::list_apps();
+    div()
+        .flex()
+        .flex_col()
+        .gap(px(12.0))
+        .child(
+            settings_card("Application Launcher Configuration")
+                .child(settings_row(
+                    "Installed Applications",
+                    "Discovered from XDG standard application desktop entries",
+                    div()
+                        .text_xs()
+                        .font_weight(FontWeight::BOLD)
+                        .text_color(beskar_theme::Theme::fg())
+                        .child(format!("{} apps detected", apps.len())),
+                ))
+                .child(settings_row(
+                    "Default Terminal",
+                    "Terminal emulator spawned by launcher and updates card",
+                    div()
+                        .text_xs()
+                        .font_weight(FontWeight::MEDIUM)
+                        .text_color(beskar_theme::Theme::accent())
+                        .child("alacritty / kitty / foot"),
+                )),
+        )
+        .child(
+            settings_card("Discovered Desktop Applications")
+                .children(apps.into_iter().take(8).map(|app| {
+                    settings_row(
+                        Box::leak(app.name.clone().into_boxed_str()),
+                        Box::leak(format!("Exec: {}", app.exec).into_boxed_str()),
+                        div()
+                            .px(px(8.0))
+                            .py(px(2.0))
+                            .rounded(px(4.0))
+                            .bg(beskar_theme::Theme::glass_fill(0.08))
+                            .text_xs()
+                            .text_color(beskar_theme::Theme::muted())
+                            .child("Installed"),
+                    )
+                })),
+        )
+}
+
+// ── Media Page ──
+pub fn render_media_page(morph_on_media: bool, on_media: Option<Arc<dyn Fn(bool) + Send + Sync>>) -> gpui::Div {
+    let players = beskar_services::MprisService::fetch_all_players();
+    let current_track = players.first();
+    let title: &'static str = match current_track {
+        Some(t) => Box::leak(t.title.clone().into_boxed_str()),
+        None => "No media playing",
+    };
+    let artist: String = match current_track {
+        Some(t) => t.artist.clone(),
+        None => "Idle".to_string(),
+    };
+
+    div()
+        .flex()
+        .flex_col()
+        .gap(px(12.0))
+        .child(
+            settings_card("MPRIS Media Playback & Dynamic Island")
+                .child(settings_row(
+                    "Center Island Morph on Media",
+                    "Expand dynamic island to display animated sine wave and track controls",
+                    Switch::new("settings-media-morph")
+                        .checked(morph_on_media)
+                        .when_some(on_media, |sw, cb| {
+                            sw.on_click(move |_, _, _| (cb)(!morph_on_media))
+                        }),
+                ))
+                .child(settings_row(
+                    "Active Media Players",
+                    "Connected D-Bus org.mpris.MediaPlayer2 instances",
+                    div()
+                        .text_xs()
+                        .font_weight(FontWeight::BOLD)
+                        .text_color(beskar_theme::Theme::fg())
+                        .child(format!("{} active", players.len())),
+                )),
+        )
+        .child(
+            settings_card("Currently Playing Track")
+                .child(settings_row(
+                    "Title",
+                    title,
+                    div()
+                        .text_xs()
+                        .font_weight(FontWeight::MEDIUM)
+                        .text_color(beskar_theme::Theme::accent())
+                        .child(artist),
+                )),
+        )
+}
+
+// ── Lock Screen Page ──
+pub fn render_lockscreen_page(
+    config: &SettingsConfig,
+    on_blur: Option<Arc<dyn Fn(bool) + Send + Sync>>,
+    on_lyrics: Option<Arc<dyn Fn(bool) + Send + Sync>>,
+) -> gpui::Div {
+    let blur_active = config.lockscreen_blur;
+    let lyrics_active = config.lockscreen_show_lyrics;
+
+    div()
+        .flex()
+        .flex_col()
+        .gap(px(12.0))
+        .child(
+            settings_card("Lock Screen Visuals & Authentication")
+                .child(settings_row(
+                    "Atmospheric Wallpaper Blur",
+                    "Apply Gaussian blur to the active desktop wallpaper behind the lock screen",
+                    Switch::new("settings-lock-blur")
+                        .checked(blur_active)
+                        .when_some(on_blur, |sw, cb| {
+                            sw.on_click(move |_, _, _| (cb)(!blur_active))
+                        }),
+                ))
+                .child(settings_row(
+                    "Synchronized Music Lyrics",
+                    "Display synced song lyrics on the primary display when playing media",
+                    Switch::new("settings-lock-lyrics")
+                        .checked(lyrics_active)
+                        .when_some(on_lyrics, |sw, cb| {
+                            sw.on_click(move |_, _, _| (cb)(!lyrics_active))
+                        }),
+                ))
+                .child(settings_row(
+                    "Clock Time Format",
+                    "Time readout display format (12-hour AM/PM or 24-hour)",
+                    div()
+                        .text_xs()
+                        .font_weight(FontWeight::BOLD)
+                        .text_color(beskar_theme::Theme::fg())
+                        .child(config.clock_format.clone()),
+                )),
+        )
+}
+
+// ── Record Page ──
+pub fn render_record_page() -> gpui::Div {
+    div()
+        .flex()
+        .flex_col()
+        .gap(px(12.0))
+        .child(
+            settings_card("Screen Recording (wf-recorder)")
+                .child(settings_row(
+                    "Video Format & Framerate",
+                    "High-definition 60 FPS recording with hardware acceleration",
+                    div()
+                        .px(px(8.0))
+                        .py(px(4.0))
+                        .rounded(px(6.0))
+                        .bg(beskar_theme::Theme::card_bg())
+                        .text_xs()
+                        .font_weight(FontWeight::BOLD)
+                        .text_color(beskar_theme::Theme::accent())
+                        .child("MP4 / 60 FPS"),
+                ))
+                .child(settings_row(
+                    "Audio Capture Channel",
+                    "PulseAudio / PipeWire default desktop audio monitor",
+                    div()
+                        .text_xs()
+                        .font_weight(FontWeight::MEDIUM)
+                        .text_color(beskar_theme::Theme::fg())
+                        .child("System Sound Output"),
+                ))
+                .child(settings_row(
+                    "OCR Extraction Engine",
+                    "Optical Character Recognition via grim, slurp and tesseract",
+                    div()
+                        .text_xs()
+                        .font_weight(FontWeight::MEDIUM)
+                        .text_color(beskar_theme::Theme::success())
+                        .child("Active"),
+                )),
+        )
+}

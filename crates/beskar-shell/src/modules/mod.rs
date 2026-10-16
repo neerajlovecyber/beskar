@@ -10,6 +10,7 @@ pub mod launcher;
 pub mod lock_screen;
 pub mod music_player;
 pub mod notification_center;
+pub mod polkit;
 pub mod power_menu;
 pub mod screen_capture;
 pub mod settings;
@@ -26,6 +27,7 @@ pub use notification_center::{
     forget_notification_overlay, sync_notification_toasts, NotificationCenterView,
     NotificationToastQueueView,
 };
+pub use polkit::PolkitView;
 pub use power_menu::PowerMenuView;
 pub use screen_capture::ScreenCaptureView;
 pub use settings::SettingsView;
@@ -49,11 +51,16 @@ pub fn register_all_modules() {
     PanelHost::register::<lock_screen::LockScreenView>();
     PanelHost::register::<dashboard::DashboardView>();
     PanelHost::register::<tray_menu::TrayMenuView>();
+    PanelHost::register::<polkit::PolkitView>();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Strongly-typed toggle convenience helpers
 // ─────────────────────────────────────────────────────────────────────────────
+
+pub fn toggle_polkit(cx: &mut App) {
+    PanelHost::toggle::<polkit::PolkitView>(cx);
+}
 
 pub fn toggle_launcher(cx: &mut App) {
     PanelHost::toggle::<launcher::LauncherView>(cx);

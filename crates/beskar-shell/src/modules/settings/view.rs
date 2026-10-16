@@ -11,43 +11,55 @@ use super::pages::*;
 /// Categories in the Settings window sidebar.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SettingsCategory {
-    General,
     Appearance,
-    BarAndIslands,
-    Hardware,
+    Apps,
+    Media,
+    LockScreen,
+    System,
+    Record,
     Notifications,
     Keybindings,
+    General,
 }
 
 impl SettingsCategory {
-    pub const ALL: [Self; 6] = [
-        Self::General,
+    pub const ALL: [Self; 9] = [
         Self::Appearance,
-        Self::BarAndIslands,
-        Self::Hardware,
+        Self::Apps,
+        Self::Media,
+        Self::LockScreen,
+        Self::System,
+        Self::Record,
         Self::Notifications,
         Self::Keybindings,
+        Self::General,
     ];
 
     pub fn title(&self) -> &'static str {
         match self {
-            Self::General => "General",
             Self::Appearance => "Appearance",
-            Self::BarAndIslands => "Bar & Islands",
-            Self::Hardware => "Hardware & Vitals",
+            Self::Apps => "Apps",
+            Self::Media => "Media",
+            Self::LockScreen => "Lock Screen",
+            Self::System => "System",
+            Self::Record => "Screen Record",
             Self::Notifications => "Notifications",
             Self::Keybindings => "Shortcuts",
+            Self::General => "General",
         }
     }
 
     pub fn icon(&self) -> IconName {
         match self {
-            Self::General => IconName::Settings2,
             Self::Appearance => IconName::Palette,
-            Self::BarAndIslands => IconName::LayoutDashboard,
-            Self::Hardware => IconName::Cpu,
+            Self::Apps => IconName::LayoutGrid,
+            Self::Media => IconName::Music,
+            Self::LockScreen => IconName::Lock,
+            Self::System => IconName::Cpu,
+            Self::Record => IconName::Video,
             Self::Notifications => IconName::Bell,
             Self::Keybindings => IconName::SquareTerminal,
+            Self::General => IconName::Settings2,
         }
     }
 }
@@ -68,12 +80,15 @@ pub struct SettingsConfig {
     pub is_bt_on: bool,
     pub volume_percent: u8,
     pub battery_percent: u8,
+    pub lockscreen_blur: bool,
+    pub lockscreen_show_lyrics: bool,
+    pub clock_format: String,
 }
 
 impl Default for SettingsConfig {
     fn default() -> Self {
         Self {
-            active_category: SettingsCategory::General,
+            active_category: SettingsCategory::Appearance,
             accent_color_idx: 0,
             dark_mode: true,
             island_mode_notch: false,
@@ -86,6 +101,9 @@ impl Default for SettingsConfig {
             is_bt_on: true,
             volume_percent: 65,
             battery_percent: 85,
+            lockscreen_blur: true,
+            lockscreen_show_lyrics: true,
+            clock_format: "%-I:%M %p".to_string(),
         }
     }
 }
@@ -102,10 +120,15 @@ pub struct SettingsWidget {
     on_select_accent: Option<Arc<dyn Fn(usize) + Send + Sync>>,
     on_select_preset: Option<Arc<dyn Fn(beskar_theme::ThemePreset) + Send + Sync>>,
     on_test_notification: Option<Arc<dyn Fn() + Send + Sync>>,
+    on_toggle_lockscreen_blur: Option<Arc<dyn Fn(bool) + Send + Sync>>,
+    on_toggle_lockscreen_lyrics: Option<Arc<dyn Fn(bool) + Send + Sync>>,
     on_close: Option<Arc<dyn Fn() + Send + Sync>>,
 }
 
 impl SettingsWidget {
+    pub const WIDTH: f32 = 1120.0;
+    pub const HEIGHT: f32 = 780.0;
+
     pub fn new(config: SettingsConfig) -> Self {
         Self {
             config,
@@ -116,8 +139,26 @@ impl SettingsWidget {
             on_select_accent: None,
             on_select_preset: None,
             on_test_notification: None,
+            on_toggle_lockscreen_blur: None,
+            on_toggle_lockscreen_lyrics: None,
             on_close: None,
         }
+    }
+
+    pub fn on_toggle_lockscreen_blur(
+        mut self,
+        handler: impl Fn(bool) + Send + Sync + 'static,
+    ) -> Self {
+        self.on_toggle_lockscreen_blur = Some(Arc::new(handler));
+        self
+    }
+
+    pub fn on_toggle_lockscreen_lyrics(
+        mut self,
+        handler: impl Fn(bool) + Send + Sync + 'static,
+    ) -> Self {
+        self.on_toggle_lockscreen_lyrics = Some(Arc::new(handler));
+        self
     }
 
     pub fn on_select_category(
@@ -178,12 +219,14 @@ impl RenderOnce for SettingsWidget {
         let config = self.config.clone();
         let on_cat = self.on_select_category;
         let on_close = self.on_close;
-        let on_notch = self.on_toggle_notch_mode;
-        let on_win_title = self.on_toggle_window_title;
+        let _on_notch = self.on_toggle_notch_mode;
+        let _on_win_title = self.on_toggle_window_title;
         let on_media = self.on_toggle_media_morph;
         let on_accent = self.on_select_accent;
         let on_preset = self.on_select_preset;
         let on_test_notif = self.on_test_notification;
+        let on_blur = self.on_toggle_lockscreen_blur;
+        let on_lyrics = self.on_toggle_lockscreen_lyrics;
 
         let accents = [
             ("Beskar Gold", hsla(45.0 / 360.0, 0.95, 0.58, 1.0)),
@@ -194,8 +237,8 @@ impl RenderOnce for SettingsWidget {
         ];
 
         div()
-            .w(px(760.0))
-            .h(px(520.0))
+            .w(px(Self::WIDTH))
+            .h(px(Self::HEIGHT))
             .rounded(px(22.0))
             // Frosted Obsidian Acrylic Glass
             .bg(beskar_theme::Theme::bg())
@@ -204,10 +247,10 @@ impl RenderOnce for SettingsWidget {
             .shadow_2xl()
             .flex()
             .overflow_hidden()
-            // ── Left Sidebar Navigation (220px) ──
+            // ── Left Sidebar Navigation (250px) ──
             .child(
                 div()
-                    .w(px(220.0))
+                    .w(px(250.0))
                     .h_full()
                     .bg(beskar_theme::Theme::glass_dark(0.25))
                     .border_r_1()
@@ -385,9 +428,6 @@ impl RenderOnce for SettingsWidget {
                     )
                     // Page Body Switcher
                     .child(match config.active_category {
-                        SettingsCategory::General => {
-                            render_general_page()
-                        }
                         SettingsCategory::Appearance => {
                             render_appearance_page(
                                 &accents,
@@ -397,24 +437,29 @@ impl RenderOnce for SettingsWidget {
                                 on_preset,
                             )
                         }
-                        SettingsCategory::BarAndIslands => {
-                            render_bar_page(
-                                config.island_mode_notch,
-                                config.show_active_window_title,
-                                config.morph_on_media,
-                                on_notch,
-                                on_win_title,
-                                on_media,
-                            )
+                        SettingsCategory::Apps => {
+                            render_apps_page()
                         }
-                        SettingsCategory::Hardware => {
+                        SettingsCategory::Media => {
+                            render_media_page(config.morph_on_media, on_media)
+                        }
+                        SettingsCategory::LockScreen => {
+                            render_lockscreen_page(&config, on_blur, on_lyrics)
+                        }
+                        SettingsCategory::System => {
                             render_hardware_page(&config)
+                        }
+                        SettingsCategory::Record => {
+                            render_record_page()
                         }
                         SettingsCategory::Notifications => {
                             render_notifications_page(config.notification_timeout_secs, on_test_notif)
                         }
                         SettingsCategory::Keybindings => {
                             render_keybindings_page()
+                        }
+                        SettingsCategory::General => {
+                            render_general_page()
                         }
                     }),
             )

@@ -1,14 +1,16 @@
 use beskar_core::config::{BarStyleConfig, ShellConfig, ThemePresetConfig};
 use beskar_services::audio::AudioService;
 use beskar_services::battery::BatteryService;
+pub mod animator;
 pub mod helpers;
 pub mod pages;
 pub mod view;
 
 pub use self::view::{SettingsCategory, SettingsConfig, SettingsWidget};
+use self::animator::SettingsAnimator;
 use gpui_kit::*;
 
-use crate::panel_host::{LayerAnchor, PanelHost, PanelModule};
+use crate::panel_host::{LayerAnchor, PanelHost, PanelModule, Slot};
 
 #[derive(Debug, Clone)]
 enum SettingsMsg {
@@ -18,6 +20,8 @@ enum SettingsMsg {
     ToggleMedia(bool),
     SelectAccent(usize),
     SelectPreset(beskar_theme::ThemePreset),
+    ToggleLockBlur(bool),
+    ToggleLockLyrics(bool),
     TestNotification,
     Close,
 }
@@ -25,6 +29,7 @@ enum SettingsMsg {
 /// Dedicated View for Settings / Preferences
 pub struct SettingsView {
     config: SettingsConfig,
+    animator: SettingsAnimator,
     focus_handle: FocusHandle,
     msg_tx: tokio::sync::mpsc::UnboundedSender<SettingsMsg>,
 }
@@ -32,8 +37,12 @@ pub struct SettingsView {
 impl PanelModule for SettingsView {
     const ID: &'static str = "settings";
 
+    fn slot() -> Slot {
+        Slot::Focus
+    }
+
     fn size() -> Size<Pixels> {
-        Size::new(px(760.0), px(520.0))
+        Size::new(px(SettingsWidget::WIDTH), px(SettingsWidget::HEIGHT))
     }
 
     fn anchor() -> LayerAnchor {
@@ -41,7 +50,7 @@ impl PanelModule for SettingsView {
     }
 
     fn margin() -> (Pixels, Pixels, Pixels, Pixels) {
-        (px(60.0), px(0.0), px(0.0), px(0.0))
+        (px(40.0), px(0.0), px(0.0), px(0.0))
     }
 
     fn build(cx: &mut Context<Self>) -> Self {
@@ -59,6 +68,11 @@ impl SettingsView {
         config.island_mode_notch = shell_cfg.bar_style == BarStyleConfig::Convex;
         config.show_active_window_title = shell_cfg.show_workspaces;
         config.morph_on_media = shell_cfg.show_media_in_center;
+        config.lockscreen_blur = shell_cfg.lockscreen_blur;
+        config.lockscreen_show_lyrics = shell_cfg.lockscreen_show_lyrics;
+        config.clock_format = shell_cfg.clock_format.clone();
+
+        let animator = SettingsAnimator::new(shell_cfg.animation_duration_ms as u64);
 
         let aud = AudioService::read_state();
         let bat = BatteryService::new().read_state();
@@ -74,6 +88,7 @@ impl SettingsView {
                 let _ = this.update(cx, |this, cx| match msg {
                     SettingsMsg::SelectCategory(cat) => {
                         this.config.active_category = cat;
+                        this.animator.start_section_transition(std::time::Duration::from_millis(200));
                         cx.notify();
                     }
                     SettingsMsg::ToggleNotch(val) => {
@@ -117,6 +132,20 @@ impl SettingsView {
                         let _ = shell_cfg.save();
                         cx.notify();
                     }
+                    SettingsMsg::ToggleLockBlur(val) => {
+                        this.config.lockscreen_blur = val;
+                        let mut shell_cfg = ShellConfig::load();
+                        shell_cfg.lockscreen_blur = val;
+                        let _ = shell_cfg.save();
+                        cx.notify();
+                    }
+                    SettingsMsg::ToggleLockLyrics(val) => {
+                        this.config.lockscreen_show_lyrics = val;
+                        let mut shell_cfg = ShellConfig::load();
+                        shell_cfg.lockscreen_show_lyrics = val;
+                        let _ = shell_cfg.save();
+                        cx.notify();
+                    }
                     SettingsMsg::TestNotification => {
                         beskar_services::notifications::send_test(
                             "Beskar Shell",
@@ -133,6 +162,7 @@ impl SettingsView {
 
         Self {
             config,
+            animator,
             focus_handle,
             msg_tx,
         }
@@ -153,13 +183,21 @@ impl Render for SettingsView {
         let tx_media = self.msg_tx.clone();
         let tx_accent = self.msg_tx.clone();
         let tx_preset = self.msg_tx.clone();
+        let tx_blur = self.msg_tx.clone();
+        let tx_lyrics = self.msg_tx.clone();
         let tx_test = self.msg_tx.clone();
         let tx_close = self.msg_tx.clone();
 
+        let (running, _) = self.animator.advance(std::time::Instant::now());
+        if running {
+            _window.request_animation_frame();
+        }
+
         div()
             .id("settings-card")
-            .w(px(760.0))
-            .h(px(520.0))
+            .w(px(SettingsWidget::WIDTH))
+            .h(px(SettingsWidget::HEIGHT))
+            .opacity(self.animator.card_opacity)
             .track_focus(&self.focus_handle)
             .key_context("Settings")
             .on_key_down(cx.listener(|_, event: &KeyDownEvent, _window, cx| {
@@ -187,6 +225,12 @@ impl Render for SettingsView {
                     })
                     .on_select_preset(move |preset| {
                         let _ = tx_preset.send(SettingsMsg::SelectPreset(preset));
+                    })
+                    .on_toggle_lockscreen_blur(move |val| {
+                        let _ = tx_blur.send(SettingsMsg::ToggleLockBlur(val));
+                    })
+                    .on_toggle_lockscreen_lyrics(move |val| {
+                        let _ = tx_lyrics.send(SettingsMsg::ToggleLockLyrics(val));
                     })
                     .on_test_notification(move || {
                         let _ = tx_test.send(SettingsMsg::TestNotification);

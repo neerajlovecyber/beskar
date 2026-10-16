@@ -2,13 +2,21 @@ pub struct BacklightService;
 
 impl BacklightService {
     pub fn get_brightness() -> u8 {
-        if let Ok(out) = std::process::Command::new("brightnessctl").arg("-m").output() {
-            let s = String::from_utf8_lossy(&out.stdout);
-            for part in s.split(',') {
-                if part.ends_with('%')
-                    && let Ok(v) = part.trim_end_matches('%').parse::<u8>() {
-                        return v;
+        if let Ok(entries) = std::fs::read_dir("/sys/class/backlight") {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                let cur = std::fs::read_to_string(path.join("brightness"));
+                let max = std::fs::read_to_string(path.join("max_brightness"));
+                if let (Ok(cur_str), Ok(max_str)) = (cur, max) {
+                    if let (Ok(c), Ok(m)) = (
+                        cur_str.trim().parse::<f32>(),
+                        max_str.trim().parse::<f32>(),
+                    ) {
+                        if m > 0.0 {
+                            return ((c / m) * 100.0).round().clamp(1.0, 100.0) as u8;
+                        }
                     }
+                }
             }
         }
         100
