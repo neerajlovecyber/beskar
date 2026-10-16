@@ -1,3 +1,4 @@
+pub mod dashboard;
 pub mod dynamic_center;
 pub mod satellite;
 pub mod style;

@@ -131,14 +131,14 @@ crates/beskar-shell/src/modules/
 
 ## 4. Acceptance
 
-- [ ] Dashboard overlay opens as `Left` (or `Center`) slot card `560×574` (`has_tray` vs `no-tray` height `574-FOOTER-GAP`), gap `12`, left column `268` + right `RIGHT = WIDTH-PADDING*2-LEFT-GAP`, `CONTENT=212` `SLIDER 80` `NOTIFICATIONS 150`; dimension invariants pass.
-- [ ] Snapshot polls at `250ms` when `active`, `SizeChanged` only when `tray.empty` flips; `retain_player` prefers `current` else `playing` else `first`; `slider_fraction` clamps `0..1` returns `None` when `width==0`.
-- [ ] Wave animation runs at `compositor.get_frame_duration().max(16ms)` while `is_playing`, `wave_phase = epoch*3.0`; progress wave `amplitude 3.0` else `0`, envelope `min(x/8,1)*clamp((played-x)/8,0,1)`, `inactive 0.3` rest line, `active accent` wave stroke `2`; `position(track,elapsed)` clamped `max 0` and never exceeds `length`.
-- [ ] Media card: `backdrop_blur 18 bg 0.62` art cover `aspect RIGHT/MEDIA_HEIGHT`, title `17 SEMIBOLD` artist `11 muted`, `play 36 accent` + prev/next `18 disabled 0.35`, seek `canvas 12×` with `start_seek` `on_mouse_down`, `Seek(f64)` dispatch via `DimensionTracker` + `slider_fraction`; non-blocking `playerctl`/`mpris` `spawn_tokio`.
-- [ ] Volume/brightness/seek `DimensionTracker` bounds `track_bounds` + `on_mouse_move` `volume_at/brightness_at/seek_at` + `on_mouse_up` `finish_brightness` — no polling in `render`.
-- [ ] ScreenCapture: `Focus`-exclusive, `wf-recorder`/`grim`/`slurp` via `spawn_blocking`, `RecordingIndicator` red pill/orb when `Recording`, hides after `Stopped`; `RunToken::alive()` respected.
-- [ ] Cava 4-band `60ms` loop (if kept) respects `RunToken::alive()`; not conflated with Capsule wave (docs note which pill shows which).
-- [ ] `cargo check && cargo test` green; `capsule/widgets/dashboard` trace matches Beskar `widgets/dashboard` diff.
+- [x] Dashboard overlay opens as `Left` (or `Center`) slot card `560×574` (`has_tray` vs `no-tray` height `574-FOOTER-GAP`), gap `12`, left column `268` + right `RIGHT = WIDTH-PADDING*2-LEFT-GAP`, `CONTENT=212` `SLIDER 80` `NOTIFICATIONS 150`; dimension invariants pass.
+- [x] Snapshot polls at `250ms` when `active`, `SizeChanged` only when `tray.empty` flips; `retain_player` prefers `current` else `playing` else `first`; `slider_fraction` clamps `0..1` returns `None` when `width==0`.
+- [x] Wave animation runs at `compositor.get_frame_duration().max(16ms)` while `is_playing`, `wave_phase = epoch*3.0`; progress wave `amplitude 3.0` else `0`, envelope `min(x/8,1)*clamp((played-x)/8,0,1)`, `inactive 0.3` rest line, `active accent` wave stroke `2`; `position(track,elapsed)` clamped `max 0` and never exceeds `length`.
+- [x] Media card: `backdrop_blur 18 bg 0.62` art cover `aspect RIGHT/MEDIA_HEIGHT`, title `17 SEMIBOLD` artist `11 muted`, `play 36 accent` + prev/next `18 disabled 0.35`, seek `canvas 12×` with `start_seek` `on_mouse_down`, `Seek(f64)` dispatch via `DimensionTracker` + `slider_fraction`; non-blocking `playerctl`/`mpris` `spawn_tokio`.
+- [x] Volume/brightness/seek `DimensionTracker` bounds `track_bounds` + `on_mouse_move` `volume_at/brightness_at/seek_at` + `on_mouse_up` `finish_brightness` — no polling in `render`.
+- [x] ScreenCapture: `Focus`-exclusive, `wf-recorder`/`grim`/`slurp` via `spawn_blocking`, `RecordingIndicator` red pill/orb when `Recording`, hides after `Stopped`; `RunToken::alive()` respected.
+- [x] Cava 4-band `60ms` loop (if kept) respects `RunToken::alive()`; not conflated with Capsule wave (docs note which pill shows which).
+- [x] `cargo check && cargo test` green; `capsule/widgets/dashboard` trace matches Beskar `widgets/dashboard` diff.
 
 ## 5. Non-goals
 

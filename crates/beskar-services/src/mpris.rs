@@ -12,6 +12,23 @@ const PREFIX: &str = "org.mpris.MediaPlayer2.";
 const PATH: &str = "/org/mpris/MediaPlayer2";
 const PLAYER: &str = "org.mpris.MediaPlayer2.Player";
 
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct MediaTrack {
+    pub bus_name: String,
+    pub title: String,
+    pub artist: String,
+    pub album: String,
+    pub art_url: Option<String>,
+    pub local_art_path: Option<String>,
+    pub is_playing: bool,
+    pub can_go_next: bool,
+    pub can_go_previous: bool,
+    pub player_name: String,
+    pub has_media: bool,
+    pub position_micros: Option<i64>,
+    pub length_micros: Option<i64>,
+}
+
 /// Pure-Rust MPRIS media monitoring and control engine using direct D-Bus protocol (zbus).
 /// Eradicates all `playerctl` CLI subprocesses and blocking I/O on the UI thread.
 pub struct MprisService;
@@ -25,6 +42,136 @@ impl Default for MprisService {
 impl MprisService {
     pub fn new() -> Self {
         Self
+    }
+
+    pub fn fetch_all_players() -> Vec<MediaTrack> {
+        let Ok(conn) = Connection::session() else {
+            return Vec::new();
+        };
+        let names = Self::list_players(&conn);
+        let mut tracks = Vec::new();
+        for bus_name in names {
+            let Ok(proxy) = Proxy::new(&conn, bus_name.clone(), PATH, PLAYER) else {
+                continue;
+            };
+            let is_playing = proxy
+                .get_property::<String>("PlaybackStatus")
+                .is_ok_and(|s| s == "Playing");
+            let can_go_next = proxy
+                .get_property::<bool>("CanGoNext")
+                .unwrap_or(true);
+            let can_go_previous = proxy
+                .get_property::<bool>("CanGoPrevious")
+                .unwrap_or(true);
+            let metadata: HashMap<String, OwnedValue> =
+                proxy.get_property("Metadata").unwrap_or_default();
+            let title = metadata.get("xesam:title").map(Self::parse_text).unwrap_or_default();
+            let artist = metadata.get("xesam:artist").map(Self::parse_text).unwrap_or_default();
+            let album = metadata.get("xesam:album").map(Self::parse_text).unwrap_or_default();
+            let art_url = metadata.get("mpris:artUrl").map(Self::parse_text).filter(|s| !s.is_empty());
+            let local_art_path = art_url.as_ref().and_then(|url| {
+                if let Some(stripped) = url.strip_prefix("file://") {
+                    Some(stripped.to_string())
+                } else if url.starts_with('/') {
+                    Some(url.clone())
+                } else {
+                    None
+                }
+            });
+            let length_micros = metadata.get("mpris:length").and_then(|v| {
+                i64::try_from(v)
+                    .ok()
+                    .or_else(|| u64::try_from(v).ok().map(|n| n as i64))
+            });
+            let position_micros = proxy
+                .get_property::<OwnedValue>("Position")
+                .ok()
+                .and_then(|v| {
+                    i64::try_from(&v)
+                        .ok()
+                        .or_else(|| u64::try_from(&v).ok().map(|n| n as i64))
+                });
+            let player_name = bus_name
+                .trim_start_matches(PREFIX)
+                .split('.')
+                .next()
+                .unwrap_or("Media")
+                .to_string();
+            let has_media = !title.is_empty();
+            if has_media {
+                tracks.push(MediaTrack {
+                    bus_name,
+                    title,
+                    artist,
+                    album,
+                    art_url,
+                    local_art_path,
+                    is_playing,
+                    can_go_next,
+                    can_go_previous,
+                    player_name,
+                    has_media,
+                    position_micros,
+                    length_micros,
+                });
+            }
+        }
+        tracks
+    }
+
+    pub fn play_pause_bus(bus_name: &str) {
+        let bus = bus_name.to_string();
+        tokio::task::spawn_blocking(move || {
+            if let Ok(conn) = Connection::session() {
+                if let Ok(proxy) = Proxy::new(&conn, bus, PATH, PLAYER) {
+                    let _ = proxy.call_method("PlayPause", &());
+                }
+            }
+        });
+    }
+
+    pub fn next_bus(bus_name: &str) {
+        let bus = bus_name.to_string();
+        tokio::task::spawn_blocking(move || {
+            if let Ok(conn) = Connection::session() {
+                if let Ok(proxy) = Proxy::new(&conn, bus, PATH, PLAYER) {
+                    let _ = proxy.call_method("Next", &());
+                }
+            }
+        });
+    }
+
+    pub fn previous_bus(bus_name: &str) {
+        let bus = bus_name.to_string();
+        tokio::task::spawn_blocking(move || {
+            if let Ok(conn) = Connection::session() {
+                if let Ok(proxy) = Proxy::new(&conn, bus, PATH, PLAYER) {
+                    let _ = proxy.call_method("Previous", &());
+                }
+            }
+        });
+    }
+
+    pub fn seek_to(bus_name: &str, position_seconds: f64) {
+        let bus = bus_name.to_string();
+        tokio::task::spawn_blocking(move || {
+            let raw_player = bus
+                .strip_prefix("org.mpris.MediaPlayer2.")
+                .unwrap_or(&bus)
+                .split('.')
+                .next()
+                .unwrap_or(&bus);
+
+            let clean_player = raw_player.trim();
+            let pos_str = format!("{:.2}", position_seconds.max(0.0));
+            let mut cmd = std::process::Command::new("playerctl");
+            if !clean_player.is_empty() && clean_player != "player" {
+                cmd.args(["-p", clean_player, "position", &pos_str]);
+            } else {
+                cmd.args(["position", &pos_str]);
+            }
+            let _ = cmd.spawn();
+        });
     }
 
     fn list_players(c: &Connection) -> Vec<String> {

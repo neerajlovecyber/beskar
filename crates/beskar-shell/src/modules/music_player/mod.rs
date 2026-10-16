@@ -2,7 +2,7 @@ pub mod view;
 use self::view::MusicPlayerWidget;
 use gpui_kit::*;
 
-use crate::panel_host::{LayerAnchor, PanelHost, PanelModule};
+use crate::panel_host::{LayerAnchor, PanelHost, PanelModule, Slot};
 
 #[derive(Debug, Clone)]
 enum MusicMsg {
@@ -32,6 +32,10 @@ pub struct MusicPlayerView {
 
 impl PanelModule for MusicPlayerView {
     const ID: &'static str = "music_player";
+
+    fn slot() -> Slot {
+        Slot::Center
+    }
 
     fn size() -> Size<Pixels> {
         Size::new(px(430.0), px(560.0))
@@ -142,10 +146,10 @@ impl MusicPlayerView {
                         beskar_services::MprisService::next();
                     }
                     MusicMsg::Seek(fraction) => {
-                        tokio::task::spawn_blocking(move || {
-                            let _ = std::process::Command::new("playerctl")
-                                .args(["position", &format!("{:.1}", fraction * 200.0)])
-                                .spawn();
+                        let _ = this.update(cx, |this, _cx| {
+                            let dur = this.duration_secs as f64;
+                            let bus = this.player_name.clone();
+                            beskar_services::MprisService::seek_to(&bus, (fraction as f64) * dur);
                         });
                     }
                     MusicMsg::ToggleLoop => {

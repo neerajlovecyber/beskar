@@ -172,6 +172,10 @@ pub fn concave_input_regions(
 pub const CARD_RADIUS: f32 = 16.0;
 pub const INNER_RADIUS: f32 = 12.0;
 
+pub fn background() -> Hsla {
+    beskar_theme::Theme::bg()
+}
+
 pub fn surface() -> Hsla {
     beskar_theme::Theme::bg_secondary()
 }

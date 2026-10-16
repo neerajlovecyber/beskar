@@ -2,7 +2,7 @@ pub mod view;
 pub use self::view::{CaptureMode, ScreenCaptureWidget};
 use gpui_kit::*;
 
-use crate::panel_host::{LayerAnchor, PanelHost, PanelModule};
+use crate::panel_host::{LayerAnchor, PanelHost, PanelModule, Slot};
 
 #[derive(Debug, Clone)]
 enum ScreenCapMsg {
@@ -18,6 +18,10 @@ pub struct ScreenCaptureView {
 
 impl PanelModule for ScreenCaptureView {
     const ID: &'static str = "screen_capture";
+
+    fn slot() -> Slot {
+        Slot::Focus
+    }
 
     fn size() -> Size<Pixels> {
         Size::new(px(460.0), px(64.0))
@@ -42,20 +46,28 @@ impl ScreenCaptureView {
         let (msg_tx, mut msg_rx) = tokio::sync::mpsc::unbounded_channel::<ScreenCapMsg>();
 
         cx.spawn(async move |this, cx| {
-            let is_rec = tokio::task::spawn_blocking(|| {
-                std::process::Command::new("pidof")
-                    .arg("wf-recorder")
-                    .output()
-                    .map(|o| o.status.success())
-                    .unwrap_or(false)
-            })
-            .await
-            .unwrap_or(false);
+            loop {
+                let is_rec = tokio::task::spawn_blocking(|| {
+                    std::process::Command::new("pidof")
+                        .arg("wf-recorder")
+                        .output()
+                        .map(|o| o.status.success())
+                        .unwrap_or(false)
+                })
+                .await
+                .unwrap_or(false);
 
-            let _ = this.update(cx, |this, cx| {
-                this.is_recording = is_rec;
-                cx.notify();
-            });
+                let res = this.update(cx, |this, cx| {
+                    if this.is_recording != is_rec {
+                        this.is_recording = is_rec;
+                        cx.notify();
+                    }
+                });
+                if res.is_err() {
+                    break;
+                }
+                tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+            }
         })
         .detach();
 
