@@ -1,12 +1,15 @@
 pub mod bt_list;
+pub mod details;
 pub mod footer;
 pub mod header;
 pub mod power_profiles;
 pub mod quick_toggles;
+pub mod satellite_host;
 pub mod sliders;
 pub mod wifi_list;
 
 use std::sync::Arc;
+use chrono::Datelike;
 use beskar_services::audio::AudioService;
 use beskar_services::battery::BatteryService;
 use gpui_kit::component::slider::{SliderEvent, SliderState};
@@ -38,6 +41,8 @@ enum ControlCenterMsg {
     OpenClipboard,
     OpenPower,
     OpenSettings,
+    ToggleSatellite(crate::satellite::SatelliteId),
+    CloseSatellite(crate::satellite::SatelliteId),
     Close,
 }
 
@@ -59,6 +64,7 @@ pub struct ControlCenterView {
     show_bt_list: bool,
     volume_slider: Entity<SliderState>,
     brightness_slider: Entity<SliderState>,
+    satellite: crate::satellite::Satellite,
     _subscriptions: Vec<Subscription>,
     focus_handle: FocusHandle,
     msg_tx: tokio::sync::mpsc::UnboundedSender<ControlCenterMsg>,
@@ -66,6 +72,10 @@ pub struct ControlCenterView {
 
 impl PanelModule for ControlCenterView {
     const ID: &'static str = "control_center";
+
+    fn slot() -> crate::panel_host::Slot {
+        crate::panel_host::Slot::Right
+    }
 
     fn size() -> Size<Pixels> {
         Size::new(px(390.0), px(760.0))
@@ -251,6 +261,54 @@ impl ControlCenterView {
                         })
                         .detach();
                     }
+                    ControlCenterMsg::ToggleSatellite(id) => {
+                        let will_open = this
+                            .update(cx, |this, _| !this.satellite.contains(&id) || !this.satellite.open())
+                            .unwrap_or(false);
+
+                        if will_open {
+                            match &id {
+                                crate::satellite::SatelliteId::Wifi => {
+                                    let this_weak = this.clone();
+                                    let bus_clone = bus.clone();
+                                    cx.spawn(async move |cx| {
+                                        let networks = bus_clone.scan_wifi_networks().await;
+                                        let _ = this_weak.update(cx, |this, cx| {
+                                            this.wifi_networks = networks;
+                                            cx.notify();
+                                        });
+                                    })
+                                    .detach();
+                                }
+                                crate::satellite::SatelliteId::Bluetooth => {
+                                    let this_weak = this.clone();
+                                    let bus_clone = bus.clone();
+                                    cx.spawn(async move |cx| {
+                                        let devices = bus_clone.list_bluetooth_devices().await;
+                                        let _ = this_weak.update(cx, |this, cx| {
+                                            this.bt_devices = devices;
+                                            cx.notify();
+                                        });
+                                    })
+                                    .detach();
+                                }
+                                _ => {}
+                            }
+                        }
+
+                        let _ = this.update(cx, |this, cx| {
+                            let side = this.satellite.next_side(&id);
+                            this.satellite.transition(id, will_open, std::time::Duration::from_millis(180), side);
+                            cx.notify();
+                        });
+                    }
+                    ControlCenterMsg::CloseSatellite(id) => {
+                        let _ = this.update(cx, |this, cx| {
+                            let side = this.satellite.next_side(&id);
+                            this.satellite.transition(id, false, std::time::Duration::from_millis(130), side);
+                            cx.notify();
+                        });
+                    }
                     ControlCenterMsg::OpenLauncher => { let _ = this.update(cx, |_, cx| PanelHost::toggle::<LauncherView>(cx)); }
                     ControlCenterMsg::OpenClipboard => { let _ = this.update(cx, |_, cx| PanelHost::toggle::<ClipboardView>(cx)); }
                     ControlCenterMsg::OpenPower => { let _ = this.update(cx, |_, cx| PanelHost::toggle::<PowerMenuView>(cx)); }
@@ -313,6 +371,7 @@ impl ControlCenterView {
             show_bt_list: false,
             volume_slider,
             brightness_slider,
+            satellite: crate::satellite::Satellite::new(),
             _subscriptions: subs,
             focus_handle,
             msg_tx,
@@ -369,12 +428,75 @@ impl Render for ControlCenterView {
             .pb(px(8.0))
             .track_focus(&self.focus_handle)
             .key_context("ControlCenter")
-            .on_key_down(cx.listener(move |_, event: &KeyDownEvent, _, cx| {
+            .on_key_down(cx.listener(move |this, event: &KeyDownEvent, _, cx| {
                 if event.keystroke.key == "escape" {
-                    let _ = tx_esc.send(ControlCenterMsg::Close);
+                    if this.satellite.open() {
+                        let ids: Vec<_> = this.satellite.panels.iter().map(|p| p.id.clone()).collect();
+                        for id in ids {
+                            this.satellite.transition(id, false, std::time::Duration::from_millis(130), crate::satellite::Side::Left);
+                        }
+                        cx.notify();
+                    } else {
+                        let _ = tx_esc.send(ControlCenterMsg::Close);
+                    }
                     cx.stop_propagation();
                 }
             }))
+            .when(self.satellite.open(), |parent| {
+                let visuals = self.satellite.layout(
+                    Size::new(px(1200.0), px(760.0)),
+                    Bounds {
+                        origin: point(px(390.0), px(0.0)),
+                        size: Size::new(px(390.0), px(760.0)),
+                    },
+                    px(12.0),
+                    &[],
+                );
+                let tx_c_cal = tx_close.clone();
+                let tx_c_aud = tx_close.clone();
+                let tx_c_wifi = tx_close.clone();
+                let tx_c_bt = tx_close.clone();
+
+                let mut overlay = satellite_host::SatelliteOverlayHost::new().visuals(visuals);
+                let now = chrono::Local::now();
+                overlay = overlay.panel(
+                    crate::satellite::SatelliteId::Calendar,
+                    details::CalendarWidget::new(now.year(), now.month())
+                        .on_close(move || {
+                            let _ = tx_c_cal.send(ControlCenterMsg::CloseSatellite(crate::satellite::SatelliteId::Calendar));
+                        }),
+                );
+                overlay = overlay.panel(
+                    crate::satellite::SatelliteId::Audio,
+                    details::AudioDetailWidget::new(self.sinks.clone(), self.volume_percent, self.is_muted)
+                        .on_close(move || {
+                            let _ = tx_c_aud.send(ControlCenterMsg::CloseSatellite(crate::satellite::SatelliteId::Audio));
+                        }),
+                );
+                overlay = overlay.panel(
+                    crate::satellite::SatelliteId::Wifi,
+                    details::ConnectivityDetailWidget::new(details::ConnectivityTab::Wifi)
+                        .wifi_enabled(self.is_wifi_on)
+                        .wifi_networks(self.wifi_networks.clone())
+                        .bt_enabled(self.is_bt_on)
+                        .bt_devices(self.bt_devices.clone())
+                        .on_close(move || {
+                            let _ = tx_c_wifi.send(ControlCenterMsg::CloseSatellite(crate::satellite::SatelliteId::Wifi));
+                        }),
+                );
+                overlay = overlay.panel(
+                    crate::satellite::SatelliteId::Bluetooth,
+                    details::ConnectivityDetailWidget::new(details::ConnectivityTab::Bluetooth)
+                        .wifi_enabled(self.is_wifi_on)
+                        .wifi_networks(self.wifi_networks.clone())
+                        .bt_enabled(self.is_bt_on)
+                        .bt_devices(self.bt_devices.clone())
+                        .on_close(move || {
+                            let _ = tx_c_bt.send(ControlCenterMsg::CloseSatellite(crate::satellite::SatelliteId::Bluetooth));
+                        }),
+                );
+                parent.child(overlay)
+            })
             .child(
                 div()
                     .w(px(390.0))

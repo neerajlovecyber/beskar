@@ -3,6 +3,7 @@
 pub mod bar;
 pub mod modules;
 pub mod panel_host;
+pub mod satellite;
 pub mod satellite_layout;
 pub mod window_state;
 

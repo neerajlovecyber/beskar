@@ -154,14 +154,14 @@ crates/beskar-ui/src/widgets/
 
 ## 4. Acceptance
 
-- [ ] `Satellite` layout tests pass: both sides filled, oldest evicted, reopening closing panel makes it newest, closed side reused, centered on capsule, measured heights correct; `SatelliteAnimator` reversing preserves position, zero-duration opens immediately.
-- [ ] `SatelliteLayout::new` clamps: preferred side honored when fits, fallback to other side when not, `Below` when neither fits, `16*(1-progress)` offset direction correct, `Below` center-clamped, `centered_y` within viewport.
-- [ ] Satellite panels render beside the bar/dashboard (`Left`/`Right`) with easeOutCubic slide, at most 2 open, `progress` drives opacity/slide, `Below` fallback centers below bar. When narrow viewport, scrim card fallback works.
-- [ ] Wifi/Bluetooth scans trigger on satellite open (not on render), lists populate via `HardwareSnapshot` subscription, connect/pair via `zbus`/`spawn_blocking` non-blocking, passphrase via `Input` + `Dialog`.
-- [ ] Volume/brightness sliders use `gpui_kit::Slider` (or `DimensionTracker` slider if copying Capsule detail verbatim), toggles use `Switch`, lists use `Scrollable` — no hand-rolled primitives; wifi/bt lists scroll bounded.
-- [ ] ControlCenter/Satellite respects `Slot::Right` mutual-exclusion with NotificationsCenter when in scrim mode; `Escape` + backdrop closes owning side only (Satellite `close_satellite` per-id).
-- [ ] No `Command::new("nmcli"|"bluetoothctl"|...)` outside `spawn_blocking`/`zbus`; frame loop uses `compositor.get_frame_duration().max(2ms)`.
-- [ ] `cargo check && cargo test` green; `grep -R "Command::new"` review clean.
+- [x] `Satellite` layout tests pass: both sides filled, oldest evicted, reopening closing panel makes it newest, closed side reused, centered on capsule, measured heights correct; `SatelliteAnimator` reversing preserves position, zero-duration opens immediately.
+- [x] `SatelliteLayout::new` clamps: preferred side honored when fits, fallback to other side when not, `Below` when neither fits, `16*(1-progress)` offset direction correct, `Below` center-clamped, `centered_y` within viewport.
+- [x] Satellite panels render beside the bar/dashboard (`Left`/`Right`) with easeOutCubic slide, at most 2 open, `progress` drives opacity/slide, `Below` fallback centers below bar. When narrow viewport, scrim card fallback works.
+- [x] Wifi/Bluetooth scans trigger on satellite open (not on render), lists populate via `HardwareSnapshot` subscription, connect/pair via `zbus`/`spawn_blocking` non-blocking, passphrase via `Input` + `Dialog`.
+- [x] Volume/brightness sliders use `gpui_kit::Slider` (or `DimensionTracker` slider if copying Capsule detail verbatim), toggles use `Switch`, lists use `Scrollable` — no hand-rolled primitives; wifi/bt lists scroll bounded.
+- [x] ControlCenter/Satellite respects `Slot::Right` mutual-exclusion with NotificationsCenter when in scrim mode; `Escape` + backdrop closes owning side only (Satellite `close_satellite` per-id).
+- [x] No `Command::new("nmcli"|"bluetoothctl"|...)` outside `spawn_blocking`/`zbus`; frame loop uses `compositor.get_frame_duration().max(2ms)`.
+- [x] `cargo check && cargo test` green; `grep -R "Command::new"` review clean.
 
 ## 5. Non-goals
 
