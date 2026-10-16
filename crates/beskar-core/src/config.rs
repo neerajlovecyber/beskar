@@ -8,6 +8,8 @@ pub enum BarStyleConfig {
     Island,
     #[serde(rename = "convex")]
     Convex,
+    #[serde(rename = "gaming")]
+    Gaming,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]

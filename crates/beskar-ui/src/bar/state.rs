@@ -44,6 +44,7 @@ pub fn resolve_window_icon(app_id: Option<&str>, title: Option<&str>) -> IconNam
 /// Grouped snapshot of live system and shell telemetry for BeskarBar.
 #[derive(Clone, Default)]
 pub struct BarState {
+    pub bar_style: beskar_core::config::BarStyleConfig,
     pub is_convex: bool,
     pub workspaces: Vec<WorkspaceInfo>,
     pub active_ws: Option<u64>,

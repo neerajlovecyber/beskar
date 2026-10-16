@@ -1,4 +1,11 @@
+pub mod convex;
+pub mod gaming;
+pub mod island;
 pub mod state;
+
+pub use convex::ConcaveBarWidget;
+pub use gaming::GamingBarWidget;
+pub use island::{IslandBarWidget, OutgoingContent};
 pub use state::{resolve_window_icon, BarActions, BarState, BarStyle};
 
 use beskar_core::models::{WindowInfo, WorkspaceInfo};
@@ -19,6 +26,7 @@ pub struct BeskarBar {
     padding_x: Pixels,
     is_island_cluster: bool,
     is_convex: bool,
+    is_gaming: bool,
     geometry: Option<crate::convex::ConvexGeometry>,
 }
 
@@ -37,6 +45,7 @@ impl BeskarBar {
             padding_x: px(12.0),
             is_island_cluster: false,
             is_convex: false,
+            is_gaming: false,
             geometry: None,
         }
     }
@@ -48,6 +57,11 @@ impl BeskarBar {
 
     pub fn convex(mut self, convex: bool) -> Self {
         self.is_convex = convex;
+        self
+    }
+
+    pub fn gaming(mut self, gaming: bool) -> Self {
+        self.is_gaming = gaming;
         self
     }
 
@@ -75,8 +89,6 @@ impl BeskarBar {
     pub fn from_state(state: BarState, actions: BarActions) -> Self {
         use crate::pill::IslandPill;
         use crate::widgets::{DynamicCenterWidget, VitalsWidget, WorkspacesWidget};
-
-        let is_convex = state.is_convex;
 
         let mod_left = state.modules_left.unwrap_or_else(|| {
             vec![
@@ -141,7 +153,7 @@ impl BeskarBar {
             })
             .child("✦");
 
-        let active_win_element = if has_win {
+        let mut active_win_element = if has_win {
             state.active_window.as_ref().and_then(|win| {
                 let title_text = win
                     .title
@@ -204,9 +216,7 @@ impl BeskarBar {
 
         let mut star_badge = Some(star_badge);
         let mut ws_widget = Some(ws_widget);
-        let mut active_win_element = active_win_element;
-
-        let mut left_pill = IslandPill::new().convex(is_convex);
+        let mut left_pill = IslandPill::new();
         for m in &mod_left {
             match m {
                 beskar_core::config::BarModule::BrandStar => {
@@ -252,7 +262,28 @@ impl BeskarBar {
             let h = handler.clone();
             center_widget = center_widget.on_media_click(move |window, cx| (h)(window, cx));
         }
-        let center_pill = IslandPill::new().convex(is_convex).child(center_widget);
+
+        let is_island = state.bar_style == beskar_core::config::BarStyleConfig::Island;
+        let is_convex = state.bar_style == beskar_core::config::BarStyleConfig::Convex || state.is_convex;
+        let is_gaming = state.bar_style == beskar_core::config::BarStyleConfig::Gaming;
+
+        let center_w = state.animated_center_width.unwrap_or(150.0).max(140.0);
+        let center_pill = if is_convex {
+            crate::bar::ConcaveBarWidget::new(Size::new(px(center_w), px(38.0)))
+                .radius(16.0)
+                .color(beskar_theme::Theme::bg())
+                .child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .justify_center()
+                        .size_full()
+                        .child(center_widget),
+                )
+                .into_any_element()
+        } else {
+            IslandPill::new().child(center_widget).into_any_element()
+        };
 
         let tray_count = state.tray_items.len();
         let mut vitals_widget = VitalsWidget::new(state.volume_percent, state.battery_percent)
@@ -286,7 +317,7 @@ impl BeskarBar {
         if let Some(handler) = actions.on_tray_menu {
             vitals_widget = vitals_widget.on_tray_menu(move |id, window, cx| (handler)(id, window, cx));
         }
-        let right_pill = IslandPill::new().convex(is_convex).child(vitals_widget);
+        let right_pill = IslandPill::new().child(vitals_widget);
 
         // Dynamic notch geometry calculation matching actual rendered components
         let has_active_win = has_win && state.active_window.is_some();
@@ -294,8 +325,6 @@ impl BeskarBar {
             + (ws_count.max(5).min(10) as f32 * 18.0 + 36.0) /* Workspaces */
             + if has_active_win { 150.0 } else { 0.0 };
         let left_w = (left_content_w + 48.0).max(220.0);
-
-        let center_w = state.animated_center_width.unwrap_or(150.0).max(140.0);
 
         let tray_w = (tray_count as f32 * 26.0) + if tray_count > 0 { 12.0 } else { 0.0 };
         let right_content_w = tray_w + 160.0 /* status capsule */ + 36.0 /* power button */;
@@ -311,9 +340,11 @@ impl BeskarBar {
 
         Self::new()
             .convex(is_convex)
+            .gaming(is_gaming)
+            .island_cluster(is_island)
             .geometry(geom)
             .left([left_pill.into_any_element()])
-            .center([center_pill.into_any_element()])
+            .center([center_pill])
             .right([right_pill.into_any_element()])
     }
 
@@ -354,6 +385,11 @@ impl BeskarBar {
         on_window_close: Option<Arc<dyn Fn() + Send + Sync>>,
     ) -> Self {
         let state = BarState {
+            bar_style: if is_convex {
+                beskar_core::config::BarStyleConfig::Convex
+            } else {
+                beskar_core::config::BarStyleConfig::Island
+            },
             is_convex,
             workspaces,
             active_ws,
@@ -455,7 +491,13 @@ impl BeskarBar {
 
 impl RenderOnce for BeskarBar {
     fn render(self, _window: &mut Window, _cx: &mut App) -> impl IntoElement {
-        if self.is_island_cluster {
+        if self.is_gaming {
+            crate::bar::GamingBarWidget::new()
+                .left(self.left)
+                .center(self.center)
+                .right(self.right)
+                .into_any_element()
+        } else if self.is_island_cluster {
             div()
                 .relative()
                 .size_full()
@@ -466,21 +508,11 @@ impl RenderOnce for BeskarBar {
                 .children(self.left)
                 .children(self.center)
                 .children(self.right)
+                .into_any_element()
         } else {
-            let geom = self.geometry.unwrap_or_default();
             div()
                 .relative()
                 .size_full()
-                .when(self.is_convex, |this| {
-                    let fill = beskar_theme::Theme::bg();
-                    let border = beskar_theme::Theme::subtle_border();
-                    this.child(
-                        div()
-                            .absolute()
-                            .inset_0()
-                            .child(crate::convex::ConvexBarShape::new(geom, fill, border)),
-                    )
-                })
                 .child(
                     div()
                         .absolute()
@@ -514,6 +546,7 @@ impl RenderOnce for BeskarBar {
                         .justify_end()
                         .children(self.right),
                 )
+                .into_any_element()
         }
     }
 }

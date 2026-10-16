@@ -148,14 +148,14 @@ crates/beskar-shell/src/
 
 ## 4. Acceptance
 
-- [ ] Concave mode: `concave_background` draws seamless cubic Bézier flares to notch shoulders at 1.0/1.25/1.5/2.0 scale; `concave_radii` tests pass; no seams/box artifacts; `border rgba(255,255,255,0.08)` + `surface`/`background` tokens correct.
-- [ ] `concave_input_regions` returns covering `Vec<Bounds>` with `covered_height == height`, symmetric top/bottom, `len < 40` (if used).
-- [ ] Island mode: 3 pills with obsidian `background` (`#030107` or `hsla(240,0.16,0.08,1.0)` via `style::background`), center pill morphs `180→320→360` via `Animator` (`spring_eval` zeta 0.73/0.77, powf 0.92/1.04), `content_scale 0.98→1.0` + outgoing cross-fade on content switch, compositor-aware `16ms.max` frame loop, no detached windows.
-- [ ] `Animator` interruption preserves `displayed` size (Plan 00 test), expansion vs contraction asymmetry correct.
-- [ ] Workspaces: click switches, wheel scrolls, active capsule `24×8` lavender, opacity dots correct, window open/close updates via `WindowsChanged` without lag; hit-test not broken by concave overlay.
-- [ ] Status capsule: nested capsule + standalone power button; volume/battery/tray present only when data available.
-- [ ] `bar_window_options` uses `maximum_window_size` + `exclusive_zone` + `visible_bounds`; fractional-scale snapping correct.
-- [ ] `cargo check && cargo test` green; no main-thread blocking introduced; `references/capsule/.../style.rs` diff matches `crates/beskar-ui/src/widgets/style.rs`.
+- [x] Concave mode: `concave_background` draws seamless cubic Bézier flares to notch shoulders at 1.0/1.25/1.5/2.0 scale; `concave_radii` tests pass; no seams/box artifacts; `border rgba(255,255,255,0.08)` + `surface`/`background` tokens correct.
+- [x] `concave_input_regions` returns covering `Vec<Bounds>` with `covered_height == height`, symmetric top/bottom, `len < 40` (if used).
+- [x] Island mode: 3 pills with obsidian `background` (`#030107` or `hsla(240,0.16,0.08,1.0)` via `style::background`), center pill morphs `180→320→360` via `Animator` (`spring_eval` zeta 0.73/0.77, powf 0.92/1.04), `content_scale 0.98→1.0` + outgoing cross-fade on content switch, compositor-aware `16ms.max` frame loop, no detached windows.
+- [x] `Animator` interruption preserves `displayed` size (Plan 00 test), expansion vs contraction asymmetry correct.
+- [x] Workspaces: click switches, wheel scrolls, active capsule `24×8` lavender, opacity dots correct, window open/close updates via `WindowsChanged` without lag; hit-test not broken by concave overlay.
+- [x] Status capsule: nested capsule + standalone power button; volume/battery/tray present only when data available.
+- [x] `bar_window_options` uses `maximum_window_size` + `exclusive_zone` + `visible_bounds`; fractional-scale snapping correct.
+- [x] `cargo check && cargo test` green; no main-thread blocking introduced; `references/capsule/.../style.rs` diff matches `crates/beskar-ui/src/widgets/style.rs`.
 
 ## 5. Non-goals
 

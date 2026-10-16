@@ -140,7 +140,8 @@ pub fn open_bar(
     compositor: Arc<dyn CompositorBackend>,
     cx: &mut App,
 ) -> bool {
-    let options = bar_window_options(display_id, bar_height, bar_margin_top, bar_position, cx);
+    let effective_margin = crate::window_state::effective_margin(is_convex, bar_margin_top);
+    let options = bar_window_options(display_id, bar_height, effective_margin, bar_position, cx);
     match cx.open_window(options, move |window, cx| {
         record_window_display(window.window_handle(), display_id);
         cx.new(|cx| {

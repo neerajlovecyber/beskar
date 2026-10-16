@@ -336,6 +336,7 @@ impl Render for DesktopBarView {
 
         let active_notif = self.notifications.first().map(|n| (n.summary.clone(), n.body.clone()));
         let state = beskar_ui::BarState {
+            bar_style: self.config.bar_style,
             is_convex: self.is_convex,
             workspaces: self.workspaces.clone(),
             active_ws: Some(self.active_ws),

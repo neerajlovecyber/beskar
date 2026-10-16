@@ -9,7 +9,7 @@ pub use convex::{ConvexBarShape, ConvexGeometry};
 pub use pill::IslandPill;
 pub use spring::Animator;
 pub use widgets::{
-    DynamicCenterWidget, VitalsWidget, WorkspacesWidget,
+    style, DynamicCenterWidget, VitalsWidget, WorkspacesWidget,
 };
 
 
