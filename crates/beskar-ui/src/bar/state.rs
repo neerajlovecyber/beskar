@@ -67,6 +67,30 @@ pub struct BarState {
     pub geometry: Option<crate::convex::ConvexGeometry>,
 }
 
+/// Unified Bar Style contract (mirrors Minflair Bar.qml:16-32 and Capsule island topology).
+/// Exposes width geometry for Left, Center (x + width), and Right regions.
+pub trait BarStyle {
+    /// Return the four core layout widths: (left_width, center_x, center_width, right_width)
+    fn widths(&self) -> (f32, f32, f32, f32);
+    /// Whether the central dynamic island is currently expanded
+    fn is_expanded(&self) -> bool;
+}
+
+impl BarStyle for BarState {
+    fn widths(&self) -> (f32, f32, f32, f32) {
+        let center_w = self.animated_center_width.unwrap_or(150.0).max(140.0);
+        if let Some(geom) = &self.geometry {
+            (geom.left_w, geom.center_x, geom.center_w, geom.right_w)
+        } else {
+            (320.0, 960.0 - center_w / 2.0, center_w, 360.0)
+        }
+    }
+
+    fn is_expanded(&self) -> bool {
+        self.animated_center_width.map_or(false, |w| w > 200.0)
+    }
+}
+
 pub type BarUiCallback = Arc<dyn Fn(&mut gpui_kit::Window, &mut gpui_kit::App) + Send + Sync>;
 pub type BarTrayMenuCallback = Arc<dyn Fn(String, &mut gpui_kit::Window, &mut gpui_kit::App) + Send + Sync>;
 

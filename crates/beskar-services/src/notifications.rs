@@ -409,9 +409,13 @@ pub fn send_test(summary: &str, body: &str) {
         drop(e);
         hub.send(Event::Change);
     } else {
-        let _ = std::process::Command::new("notify-send")
-            .args(["-a", "Beskar Shell", summary, body])
-            .spawn();
+        let summary = summary.to_string();
+        let body = body.to_string();
+        tokio::task::spawn_blocking(move || {
+            let _ = std::process::Command::new("notify-send")
+                .args(["-a", "Beskar Shell", &summary, &body])
+                .spawn();
+        });
     }
 }
 

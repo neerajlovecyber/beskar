@@ -79,16 +79,18 @@ pub fn launch(command: &str) -> Result<(), String> {
             "'{command}' is none of the installed applications: apps.launch only launches what the `apps` service has reported"
         ));
     }
-    let mut launch = Command::new("setsid");
-    let mut child = launch
-        .args(["-f", "sh", "-c", command])
-        .stdin(Stdio::null())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .spawn()
-        .map_err(|e| e.to_string())?;
-    std::thread::spawn(move || {
-        let _ = child.wait();
+    let command_str = command.to_string();
+    tokio::task::spawn_blocking(move || {
+        let mut launch = Command::new("setsid");
+        if let Ok(mut child) = launch
+            .args(["-f", "sh", "-c", &command_str])
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+        {
+            let _ = child.wait();
+        }
     });
     Ok(())
 }

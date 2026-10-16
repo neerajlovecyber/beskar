@@ -78,15 +78,19 @@ bar_delimiter = 59
 }
 
 async fn run_cava_loop(tx: broadcast::Sender<Vec<u8>>, is_running: Arc<AtomicBool>) {
-    let conf = ensure_cava_config();
-    let cava_available = std::process::Command::new("which")
-        .arg("cava")
-        .output()
-        .map(|o| o.status.success())
-        .unwrap_or(false);
+    let cava_available = tokio::task::spawn_blocking(|| {
+        std::process::Command::new("which")
+            .arg("cava")
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false)
+    })
+    .await
+    .unwrap_or(false);
 
     if cava_available {
         info!("Spawning CAVA spectrum visualizer daemon...");
+        let conf = ensure_cava_config();
         let tx_clone = tx.clone();
         let running_clone = is_running.clone();
         let res = tokio::task::spawn_blocking(move || {

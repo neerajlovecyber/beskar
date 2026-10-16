@@ -23,7 +23,7 @@ pub struct DesktopBarView {
     ram_percent: Option<f32>,
     media: Option<(String, String, bool)>,
     cava_bands: Option<[u8; 4]>,
-    island_spring: beskar_ui::SpringValue,
+    island_animator: beskar_ui::Animator,
     tray_items: Vec<beskar_core::models::TrayItem>,
     notifications: Vec<NotificationItem>,
     compositor: Arc<dyn CompositorBackend>,
@@ -82,7 +82,13 @@ impl DesktopBarView {
 
         let has_initial_media = initial_media.is_some();
         let initial_target_w = if has_initial_media { 280.0 } else { 150.0 };
-        let island_spring = beskar_ui::SpringValue::new(initial_target_w, beskar_ui::SpringConfig::spatial());
+        let island_animator = beskar_ui::Animator::new(
+            Size {
+                width: px(initial_target_w),
+                height: px(38.0),
+            },
+            std::time::Duration::from_millis(initial_cfg.animation_duration_ms as u64),
+        );
 
         // 2. Reactive SystemHub: instant updates for audio, battery, and media
         let hub = Arc::new(beskar_services::SystemHub::new());
@@ -121,7 +127,13 @@ impl DesktopBarView {
                     this.media = media;
                     this.tray_items = snap.tray;
                     this.notifications = snap.notifications.clone();
-                    this.island_spring.set_target(target_width);
+                    this.island_animator.transition_to(
+                        Size {
+                            width: px(target_width),
+                            height: px(38.0),
+                        },
+                        std::time::Instant::now(),
+                    );
                     modules::sync_notification_toasts(snap.notifications, cx);
                     cx.notify();
                 });
@@ -150,8 +162,7 @@ impl DesktopBarView {
             loop {
                 let mut is_animating = false;
                 let _ = this.update(cx, |this, cx| {
-                    if !this.island_spring.is_settled() {
-                        this.island_spring.step(1.0 / 60.0);
+                    if this.island_animator.advance(std::time::Instant::now()) {
                         is_animating = true;
                         cx.notify();
                     }
@@ -278,8 +289,10 @@ impl DesktopBarView {
                 });
 
                 let is_convex = cfg.bar_style == beskar_core::config::BarStyleConfig::Convex;
+                let anim_dur = std::time::Duration::from_millis(cfg.animation_duration_ms as u64);
                 let _ = this.update(cx, |this, cx| {
                     this.is_convex = is_convex;
+                    this.island_animator.set_duration(anim_dur);
                     this.config = cfg;
                     cx.notify();
                 });
@@ -304,7 +317,7 @@ impl DesktopBarView {
             ram_percent: initial_ram,
             media: initial_media,
             cava_bands: None,
-            island_spring,
+            island_animator,
             tray_items: Vec::new(),
             notifications: Vec::new(),
             compositor,
@@ -337,7 +350,7 @@ impl Render for DesktopBarView {
             is_charging: self.is_charging,
             cpu_usage: self.cpu_percent,
             ram_usage: self.ram_percent,
-            animated_center_width: Some(self.island_spring.current),
+            animated_center_width: Some(f32::from(self.island_animator.size().width)),
             cava_bands: self.cava_bands,
             tray_items: self.tray_items.clone(),
             modules_left: Some(self.config.modules_left.clone()),

@@ -1,101 +1,151 @@
 //! Spring physics animation engine.
-//! Adapted directly from the iRiS / minflair spring curves (`inir/modules/common/Appearance.qml` and `minflair/IrisStyle.qml`).
 //!
-//! Parameters:
-//! - `stiffness` / `spring`: 3.2
-//! - `damping`: 0.28
-//! - `mass`: 1.0
-//! - `epsilon`: 0.001
+//! `Animator` — Capsule-accurate under-damped spring (`spring_eval` + `apple_island_morph`)
+//! copied verbatim from `references/capsule/crates/app/src/capsule/animator.rs:1-139`.
+//! Preserves all tests and `content_scale`/`content_progress` semantics for island morph.
 
-#[derive(Clone, Copy, Debug)]
-pub struct SpringConfig {
-    pub stiffness: f32,
-    pub damping: f32,
-    pub mass: f32,
-    pub epsilon: f32,
+use std::time::{Duration, Instant};
+
+use gpui_kit::gpui::{Pixels, Size, px};
+
+// ── Capsule-native Animator ────────────────────────────────────────────────
+
+fn spring_eval(t: f32, zeta: f32) -> f32 {
+    if t <= 0.0 {
+        return 0.0;
+    }
+    if t >= 1.0 {
+        return 1.0;
+    }
+    let wd = 2.0 * std::f32::consts::PI;
+    let omega0 = wd / (1.0 - zeta * zeta).sqrt();
+    let beta = zeta * omega0;
+    let scale = 1.0 / (1.0 - (-beta).exp());
+    let envelope = (-beta * t).exp();
+    let osc = (wd * t).cos() + (beta / wd) * (wd * t).sin();
+    (1.0 - envelope * osc) * scale
 }
 
-impl Default for SpringConfig {
-    fn default() -> Self {
-        Self {
-            stiffness: 180.0,
-            damping: 24.0,
-            mass: 1.0,
-            epsilon: 0.05,
-        }
+/// Apple island morph spring: asymmetric width/height easing for expand vs collapse.
+/// `expanding == true` → width pow 0.92 / height pow 1.04, zeta 0.73/0.77.
+/// Mirror of `capsule/animator.rs:31-44`.
+pub fn apple_island_morph(t: f32, expanding: bool) -> (f32, f32) {
+    if t <= 0.0 {
+        return (0.0, 0.0);
     }
+    if t >= 1.0 {
+        return (1.0, 1.0);
+    }
+    let (uw, uh) = if expanding {
+        (t.powf(0.92), t.powf(1.04))
+    } else {
+        (t.powf(1.04), t.powf(0.92))
+    };
+    (spring_eval(uw, 0.73), spring_eval(uh, 0.77))
 }
 
-impl SpringConfig {
-    /// Spatial snappy spring for dynamic island morphing (stiff & snappy)
-    pub fn spatial() -> Self {
-        Self {
-            stiffness: 240.0,
-            damping: 26.0,
-            mass: 1.0,
-            epsilon: 0.05,
-        }
-    }
-
-    /// Gentle liquid spring for volume / slider smooth follow (smooth & organic)
-    pub fn liquid() -> Self {
-        Self {
-            stiffness: 150.0,
-            damping: 20.0,
-            mass: 1.0,
-            epsilon: 0.05,
-        }
-    }
+pub struct Animator {
+    current: Size<Pixels>,
+    start: Size<Pixels>,
+    target: Size<Pixels>,
+    started_at: Option<Instant>,
+    duration: Duration,
+    content_started_at: Option<Instant>,
+    content_progress: f32,
 }
 
-/// A simulated 1D spring value with current position and velocity.
-#[derive(Clone, Copy, Debug)]
-pub struct SpringValue {
-    pub current: f32,
-    pub target: f32,
-    pub velocity: f32,
-    pub config: SpringConfig,
-}
-
-impl SpringValue {
-    pub fn new(initial: f32, config: SpringConfig) -> Self {
+impl Animator {
+    pub fn new(size: Size<Pixels>, duration: Duration) -> Self {
         Self {
-            current: initial,
-            target: initial,
-            velocity: 0.0,
-            config,
+            current: size,
+            start: size,
+            target: size,
+            started_at: None,
+            duration,
+            content_started_at: None,
+            content_progress: 1.0,
         }
     }
 
-    pub fn set_target(&mut self, target: f32) {
+    pub fn set_duration(&mut self, duration: Duration) {
+        self.duration = duration;
+    }
+
+    pub fn animating(&self) -> bool {
+        self.started_at.is_some() || self.content_started_at.is_some()
+    }
+
+    pub fn size(&self) -> Size<Pixels> {
+        self.current
+    }
+
+    pub fn transition_to(&mut self, target: Size<Pixels>, now: Instant) {
+        if self.target == target {
+            return;
+        }
+        self.start = self.current;
         self.target = target;
+        self.started_at = Some(now);
+        self.advance(now);
     }
 
-    /// Advance spring simulation by delta time `dt` (in seconds).
-    /// Uses standard semi-implicit Euler integration.
-    /// Returns true if the spring is still actively moving, false if settled.
-    pub fn step(&mut self, dt: f32) -> bool {
-        let displacement = self.current - self.target;
+    pub fn content_progress(&self) -> f32 {
+        self.content_progress
+    }
 
-        // F = -k * x - c * v
-        let spring_force = -self.config.stiffness * displacement;
-        let damping_force = -self.config.damping * self.velocity;
-        let acceleration = (spring_force + damping_force) / self.config.mass;
+    pub fn content_scale(&self) -> f32 {
+        0.98 + self.content_progress * 0.02
+    }
 
-        self.velocity += acceleration * dt;
-        self.current += self.velocity * dt;
+    pub fn reveal_content(&mut self, now: Instant) {
+        self.content_started_at = Some(now);
+        self.content_progress = 0.0;
+        self.advance(now);
+    }
 
-        if (self.current - self.target).abs() < self.config.epsilon && self.velocity.abs() < self.config.epsilon * 10.0 {
+    pub fn advance(&mut self, now: Instant) -> bool {
+        let size_running = self.advance_size(now);
+        let content_running = if let Some(started_at) = self.content_started_at {
+            let elapsed = now.saturating_duration_since(started_at);
+            let duration = self.duration.min(Duration::from_millis(160));
+            if elapsed >= duration {
+                self.content_progress = 1.0;
+                self.content_started_at = None;
+                false
+            } else {
+                let progress = elapsed.as_secs_f32() / duration.as_secs_f32();
+                self.content_progress = 1.0 - (1.0 - progress).powi(3);
+                true
+            }
+        } else {
+            false
+        };
+        size_running || content_running
+    }
+
+    fn advance_size(&mut self, now: Instant) -> bool {
+        let Some(started_at) = self.started_at else {
+            return false;
+        };
+        let elapsed = now.saturating_duration_since(started_at);
+        if elapsed >= self.duration {
             self.current = self.target;
-            self.velocity = 0.0;
+            self.started_at = None;
             return false;
         }
+        let progress = elapsed.as_secs_f32() / self.duration.as_secs_f32();
+        let expanding =
+            self.target.width > self.start.width || self.target.height > self.start.height;
 
+        let (width_eased, height_eased) = apple_island_morph(progress, expanding);
+
+        self.current = Size {
+            width: (self.start.width + (self.target.width - self.start.width) * width_eased)
+                .max(px(1.0)),
+            height: (self.start.height + (self.target.height - self.start.height) * height_eased)
+                .max(px(1.0)),
+        };
         true
-    }
-
-    pub fn is_settled(&self) -> bool {
-        (self.current - self.target).abs() < self.config.epsilon && self.velocity.abs() < self.config.epsilon
     }
 }
 
@@ -103,19 +153,103 @@ impl SpringValue {
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_spring_converges_to_target() {
-        let mut spring = SpringValue::new(0.0, SpringConfig::spatial());
-        spring.set_target(100.0);
-
-        let dt = 1.0 / 60.0; // 60 FPS frame time
-        let mut steps = 0;
-        while spring.step(dt) && steps < 600 {
-            steps += 1;
+    fn size(value: f32) -> Size<Pixels> {
+        Size {
+            width: px(value),
+            height: px(value),
         }
+    }
 
-        assert!(spring.is_settled());
-        assert!((spring.current - 100.0).abs() < 0.01);
+    // ── Animator tests (capsule/animator.rs:141-244 verbatim) ─────────────
+
+    #[test]
+    fn interrupted_transition_preserves_displayed_size() {
+        let now = Instant::now();
+        let mut animator = Animator::new(size(100.0), Duration::from_millis(200));
+        animator.transition_to(size(300.0), now);
+        assert!(animator.advance(now + Duration::from_millis(100)));
+        let displayed = animator.size();
+        animator.transition_to(size(50.0), now + Duration::from_millis(110));
+        assert_eq!(animator.size(), displayed);
+        assert!(!animator.advance(now + Duration::from_millis(310)));
+        assert_eq!(animator.size(), size(50.0));
+    }
+
+    #[test]
+    fn expansion_and_contraction_match_the_original_spring() {
+        let now = Instant::now();
+        for (start, target, expanding) in [(100.0, 300.0, true), (300.0, 100.0, false)] {
+            let mut animator = Animator::new(size(start), Duration::from_millis(200));
+            animator.transition_to(size(target), now);
+            for millis in [25, 75, 125, 175] {
+                assert!(animator.advance(now + Duration::from_millis(millis)));
+                let (width, height) = apple_island_morph(millis as f32 / 200.0, expanding);
+                assert_eq!(animator.size().width, px(start + (target - start) * width));
+                assert_eq!(
+                    animator.size().height,
+                    px(start + (target - start) * height)
+                );
+            }
+            assert!(!animator.advance(now + Duration::from_millis(200)));
+            assert_eq!(animator.size(), size(target));
+        }
+    }
+
+    #[test]
+    fn content_reveals_even_when_dimensions_do_not_change() {
+        let now = Instant::now();
+        let mut animator = Animator::new(size(100.0), Duration::from_millis(200));
+        animator.transition_to(size(100.0), now);
+        animator.reveal_content(now);
+        assert_eq!(animator.content_scale(), 0.98);
+        assert!(animator.advance(now + Duration::from_millis(80)));
+        assert!((animator.content_scale() - 0.9975).abs() < f32::EPSILON);
+        assert_eq!(animator.size(), size(100.0));
+        assert!(!animator.advance(now + Duration::from_millis(160)));
+        assert_eq!(animator.content_scale(), 1.0);
+        assert!(!animator.advance(now + Duration::from_secs(1)));
+    }
+
+    #[test]
+    fn replacing_content_during_a_resize_preserves_the_current_dimensions() {
+        let now = Instant::now();
+        let mut animator = Animator::new(size(100.0), Duration::from_millis(200));
+        animator.transition_to(size(300.0), now);
+        animator.reveal_content(now);
+        animator.advance(now + Duration::from_millis(100));
+        let displayed = animator.size();
+        animator.reveal_content(now + Duration::from_millis(100));
+        assert_eq!(animator.size(), displayed);
+        assert!(animator.advance(now + Duration::from_millis(200)));
+        assert_eq!(animator.size(), size(300.0));
+        assert!(!animator.advance(now + Duration::from_millis(300)));
+        assert_eq!(animator.content_scale(), 1.0);
+    }
+
+    #[test]
+    fn rapid_content_changes_restart_the_reveal_and_settle() {
+        let now = Instant::now();
+        let mut animator = Animator::new(size(100.0), Duration::from_millis(250));
+        animator.reveal_content(now);
+        for millis in [40, 80, 120, 160, 200] {
+            let switched_at = now + Duration::from_millis(millis);
+            assert!(animator.advance(switched_at));
+            assert!(animator.content_progress() > 0.0);
+            animator.reveal_content(switched_at);
+            assert_eq!(animator.content_progress(), 0.0);
+        }
+        assert!(animator.advance(now + Duration::from_millis(280)));
+        assert!(!animator.advance(now + Duration::from_millis(360)));
+        assert_eq!(animator.content_progress(), 1.0);
+        assert!(!animator.advance(now + Duration::from_secs(1)));
+    }
+
+    #[test]
+    fn zero_duration_finishes_immediately() {
+        let mut animator = Animator::new(size(100.0), Duration::ZERO);
+        animator.transition_to(size(300.0), Instant::now());
+        assert_eq!(animator.size(), size(300.0));
+        animator.reveal_content(Instant::now());
+        assert_eq!(animator.content_scale(), 1.0);
     }
 }
-

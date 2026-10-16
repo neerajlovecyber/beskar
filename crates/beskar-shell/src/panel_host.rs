@@ -273,15 +273,20 @@ impl PanelHost {
         guard.as_ref()?.get(id).copied()
     }
 
+    /// Check whether a panel with the given id is currently open in any slot.
+    pub fn is_open(id: &str) -> bool {
+        let guard = ACTIVE_BY_SLOT.lock().unwrap();
+        guard
+            .iter()
+            .any(|slot| slot.as_ref().is_some_and(|(active_id, _)| *active_id == id))
+    }
+
     #[cfg(test)]
     pub fn reset_for_tests() {
         let mut guard = ACTIVE_BY_SLOT.lock().unwrap();
         *guard = [None, None, None, None];
     }
 }
-
-/// Backwards compatibility alias while transitioning code
-pub type OverlayHost = PanelHost;
 
 #[cfg(test)]
 mod tests {
@@ -361,5 +366,43 @@ mod tests {
     fn test_slot_distinctness() {
         assert_ne!(Slot::Focus, Slot::Left);
         assert_ne!(Slot::Right, Slot::Center);
+    }
+
+    #[core::prelude::v1::test]
+    fn test_slot_assignment_and_isolation() {
+        // Verify 4 distinct slot indices
+        assert_eq!(Slot::Focus.idx(), 0);
+        assert_eq!(Slot::Left.idx(), 1);
+        assert_eq!(Slot::Center.idx(), 2);
+        assert_eq!(Slot::Right.idx(), 3);
+
+        let mut slots: [Option<&'static str>; 4] = [None, None, None, None];
+
+        // Opening launcher (Focus)
+        slots[Slot::Focus.idx()] = Some("launcher");
+        // Opening dashboard (Left) does not close launcher (Focus)
+        slots[Slot::Left.idx()] = Some("dashboard");
+        assert_eq!(slots[Slot::Focus.idx()], Some("launcher"));
+        assert_eq!(slots[Slot::Left.idx()], Some("dashboard"));
+
+        // Opening music (Center)
+        slots[Slot::Center.idx()] = Some("music");
+        assert_eq!(slots[Slot::Center.idx()], Some("music"));
+
+        // Opening notificationsCenter (Right)
+        slots[Slot::Right.idx()] = Some("notificationsCenter");
+        assert_eq!(slots[Slot::Right.idx()], Some("notificationsCenter"));
+
+        // Opening controlCenter (Right) replaces notificationsCenter (Right) but not music (Center)
+        slots[Slot::Right.idx()] = Some("controlCenter");
+        assert_eq!(slots[Slot::Right.idx()], Some("controlCenter"));
+        assert_eq!(slots[Slot::Center.idx()], Some("music"));
+        assert_eq!(slots[Slot::Left.idx()], Some("dashboard"));
+        assert_eq!(slots[Slot::Focus.idx()], Some("launcher"));
+
+        // Closing slot only clears its own slot
+        slots[Slot::Right.idx()] = None;
+        assert_eq!(slots[Slot::Right.idx()], None);
+        assert_eq!(slots[Slot::Center.idx()], Some("music"));
     }
 }

@@ -3,6 +3,8 @@
 pub mod bar;
 pub mod modules;
 pub mod panel_host;
+pub mod satellite_layout;
+pub mod window_state;
 
 use beskar_compositor::detect_compositor;
 use gpui_kit::assets::AllAssets;

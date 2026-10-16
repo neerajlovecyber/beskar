@@ -68,6 +68,31 @@ fn default_island_spacing() -> f32 {
     12.0
 }
 
+fn default_animation_duration_ms() -> u32 {
+    250
+}
+fn default_gap() -> f32 {
+    8.0
+}
+fn default_capsule_round() -> f32 {
+    16.0
+}
+fn default_satellite_round() -> f32 {
+    16.0
+}
+fn default_cards_round() -> f32 {
+    16.0
+}
+fn default_margin_top() -> f32 {
+    8.0
+}
+fn default_exclusive_zone() -> f32 {
+    33.0
+}
+fn default_idle_height() -> f32 {
+    40.0
+}
+
 fn default_modules_left() -> Vec<BarModule> {
     vec![
         BarModule::BrandStar,
@@ -117,6 +142,22 @@ pub struct ShellConfig {
     pub modules_center: Vec<BarModule>,
     #[serde(default = "default_modules_right")]
     pub modules_right: Vec<BarModule>,
+    #[serde(default = "default_animation_duration_ms")]
+    pub animation_duration_ms: u32,
+    #[serde(default = "default_gap")]
+    pub gap: f32,
+    #[serde(default = "default_capsule_round")]
+    pub capsule_round: f32,
+    #[serde(default = "default_satellite_round")]
+    pub satellite_round: f32,
+    #[serde(default = "default_cards_round")]
+    pub cards_round: f32,
+    #[serde(default = "default_margin_top")]
+    pub margin_top: f32,
+    #[serde(default = "default_exclusive_zone")]
+    pub exclusive_zone: f32,
+    #[serde(default = "default_idle_height")]
+    pub idle_height: f32,
 }
 
 impl Default for ShellConfig {
@@ -135,6 +176,14 @@ impl Default for ShellConfig {
             modules_left: default_modules_left(),
             modules_center: default_modules_center(),
             modules_right: default_modules_right(),
+            animation_duration_ms: default_animation_duration_ms(),
+            gap: default_gap(),
+            capsule_round: default_capsule_round(),
+            satellite_round: default_satellite_round(),
+            cards_round: default_cards_round(),
+            margin_top: default_margin_top(),
+            exclusive_zone: default_exclusive_zone(),
+            idle_height: default_idle_height(),
         }
     }
 }

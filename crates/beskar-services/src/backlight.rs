@@ -16,8 +16,10 @@ impl BacklightService {
 
     pub fn set_brightness(pct: u8) {
         let clamped = pct.clamp(1, 100);
-        let _ = std::process::Command::new("brightnessctl")
-            .args(["set", &format!("{}%", clamped)])
-            .spawn();
+        tokio::task::spawn_blocking(move || {
+            let _ = std::process::Command::new("brightnessctl")
+                .args(["set", &format!("{}%", clamped)])
+                .spawn();
+        });
     }
 }

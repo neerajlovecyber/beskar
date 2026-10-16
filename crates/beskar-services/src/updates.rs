@@ -62,15 +62,17 @@ impl UpdateService {
             "konsole",
             "xterm",
         ];
-        for term in terminals {
-            if let Ok(child) = std::process::Command::new(term)
-                .args(["-e", "paru", "-Syu"])
-                .spawn()
-            {
-                let _ = child.id();
-                return;
+        tokio::task::spawn_blocking(move || {
+            for term in terminals {
+                if let Ok(child) = std::process::Command::new(term)
+                    .args(["-e", "paru", "-Syu"])
+                    .spawn()
+                {
+                    let _ = child.id();
+                    return;
+                }
             }
-        }
+        });
     }
 
     pub async fn check_updates(&self) {

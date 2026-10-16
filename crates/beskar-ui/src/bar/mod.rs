@@ -1,5 +1,5 @@
 pub mod state;
-pub use state::{resolve_window_icon, BarActions, BarState};
+pub use state::{resolve_window_icon, BarActions, BarState, BarStyle};
 
 use beskar_core::models::{WindowInfo, WorkspaceInfo};
 use gpui_kit::component::Icon;

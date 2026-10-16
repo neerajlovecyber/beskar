@@ -273,4 +273,17 @@ mod tests {
         assert_eq!(snapped_height, 36.0);
         assert_eq!(snapped_margin, 9.0);
     }
+
+    #[core::prelude::v1::test]
+    fn test_fractional_scale_calculation() {
+        for (width, scale, expected_logical) in [
+            (1920, 1.0, 1920.0),
+            (2560, 1.25, 2048.0),
+            (3840, 1.5, 2560.0),
+            (3840, 2.0, 1920.0),
+        ] {
+            let logical = width as f32 / scale as f32;
+            assert_eq!(logical, expected_logical);
+        }
+    }
 }

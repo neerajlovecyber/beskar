@@ -10,8 +10,11 @@ impl PowerProfilesService {
     }
 
     pub fn set_profile(profile: &str) {
-        let _ = std::process::Command::new("powerprofilesctl")
-            .args(["set", profile])
-            .spawn();
+        let profile = profile.to_string();
+        tokio::task::spawn_blocking(move || {
+            let _ = std::process::Command::new("powerprofilesctl")
+                .args(["set", &profile])
+                .spawn();
+        });
     }
 }
