@@ -88,6 +88,7 @@ Beskar enforces code reuse from battle-tested desktop shells isolated under `ref
 | **`wayle`** | Pure Rust hardware widgets (PipeWire, UPower, BlueZ, NetworkManager) & settings GUI |
 | **`icebar`** | Asynchronous `zbus` D-Bus streams (`tray.rs`, `subscription.rs`) |
 | **`gpui-kit`** | 75+ polished GPUI desktop component primitives |
+| **`capsule`** | Dynamic Island morphing, orbit/satellite OSDs, lockscreen, settings views, and Wayland GPUI shell mechanics |
 
 For development directives and guidelines, see [**`AGENTS.md`**](AGENTS.md).
 
