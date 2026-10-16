@@ -139,13 +139,13 @@ All Focus panels use Plan 00 scrim + bounded `Scrollable`/`VirtualList`, but **C
 
 ## 4. Acceptance
 
-- [ ] `NotificationModule` size `440×popup_height` (popup) vs `440×400` (history) correct; `popup_height` wrapping 4 lines + 3 action rows + reply `84+24` matches Capsule test; `measure` + `actions_height` pure fns pass headless test.
-- [ ] Bar toast: new notification briefly expands bar center pill `180→360` via `Animator`, shows inline card with `Chip` actions + `Input` reply when `inline-reply` present, auto-expires via `schedule_expiry` (60s fallback), hover `set_hovered(true)` suppresses expiry; history panel groups reverse chronological, `Badge` count + `Clear All`/`Close` work, `Slot::Right` exclusive with ControlCenter.
-- [ ] Clipboard: `Focus` exclusive with Launcher/PowerMenu/Wallpaper; `480×2-col×144` gallery with `COLUMNS 2` row packing, `Search` filter via `InputState`, `Tab` switches tabs, arrows/home/end navigate, `Enter` copies + generation-matched auto-close, `Pin`/`Remove`/`Clear` dispatched via `Request` channel busy-guarded, no render-thread blocking; dimensions test passes.
-- [ ] Wallpaper grid previews, `swww`/`feh` via `spawn_blocking` (not in `render`), theme HSL palette updates without restart.
-- [ ] All lists use `Scrollable`/`ScrollHandle` (Capsule pattern) or `VirtualList` if extended; inputs use `gpui_kit::Input` — no hand-rolled scroll; `IconButton`/`Chip`/`Button` map to `gpui_kit`.
-- [ ] D-Bus `org.freedesktop.Notifications` `NotificationStore` aligns with Capsule API; `zbus` patterns from `icebar` preserved.
-- [ ] `cargo check && cargo test` green; `grep -R "Command::new"` review clean (palette `swww` via `spawn_blocking`).
+- [x] `NotificationModule` size `440×popup_height` (popup) vs `440×400` (history) correct; `popup_height` wrapping 4 lines + 3 action rows + reply `84+24` matches Capsule test; `measure` + `actions_height` pure fns pass headless test.
+- [x] Bar toast: new notification briefly expands bar center pill `180→360` via `Animator`, shows inline card with `Chip` actions + `Input` reply when `inline-reply` present, auto-expires via `schedule_expiry` (60s fallback), hover `set_hovered(true)` suppresses expiry; history panel groups reverse chronological, `Badge` count + `Clear All`/`Close` work, `Slot::Right` exclusive with ControlCenter.
+- [x] Clipboard: `Focus` exclusive with Launcher/PowerMenu/Wallpaper; `480×2-col×144` gallery with `COLUMNS 2` row packing, `Search` filter via `InputState`, `Tab` switches tabs, arrows/home/end navigate, `Enter` copies + generation-matched auto-close, `Pin`/`Remove`/`Clear` dispatched via `Request` channel busy-guarded, no render-thread blocking; dimensions test passes.
+- [x] Wallpaper grid previews, `swww`/`feh` via `spawn_blocking` (not in `render`), theme HSL palette updates without restart.
+- [x] All lists use `Scrollable`/`ScrollHandle` (Capsule pattern) or `VirtualList` if extended; inputs use `gpui_kit::Input` — no hand-rolled scroll; `IconButton`/`Chip`/`Button` map to `gpui_kit`.
+- [x] D-Bus `org.freedesktop.Notifications` `NotificationStore` aligns with Capsule API; `zbus` patterns from `icebar` preserved.
+- [x] `cargo check && cargo test` green; `grep -R "Command::new"` review clean (palette `swww` via `spawn_blocking`).
 
 ## 5. Non-goals
 

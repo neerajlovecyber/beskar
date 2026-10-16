@@ -33,7 +33,7 @@ pub use auth::verify as verify_password;
 pub use backlight::BacklightService;
 pub use battery::BatteryService;
 pub use cava::CavaService;
-pub use clipboard::{ClipboardEntry, ClipboardService};
+pub use clipboard::{ClipboardContent, ClipboardEntry, ClipboardItem, ClipboardService, Snippet};
 pub use desktop::{launch as launch_app, list_apps};
 pub use github::{ContributionDay, GithubProfile, GithubService, GithubState};
 pub use hub::{SystemHub, SystemSnapshot};
@@ -42,6 +42,7 @@ pub use mpris::MprisService;
 pub use sound::SoundService;
 pub use sysvalue::SysValue;
 pub use tray::TrayService;
+pub use notifications::{NotificationItem, NotificationStore};
 pub use updates::{SystemUpdatesState, UpdateService};
 
 
@@ -246,6 +247,16 @@ pub fn tokio_runtime() -> &'static tokio::runtime::Runtime {
             .expect("Failed to initialize background Tokio runtime")
     })
 }
+
+/// Spawns an asynchronous task onto the background Tokio runtime.
+pub fn spawn_tokio<F>(future: F) -> tokio::task::JoinHandle<F::Output>
+where
+    F: std::future::Future + Send + 'static,
+    F::Output: Send + 'static,
+{
+    tokio_runtime().spawn(future)
+}
+
 
 #[cfg(test)]
 mod tests {

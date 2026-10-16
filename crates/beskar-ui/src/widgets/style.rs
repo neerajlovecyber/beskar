@@ -169,17 +169,41 @@ pub fn concave_input_regions(
     regions
 }
 
+pub const CARD_RADIUS: f32 = 16.0;
+pub const INNER_RADIUS: f32 = 12.0;
+
 pub fn surface() -> Hsla {
     beskar_theme::Theme::bg_secondary()
+}
+
+pub fn hover() -> Hsla {
+    tint(surface(), beskar_theme::Theme::accent(), 0.08)
+}
+
+pub fn selected() -> Hsla {
+    tint(surface(), beskar_theme::Theme::accent(), 0.12)
 }
 
 pub fn border() -> Hsla {
     beskar_theme::Theme::border()
 }
 
+pub fn on_accent() -> Hsla {
+    beskar_theme::Theme::accent()
+}
+
+pub fn raised() -> Hsla {
+    tint(surface(), beskar_theme::Theme::fg(), 0.06)
+}
+
+pub fn accent_card() -> Hsla {
+    tint(surface(), beskar_theme::Theme::accent(), 0.2)
+}
+
 pub fn card(radius: f32) -> gpui_kit::gpui::Div {
     div().rounded(px(radius)).bg(surface())
 }
+
 
 #[cfg(test)]
 mod tests {

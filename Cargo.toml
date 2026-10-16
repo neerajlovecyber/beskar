@@ -32,7 +32,7 @@ freedesktop-icons = "0.4"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 sysinfo = { version = "0.33", default-features = false, features = ["component", "disk", "system"] }
 notify = "8.0"
-arboard = { version = "3.6", default-features = false, features = ["wayland-data-control"] }
+arboard = { version = "3.6", default-features = false, features = ["wayland-data-control", "image-data"] }
 hyprland = "0.4.0-beta.3"
 uuid = { version = "1.16", features = ["v5"] }
 

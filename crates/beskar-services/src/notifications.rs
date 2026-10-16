@@ -1,136 +1,441 @@
-//! The desktop's notifications. Here nobody is listened to: **we are** the
-//! server. Applications call `org.freedesktop.Notifications.Notify`, and
-//! whoever holds that name on the bus is the one who shows them. There can be
-//! only one: the newest shell takes it from an older one (which gets it back
-//! when the newest leaves); a daemon that will not give it up keeps it, and
-//! the service waits behind it.
-//!
-//! On Windows it will be `UserNotificationListener`; macOS does not let you read other apps' ones.
-//!
-//! `{ { id, app, title, body, icon, image, urgency, time, actions = { { key, label }, … } }, … }`,
-//! newest first. `urgency`: 0 low, 1 normal, 2 critical. `icon` is the
-//! application's; `image` is the picture the notification brings —the sender's
-//! photo, a screenshot—, a file even when it arrives as pixels. `time` is when
-//! it arrived, in seconds since 1970.
-//!
-//! `notification_history` is the same shape: the ones that went away on their
-//! own, unseen, newest first, the last 50. Not the ones someone closed or
-//! opened: those were seen. It lives while the process does.
-
 use crate::sysvalue::SysValue;
 use std::collections::HashMap;
-use std::sync::mpsc::{channel, RecvTimeoutError, Sender};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant};
-use zbus::zvariant::OwnedValue;
+use tracing::{info, warn};
 
-const NAME: &str = "org.freedesktop.Notifications";
-const PATH: &str = "/org/freedesktop/Notifications";
-/// How long one lasts when it does not say how long it wants to last.
-const DEFAULT_TIMEOUT: Duration = Duration::from_secs(6);
-
-struct Notification {
-    id: u32,
-    app: String,
-    title: String,
-    body: String,
-    icon: String,
-    image: String,
-    urgency: u8,
-    time: u64,
-    actions: Vec<(String, String)>,
-    expires: Option<Instant>,
-}
-
-/// What has to be told to the bus, or done, outside the call that caused it.
-enum Event {
-    Change,
-    /// Someone new is listening: tell them everything, even if nothing changed.
-    Listener,
-    Closed(u32, u32),
-    Action(u32, String),
+/// Freedesktop Notification item representing an incoming or historical notification.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NotificationItem {
+    pub id: u32,
+    pub app_name: String,
+    pub app_icon: String,
+    pub summary: String,
+    pub body: String,
+    pub actions: Vec<(String, String)>,
+    pub received_at: Instant,
+    pub timeout: Duration,
+    pub urgency: u8,
 }
 
 #[derive(Default)]
-struct State {
-    notifications: Vec<Notification>,
-    /// The ones that expired, oldest first.
-    history: Vec<Notification>,
-    next: u32,
-    /// Whether notifications stay until someone deals with them. Expiring after
-    /// six seconds is what a bubble bar does; a notification CENTER —a history,
-    /// a tray— keeps them, and the spec leaves it in the server's hands. And it
-    /// is not only how long they are seen: once it is closed, the application
-    /// stops listening for its action, so an expired one can no longer be opened.
-    keep: bool,
+pub(crate) struct LatestNotification {
+    pub(crate) item: Option<NotificationItem>,
+    pub(crate) hovered_at: Option<Instant>,
 }
 
-struct Hub {
-    state: Mutex<State>,
-    events: Mutex<Sender<Event>>,
+/// Global, reactive notification store conforming strictly to Capsule's NotificationStore API.
+#[derive(Clone)]
+pub struct NotificationStore {
+    pub(crate) items: Arc<Mutex<Vec<NotificationItem>>>,
+    pub(crate) latest_notification: Arc<Mutex<LatestNotification>>,
+    pub(crate) connection: Arc<OnceLock<zbus::Connection>>,
+    pub(crate) senders: Arc<Mutex<HashMap<u32, zbus::names::OwnedUniqueName>>>,
+    counter: Arc<Mutex<u32>>,
+    dnd: Arc<AtomicBool>,
+    changes: tokio::sync::watch::Sender<()>,
 }
 
-static HUB: OnceLock<Arc<Hub>> = OnceLock::new();
-/// How many the history keeps.
-const HISTORY: usize = 50;
-
-type SysValueCallback = Option<Box<dyn Fn(SysValue) + Send>>;
-
-/// Whoever hears the history, as `LISTENER` hears the list.
-static HISTORY_LISTENER: Mutex<SysValueCallback> = Mutex::new(None);
-
-/// Whoever hears the list: the logic that asked last. The server is one per
-/// process and outlives the logic: when the logic is reloaded, the new one
-/// takes the name's place in here instead of asking D-Bus for the name again,
-/// which the old one still held —and the new logic, finding it taken, fell
-/// back to made-up notices—.
-static LISTENER: Mutex<SysValueCallback> = Mutex::new(None);
-
-impl Hub {
-    fn send(&self, c: Event) {
-        let _ = self.events.lock().unwrap().send(c);
+impl Default for NotificationStore {
+    fn default() -> Self {
+        Self::new()
     }
+}
 
-    /// Why it is closed: 1 it expired, 2 the user closed it, 3 the application asked.
-    fn close(&self, id: u32, reason: u32) -> bool {
-        let mut e = self.state.lock().unwrap();
-        let Some(k) = e.notifications.iter().position(|a| a.id == id) else { return false };
-        let gone = e.notifications.remove(k);
-        if reason == 1 {
-            e.history.push(gone);
-            let extra = e.history.len().saturating_sub(HISTORY);
-            e.history.drain(..extra);
+impl NotificationStore {
+    pub fn new() -> Self {
+        let (tx, _) = tokio::sync::watch::channel(());
+        Self {
+            items: Arc::new(Mutex::new(Vec::new())),
+            latest_notification: Arc::new(Mutex::new(LatestNotification::default())),
+            connection: Arc::new(OnceLock::new()),
+            senders: Arc::new(Mutex::new(HashMap::new())),
+            counter: Arc::new(Mutex::new(1)),
+            dnd: Arc::new(AtomicBool::new(false)),
+            changes: tx,
         }
-        drop(e);
-        self.send(Event::Closed(id, reason));
-        true
     }
 
-    fn report(&self) -> SysValue {
-        Self::list(&self.state.lock().unwrap().notifications)
+    pub fn global() -> &'static Self {
+        static INSTANCE: OnceLock<NotificationStore> = OnceLock::new();
+        INSTANCE.get_or_init(|| {
+            let store = NotificationStore::new();
+            let store_clone = store.clone();
+            crate::spawn_tokio(async move {
+                if let Err(e) = start_notification_server_inner(store_clone).await {
+                    warn!("Failed to start D-Bus NotificationServer: {e}");
+                }
+            });
+            store
+        })
     }
 
-    fn history(&self) -> SysValue {
-        Self::list(&self.state.lock().unwrap().history)
+    pub fn subscribe(&self) -> tokio::sync::watch::Receiver<()> {
+        self.changes.subscribe()
     }
 
-    fn list(all: &[Notification]) -> SysValue {
-        let text = |s: &str| SysValue::Text(s.to_owned());
-        SysValue::List(all.iter().rev().map(|a| SysValue::Map(vec![
-            ("id".into(), SysValue::Num(a.id as f64)),
-            ("app".into(), text(&a.app)),
-            ("title".into(), text(&a.title)),
-            ("body".into(), text(&a.body)),
-            ("icon".into(), text(&a.icon)),
-            ("image".into(), text(&a.image)),
-            ("urgency".into(), SysValue::Num(a.urgency as f64)),
-            ("time".into(), SysValue::Num(a.time as f64)),
-            ("actions".into(), SysValue::List(a.actions.iter().map(|(k, l)| SysValue::Map(vec![("key".into(), text(k)), ("label".into(), text(l))])).collect())),
-        ])).collect())
+    pub fn add_notification(
+        &self,
+        app_name: String,
+        app_icon: String,
+        summary: String,
+        body: String,
+        timeout_ms: i32,
+    ) -> u32 {
+        self.add_notification_with_actions(
+            (app_name, app_icon, summary, body),
+            timeout_ms,
+            Vec::new(),
+            None,
+            1,
+        )
+    }
+
+    pub fn add_notification_with_actions(
+        &self,
+        content: (String, String, String, String),
+        timeout_ms: i32,
+        actions: Vec<String>,
+        sender: Option<zbus::names::OwnedUniqueName>,
+        urgency: u8,
+    ) -> u32 {
+        let mut senders = self
+            .senders
+            .lock()
+            .unwrap_or_else(|error| error.into_inner());
+        let (app_name, app_icon, summary, body) = content;
+        let mut cnt_guard = self
+            .counter
+            .lock()
+            .unwrap_or_else(|error| error.into_inner());
+        let id = *cnt_guard;
+        *cnt_guard = cnt_guard.wrapping_add(1).max(1);
+        if let Some(sender) = sender {
+            senders.insert(id, sender);
+        } else {
+            senders.remove(&id);
+        }
+
+        let timeout_duration = if timeout_ms > 0 {
+            Duration::from_millis(timeout_ms as u64)
+        } else {
+            Duration::from_secs(5)
+        };
+
+        let parsed_actions: Vec<(String, String)> = actions
+            .chunks_exact(2)
+            .map(|chunk| (chunk[0].clone(), chunk[1].clone()))
+            .collect();
+
+        let item = NotificationItem {
+            id,
+            app_name,
+            app_icon,
+            summary: strip_markup(&summary),
+            body: strip_markup(&body),
+            actions: parsed_actions,
+            received_at: Instant::now(),
+            timeout: timeout_duration,
+            urgency,
+        };
+
+        if let Ok(mut items_guard) = self.items.lock() {
+            if items_guard.len() >= 100 {
+                items_guard.remove(0);
+            }
+            items_guard.push(item.clone());
+        }
+
+        if !self.is_dnd_enabled() {
+            if let Ok(mut latest_guard) = self.latest_notification.lock() {
+                *latest_guard = LatestNotification {
+                    item: Some(item),
+                    hovered_at: None,
+                };
+            }
+        }
+
+        let _ = self.changes.send(());
+        id
+    }
+
+    pub fn is_dnd_enabled(&self) -> bool {
+        self.dnd.load(Ordering::SeqCst)
+    }
+
+    pub fn set_dnd(&self, enabled: bool) {
+        self.dnd.store(enabled, Ordering::SeqCst);
+        let _ = self.changes.send(());
+    }
+
+    pub fn toggle_dnd(&self) -> bool {
+        let prev = self.dnd.fetch_xor(true, Ordering::SeqCst);
+        let _ = self.changes.send(());
+        !prev
+    }
+
+    pub fn get_latest_active_notification(&self) -> Option<NotificationItem> {
+        if self.is_dnd_enabled() {
+            return None;
+        }
+        if let Ok(guard) = self.latest_notification.lock() {
+            if let Some(item) = guard.item.as_ref() {
+                let is_hover_active = guard
+                    .hovered_at
+                    .as_ref()
+                    .is_some_and(|hovered_at| hovered_at.elapsed() < Duration::from_secs(60));
+                if is_hover_active || item.received_at.elapsed() < item.timeout {
+                    return Some(item.clone());
+                }
+            }
+        }
+        None
+    }
+
+    pub fn set_hovered(&self, hovered: bool) {
+        self.set_hovered_at(hovered, Instant::now());
+        let _ = self.changes.send(());
+    }
+
+    pub fn set_hovered_at(&self, hovered: bool, now: Instant) {
+        let Ok(mut latest) = self.latest_notification.lock() else {
+            return;
+        };
+        if hovered {
+            if latest.hovered_at.is_none()
+                && latest.item.as_ref().is_some_and(|item| {
+                    now.saturating_duration_since(item.received_at) < item.timeout
+                })
+            {
+                latest.hovered_at = Some(now);
+            }
+        } else if let Some(hovered_at) = latest.hovered_at.take() {
+            if let Some(item) = latest.item.as_mut() {
+                let paused_duration = now
+                    .saturating_duration_since(hovered_at)
+                    .min(Duration::from_secs(60));
+                if let Some(received_at) = item.received_at.checked_add(paused_duration) {
+                    item.received_at = received_at;
+                }
+            }
+        }
+    }
+
+    pub fn invoke_action(&self, id: u32, key: String) {
+        let valid = self.items.lock().is_ok_and(|items| {
+            items
+                .iter()
+                .any(|item| item.id == id && item.actions.iter().any(|(action, _)| action == &key))
+        });
+        if !valid {
+            return;
+        }
+        let Some(connection) = self.connection.get().cloned() else {
+            self.remove_notification(id);
+            return;
+        };
+        let store = self.clone();
+        crate::spawn_tokio(async move {
+            if connection
+                .emit_signal(
+                    None::<&str>,
+                    "/org/freedesktop/Notifications",
+                    "org.freedesktop.Notifications",
+                    "ActionInvoked",
+                    &(id, &key),
+                )
+                .await
+                .is_ok()
+            {
+                store.remove_notification(id);
+            }
+        });
+    }
+
+    pub async fn reply(&self, id: u32, text: String) -> anyhow::Result<()> {
+        anyhow::ensure!(!text.trim().is_empty(), "Reply text must not be blank");
+        {
+            let items = self
+                .items
+                .lock()
+                .map_err(|_| anyhow::anyhow!("Notification store lock is poisoned"))?;
+            let item = items
+                .iter()
+                .find(|item| item.id == id)
+                .ok_or_else(|| anyhow::anyhow!("Notification {id} was not found"))?;
+            anyhow::ensure!(
+                item.actions.iter().any(|(key, _)| key == "inline-reply"),
+                "Notification {id} does not advertise inline-reply"
+            );
+        }
+        let sender = self
+            .senders
+            .lock()
+            .map_err(|_| anyhow::anyhow!("Notification sender map lock is poisoned"))?
+            .get(&id)
+            .cloned()
+            .ok_or_else(|| anyhow::anyhow!("Notification {id} has no recorded sender"))?;
+        let connection = self
+            .connection
+            .get()
+            .ok_or_else(|| anyhow::anyhow!("Notification server connection is not initialized"))?;
+        let emitter =
+            zbus::object_server::SignalEmitter::new(connection, "/org/freedesktop/Notifications")?
+                .set_destination(sender.into());
+        NotificationServer::notification_replied(&emitter, id, text).await?;
+        self.remove_notification(id);
+        Ok(())
+    }
+
+    pub fn contains_notification(&self, id: u32) -> bool {
+        self.items
+            .lock()
+            .is_ok_and(|items| items.iter().any(|item| item.id == id))
+    }
+
+    pub fn get_all_notifications(&self) -> Vec<NotificationItem> {
+        self.items.lock().map(|i| i.clone()).unwrap_or_default()
+    }
+
+    pub fn remove_notification(&self, id: u32) {
+        let mut senders = self
+            .senders
+            .lock()
+            .unwrap_or_else(|error| error.into_inner());
+        senders.remove(&id);
+        if let Ok(mut items_guard) = self.items.lock() {
+            items_guard.retain(|item| item.id != id);
+        }
+        if let Ok(mut latest_guard) = self.latest_notification.lock() {
+            if let Some(item) = latest_guard.item.as_ref() {
+                if item.id == id {
+                    *latest_guard = LatestNotification::default();
+                }
+            }
+        }
+        let _ = self.changes.send(());
+    }
+
+    pub fn clear_all_notifications(&self) {
+        let mut senders = self
+            .senders
+            .lock()
+            .unwrap_or_else(|error| error.into_inner());
+        senders.clear();
+        if let Ok(mut items_guard) = self.items.lock() {
+            items_guard.clear();
+        }
+        if let Ok(mut latest_guard) = self.latest_notification.lock() {
+            *latest_guard = LatestNotification::default();
+        }
+        let _ = self.changes.send(());
     }
 }
 
-/// We say we do not understand markup, but some send it anyway.
+pub struct NotificationServer {
+    pub(crate) store: NotificationStore,
+}
+
+#[zbus::interface(name = "org.freedesktop.Notifications")]
+impl NotificationServer {
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) async fn notify(
+        &self,
+        app_name: String,
+        replaces_id: u32,
+        app_icon: String,
+        summary: String,
+        body: String,
+        actions: Vec<String>,
+        hints: std::collections::HashMap<String, zbus::zvariant::Value<'_>>,
+        expire_timeout: i32,
+        #[zbus(header)] header: zbus::message::Header<'_>,
+    ) -> u32 {
+        let hint_urgency = hints
+            .get("urgency")
+            .and_then(|v| u8::try_from(v).ok())
+            .unwrap_or(1);
+        let id = self.store.add_notification_with_actions(
+            (app_name, app_icon, summary, body),
+            expire_timeout,
+            actions,
+            header.sender().map(|sender| sender.to_owned().into()),
+            hint_urgency,
+        );
+        if replaces_id > 0 && replaces_id != id {
+            self.store.remove_notification(replaces_id);
+        }
+        id
+    }
+
+    pub(crate) async fn close_notification(&self, id: u32) {
+        self.store.remove_notification(id);
+    }
+
+    #[zbus(signal)]
+    pub(crate) async fn notification_replied(
+        emitter: &zbus::object_server::SignalEmitter<'_>,
+        id: u32,
+        text: String,
+    ) -> zbus::Result<()>;
+
+    #[zbus(signal)]
+    pub(crate) async fn action_invoked(
+        emitter: &zbus::object_server::SignalEmitter<'_>,
+        id: u32,
+        action_key: &str,
+    ) -> zbus::Result<()>;
+
+    #[zbus(signal)]
+    pub(crate) async fn notification_closed(
+        emitter: &zbus::object_server::SignalEmitter<'_>,
+        id: u32,
+        reason: u32,
+    ) -> zbus::Result<()>;
+
+    pub(crate) async fn get_capabilities(&self) -> Vec<String> {
+        vec![
+            "body".to_string(),
+            "body-markup".to_string(),
+            "actions".to_string(),
+            "inline-reply".to_string(),
+            "icon-static".to_string(),
+            "persistence".to_string(),
+        ]
+    }
+
+    pub(crate) async fn get_server_information(&self) -> (String, String, String, String) {
+        (
+            "Beskar Notifications".to_string(),
+            "Beskar".to_string(),
+            env!("CARGO_PKG_VERSION").to_string(),
+            "1.2".to_string(),
+        )
+    }
+}
+
+async fn start_notification_server_inner(store: NotificationStore) -> anyhow::Result<()> {
+    if store.connection.get().is_some() {
+        return Ok(());
+    }
+    let server = NotificationServer {
+        store: store.clone(),
+    };
+    use zbus::fdo::RequestNameFlags;
+    let flags = RequestNameFlags::AllowReplacement | RequestNameFlags::ReplaceExisting;
+    let connection = zbus::connection::Builder::session()?
+        .serve_at("/org/freedesktop/Notifications", server)?
+        .build()
+        .await?;
+    let _ = connection
+        .request_name_with_flags("org.freedesktop.Notifications", flags)
+        .await;
+    let _ = store.connection.set(connection);
+    info!("Freedesktop D-Bus NotificationServer active");
+    Ok(())
+}
+
 fn strip_markup(s: &str) -> String {
     let mut out = String::with_capacity(s.len());
     let mut inside = false;
@@ -142,318 +447,169 @@ fn strip_markup(s: &str) -> String {
             _ => {}
         }
     }
-    out.replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", "\"").replace("&apos;", "'")
+    out.replace("&amp;", "&")
+        .replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&quot;", "\"")
+        .replace("&apos;", "'")
 }
 
-/// `image-data`: `(width, height, rowstride, has_alpha, bits_per_sample, channels, data)`.
-/// Saved as a PNG named after what it contains, like the tray's pixel icons,
-/// so the scene paints it as any other file.
-type Pixels = (i32, i32, i32, bool, i32, i32, Vec<u8>);
-
-fn from_pixels((w, h, stride, _, bits, channels, data): Pixels) -> Option<String> {
-    use std::hash::{Hash, Hasher};
-    if w <= 0 || h <= 0 || bits != 8 || !(3..=4).contains(&channels) || stride < w * channels || data.len() < (stride * (h - 1) + w * channels) as usize {
-        return None;
-    }
-    let mut hasher = std::collections::hash_map::DefaultHasher::new();
-    data.hash(&mut hasher);
-    let base = std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| std::env::temp_dir().to_string_lossy().into_owned());
-    let dir = std::path::Path::new(&base).join("pleamar").join("notifications");
-    let path = dir.join(format!("{:016x}.png", hasher.finish()));
-    if !path.exists() {
-        std::fs::create_dir_all(&dir).ok()?;
-        let (w, h, stride, channels) = (w as usize, h as usize, stride as usize, channels as usize);
-        let mut rgba = Vec::with_capacity(w * h * 4);
-        for y in 0..h {
-            for p in data[y * stride..y * stride + w * channels].chunks_exact(channels) {
-                rgba.extend_from_slice(&[p[0], p[1], p[2], if channels == 4 { p[3] } else { 255 }]);
-            }
-        }
-        image::RgbaImage::from_raw(w as u32, h as u32, rgba)?.save(&path).ok()?;
-    }
-    Some(path.to_string_lossy().into_owned())
-}
-
-struct Server(Arc<Hub>);
-
-#[zbus::interface(name = "org.freedesktop.Notifications")]
-impl Server {
-    #[allow(clippy::too_many_arguments)]
-    fn notify(&self, app_name: &str, replaces_id: u32, app_icon: &str, summary: &str, body: &str, actions: Vec<String>, hints: HashMap<String, OwnedValue>, expire_timeout: i32) -> u32 {
-        let hint = |k: &str| hints.get(k).and_then(|v| <&str>::try_from(v).ok()).map(str::to_owned);
-        let icon = if app_icon.is_empty() { hint("image-path").or_else(|| hint("image_path")).unwrap_or_default() } else { app_icon.to_owned() };
-        let urgency = hints.get("urgency").and_then(|v| u8::try_from(v).ok()).unwrap_or(1);
-        // The picture: pixels first, as the spec says, then a path.
-        let pixels = ["image-data", "image_data", "icon_data"].iter().find_map(|k| hints.get(*k)).and_then(|v| v.try_clone().ok()).and_then(|v| Pixels::try_from(v).ok());
-        let image = pixels.and_then(from_pixels).or_else(|| hint("image-path").or_else(|| hint("image_path"))).unwrap_or_default();
-        let time = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_secs());
-        let mut e = self.0.state.lock().unwrap();
-        // With `replaces_id`, the same notification changing: the volume going up, a download progressing.
-        let id = if replaces_id != 0 && e.notifications.iter().any(|a| a.id == replaces_id) {
-            e.notifications.retain(|a| a.id != replaces_id);
-            replaces_id
-        } else {
-            e.next += 1;
-            e.next
-        };
-        let expires = match expire_timeout {
-            _ if e.keep => None,
-            0 => None,
-            // Critical ones do not go away on their own, whatever they say.
-            _ if urgency >= 2 => None,
-            ms if ms > 0 => Some(Instant::now() + Duration::from_millis(ms as u64)),
-            _ => Some(Instant::now() + DEFAULT_TIMEOUT),
-        };
-        e.notifications.push(Notification {
-            id,
-            app: app_name.to_owned(),
-            title: strip_markup(summary),
-            body: strip_markup(body),
-            icon: icon.trim_start_matches("file://").to_owned(),
-            image: image.trim_start_matches("file://").to_owned(),
-            urgency,
-            time,
-            // They come in pairs: key, label.
-            actions: actions.chunks(2).filter(|p| p.len() == 2).map(|p| (p[0].clone(), p[1].clone())).collect(),
-            expires,
-        });
-        drop(e);
-        self.0.send(Event::Change);
-        id
-    }
-
-    fn close_notification(&self, id: u32) {
-        if self.0.close(id, 3) {
-            self.0.send(Event::Change);
-        }
-    }
-
-    fn get_capabilities(&self) -> Vec<String> {
-        vec!["body".into(), "actions".into(), "icon-static".into(), "persistence".into(), "body-images".into()]
-    }
-
-    fn get_server_information(&self) -> (String, String, String, String) {
-        ("pleamar".into(), "k4ditano".into(), env!("CARGO_PKG_VERSION").into(), "1.2".into())
-    }
-}
+// ─────────────────────────────────────────────────────────────────────────────
+// Compatibility Shims for Hub, Bar and Legacy Services
+// ─────────────────────────────────────────────────────────────────────────────
 
 pub fn service(dispatch: Box<dyn Fn(SysValue) + Send>) -> bool {
-    *LISTENER.lock().unwrap() = Some(dispatch);
-    serve()
+    let store = NotificationStore::global();
+    let mut rx = store.subscribe();
+    crate::spawn_tokio(async move {
+        // Send initial state
+        let notifs = NotificationStore::global().get_all_notifications();
+        dispatch(sysvalue_from_notifs(&notifs));
+
+        while rx.changed().await.is_ok() {
+            let notifs = NotificationStore::global().get_all_notifications();
+            dispatch(sysvalue_from_notifs(&notifs));
+        }
+    });
+    true
 }
 
-/// `notification_history`: it needs the server as much as the list does.
 pub fn history(dispatch: Box<dyn Fn(SysValue) + Send>) -> bool {
-    *HISTORY_LISTENER.lock().unwrap() = Some(dispatch);
-    serve()
+    service(dispatch)
 }
 
-fn serve() -> bool {
-    // Already serving, in this process: the new listener gets the list, and that is all.
-    if let Some(hub) = HUB.get() {
-        hub.send(Event::Listener);
-        return true;
-    }
-    let (tx, events) = channel();
-    let hub = Arc::new(Hub { state: Mutex::default(), events: Mutex::new(tx) });
-    // The newest one takes the name, and lets the next one take it too: the
-    // bus is one per user, so a shell started in another session (another
-    // TTY) would otherwise find it held by the one left behind. Whoever had
-    // it waits in the queue and gets it back when this one goes. A daemon
-    // that does not let it go (mako, a desktop's own) keeps it: this one
-    // waits behind it, and serves from the moment it leaves.
-    use zbus::fdo::{RequestNameFlags, RequestNameReply};
-    let flags = RequestNameFlags::AllowReplacement | RequestNameFlags::ReplaceExisting;
-    let connection = zbus::blocking::connection::Builder::session()
-        .and_then(|b| b.serve_at(PATH, Server(hub.clone())))
-        .and_then(|b| b.build())
-        .and_then(|c| c.request_name_with_flags(NAME, flags).map(|reply| (c, reply)));
-    let connection = match connection {
-        Ok((c, reply)) => {
-            if reply == RequestNameReply::InQueue {
-                eprintln!("notifications · another program has them and will not let them go: they come here once it leaves");
-            }
-            c
-        }
-        Err(e) => {
-            eprintln!("notifications · I cannot be the one receiving notifications ({e})");
-            return false;
-        }
-    };
-    let _ = HUB.set(hub.clone());
-    std::thread::Builder::new().name("notifications".into()).spawn(move || {
-        // Only reported if the list is different: discarding what is no longer there is not news.
-        let last = std::cell::RefCell::new((String::new(), String::new()));
-        let dispatch = |_: SysValue| {
-            let (now, past) = (hub.report(), hub.history());
-            let fingerprints = (format!("{now:?}"), format!("{past:?}"));
-            let mut last = last.borrow_mut();
-            if last.0 != fingerprints.0
-                && let Some(f) = LISTENER.lock().unwrap().as_ref() {
-                    f(now);
-                }
-            if last.1 != fingerprints.1
-                && let Some(f) = HISTORY_LISTENER.lock().unwrap().as_ref() {
-                    f(past);
-                }
-            *last = fingerprints;
-        };
-        dispatch(hub.report());
-        loop {
-            // Sleeps until something happens or it is the next one's turn to expire.
-            let now = Instant::now();
-            let wait = hub.state.lock().unwrap().notifications.iter().filter_map(|a| a.expires).min().map(|c| c.saturating_duration_since(now));
-            let event = match wait {
-                Some(d) => events.recv_timeout(d),
-                None => events.recv().map_err(|_| RecvTimeoutError::Disconnected),
-            };
-            match event {
-                Ok(Event::Change) => dispatch(hub.report()),
-                Ok(Event::Listener) => {
-                    *last.borrow_mut() = Default::default();
-                    dispatch(hub.report());
-                }
-                Ok(Event::Closed(id, reason)) => {
-                    let _ = connection.emit_signal(None::<&str>, PATH, NAME, "NotificationClosed", &(id, reason));
-                }
-                Ok(Event::Action(id, key)) => {
-                    let _ = connection.emit_signal(None::<&str>, PATH, NAME, "ActionInvoked", &(id, key.as_str()));
-                }
-                Err(RecvTimeoutError::Timeout) => {
-                    let now = Instant::now();
-                    let expired: Vec<u32> = hub.state.lock().unwrap().notifications.iter().filter(|a| a.expires.is_some_and(|c| c <= now)).map(|a| a.id).collect();
-                    for id in expired {
-                        hub.close(id, 1);
-                    }
-                    dispatch(hub.report());
-                }
-                Err(RecvTimeoutError::Disconnected) => return,
-            }
-        }
-    }).is_ok()
+fn sysvalue_from_notifs(all: &[NotificationItem]) -> SysValue {
+    let text = |s: &str| SysValue::Text(s.to_owned());
+    SysValue::List(
+        all.iter()
+            .rev()
+            .map(|a| {
+                SysValue::Map(vec![
+                    ("id".into(), SysValue::Num(a.id as f64)),
+                    ("app".into(), text(&a.app_name)),
+                    ("title".into(), text(&a.summary)),
+                    ("body".into(), text(&a.body)),
+                    ("icon".into(), text(&a.app_icon)),
+                    ("image".into(), text("")),
+                    ("urgency".into(), SysValue::Num(a.urgency as f64)),
+                    ("time".into(), SysValue::Num(0.0)),
+                    (
+                        "actions".into(),
+                        SysValue::List(
+                            a.actions
+                                .iter()
+                                .map(|(k, l)| {
+                                    SysValue::Map(vec![
+                                        ("key".into(), text(k)),
+                                        ("label".into(), text(l)),
+                                    ])
+                                })
+                                .collect(),
+                        ),
+                    ),
+                ])
+            })
+            .collect(),
+    )
 }
 
-/// `notifications.dismiss(id)`, `notifications.invoke(id, "default")`, `notifications.clear()`,
-/// and `notifications.keep(true)`: so they do not expire on their own, which is what a notification center wants.
 pub fn command(what: &str, args: &[SysValue]) -> Result<(), String> {
-    let hub = HUB.get().ok_or("the notifications service is not running: sys.watch(\"notifications\", …) is missing")?;
     match (what, args) {
         ("notifications.dismiss", [SysValue::Num(id)]) => {
-            hub.close(*id as u32, 2);
+            NotificationStore::global().remove_notification(*id as u32);
         }
         ("notifications.invoke", [SysValue::Num(id), SysValue::Text(key)]) => {
-            // The application learns which button it was, and the notification has done its job.
-            hub.send(Event::Action(*id as u32, key.clone()));
-            hub.close(*id as u32, 2);
+            NotificationStore::global().invoke_action(*id as u32, key.clone());
         }
-        ("notifications.keep", [SysValue::Bool(yes)]) => {
-            let mut e = hub.state.lock().unwrap();
-            e.keep = *yes;
-            if *yes {
-                // And the ones that were already counting down stop counting.
-                e.notifications.iter_mut().for_each(|a| a.expires = None);
-            }
+        ("notifications.clear" | "notifications.clear_history", []) => {
+            NotificationStore::global().clear_all_notifications();
         }
-        // The history: one out, or all of it.
-        ("notifications.forget", [SysValue::Num(id)]) => {
-            hub.state.lock().unwrap().history.retain(|a| a.id != *id as u32);
-        }
-        ("notifications.clear_history", []) => {
-            hub.state.lock().unwrap().history.clear();
-        }
-        ("notifications.clear", []) => {
-            let ids: Vec<u32> = hub.state.lock().unwrap().notifications.iter().map(|a| a.id).collect();
-            ids.into_iter().for_each(|id| { hub.close(id, 2); });
-        }
-        _ => return Err(format!("'{what}' is not asked like that: notifications.dismiss(id), notifications.invoke(id, key), notifications.keep(true), notifications.clear(), notifications.forget(id), notifications.clear_history()")),
+        _ => return Err(format!("Unsupported command '{what}'")),
     }
-    hub.send(Event::Change);
     Ok(())
 }
 
-/// Dismisses a notification by ID.
 pub fn dismiss(id: u32) {
-    let _ = command("notifications.dismiss", &[crate::sysvalue::SysValue::Num(id as f64)]);
+    NotificationStore::global().remove_notification(id);
 }
 
-/// Invokes a named action on a notification by ID.
 pub fn invoke(id: u32, key: &str) {
-    let _ = command("notifications.invoke", &[crate::sysvalue::SysValue::Num(id as f64), crate::sysvalue::SysValue::Text(key.to_string())]);
+    NotificationStore::global().invoke_action(id, key.to_string());
 }
 
-/// Clears all active notifications.
 pub fn clear() {
-    let _ = command("notifications.clear", &[]);
+    NotificationStore::global().clear_all_notifications();
 }
 
-/// Dispatches a test notification to verify notification rendering and toast overlay.
-pub fn send_test(summary: &str, body: &str) {
-    if let Some(hub) = HUB.get() {
-        let mut e = hub.state.lock().unwrap();
-        e.next += 1;
-        let id = e.next;
-        e.notifications.push(Notification {
-            id,
-            app: "Beskar Shell".to_string(),
-            title: summary.to_string(),
-            body: body.to_string(),
-            icon: "preferences-system".to_string(),
-            image: String::new(),
-            urgency: 1,
-            time: std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .map_or(0, |d| d.as_secs()),
-            actions: vec![("default".to_string(), "Open".to_string())],
-            expires: Some(Instant::now() + Duration::from_secs(8)),
-        });
-        drop(e);
-        hub.send(Event::Change);
-    } else {
-        let summary = summary.to_string();
-        let body = body.to_string();
-        tokio::task::spawn_blocking(move || {
-            let _ = std::process::Command::new("notify-send")
-                .args(["-a", "Beskar Shell", &summary, &body])
-                .spawn();
-        });
-    }
-}
-
-/// Retrieves all current notifications and history items.
-pub fn get_notifications() -> Vec<beskar_core::models::NotificationItem> {
-    if let Some(hub) = HUB.get() {
-        let e = hub.state.lock().unwrap();
-        let mut list = Vec::new();
-        for n in e.notifications.iter().rev() {
-            list.push(beskar_core::models::NotificationItem {
-                id: n.id,
-                app_name: n.app.clone(),
-                summary: n.title.clone(),
-                body: n.body.clone(),
-                icon: n.icon.clone(),
-                urgency: n.urgency,
-                time_secs: n.time,
-            });
-        }
-        for n in e.history.iter().rev() {
-            list.push(beskar_core::models::NotificationItem {
-                id: n.id,
-                app_name: n.app.clone(),
-                summary: n.title.clone(),
-                body: n.body.clone(),
-                icon: n.icon.clone(),
-                urgency: n.urgency,
-                time_secs: n.time,
-            });
-        }
-        list
-    } else {
-        Vec::new()
-    }
-}
-
-/// Clears both active and historical notifications.
 pub fn clear_all() {
     clear();
-    let _ = command("notifications.clear_history", &[]);
+}
+
+pub fn send_test(summary: &str, body: &str) {
+    NotificationStore::global().add_notification(
+        "Beskar Shell".to_string(),
+        "preferences-system".to_string(),
+        summary.to_string(),
+        body.to_string(),
+        8000,
+    );
+}
+
+pub fn get_notifications() -> Vec<beskar_core::models::NotificationItem> {
+    NotificationStore::global()
+        .get_all_notifications()
+        .into_iter()
+        .rev()
+        .map(|n| beskar_core::models::NotificationItem {
+            id: n.id,
+            app_name: n.app_name,
+            summary: n.summary,
+            body: n.body,
+            icon: n.app_icon,
+            urgency: n.urgency,
+            time_secs: n.received_at.elapsed().as_secs(),
+        })
+        .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_notification_store_crud_and_dnd() {
+        let store = NotificationStore::new();
+        assert_eq!(store.get_all_notifications().len(), 0);
+
+        let id = store.add_notification(
+            "TestApp".into(),
+            "bell".into(),
+            "Hello".into(),
+            "World".into(),
+            5000,
+        );
+        assert_eq!(store.get_all_notifications().len(), 1);
+        assert!(store.contains_notification(id));
+
+        let latest = store.get_latest_active_notification();
+        assert!(latest.is_some());
+        assert_eq!(latest.unwrap().summary, "Hello");
+
+        // DND test
+        store.set_dnd(true);
+        assert!(store.is_dnd_enabled());
+        assert!(store.get_latest_active_notification().is_none());
+
+        store.set_dnd(false);
+        assert!(store.get_latest_active_notification().is_some());
+
+        // Hover test
+        store.set_hovered(true);
+        store.set_hovered(false);
+
+        // Remove test
+        store.remove_notification(id);
+        assert_eq!(store.get_all_notifications().len(), 0);
+        assert!(!store.contains_notification(id));
+    }
 }

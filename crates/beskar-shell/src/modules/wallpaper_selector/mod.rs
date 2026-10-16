@@ -2,7 +2,7 @@ pub mod view;
 pub use self::view::{WallpaperItem, WallpaperSelectorWidget};
 use gpui_kit::*;
 
-use crate::panel_host::{LayerAnchor, PanelHost, PanelModule};
+use crate::panel_host::{LayerAnchor, PanelHost, PanelModule, Slot};
 
 #[derive(Debug, Clone)]
 enum WallpaperMsg {
@@ -19,6 +19,10 @@ pub struct WallpaperSelectorView {
 
 impl PanelModule for WallpaperSelectorView {
     const ID: &'static str = "wallpaper_selector";
+
+    fn slot() -> Slot {
+        Slot::Focus
+    }
 
     fn size() -> Size<Pixels> {
         Size::new(px(720.0), px(520.0))
@@ -48,6 +52,7 @@ impl WallpaperSelectorView {
                 match msg {
                     WallpaperMsg::Select(path) => {
                         let path_str = path.to_string_lossy().to_string();
+                        let path_clone = path.clone();
                         tokio::task::spawn_blocking(move || {
                             let _ = std::process::Command::new("swww")
                                 .args(["img", &path_str, "--transition-type", "wipe"])
@@ -55,12 +60,17 @@ impl WallpaperSelectorView {
                             let _ = std::process::Command::new("feh")
                                 .args(["--bg-fill", &path_str])
                                 .spawn();
+
+                            if let Ok(tokens) = beskar_theme::ThemeEngine::generate_from_wallpaper(&path_clone) {
+                                beskar_theme::ThemeEngine::set_theme(tokens);
+                            }
                         });
 
                         let _ = this.update(cx, |_, cx| {
                             PanelHost::close(cx);
                         });
                     }
+
                     WallpaperMsg::Close => {
                         let _ = this.update(cx, |_, cx| {
                             PanelHost::close(cx);

@@ -190,7 +190,54 @@ impl Theme {
     pub fn glass_dark(alpha: f32) -> gpui_kit::Hsla {
         gpui_kit::hsla(0.0, 0.0, 0.0, alpha)
     }
+
+    #[inline]
+    pub fn font_family() -> &'static str {
+        "Inter"
+    }
+
+    #[inline]
+    pub fn foreground() -> gpui_kit::Hsla {
+        Self::fg()
+    }
+
+    #[inline]
+    pub fn foreground_muted() -> gpui_kit::Hsla {
+        Self::muted()
+    }
+
+    #[inline]
+    pub fn surface() -> gpui_kit::Hsla {
+        Self::bg_secondary()
+    }
+
+    #[inline]
+    pub fn surface_hover() -> gpui_kit::Hsla {
+        Self::bg_secondary()
+    }
+
+
+    #[inline]
+    pub fn background() -> gpui_kit::Hsla {
+        Self::bg()
+    }
+
+    #[inline]
+    pub fn background_alt() -> gpui_kit::Hsla {
+        Self::bg_secondary()
+    }
+
+    #[inline]
+    pub fn on_accent() -> gpui_kit::Hsla {
+        Self::accent()
+    }
+
+    #[inline]
+    pub fn red() -> gpui_kit::Hsla {
+        Self::danger()
+    }
 }
+
 
 /// Aesthetic Theme Tokens combining Suzuha's dark acrylic surfaces with iRiS's gold/amber & neutral palette.
 #[derive(Debug, Clone, Serialize, Deserialize)]
