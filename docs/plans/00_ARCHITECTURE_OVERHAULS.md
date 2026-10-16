@@ -154,16 +154,16 @@ Skills (normative): `.agents/skills/gpui-kit/SKILL.md`, `.agents/skills/gpui-kit
 
 ## 5. Acceptance (gate criteria — all must pass before Plans 01-05)
 
-- [ ] `cargo check && cargo test` green across workspace.
-- [ ] `Animator` unit tests pass: `interrupted_transition_preserves_displayed_size`, `expansion_and_contraction_match_the_original_spring` (zeta 0.73/0.77, powf 0.92/1.04), `content_reveals_even_when_dimensions_do_not_change`, `replacing_content_during_a_resize_preserves_the_current_dimensions`, `rapid_content_changes_restart_the_reveal_and_settle`, `zero_duration_finishes_immediately`.
-- [ ] `panel_host` slot tests: opening `launcher` (Focus) does not close `dashboard` (Left); opening `controlCenter` (Right) closes `notificationsCenter` (Right) but not `music` (Center); `Escape` + backdrop click close only the scrim's slot.
-- [ ] `niri.rs` emits `WorkspaceFocused(id)` on `WorkspaceActivated` and on `WorkspacesChanged` dedup, and respects `RunToken::alive()` restart.
-- [ ] Display hotplug no longer calls `reload_bars(Vec::new(),1,None)` — verified by grepping `reload_bars` in `main.rs`.
-- [ ] Zero `std::process::Command::new` outside `spawn_blocking`/`spawn_tokio`/async in `crates/beskar-shell/src` and `crates/beskar-services/src` (`grep -R "Command::new"` review) — includes fixed Capsule blur + PAM paths.
-- [ ] `BarHost::window_options` uses `maximum_window_size` + `exclusive_zone` from config + `Anchor` per `capsule_location`; `visible_bounds` + `SatelliteLayout::new` clamping present and tested.
-- [ ] `logical_display_size` fallback present in `bar/mod.rs` for fractional scale (tested at 1.0/1.25/1.5/2.0).
-- [ ] Config signal: changing `bar_style`/`capsule_location`/`animation_duration_ms` in `config.json` hot-swaps without restart (manual test), `ThemeEngine::set_preset` follows signal; `set_duration` propagates to `Animator`.
-- [ ] `frame loop` uses `compositor.get_frame_duration().max(16ms)` + `on_next_frame` pattern (no bare `std::thread::sleep` in UI).
+- [x] `cargo check && cargo test` green across workspace.
+- [x] `Animator` unit tests pass: `interrupted_transition_preserves_displayed_size`, `expansion_and_contraction_match_the_original_spring` (zeta 0.73/0.77, powf 0.92/1.04), `content_reveals_even_when_dimensions_do_not_change`, `replacing_content_during_a_resize_preserves_the_current_dimensions`, `rapid_content_changes_restart_the_reveal_and_settle`, `zero_duration_finishes_immediately`.
+- [x] `panel_host` slot tests: opening `launcher` (Focus) does not close `dashboard` (Left); opening `controlCenter` (Right) closes `notificationsCenter` (Right) but not `music` (Center); `Escape` + backdrop click close only the scrim's slot.
+- [x] `niri.rs` emits `WorkspaceFocused(id)` on `WorkspaceActivated` and on `WorkspacesChanged` dedup, and respects `RunToken::alive()` restart.
+- [x] Display hotplug no longer calls `reload_bars(Vec::new(),1,None)` — verified by grepping `reload_bars` in `main.rs`.
+- [x] Zero `std::process::Command::new` outside `spawn_blocking`/`spawn_tokio`/async in `crates/beskar-shell/src` and `crates/beskar-services/src` (`grep -R "Command::new"` review) — includes fixed Capsule blur + PAM paths.
+- [x] `BarHost::window_options` uses `maximum_window_size` + `exclusive_zone` from config + `Anchor` per `capsule_location`; `visible_bounds` + `SatelliteLayout::new` clamping present and tested.
+- [x] `logical_display_size` fallback present in `bar/mod.rs` for fractional scale (tested at 1.0/1.25/1.5/2.0).
+- [x] Config signal: changing `bar_style`/`capsule_location`/`animation_duration_ms` in `config.json` hot-swaps without restart (manual test), `ThemeEngine::set_preset` follows signal; `set_duration` propagates to `Animator`.
+- [x] `frame loop` uses `compositor.get_frame_duration().max(16ms)` + `on_next_frame` pattern (no bare `std::thread::sleep` in UI).
 
 ## 6. Non-goals (deferred to later plans)
 
