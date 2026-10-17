@@ -3,7 +3,7 @@ pub mod gaming;
 pub mod island;
 pub mod state;
 
-pub use convex::ConcaveBarWidget;
+pub use convex::{ConcaveBarPosition, ConcaveBarWidget};
 pub use gaming::GamingBarWidget;
 pub use island::{IslandBarWidget, OutgoingContent};
 pub use state::{resolve_window_icon, BarActions, BarState, BarStyle};
@@ -14,6 +14,13 @@ use gpui_kit::component::Icon;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 
+fn viewport_width(geometry: Option<&crate::convex::ConvexGeometry>) -> f32 {
+    geometry
+        .map(|geometry| geometry.width)
+        .filter(|width| *width > 0.0)
+        .unwrap_or(1920.0)
+}
+
 /// Beskar Bar surface separating the top bar into 3 distinct layout regions:
 /// - [Left Island]: App launch button, Workspaces, open apps dock & active window
 /// - [Dynamic Center Island]: Dynamic morphing notch (date, clock, MPRIS, notifications)
@@ -23,7 +30,6 @@ pub struct BeskarBar {
     left: Vec<AnyElement>,
     center: Vec<AnyElement>,
     right: Vec<AnyElement>,
-    padding_x: Pixels,
     is_island_cluster: bool,
     is_convex: bool,
     is_gaming: bool,
@@ -42,7 +48,6 @@ impl BeskarBar {
             left: Vec::new(),
             center: Vec::new(),
             right: Vec::new(),
-            padding_x: px(12.0),
             is_island_cluster: false,
             is_convex: false,
             is_gaming: false,
@@ -113,9 +118,49 @@ impl BeskarBar {
         });
 
         let has_win = mod_left.contains(&beskar_core::config::BarModule::ActiveWindow);
+        let viewport_width = viewport_width(state.geometry.as_ref());
+        let compact_bar = viewport_width < 800.0;
         let ws_count = state.workspaces.len();
+        let has_active_win = has_win && state.active_window.is_some();
+        let ws_apps_count = state.workspace_windows.len();
+        let tray_count = state.tray_items.len();
+        let taskbar_count = state.all_windows.len().min(6);
+        let left_preferred_w = if compact_bar {
+            92.0
+        } else {
+            (48.0
+                + (ws_count.clamp(5, 10) as f32 * 18.0 + 36.0)
+                + (ws_apps_count as f32 * 23.0)
+                + if has_active_win { 150.0 } else { 0.0 }
+                + 48.0)
+                .max(240.0)
+        };
+        let right_preferred_w = if compact_bar {
+            114.0
+        } else {
+            (taskbar_count as f32 * 25.0
+                + (tray_count as f32 * 26.0)
+                + if tray_count > 0 { 12.0 } else { 0.0 }
+                + 160.0
+                + 36.0
+                + 48.0)
+                .max(260.0)
+        };
+        let requested_center_w = state.animated_center_width.unwrap_or(220.0).max(220.0);
+        let geometry = crate::convex::ConvexGeometry::auto_calculate(
+            viewport_width,
+            38.0,
+            left_preferred_w,
+            requested_center_w,
+            right_preferred_w,
+        );
+        let center_w = geometry.center_w;
+        let left_w = geometry.left_w;
+        let right_w = geometry.right_w;
+        let center_x = geometry.center_x;
 
-        let mut ws_widget = WorkspacesWidget::new(state.workspaces, state.active_ws);
+        let mut ws_widget =
+            WorkspacesWidget::new(state.workspaces, state.active_ws).compact(compact_bar);
         if let Some(handler) = actions.on_select_ws {
             ws_widget = ws_widget.on_select(move |id| (handler)(id));
         }
@@ -160,11 +205,10 @@ impl BeskarBar {
                     .size(px(13.0))
                     .text_color(beskar_theme::Theme::accent()),
             )
-            .child("Apps");
+            .when(!compact_bar, |button| button.child("Apps"));
 
         // Open Applications in the Active Workspace (Workspace Window Icons)
-        let ws_apps_count = state.workspace_windows.len();
-        let ws_apps_row = if !state.workspace_windows.is_empty() {
+        let ws_apps_row = if !compact_bar && !state.workspace_windows.is_empty() {
             let mut row = div().flex().items_center().gap(px(3.0)).ml(px(6.0));
             let on_win_select = actions.on_select_window.clone();
             for win in &state.workspace_windows {
@@ -175,6 +219,7 @@ impl BeskarBar {
 
                 row = row.child(
                     div()
+                        .id(("workspace-window", win_id))
                         .flex()
                         .items_center()
                         .justify_center()
@@ -219,7 +264,7 @@ impl BeskarBar {
         };
 
         // Current Focused Application Name and Icon Pill
-        let mut active_win_element = if has_win {
+        let mut active_win_element = if has_win && !compact_bar {
             state.active_window.as_ref().and_then(|win| {
                 let title_text = win
                     .title
@@ -233,14 +278,6 @@ impl BeskarBar {
                 }
 
                 let icon = resolve_window_icon(win.app_id.as_deref(), win.title.as_deref());
-                let short_title = if title_text.chars().count() > 18 {
-                    let mut s: String = title_text.chars().take(18).collect();
-                    s.push('…');
-                    s
-                } else {
-                    title_text.to_string()
-                };
-
                 let on_win_clk = actions.on_window_click.clone();
                 let on_win_cls = actions.on_window_close.clone();
                 Some(
@@ -251,6 +288,7 @@ impl BeskarBar {
                         .ml(px(8.0))
                         .pl(px(8.0))
                         .max_w(px(160.0))
+                        .min_w_0()
                         .overflow_hidden()
                         .border_l_1()
                         .border_color(beskar_theme::Theme::subtle_border())
@@ -269,10 +307,14 @@ impl BeskarBar {
                         )
                         .child(
                             div()
+                                .min_w_0()
+                                .overflow_hidden()
+                                .whitespace_nowrap()
+                                .text_ellipsis()
                                 .text_xs()
                                 .font_weight(FontWeight::MEDIUM)
                                 .text_color(beskar_theme::Theme::fg())
-                                .child(short_title),
+                                .child(title_text.to_string()),
                         ),
                 )
             })
@@ -283,7 +325,10 @@ impl BeskarBar {
         let mut app_launch_btn = Some(app_launch_btn);
         let mut ws_widget = Some(ws_widget);
         let mut ws_apps_row = ws_apps_row;
-        let mut left_pill = IslandPill::new();
+        let mut left_pill = IslandPill::new().padding(
+            if compact_bar { px(6.0) } else { px(14.0) },
+            if compact_bar { px(4.0) } else { px(6.0) },
+        );
         for m in &mod_left {
             match m {
                 beskar_core::config::BarModule::BrandStar => {
@@ -314,9 +359,7 @@ impl BeskarBar {
         if let Some(bands) = state.cava_bands {
             center_widget = center_widget.cava_bands(bands);
         }
-        if let Some(w) = state.animated_center_width {
-            center_widget = center_widget.width(px(w));
-        }
+        center_widget = center_widget.width(px(center_w));
         if let Some((title, artist, is_playing)) = state.media {
             center_widget = center_widget.media(Some(title), Some(artist), is_playing);
         }
@@ -325,6 +368,10 @@ impl BeskarBar {
         }
         if let Some(handler) = actions.on_clock_click {
             center_widget = center_widget.on_clock_click(move |window, cx| (handler)(window, cx));
+        }
+        if let Some(handler) = actions.on_control_center_click.clone() {
+            center_widget =
+                center_widget.on_notification_click(move |window, cx| (handler)(window, cx));
         }
         if let Some(handler) = actions.on_music_click {
             center_widget = center_widget.on_media_click(move |window, cx| (handler)(window, cx));
@@ -337,26 +384,41 @@ impl BeskarBar {
         let is_convex = state.bar_style == beskar_core::config::BarStyleConfig::Convex || state.is_convex;
         let is_gaming = state.bar_style == beskar_core::config::BarStyleConfig::Gaming;
 
-        let center_w = state.animated_center_width.unwrap_or(150.0).max(140.0);
-        let center_pill = if is_convex {
-            crate::bar::ConcaveBarWidget::new(Size::new(px(center_w), px(38.0)))
+        let left_element = if is_convex {
+            crate::bar::ConcaveBarWidget::new(Size::new(px(left_w), px(38.0)))
+                .position(crate::bar::ConcaveBarPosition::Left)
                 .radius(16.0)
                 .color(beskar_theme::Theme::bg())
-                .child(
-                    div()
-                        .flex()
-                        .items_center()
-                        .justify_center()
-                        .size_full()
-                        .child(center_widget),
-                )
+                .child(left_pill)
                 .into_any_element()
         } else {
-            IslandPill::new().child(center_widget).into_any_element()
+            left_pill.into_any_element()
         };
 
+        let center_element = if is_convex {
+            crate::bar::ConcaveBarWidget::new(Size::new(px(center_w), px(38.0)))
+                .position(crate::bar::ConcaveBarPosition::Center)
+                .radius(16.0)
+                .color(beskar_theme::Theme::bg())
+                .child(center_widget)
+                .into_any_element()
+        } else {
+            div()
+                .w(px(center_w))
+                .max_w(px(center_w))
+                .h(px(38.0))
+                .overflow_hidden()
+                .flex()
+                .items_center()
+                .justify_center()
+                .child(IslandPill::new().child(center_widget))
+                .into_any_element()
+        };
+
+
+
         // Taskbar Apps Dock (Running Applications in Right Island)
-        let taskbar_dock = if !state.all_windows.is_empty() {
+        let taskbar_dock = if !compact_bar && !state.all_windows.is_empty() {
             let mut dock = div().flex().items_center().gap(px(3.0)).mr(px(8.0));
             let on_win_select = actions.on_select_window.clone();
             for win in state.all_windows.iter().take(6) {
@@ -367,6 +429,7 @@ impl BeskarBar {
 
                 dock = dock.child(
                     div()
+                        .id(("taskbar-window", win_id))
                         .flex()
                         .items_center()
                         .justify_center()
@@ -410,14 +473,14 @@ impl BeskarBar {
             None
         };
 
-        let tray_count = state.tray_items.len();
         let mut vitals_widget = VitalsWidget::new(state.volume_percent, state.battery_percent)
             .muted(state.is_muted)
             .charging(state.is_charging)
             .cpu(state.cpu_usage)
             .ram(state.ram_usage)
             .tray(state.tray_items)
-            .modules(mod_right);
+            .modules(mod_right)
+            .compact(compact_bar);
         if let Some(handler) = actions.on_volume_click {
             vitals_widget = vitals_widget.on_volume_click(move || (handler)());
         }
@@ -449,25 +512,24 @@ impl BeskarBar {
         }
         right_pill = right_pill.child(vitals_widget);
 
-        // Dynamic notch geometry calculation matching actual rendered components
-        let has_active_win = has_win && state.active_window.is_some();
-        let left_content_w = 48.0 /* App Launch Button */
-            + (ws_count.max(5).min(10) as f32 * 18.0 + 36.0) /* Workspaces */
-            + (ws_apps_count as f32 * 23.0) /* Open app icons in workspace */
-            + if has_active_win { 150.0 } else { 0.0 };
-        let left_w = (left_content_w + 48.0).max(240.0);
+        let right_element = if is_convex {
+            crate::bar::ConcaveBarWidget::new(Size::new(px(right_w), px(38.0)))
+                .position(crate::bar::ConcaveBarPosition::Right)
+                .radius(16.0)
+                .color(beskar_theme::Theme::bg())
+                .child(right_pill)
+                .into_any_element()
+        } else {
+            right_pill.into_any_element()
+        };
 
-        let tray_w = (tray_count as f32 * 26.0) + if tray_count > 0 { 12.0 } else { 0.0 };
-        let taskbar_w = state.all_windows.len().min(6) as f32 * 25.0;
-        let right_content_w = taskbar_w + tray_w + 160.0 /* status capsule */ + 36.0 /* power button */;
-        let right_w = (right_content_w + 48.0).max(260.0);
-
-        let geom = {
-            let mut g = state.geometry.unwrap_or_default();
-            g.left_w = left_w;
-            g.center_w = center_w;
-            g.right_w = right_w;
-            g
+        let geom = crate::convex::ConvexGeometry {
+            height: 38.0,
+            left_w,
+            center_x,
+            center_w,
+            right_w,
+            ..geometry
         };
 
         Self::new()
@@ -475,9 +537,9 @@ impl BeskarBar {
             .gaming(is_gaming)
             .island_cluster(is_island)
             .geometry(geom)
-            .left([left_pill.into_any_element()])
-            .center([center_pill])
-            .right([right_pill.into_any_element()])
+            .left([left_element])
+            .center([center_element])
+            .right([right_element])
     }
 
     /// Builds the signature 3-Island layout matching minflair and the reference screenshot
@@ -515,6 +577,7 @@ impl BeskarBar {
 
 impl RenderOnce for BeskarBar {
     fn render(self, _window: &mut Window, _cx: &mut App) -> impl IntoElement {
+        let geometry = self.geometry.unwrap_or_default();
         if self.is_island_cluster {
             div()
                 .relative()
@@ -534,19 +597,11 @@ impl RenderOnce for BeskarBar {
                 .child(
                     div()
                         .absolute()
-                        .inset_0()
-                        .flex()
-                        .items_center()
-                        .justify_center()
-                        .children(self.center),
-                )
-                .child(
-                    div()
-                        .absolute()
                         .top_0()
                         .bottom_0()
                         .left_0()
-                        .pl(self.padding_x)
+                        .w(px(geometry.left_w))
+                        .min_w_0()
                         .flex()
                         .items_center()
                         .justify_start()
@@ -557,8 +612,22 @@ impl RenderOnce for BeskarBar {
                         .absolute()
                         .top_0()
                         .bottom_0()
+                        .left(px(geometry.center_x))
+                        .w(px(geometry.center_w))
+                        .min_w_0()
+                        .flex()
+                        .items_center()
+                        .justify_center()
+                        .children(self.center),
+                )
+                .child(
+                    div()
+                        .absolute()
+                        .top_0()
+                        .bottom_0()
                         .right_0()
-                        .pr(self.padding_x)
+                        .w(px(geometry.right_w))
+                        .min_w_0()
                         .flex()
                         .items_center()
                         .justify_end()
