@@ -37,6 +37,10 @@ impl PanelModule for MusicPlayerView {
         Slot::Center
     }
 
+    fn panel_edge() -> crate::panel_host::PanelEdge {
+        crate::panel_host::PanelEdge::TopCenter
+    }
+
     fn size() -> Size<Pixels> {
         Size::new(px(430.0), px(560.0))
     }

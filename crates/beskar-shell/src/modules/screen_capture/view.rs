@@ -153,9 +153,11 @@ impl RenderOnce for ScreenCaptureWidget {
             .flex_col()
             .gap(px(14.0))
             .p(px(18.0))
-            .rounded(px(22.0))
+            .rounded_b_none()
+            .rounded_t(px(24.0))
             .bg(beskar_theme::Theme::bg())
             .border_1()
+            .border_b(px(0.0))
             .border_color(beskar_theme::Theme::border())
             .shadow_lg()
             // Header

@@ -41,6 +41,10 @@ impl PanelModule for SettingsView {
         Slot::Focus
     }
 
+    fn panel_edge() -> crate::panel_host::PanelEdge {
+        crate::panel_host::PanelEdge::CenterModal
+    }
+
     fn size() -> Size<Pixels> {
         Size::new(px(SettingsWidget::WIDTH), px(SettingsWidget::HEIGHT))
     }

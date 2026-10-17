@@ -13,8 +13,6 @@ pub mod tracker;
 pub use components::*;
 pub use tracker::*;
 pub use widgets::{
+    convex_shape::{ConvexDrawerEdge, convex_drawer_background},
     style, DynamicCenterWidget, VitalsWidget, WorkspacesWidget,
 };
-
-
-

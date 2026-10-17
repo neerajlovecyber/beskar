@@ -12,7 +12,7 @@ use gpui_kit::component::Icon;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 
-use crate::panel_host::{KeyboardInteractivity, LayerAnchor, PanelHost, PanelModule};
+use crate::panel_host::{KeyboardInteractivity, PanelEdge, PanelHost, PanelModule, Slot};
 use items::{search_unified, LauncherCategory, LauncherResult};
 
 /// Unified Bottom Floating Launcher (Spotlight / Omni-Bar)
@@ -27,16 +27,16 @@ pub struct LauncherView {
 impl PanelModule for LauncherView {
     const ID: &'static str = "launcher";
 
+    fn slot() -> Slot {
+        Slot::Focus
+    }
+
+    fn panel_edge() -> PanelEdge {
+        PanelEdge::Bottom
+    }
+
     fn size() -> Size<Pixels> {
         Size::new(px(680.0), px(460.0))
-    }
-
-    fn anchor() -> LayerAnchor {
-        LayerAnchor::BOTTOM
-    }
-
-    fn margin() -> (Pixels, Pixels, Pixels, Pixels) {
-        (px(0.0), px(0.0), px(54.0), px(0.0))
     }
 
     fn keyboard_interactivity() -> KeyboardInteractivity {
@@ -120,9 +120,11 @@ impl Render for LauncherView {
             .flex()
             .flex_col()
             .p(px(14.0))
-            .rounded(px(24.0))
+            .rounded_b_none()
+            .rounded_t(px(24.0))
             .bg(theme_bg)
             .border_1()
+            .border_b(px(0.0))
             .border_color(theme_border)
             .shadow_2xl()
             .overflow_hidden()

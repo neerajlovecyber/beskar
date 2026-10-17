@@ -146,8 +146,10 @@ impl Render for TrayMenuView {
             .p(px(6.0))
             .bg(Theme::card_bg())
             .border_1()
+            .border_r(px(0.0))
             .border_color(Theme::card_border())
-            .rounded(px(12.0))
+            .rounded_r_none()
+            .rounded_l(px(16.0))
             .shadow_lg()
             .on_key_down(|event, _, cx| {
                 if event.keystroke.key == "escape" {

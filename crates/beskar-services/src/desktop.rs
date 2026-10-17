@@ -126,9 +126,24 @@ pub fn resolve_icon_path(icon_name: &str) -> Option<String> {
         })
 }
 
-/// Returns a typed list of installed desktop applications.
+static APPS_CACHE: std::sync::Mutex<Option<Vec<beskar_core::models::AppItem>>> = std::sync::Mutex::new(None);
+
+/// Pre-warms the applications list in a background thread to prevent UI stutter on first launch.
+pub fn preload_apps() {
+    std::thread::spawn(|| {
+        let _ = list_apps();
+    });
+}
+
+/// Returns a typed list of installed desktop applications (cached for fast response).
 pub fn list_apps() -> Vec<beskar_core::models::AppItem> {
-    if let SysValue::List(apps) = applications() {
+    if let Ok(guard) = APPS_CACHE.lock() {
+        if let Some(cached) = guard.as_ref() {
+            return cached.clone();
+        }
+    }
+
+    let items = if let SysValue::List(apps) = applications() {
         apps.into_iter()
             .filter_map(|val| {
                 if let SysValue::Map(m) = val {
@@ -159,5 +174,10 @@ pub fn list_apps() -> Vec<beskar_core::models::AppItem> {
             .collect()
     } else {
         Vec::new()
+    };
+
+    if let Ok(mut guard) = APPS_CACHE.lock() {
+        *guard = Some(items.clone());
     }
+    items
 }

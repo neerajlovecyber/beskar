@@ -150,9 +150,11 @@ impl RenderOnce for MusicPlayerWidget {
             .flex_col()
             .gap(px(12.0))
             .p(px(18.0))
-            .rounded(px(22.0))
+            .rounded_t_none()
+            .rounded_b(px(24.0))
             .bg(beskar_theme::Theme::bg())
             .border_1()
+            .border_t(px(0.0))
             .border_color(beskar_theme::Theme::border())
             .shadow_lg()
             // Top: Header with player badge & close button

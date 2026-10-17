@@ -7,7 +7,7 @@ use std::time::Duration;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
-use crate::panel_host::{LayerAnchor, PanelHost, PanelModule, Slot};
+use crate::panel_host::{PanelEdge, PanelHost, PanelModule, Slot};
 use beskar_services::github::{ContributionDay, GithubService, GithubState};
 use beskar_services::vitals::{VitalsService, VitalsSnapshot};
 use beskar_theme::Theme;
@@ -41,16 +41,12 @@ impl PanelModule for DashboardView {
         Slot::Left
     }
 
+    fn panel_edge() -> PanelEdge {
+        PanelEdge::Left
+    }
+
     fn size() -> Size<Pixels> {
         Size::new(px(460.0), px(740.0))
-    }
-
-    fn anchor() -> LayerAnchor {
-        LayerAnchor::TOP | LayerAnchor::LEFT
-    }
-
-    fn margin() -> (Pixels, Pixels, Pixels, Pixels) {
-        (px(48.0), px(0.0), px(0.0), px(16.0))
     }
 
     fn build(cx: &mut Context<Self>) -> Self {
@@ -216,9 +212,11 @@ impl Render for DashboardView {
             .max_h(px(740.0))
             .overflow_y_scroll()
             .p(px(14.0))
-            .rounded(px(20.0))
+            .rounded_l_none()
+            .rounded_r(px(24.0))
             .bg(Theme::card_bg())
             .border_1()
+            .border_l(px(0.0))
             .border_color(Theme::card_border())
             .shadow_xl()
             .flex()

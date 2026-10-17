@@ -23,8 +23,12 @@ impl PanelModule for ScreenCaptureView {
         Slot::Focus
     }
 
+    fn panel_edge() -> crate::panel_host::PanelEdge {
+        crate::panel_host::PanelEdge::Bottom
+    }
+
     fn size() -> Size<Pixels> {
-        Size::new(px(460.0), px(64.0))
+        Size::new(px(460.0), px(240.0))
     }
 
     fn anchor() -> LayerAnchor {

@@ -150,9 +150,11 @@ pub fn render(
         .flex()
         .flex_col()
         .gap(px(12.0))
-        .rounded(px(style::CARD_RADIUS))
+        .rounded_r_none()
+        .rounded_l(px(24.0))
         .bg(Theme::bg())
         .border_1()
+        .border_r(px(0.0))
         .border_color(Theme::border());
 
     root = root.child(

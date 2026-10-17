@@ -4,9 +4,7 @@ use gpui_kit::component::button::{Button, ButtonVariant, ButtonVariants};
 use gpui_kit::component::Icon;
 use gpui_kit::*;
 
-use gpui_kit::layer_shell::Anchor as LayerAnchor;
-
-use crate::panel_host::{PanelHost, PanelModule};
+use crate::panel_host::{PanelEdge, PanelHost, PanelModule, Slot};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PowerAction {
@@ -75,16 +73,16 @@ pub struct PowerMenuView {
 impl PanelModule for PowerMenuView {
     const ID: &'static str = "power_menu";
 
+    fn slot() -> Slot {
+        Slot::Focus
+    }
+
+    fn panel_edge() -> PanelEdge {
+        PanelEdge::Bottom
+    }
+
     fn size() -> Size<Pixels> {
         Size::new(px(356.0), px(64.0))
-    }
-
-    fn anchor() -> LayerAnchor {
-        LayerAnchor::TOP | LayerAnchor::RIGHT
-    }
-
-    fn margin() -> (Pixels, Pixels, Pixels, Pixels) {
-        (px(48.0), px(16.0), px(0.0), px(0.0))
     }
 
     fn build(cx: &mut Context<Self>) -> Self {
@@ -134,9 +132,11 @@ impl Render for PowerMenuView {
             .w(px(356.0))
             .h(px(64.0))
             .p(px(6.0))
-            .rounded(px(16.0))
+            .rounded_b_none()
+            .rounded_t(px(20.0))
             .bg(Theme::bg())
             .border_1()
+            .border_b(px(0.0))
             .border_color(Theme::border())
             .shadow_xl()
             .track_focus(&self.focus_handle)

@@ -6,6 +6,7 @@ pub mod panel_host;
 pub mod satellite;
 pub mod satellite_layout;
 pub mod window_state;
+pub mod hot_edges;
 
 use beskar_compositor::detect_compositor;
 use gpui_kit::assets::AllAssets;
@@ -79,7 +80,9 @@ async fn main() -> anyhow::Result<()> {
         .run(move |cx| {
             gpui_kit::init(cx);
             gpui_kit::component::Theme::change(gpui_kit::component::ThemeMode::Dark, None, cx);
+            beskar_services::preload_apps();
             modules::register_all_modules();
+            hot_edges::HotEdgesManager::init(cx);
 
             let initial_workspaces = initial_workspaces;
             let active_ws = active_ws;

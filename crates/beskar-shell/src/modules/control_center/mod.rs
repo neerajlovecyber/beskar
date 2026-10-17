@@ -20,7 +20,7 @@ use crate::modules::clipboard::ClipboardView;
 use crate::modules::launcher::LauncherView;
 use crate::modules::power_menu::PowerMenuView;
 use crate::modules::settings::SettingsView;
-use crate::panel_host::{LayerAnchor, PanelHost, PanelModule};
+use crate::panel_host::{PanelEdge, PanelHost, PanelModule, Slot};
 
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
@@ -73,20 +73,16 @@ pub struct ControlCenterView {
 impl PanelModule for ControlCenterView {
     const ID: &'static str = "control_center";
 
-    fn slot() -> crate::panel_host::Slot {
-        crate::panel_host::Slot::Right
+    fn slot() -> Slot {
+        Slot::Right
+    }
+
+    fn panel_edge() -> PanelEdge {
+        PanelEdge::Right
     }
 
     fn size() -> Size<Pixels> {
         Size::new(px(390.0), px(760.0))
-    }
-
-    fn anchor() -> LayerAnchor {
-        LayerAnchor::TOP | LayerAnchor::RIGHT
-    }
-
-    fn margin() -> (Pixels, Pixels, Pixels, Pixels) {
-        (px(48.0), px(16.0), px(0.0), px(0.0))
     }
 
     fn build(cx: &mut Context<Self>) -> Self {
@@ -501,9 +497,11 @@ impl Render for ControlCenterView {
                 div()
                     .w(px(390.0))
                     .p(px(16.0))
-                    .rounded(px(20.0))
+                    .rounded_r_none()
+                    .rounded_l(px(24.0))
                     .bg(beskar_theme::Theme::card_bg())
                     .border_1()
+                    .border_r(px(0.0))
                     .border_color(beskar_theme::Theme::card_border())
                     .shadow_xl()
                     .flex()

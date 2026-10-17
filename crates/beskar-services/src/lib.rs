@@ -39,7 +39,7 @@ pub use battery::BatteryService;
 pub use beskar_core::models::BatteryState;
 pub use cava::CavaService;
 pub use clipboard::{ClipboardContent, ClipboardEntry, ClipboardItem, ClipboardService, Snippet};
-pub use desktop::{launch as launch_app, list_apps};
+pub use desktop::{launch as launch_app, list_apps, preload_apps};
 pub use github::{ContributionDay, GithubProfile, GithubService, GithubState};
 pub use hub::{SystemHub, SystemSnapshot};
 pub use power_profiles::PowerProfilesService;

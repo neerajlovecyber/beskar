@@ -2,7 +2,7 @@ pub mod view;
 pub use self::view::{WallpaperItem, WallpaperSelectorWidget};
 use gpui_kit::*;
 
-use crate::panel_host::{LayerAnchor, PanelHost, PanelModule, Slot};
+use crate::panel_host::{PanelEdge, PanelHost, PanelModule, Slot};
 
 #[derive(Debug, Clone)]
 enum WallpaperMsg {
@@ -24,16 +24,12 @@ impl PanelModule for WallpaperSelectorView {
         Slot::Focus
     }
 
+    fn panel_edge() -> PanelEdge {
+        PanelEdge::Bottom
+    }
+
     fn size() -> Size<Pixels> {
         Size::new(px(720.0), px(520.0))
-    }
-
-    fn anchor() -> LayerAnchor {
-        LayerAnchor::TOP
-    }
-
-    fn margin() -> (Pixels, Pixels, Pixels, Pixels) {
-        (px(60.0), px(0.0), px(0.0), px(0.0))
     }
 
     fn build(cx: &mut Context<Self>) -> Self {
@@ -153,9 +149,9 @@ impl Render for WallpaperSelectorView {
 mod tests {
     use super::WallpaperSelectorWidget;
 
-    #[core::prelude::v1::test]
-    fn test_wallpaper_discovery() {
-        let walls = WallpaperSelectorWidget::discover_wallpapers();
-        assert!(walls.is_empty() || !walls[0].name.is_empty());
+    #[test]
+    fn test_discover_wallpapers() {
+        let list = WallpaperSelectorWidget::discover_wallpapers();
+        assert!(!list.is_empty());
     }
 }

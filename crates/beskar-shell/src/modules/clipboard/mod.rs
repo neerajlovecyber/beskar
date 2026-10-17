@@ -7,11 +7,11 @@ use std::sync::Arc;
 
 use beskar_services::{ClipboardContent, ClipboardService};
 use beskar_ui::components::InputState;
-use gpui_kit::layer_shell::{Anchor as LayerAnchor, KeyboardInteractivity};
+use gpui_kit::layer_shell::KeyboardInteractivity;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
-use crate::panel_host::{PanelHost, PanelModule, Slot};
+use crate::panel_host::{PanelEdge, PanelHost, PanelModule, Slot};
 pub use model::ClipboardTab;
 use worker::Request;
 
@@ -39,16 +39,12 @@ impl PanelModule for ClipboardView {
         Slot::Focus
     }
 
+    fn panel_edge() -> PanelEdge {
+        PanelEdge::Bottom
+    }
+
     fn size() -> Size<Pixels> {
         Size::new(px(widgets::WIDTH), px(widgets::MAX_HEIGHT))
-    }
-
-    fn anchor() -> LayerAnchor {
-        LayerAnchor::TOP
-    }
-
-    fn margin() -> (Pixels, Pixels, Pixels, Pixels) {
-        (px(60.0), px(0.0), px(0.0), px(0.0))
     }
 
     fn keyboard_interactivity() -> KeyboardInteractivity {
@@ -236,38 +232,6 @@ impl ClipboardView {
                 } else {
                     ClipboardTab::History
                 },
-                cx,
-            );
-            return;
-        }
-
-        if (key == "up" || key == "down") && !control && !shift {
-            self.model.navigate(match key {
-                "up" => -(widgets::COLUMNS as i32),
-                _ => widgets::COLUMNS as i32,
-            });
-            self.scroll
-                .scroll_to_item(self.model.selected / widgets::COLUMNS);
-            cx.notify();
-            return;
-        }
-
-        if (key == "left" || key == "right") && !control && !shift && self.search_input.is_empty() {
-            self.model.navigate(if key == "left" { -1 } else { 1 });
-            self.scroll
-                .scroll_to_item(self.model.selected / widgets::COLUMNS);
-            cx.notify();
-            return;
-        }
-
-        if (key == "home" || key == "end") && !control && !shift && self.search_input.is_empty() {
-            self.select(
-                if key == "home" {
-                    0
-                } else {
-                    self.model.filtered.len().saturating_sub(1)
-                },
-                true,
                 cx,
             );
             return;

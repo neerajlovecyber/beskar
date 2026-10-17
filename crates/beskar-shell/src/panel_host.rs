@@ -40,6 +40,16 @@ impl Slot {
     }
 }
 
+/// Docking edge alignment for screen-bezel continuous surfaces.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum PanelEdge {
+    Left,
+    Right,
+    Bottom,
+    TopCenter,
+    CenterModal,
+}
+
 /// Contract for an atomic desktop shell panel module.
 pub trait PanelModule: Render + Sized + 'static {
     /// Unique identifier for this panel (e.g. "launcher", "control_center", "power_menu")
@@ -50,17 +60,27 @@ pub trait PanelModule: Render + Sized + 'static {
         Slot::Focus
     }
 
+    /// Edge docking behavior for the panel
+    fn panel_edge() -> PanelEdge {
+        match Self::slot() {
+            Slot::Left => PanelEdge::Left,
+            Slot::Right => PanelEdge::Right,
+            Slot::Center => PanelEdge::TopCenter,
+            Slot::Focus => PanelEdge::Bottom,
+        }
+    }
+
     /// Preferred window size (width, height) in logical pixels
     fn size() -> Size<Pixels>;
 
-    /// Wayland LayerShell anchor flags (defaults to TOP | RIGHT)
+    /// Wayland LayerShell anchor flags (defaults to full screen for scrim + edge docking)
     fn anchor() -> LayerAnchor {
-        LayerAnchor::TOP | LayerAnchor::RIGHT
+        LayerAnchor::all()
     }
 
     /// Wayland LayerShell margins: (top, right, bottom, left)
     fn margin() -> (Pixels, Pixels, Pixels, Pixels) {
-        (px(48.0), px(16.0), px(0.0), px(0.0))
+        (px(0.0), px(0.0), px(0.0), px(0.0))
     }
 
     /// Wayland keyboard interactivity mode (defaults to OnDemand, LockScreen uses Exclusive)
@@ -75,6 +95,123 @@ pub trait PanelModule: Render + Sized + 'static {
 
     /// Construct the panel view
     fn build(cx: &mut Context<Self>) -> Self;
+}
+
+/// Full-screen transparent scrim wrapper providing outside-click dismissal
+/// and flush screen-bezel edge docking.
+pub struct ScrimHostView<M: PanelModule> {
+    inner: Entity<M>,
+    focus_handle: FocusHandle,
+}
+
+impl<M: PanelModule> ScrimHostView<M> {
+    pub fn new(inner: Entity<M>, cx: &mut Context<Self>) -> Self {
+        Self {
+            inner,
+            focus_handle: cx.focus_handle(),
+        }
+    }
+}
+
+impl<M: PanelModule> Render for ScrimHostView<M> {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let edge = M::panel_edge();
+        let target_size = M::size();
+
+        let drawer_card = match edge {
+            PanelEdge::Left => {
+                div()
+                    .id("scrim-card-left")
+                    .absolute()
+                    .left_0()
+                    .top(px(38.0))
+                    .bottom_0()
+                    .w(target_size.width)
+                    .on_mouse_down(MouseButton::Left, |_e, _win, cx| cx.stop_propagation())
+                    .child(self.inner.clone())
+            }
+            PanelEdge::Right => {
+                div()
+                    .id("scrim-card-right")
+                    .absolute()
+                    .right_0()
+                    .top(px(38.0))
+                    .bottom_0()
+                    .w(target_size.width)
+                    .on_mouse_down(MouseButton::Left, |_e, _win, cx| cx.stop_propagation())
+                    .child(self.inner.clone())
+            }
+            PanelEdge::Bottom => {
+                div()
+                    .id("scrim-card-bottom-container")
+                    .absolute()
+                    .bottom_0()
+                    .left_0()
+                    .right_0()
+                    .flex()
+                    .justify_center()
+                    .child(
+                        div()
+                            .id("scrim-card-bottom")
+                            .w(target_size.width)
+                            .max_h(target_size.height)
+                            .on_mouse_down(MouseButton::Left, |_e, _win, cx| cx.stop_propagation())
+                            .child(self.inner.clone()),
+                    )
+            }
+            PanelEdge::TopCenter => {
+                div()
+                    .id("scrim-card-top-container")
+                    .absolute()
+                    .top(px(38.0))
+                    .left_0()
+                    .right_0()
+                    .flex()
+                    .justify_center()
+                    .child(
+                        div()
+                            .id("scrim-card-top")
+                            .w(target_size.width)
+                            .max_h(target_size.height)
+                            .on_mouse_down(MouseButton::Left, |_e, _win, cx| cx.stop_propagation())
+                            .child(self.inner.clone()),
+                    )
+            }
+            PanelEdge::CenterModal => {
+                div()
+                    .id("scrim-card-center-modal")
+                    .size_full()
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .child(
+                        div()
+                            .id("scrim-card-modal")
+                            .w(target_size.width)
+                            .max_h(target_size.height)
+                            .on_mouse_down(MouseButton::Left, |_e, _win, cx| cx.stop_propagation())
+                            .child(self.inner.clone()),
+                    )
+            }
+        };
+
+        div()
+            .id("scrim-root")
+            .size_full()
+            .bg(beskar_theme::Theme::scrim())
+            .track_focus(&self.focus_handle)
+            .key_context("ScrimHost")
+            .on_key_down(cx.listener(|_this, event: &KeyDownEvent, _window, cx| {
+                if event.keystroke.key == "escape" {
+                    PanelHost::close(cx);
+                    cx.stop_propagation();
+                }
+            }))
+            .on_mouse_down(MouseButton::Left, |_e, _win, cx| {
+                PanelHost::close(cx);
+            })
+            .child(drawer_card)
+    }
 }
 
 type PanelFactory = Box<dyn Fn(&mut App) -> bool + Send + Sync>;
@@ -120,16 +257,16 @@ impl PanelHost {
             titlebar: None,
             window_bounds: Some(WindowBounds::Windowed(Bounds {
                 origin: point(px(0.), px(0.)),
-                size: M::size(),
+                size: Size::new(px(1920.0), px(1080.0)),
             })),
             app_id: Some(format!("beskar-{}", M::ID)),
             window_background: WindowBackgroundAppearance::Transparent,
             kind: WindowKind::LayerShell(LayerShellOptions {
                 namespace: format!("beskar-{}", M::ID),
                 layer: M::layer(),
-                anchor: M::anchor(),
+                anchor: LayerAnchor::all(),
                 exclusive_zone: None,
-                margin: Some(M::margin()),
+                margin: Some((px(0.0), px(0.0), px(0.0), px(0.0))),
                 keyboard_interactivity: M::keyboard_interactivity(),
                 ..Default::default()
             }),
@@ -137,7 +274,10 @@ impl PanelHost {
             ..Default::default()
         };
 
-        match cx.open_window(options, move |_win, cx| cx.new(M::build)) {
+        match cx.open_window(options, move |_win, cx| {
+            let inner = cx.new(M::build);
+            cx.new(|cx| ScrimHostView::new(inner, cx))
+        }) {
             Ok(handle) => {
                 let mut guard = ACTIVE_BY_SLOT.lock().unwrap();
                 guard[slot_idx] = Some((M::ID, handle.into()));
@@ -338,9 +478,10 @@ mod tests {
     fn test_panel_module_defaults() {
         assert_eq!(MockPanel::ID, "mock_panel");
         assert_eq!(MockPanel::slot(), Slot::Focus);
+        assert_eq!(MockPanel::panel_edge(), PanelEdge::Bottom);
         assert_eq!(MockPanel::size(), Size::new(px(320.0), px(400.0)));
-        assert_eq!(MockPanel::anchor(), LayerAnchor::TOP | LayerAnchor::RIGHT);
-        assert_eq!(MockPanel::margin(), (px(48.0), px(16.0), px(0.0), px(0.0)));
+        assert_eq!(MockPanel::anchor(), LayerAnchor::all());
+        assert_eq!(MockPanel::margin(), (px(0.0), px(0.0), px(0.0), px(0.0)));
         assert_eq!(MockPanel::keyboard_interactivity(), KeyboardInteractivity::OnDemand);
         assert_eq!(MockPanel::layer(), Layer::Overlay);
     }
