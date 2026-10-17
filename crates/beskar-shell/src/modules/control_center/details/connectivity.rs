@@ -3,8 +3,8 @@
 
 use beskar_services::{BluetoothDeviceItem, WifiAccessPoint};
 use gpui_kit::assets::IconName;
-use gpui_kit::component::tag::Tag;
 use gpui_kit::component::Icon;
+use gpui_kit::component::tag::Tag;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 use std::sync::Arc;
@@ -90,7 +90,10 @@ impl ConnectivityDetailWidget {
         self
     }
 
-    pub fn on_select_tab(mut self, handler: impl Fn(ConnectivityTab) + Send + Sync + 'static) -> Self {
+    pub fn on_select_tab(
+        mut self,
+        handler: impl Fn(ConnectivityTab) + Send + Sync + 'static,
+    ) -> Self {
         self.on_select_tab = Some(Arc::new(handler));
         self
     }
@@ -123,12 +126,26 @@ impl RenderOnce for ConnectivityDetailWidget {
                     .rounded(px(8.0))
                     .text_center()
                     .text_xs()
-                    .font_weight(if is_wifi { FontWeight::BOLD } else { FontWeight::NORMAL })
-                    .bg(if is_wifi { beskar_theme::Theme::accent() } else { gpui_kit::hsla(0.0, 0.0, 0.0, 0.0) })
-                    .text_color(if is_wifi { beskar_theme::Theme::bg() } else { beskar_theme::Theme::fg() })
+                    .font_weight(if is_wifi {
+                        FontWeight::BOLD
+                    } else {
+                        FontWeight::NORMAL
+                    })
+                    .bg(if is_wifi {
+                        beskar_theme::Theme::accent()
+                    } else {
+                        gpui_kit::hsla(0.0, 0.0, 0.0, 0.0)
+                    })
+                    .text_color(if is_wifi {
+                        beskar_theme::Theme::bg()
+                    } else {
+                        beskar_theme::Theme::fg()
+                    })
                     .cursor_pointer()
                     .when_some(on_tab_wifi, |el, cb| {
-                        el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)(ConnectivityTab::Wifi))
+                        el.on_mouse_down(MouseButton::Left, move |_, _, _| {
+                            (cb)(ConnectivityTab::Wifi)
+                        })
                     })
                     .child("Wi-Fi"),
             )
@@ -139,12 +156,26 @@ impl RenderOnce for ConnectivityDetailWidget {
                     .rounded(px(8.0))
                     .text_center()
                     .text_xs()
-                    .font_weight(if !is_wifi { FontWeight::BOLD } else { FontWeight::NORMAL })
-                    .bg(if !is_wifi { beskar_theme::Theme::accent() } else { gpui_kit::hsla(0.0, 0.0, 0.0, 0.0) })
-                    .text_color(if !is_wifi { beskar_theme::Theme::bg() } else { beskar_theme::Theme::fg() })
+                    .font_weight(if !is_wifi {
+                        FontWeight::BOLD
+                    } else {
+                        FontWeight::NORMAL
+                    })
+                    .bg(if !is_wifi {
+                        beskar_theme::Theme::accent()
+                    } else {
+                        gpui_kit::hsla(0.0, 0.0, 0.0, 0.0)
+                    })
+                    .text_color(if !is_wifi {
+                        beskar_theme::Theme::bg()
+                    } else {
+                        beskar_theme::Theme::fg()
+                    })
                     .cursor_pointer()
                     .when_some(on_tab_bt, |el, cb| {
-                        el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)(ConnectivityTab::Bluetooth))
+                        el.on_mouse_down(MouseButton::Left, move |_, _, _| {
+                            (cb)(ConnectivityTab::Bluetooth)
+                        })
                     })
                     .child("Bluetooth"),
             );
@@ -170,21 +201,20 @@ impl RenderOnce for ConnectivityDetailWidget {
                         .when_some(on_tog, |el, cb| {
                             el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
                         })
-                        .child(
-                            Icon::new(IconName::Wifi)
-                                .size(px(14.0))
-                                .text_color(if self.wifi_enabled {
-                                    beskar_theme::Theme::success()
-                                } else {
-                                    beskar_theme::Theme::muted()
-                                }),
-                        )
-                        .child(
-                            div()
-                                .text_xs()
-                                .text_color(beskar_theme::Theme::fg())
-                                .child(if self.wifi_enabled { "Wi-Fi Enabled" } else { "Wi-Fi Disabled" }),
-                        ),
+                        .child(Icon::new(IconName::Wifi).size(px(14.0)).text_color(
+                            if self.wifi_enabled {
+                                beskar_theme::Theme::success()
+                            } else {
+                                beskar_theme::Theme::muted()
+                            },
+                        ))
+                        .child(div().text_xs().text_color(beskar_theme::Theme::fg()).child(
+                            if self.wifi_enabled {
+                                "Wi-Fi Enabled"
+                            } else {
+                                "Wi-Fi Disabled"
+                            },
+                        )),
                 )
                 .child(
                     div()
@@ -239,26 +269,30 @@ impl RenderOnce for ConnectivityDetailWidget {
                             })
                             .hover(|s| s.bg(beskar_theme::Theme::bg_secondary()))
                             .when_some(on_conn, move |el, cb| {
-                                el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)(ssid.clone()))
+                                el.on_mouse_down(MouseButton::Left, move |_, _, _| {
+                                    (cb)(ssid.clone())
+                                })
                             })
                             .child(
                                 div()
                                     .flex()
                                     .items_center()
                                     .gap(px(6.0))
-                                    .child(
-                                        Icon::new(IconName::Wifi)
-                                            .size(px(13.0))
-                                            .text_color(if ap.is_active {
-                                                beskar_theme::Theme::success()
-                                            } else {
-                                                beskar_theme::Theme::text_secondary()
-                                            }),
-                                    )
+                                    .child(Icon::new(IconName::Wifi).size(px(13.0)).text_color(
+                                        if ap.is_active {
+                                            beskar_theme::Theme::success()
+                                        } else {
+                                            beskar_theme::Theme::text_secondary()
+                                        },
+                                    ))
                                     .child(
                                         div()
                                             .text_xs()
-                                            .font_weight(if ap.is_active { FontWeight::BOLD } else { FontWeight::NORMAL })
+                                            .font_weight(if ap.is_active {
+                                                FontWeight::BOLD
+                                            } else {
+                                                FontWeight::NORMAL
+                                            })
                                             .text_color(beskar_theme::Theme::fg())
                                             .child(ap.ssid),
                                     ),
@@ -294,21 +328,20 @@ impl RenderOnce for ConnectivityDetailWidget {
                         .when_some(on_tog_bt, |el, cb| {
                             el.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
                         })
-                        .child(
-                            Icon::new(IconName::Bluetooth)
-                                .size(px(14.0))
-                                .text_color(if self.bt_enabled {
-                                    beskar_theme::Theme::info()
-                                } else {
-                                    beskar_theme::Theme::muted()
-                                }),
-                        )
-                        .child(
-                            div()
-                                .text_xs()
-                                .text_color(beskar_theme::Theme::fg())
-                                .child(if self.bt_enabled { "Bluetooth Enabled" } else { "Bluetooth Disabled" }),
-                        ),
+                        .child(Icon::new(IconName::Bluetooth).size(px(14.0)).text_color(
+                            if self.bt_enabled {
+                                beskar_theme::Theme::info()
+                            } else {
+                                beskar_theme::Theme::muted()
+                            },
+                        ))
+                        .child(div().text_xs().text_color(beskar_theme::Theme::fg()).child(
+                            if self.bt_enabled {
+                                "Bluetooth Enabled"
+                            } else {
+                                "Bluetooth Disabled"
+                            },
+                        )),
                 );
 
             let mut list = div()
@@ -358,13 +391,13 @@ impl RenderOnce for ConnectivityDetailWidget {
                                     .items_center()
                                     .gap(px(6.0))
                                     .child(
-                                        Icon::new(IconName::Bluetooth)
-                                            .size(px(13.0))
-                                            .text_color(if is_conn {
+                                        Icon::new(IconName::Bluetooth).size(px(13.0)).text_color(
+                                            if is_conn {
                                                 beskar_theme::Theme::success()
                                             } else {
                                                 beskar_theme::Theme::muted()
-                                            }),
+                                            },
+                                        ),
                                     )
                                     .child(
                                         div()
@@ -417,9 +450,13 @@ impl RenderOnce for ConnectivityDetailWidget {
                             .items_center()
                             .gap(px(8.0))
                             .child(
-                                Icon::new(if is_wifi { IconName::Wifi } else { IconName::Bluetooth })
-                                    .size(px(16.0))
-                                    .text_color(beskar_theme::Theme::accent()),
+                                Icon::new(if is_wifi {
+                                    IconName::Wifi
+                                } else {
+                                    IconName::Bluetooth
+                                })
+                                .size(px(16.0))
+                                .text_color(beskar_theme::Theme::accent()),
                             )
                             .child(
                                 div()

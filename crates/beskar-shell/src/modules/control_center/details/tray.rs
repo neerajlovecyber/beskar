@@ -56,7 +56,10 @@ impl TrayDetailWidget {
     }
 }
 
-fn render_entry(entry: &TrayMenuItem, on_item: &Option<Arc<dyn Fn(i32) + Send + Sync>>) -> AnyElement {
+fn render_entry(
+    entry: &TrayMenuItem,
+    on_item: &Option<Arc<dyn Fn(i32) + Send + Sync>>,
+) -> AnyElement {
     if !entry.visible {
         return div().into_any_element();
     }
@@ -94,11 +97,7 @@ fn render_entry(entry: &TrayMenuItem, on_item: &Option<Arc<dyn Fn(i32) + Send + 
     if !entry.children.is_empty() {
         let mut group = div().flex().flex_col().gap(px(2.0)).child(row);
         for child in &entry.children {
-            group = group.child(
-                div()
-                    .pl(px(12.0))
-                    .child(render_entry(child, on_item)),
-            );
+            group = group.child(div().pl(px(12.0)).child(render_entry(child, on_item)));
         }
         group.into_any_element()
     } else {

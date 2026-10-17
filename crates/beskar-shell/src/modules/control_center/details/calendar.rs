@@ -47,8 +47,18 @@ impl RenderOnce for CalendarWidget {
         let today = Local::now().date_naive();
 
         let month_names = [
-            "January", "February", "March", "April", "May", "June",
-            "July", "August", "September", "October", "November", "December",
+            "January",
+            "February",
+            "March",
+            "April",
+            "May",
+            "June",
+            "July",
+            "August",
+            "September",
+            "October",
+            "November",
+            "December",
         ];
         let month_name = month_names
             .get(month.saturating_sub(1) as usize)

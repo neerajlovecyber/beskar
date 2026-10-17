@@ -1,12 +1,10 @@
 use beskar_services::BluetoothDeviceItem;
 use gpui_kit::assets::IconName;
-use gpui_kit::component::tag::Tag;
 use gpui_kit::component::Icon;
+use gpui_kit::component::tag::Tag;
 use gpui_kit::*;
 
-pub fn render_bt_list(
-    bt_devices: &[BluetoothDeviceItem],
-) -> impl IntoElement {
+pub fn render_bt_list(bt_devices: &[BluetoothDeviceItem]) -> impl IntoElement {
     div()
         .p(px(10.0))
         .rounded(px(12.0))
@@ -68,15 +66,13 @@ pub fn render_bt_list(
                                 .flex()
                                 .items_center()
                                 .gap(px(6.0))
-                                .child(
-                                    Icon::new(IconName::Bluetooth)
-                                        .size(px(12.0))
-                                        .text_color(if is_conn {
-                                            beskar_theme::Theme::success()
-                                        } else {
-                                            beskar_theme::Theme::muted()
-                                        }),
-                                )
+                                .child(Icon::new(IconName::Bluetooth).size(px(12.0)).text_color(
+                                    if is_conn {
+                                        beskar_theme::Theme::success()
+                                    } else {
+                                        beskar_theme::Theme::muted()
+                                    },
+                                ))
                                 .child(
                                     div()
                                         .text_xs()

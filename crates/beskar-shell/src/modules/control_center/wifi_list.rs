@@ -1,8 +1,8 @@
 use beskar_services::WifiAccessPoint;
 use gpui_kit::assets::IconName;
+use gpui_kit::component::Icon;
 use gpui_kit::component::button::{Button, ButtonVariants};
 use gpui_kit::component::tag::Tag;
-use gpui_kit::component::Icon;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 use std::sync::Arc;
@@ -65,15 +65,13 @@ pub fn render_wifi_list(
                                         .flex()
                                         .items_center()
                                         .gap(px(6.0))
-                                        .child(
-                                            Icon::new(IconName::Wifi)
-                                                .size(px(12.0))
-                                                .text_color(if ap.is_active {
-                                                    beskar_theme::Theme::success()
-                                                } else {
-                                                    beskar_theme::Theme::text_secondary()
-                                                }),
-                                        )
+                                        .child(Icon::new(IconName::Wifi).size(px(12.0)).text_color(
+                                            if ap.is_active {
+                                                beskar_theme::Theme::success()
+                                            } else {
+                                                beskar_theme::Theme::text_secondary()
+                                            },
+                                        ))
                                         .child(
                                             div()
                                                 .text_xs()

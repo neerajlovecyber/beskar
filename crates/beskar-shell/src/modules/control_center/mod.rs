@@ -8,13 +8,13 @@ pub mod satellite_host;
 pub mod sliders;
 pub mod wifi_list;
 
-use std::sync::Arc;
-use chrono::Datelike;
 use beskar_services::audio::AudioService;
 use beskar_services::battery::BatteryService;
+use chrono::Datelike;
 use gpui_kit::component::slider::{SliderEvent, SliderState};
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
+use std::sync::Arc;
 
 use crate::modules::clipboard::ClipboardView;
 use crate::modules::launcher::LauncherView;
@@ -27,6 +27,11 @@ use crate::panel_host::{PanelEdge, PanelHost, PanelModule, Slot};
 enum ControlCenterMsg {
     ToggleWifi,
     ToggleBluetooth,
+    ToggleNightLight,
+    ToggleCaffeine,
+    ToggleGameMode,
+    ToggleMicMute,
+    SetMicPercent(u8),
     ChangeVolume(i32),
     SetVolumePercent(u8),
     ToggleMute,
@@ -62,8 +67,14 @@ pub struct ControlCenterView {
     bt_devices: Vec<beskar_services::BluetoothDeviceItem>,
     show_wifi_list: bool,
     show_bt_list: bool,
+    is_night_light_on: bool,
+    is_caffeine_on: bool,
+    is_game_mode_on: bool,
+    is_mic_muted: bool,
+    mic_percent: u8,
     volume_slider: Entity<SliderState>,
     brightness_slider: Entity<SliderState>,
+    mic_slider: Entity<SliderState>,
     satellite: crate::satellite::Satellite,
     _subscriptions: Vec<Subscription>,
     focus_handle: FocusHandle,
@@ -82,11 +93,15 @@ impl PanelModule for ControlCenterView {
     }
 
     fn size() -> Size<Pixels> {
-        Size::new(px(390.0), px(760.0))
+        Size::new(px(400.0), px(440.0))
     }
 
     fn build(cx: &mut Context<Self>) -> Self {
         Self::new(cx)
+    }
+
+    fn initial_focus_handle(&self, _cx: &App) -> Option<FocusHandle> {
+        Some(self.focus_handle.clone())
     }
 }
 
@@ -124,6 +139,36 @@ impl ControlCenterView {
                         })
                         .detach();
                     }
+                    ControlCenterMsg::ToggleNightLight => {
+                        let _ = this.update(cx, |this, cx| {
+                            this.is_night_light_on = !this.is_night_light_on;
+                            cx.notify();
+                        });
+                    }
+                    ControlCenterMsg::ToggleCaffeine => {
+                        let _ = this.update(cx, |this, cx| {
+                            this.is_caffeine_on = !this.is_caffeine_on;
+                            cx.notify();
+                        });
+                    }
+                    ControlCenterMsg::ToggleGameMode => {
+                        let _ = this.update(cx, |this, cx| {
+                            this.is_game_mode_on = !this.is_game_mode_on;
+                            cx.notify();
+                        });
+                    }
+                    ControlCenterMsg::ToggleMicMute => {
+                        let _ = this.update(cx, |this, cx| {
+                            this.is_mic_muted = !this.is_mic_muted;
+                            cx.notify();
+                        });
+                    }
+                    ControlCenterMsg::SetMicPercent(pct) => {
+                        let _ = this.update(cx, |this, cx| {
+                            this.mic_percent = pct;
+                            cx.notify();
+                        });
+                    }
                     ControlCenterMsg::ToggleBluetooth => {
                         let is_on = this.update(cx, |t, _| t.is_bt_on).unwrap_or(true);
                         let next_state = !is_on;
@@ -138,12 +183,15 @@ impl ControlCenterView {
                     }
                     ControlCenterMsg::ChangeVolume(delta) => {
                         let _ = this.update(cx, |this, cx| {
-                            this.volume_percent = (this.volume_percent as i32 + delta).clamp(0, 100) as u8;
+                            this.volume_percent =
+                                (this.volume_percent as i32 + delta).clamp(0, 100) as u8;
                             this.is_muted = false;
                             cx.notify();
                         });
                         let bus_clone = bus.clone();
-                        tokio::spawn(async move { let _ = bus_clone.set_audio_volume(delta).await; });
+                        tokio::spawn(async move {
+                            let _ = bus_clone.set_audio_volume(delta).await;
+                        });
                     }
                     ControlCenterMsg::SetVolumePercent(pct) => {
                         let _ = this.update(cx, |this, cx| {
@@ -152,7 +200,9 @@ impl ControlCenterView {
                             cx.notify();
                         });
                         let bus_clone = bus.clone();
-                        tokio::spawn(async move { let _ = bus_clone.set_audio_volume_percent(pct).await; });
+                        tokio::spawn(async move {
+                            let _ = bus_clone.set_audio_volume_percent(pct).await;
+                        });
                     }
                     ControlCenterMsg::ToggleMute => {
                         let _ = this.update(cx, |this, cx| {
@@ -160,7 +210,9 @@ impl ControlCenterView {
                             cx.notify();
                         });
                         let bus_clone = bus.clone();
-                        tokio::spawn(async move { let _ = bus_clone.toggle_audio_mute().await; });
+                        tokio::spawn(async move {
+                            let _ = bus_clone.toggle_audio_mute().await;
+                        });
                     }
                     ControlCenterMsg::SelectAudioSink(sink_name) => {
                         let this_weak = this.clone();
@@ -168,21 +220,30 @@ impl ControlCenterView {
                             let sinks = tokio::task::spawn_blocking(move || {
                                 beskar_services::AudioService::set_default_sink(&sink_name);
                                 beskar_services::AudioService::list_sinks()
-                            }).await.unwrap_or_default();
+                            })
+                            .await
+                            .unwrap_or_default();
                             let _ = this_weak.update(cx, |this, cx| {
                                 this.sinks = sinks;
                                 cx.notify();
                             });
-                        }).detach();
+                        })
+                        .detach();
                     }
                     ControlCenterMsg::ChangeBrightness(delta) => {
-                        let new_bright = this.update(cx, |t, _| (t.brightness_percent as i32 + delta).clamp(5, 100) as u8).unwrap_or(50);
+                        let new_bright = this
+                            .update(cx, |t, _| {
+                                (t.brightness_percent as i32 + delta).clamp(5, 100) as u8
+                            })
+                            .unwrap_or(50);
                         let _ = this.update(cx, |this, cx| {
                             this.brightness_percent = new_bright;
                             cx.notify();
                         });
                         let bus_clone = bus.clone();
-                        tokio::spawn(async move { let _ = bus_clone.set_brightness(new_bright).await; });
+                        tokio::spawn(async move {
+                            let _ = bus_clone.set_brightness(new_bright).await;
+                        });
                     }
                     ControlCenterMsg::SetBrightnessPercent(pct) => {
                         let _ = this.update(cx, |this, cx| {
@@ -190,7 +251,9 @@ impl ControlCenterView {
                             cx.notify();
                         });
                         let bus_clone = bus.clone();
-                        tokio::spawn(async move { let _ = bus_clone.set_brightness(pct).await; });
+                        tokio::spawn(async move {
+                            let _ = bus_clone.set_brightness(pct).await;
+                        });
                     }
                     ControlCenterMsg::SetPowerProfile(prof) => {
                         let prof_clone = prof.clone();
@@ -199,7 +262,9 @@ impl ControlCenterView {
                             cx.notify();
                         });
                         let bus_clone = bus.clone();
-                        tokio::spawn(async move { let _ = bus_clone.set_power_profile(&prof_clone).await; });
+                        tokio::spawn(async move {
+                            let _ = bus_clone.set_power_profile(&prof_clone).await;
+                        });
                     }
                     ControlCenterMsg::ToggleWifiList => {
                         let will_show = this
@@ -259,7 +324,9 @@ impl ControlCenterView {
                     }
                     ControlCenterMsg::ToggleSatellite(id) => {
                         let will_open = this
-                            .update(cx, |this, _| !this.satellite.contains(&id) || !this.satellite.open())
+                            .update(cx, |this, _| {
+                                !this.satellite.contains(&id) || !this.satellite.open()
+                            })
                             .unwrap_or(false);
 
                         if will_open {
@@ -294,22 +361,44 @@ impl ControlCenterView {
 
                         let _ = this.update(cx, |this, cx| {
                             let side = this.satellite.next_side(&id);
-                            this.satellite.transition(id, will_open, std::time::Duration::from_millis(180), side);
+                            this.satellite.transition(
+                                id,
+                                will_open,
+                                std::time::Duration::from_millis(180),
+                                side,
+                            );
                             cx.notify();
                         });
                     }
                     ControlCenterMsg::CloseSatellite(id) => {
                         let _ = this.update(cx, |this, cx| {
                             let side = this.satellite.next_side(&id);
-                            this.satellite.transition(id, false, std::time::Duration::from_millis(130), side);
+                            this.satellite.transition(
+                                id,
+                                false,
+                                std::time::Duration::from_millis(130),
+                                side,
+                            );
                             cx.notify();
                         });
                     }
-                    ControlCenterMsg::OpenLauncher => { let _ = this.update(cx, |_, cx| PanelHost::toggle::<LauncherView>(cx)); }
-                    ControlCenterMsg::OpenClipboard => { let _ = this.update(cx, |_, cx| PanelHost::toggle::<ClipboardView>(cx)); }
-                    ControlCenterMsg::OpenPower => { let _ = this.update(cx, |_, cx| PanelHost::toggle::<PowerMenuView>(cx)); }
-                    ControlCenterMsg::OpenSettings => { let _ = this.update(cx, |_, cx| PanelHost::toggle::<SettingsView>(cx)); }
-                    ControlCenterMsg::Close => { let _ = this.update(cx, |_, cx| PanelHost::close(cx)); }
+                    ControlCenterMsg::OpenLauncher => {
+                        let _ = this.update(cx, |_, cx| PanelHost::toggle::<LauncherView>(cx));
+                    }
+                    ControlCenterMsg::OpenClipboard => {
+                        let _ = this.update(cx, |_, cx| PanelHost::toggle::<ClipboardView>(cx));
+                    }
+                    ControlCenterMsg::OpenPower => {
+                        let _ = this.update(cx, |_, cx| PanelHost::toggle::<PowerMenuView>(cx));
+                    }
+                    ControlCenterMsg::OpenSettings => {
+                        let _ = this.update(cx, |_, cx| PanelHost::toggle::<SettingsView>(cx));
+                    }
+                    ControlCenterMsg::Close => {
+                        let _ = this.update(cx, |_, cx| {
+                            PanelHost::close_by_id(ControlCenterView::ID, cx)
+                        });
+                    }
                 }
             }
         })
@@ -339,8 +428,24 @@ impl ControlCenterView {
                 this.battery_percent = bat.percentage.round() as u8;
                 this.is_charging = bat.is_charging;
                 this.sinks = sinks;
-                this.volume_slider = Self::make_volume_slider(vol as f32, cx, this.msg_tx.clone(), &mut this._subscriptions);
-                this.brightness_slider = Self::make_brightness_slider(bright as f32, cx, this.msg_tx.clone(), &mut this._subscriptions);
+                this.volume_slider = Self::make_volume_slider(
+                    vol as f32,
+                    cx,
+                    this.msg_tx.clone(),
+                    &mut this._subscriptions,
+                );
+                this.brightness_slider = Self::make_brightness_slider(
+                    bright as f32,
+                    cx,
+                    this.msg_tx.clone(),
+                    &mut this._subscriptions,
+                );
+                this.mic_slider = Self::make_mic_slider(
+                    100.0,
+                    cx,
+                    this.msg_tx.clone(),
+                    &mut this._subscriptions,
+                );
                 cx.notify();
             });
         })
@@ -349,6 +454,7 @@ impl ControlCenterView {
         let mut subs = Vec::new();
         let volume_slider = Self::make_volume_slider(80.0, cx, msg_tx.clone(), &mut subs);
         let brightness_slider = Self::make_brightness_slider(100.0, cx, msg_tx.clone(), &mut subs);
+        let mic_slider = Self::make_mic_slider(100.0, cx, msg_tx.clone(), &mut subs);
 
         Self {
             volume_percent: 80,
@@ -365,8 +471,14 @@ impl ControlCenterView {
             bt_devices: Vec::new(),
             show_wifi_list: false,
             show_bt_list: false,
+            is_night_light_on: false,
+            is_caffeine_on: false,
+            is_game_mode_on: false,
+            is_mic_muted: false,
+            mic_percent: 100,
             volume_slider,
             brightness_slider,
+            mic_slider,
             satellite: crate::satellite::Satellite::new(),
             _subscriptions: subs,
             focus_handle,
@@ -374,21 +486,81 @@ impl ControlCenterView {
         }
     }
 
-    fn make_volume_slider(val: f32, cx: &mut Context<Self>, tx: tokio::sync::mpsc::UnboundedSender<ControlCenterMsg>, subs: &mut Vec<Subscription>) -> Entity<SliderState> {
-        let slider = cx.new(|_| SliderState::new().min(0.0).max(100.0).step(1.0).default_value(val));
-        subs.push(cx.subscribe(&slider, move |_this, _slider, event: &SliderEvent, _cx| {
-            let v = match event { SliderEvent::Change(v) | SliderEvent::Release(v) => v.end() };
-            let _ = tx.send(ControlCenterMsg::SetVolumePercent(v.round().clamp(0.0, 100.0) as u8));
-        }));
+    fn make_volume_slider(
+        val: f32,
+        cx: &mut Context<Self>,
+        tx: tokio::sync::mpsc::UnboundedSender<ControlCenterMsg>,
+        subs: &mut Vec<Subscription>,
+    ) -> Entity<SliderState> {
+        let slider = cx.new(|_| {
+            SliderState::new()
+                .min(0.0)
+                .max(100.0)
+                .step(1.0)
+                .default_value(val)
+        });
+        subs.push(
+            cx.subscribe(&slider, move |_this, _slider, event: &SliderEvent, _cx| {
+                let v = match event {
+                    SliderEvent::Change(v) | SliderEvent::Release(v) => v.end(),
+                };
+                let _ = tx.send(ControlCenterMsg::SetVolumePercent(
+                    v.round().clamp(0.0, 100.0) as u8,
+                ));
+            }),
+        );
         slider
     }
 
-    fn make_brightness_slider(val: f32, cx: &mut Context<Self>, tx: tokio::sync::mpsc::UnboundedSender<ControlCenterMsg>, subs: &mut Vec<Subscription>) -> Entity<SliderState> {
-        let slider = cx.new(|_| SliderState::new().min(5.0).max(100.0).step(1.0).default_value(val.clamp(5.0, 100.0)));
-        subs.push(cx.subscribe(&slider, move |_this, _slider, event: &SliderEvent, _cx| {
-            let v = match event { SliderEvent::Change(v) | SliderEvent::Release(v) => v.end() };
-            let _ = tx.send(ControlCenterMsg::SetBrightnessPercent(v.round().clamp(5.0, 100.0) as u8));
-        }));
+    fn make_mic_slider(
+        val: f32,
+        cx: &mut Context<Self>,
+        tx: tokio::sync::mpsc::UnboundedSender<ControlCenterMsg>,
+        subs: &mut Vec<Subscription>,
+    ) -> Entity<SliderState> {
+        let slider = cx.new(|_| {
+            SliderState::new()
+                .min(0.0)
+                .max(100.0)
+                .step(1.0)
+                .default_value(val.clamp(0.0, 100.0))
+        });
+        subs.push(
+            cx.subscribe(&slider, move |_this, _slider, event: &SliderEvent, _cx| {
+                let v = match event {
+                    SliderEvent::Change(v) | SliderEvent::Release(v) => v.end(),
+                };
+                let _ = tx.send(ControlCenterMsg::SetMicPercent(
+                    v.round().clamp(0.0, 100.0) as u8,
+                ));
+            }),
+        );
+        slider
+    }
+
+    fn make_brightness_slider(
+        val: f32,
+        cx: &mut Context<Self>,
+        tx: tokio::sync::mpsc::UnboundedSender<ControlCenterMsg>,
+        subs: &mut Vec<Subscription>,
+    ) -> Entity<SliderState> {
+        let slider = cx.new(|_| {
+            SliderState::new()
+                .min(5.0)
+                .max(100.0)
+                .step(1.0)
+                .default_value(val.clamp(5.0, 100.0))
+        });
+        subs.push(
+            cx.subscribe(&slider, move |_this, _slider, event: &SliderEvent, _cx| {
+                let v = match event {
+                    SliderEvent::Change(v) | SliderEvent::Release(v) => v.end(),
+                };
+                let _ = tx.send(ControlCenterMsg::SetBrightnessPercent(
+                    v.round().clamp(5.0, 100.0) as u8,
+                ));
+            }),
+        );
         slider
     }
 }
@@ -397,8 +569,10 @@ impl Render for ControlCenterView {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let tx = self.msg_tx.clone();
         let (tx_wifi, tx_bt, tx_mute, tx_prof) = (tx.clone(), tx.clone(), tx.clone(), tx.clone());
-        let (tx_wlist, tx_blist, tx_conn, tx_sink) = (tx.clone(), tx.clone(), tx.clone(), tx.clone());
-        let (tx_launcher, tx_clipboard, tx_power, tx_settings, tx_close) =
+        let (tx_night, tx_caffeine, tx_game, tx_mic_mute) = (tx.clone(), tx.clone(), tx.clone(), tx.clone());
+        let (tx_wlist, tx_blist, tx_conn, _tx_sink) =
+            (tx.clone(), tx.clone(), tx.clone(), tx.clone());
+        let (_tx_launcher, _tx_clipboard, _tx_power, _tx_settings, tx_close) =
             (tx.clone(), tx.clone(), tx.clone(), tx.clone(), tx.clone());
         let tx_esc = tx;
 
@@ -418,8 +592,8 @@ impl Render for ControlCenterView {
 
         div()
             .id("control-center-outer")
-            .w(px(390.0))
-            .max_h(px(760.0))
+            .w(px(400.0))
+            .max_h(px(440.0))
             .overflow_y_scroll()
             .pb(px(8.0))
             .track_focus(&self.focus_handle)
@@ -427,9 +601,15 @@ impl Render for ControlCenterView {
             .on_key_down(cx.listener(move |this, event: &KeyDownEvent, _, cx| {
                 if event.keystroke.key == "escape" {
                     if this.satellite.open() {
-                        let ids: Vec<_> = this.satellite.panels.iter().map(|p| p.id.clone()).collect();
+                        let ids: Vec<_> =
+                            this.satellite.panels.iter().map(|p| p.id.clone()).collect();
                         for id in ids {
-                            this.satellite.transition(id, false, std::time::Duration::from_millis(130), crate::satellite::Side::Left);
+                            this.satellite.transition(
+                                id,
+                                false,
+                                std::time::Duration::from_millis(130),
+                                crate::satellite::Side::Left,
+                            );
                         }
                         cx.notify();
                     } else {
@@ -443,7 +623,7 @@ impl Render for ControlCenterView {
                     Size::new(px(1200.0), px(760.0)),
                     Bounds {
                         origin: point(px(390.0), px(0.0)),
-                        size: Size::new(px(390.0), px(760.0)),
+                        size: Size::new(px(400.0), px(440.0)),
                     },
                     px(12.0),
                     &[],
@@ -457,17 +637,24 @@ impl Render for ControlCenterView {
                 let now = chrono::Local::now();
                 overlay = overlay.panel(
                     crate::satellite::SatelliteId::Calendar,
-                    details::CalendarWidget::new(now.year(), now.month())
-                        .on_close(move || {
-                            let _ = tx_c_cal.send(ControlCenterMsg::CloseSatellite(crate::satellite::SatelliteId::Calendar));
-                        }),
+                    details::CalendarWidget::new(now.year(), now.month()).on_close(move || {
+                        let _ = tx_c_cal.send(ControlCenterMsg::CloseSatellite(
+                            crate::satellite::SatelliteId::Calendar,
+                        ));
+                    }),
                 );
                 overlay = overlay.panel(
                     crate::satellite::SatelliteId::Audio,
-                    details::AudioDetailWidget::new(self.sinks.clone(), self.volume_percent, self.is_muted)
-                        .on_close(move || {
-                            let _ = tx_c_aud.send(ControlCenterMsg::CloseSatellite(crate::satellite::SatelliteId::Audio));
-                        }),
+                    details::AudioDetailWidget::new(
+                        self.sinks.clone(),
+                        self.volume_percent,
+                        self.is_muted,
+                    )
+                    .on_close(move || {
+                        let _ = tx_c_aud.send(ControlCenterMsg::CloseSatellite(
+                            crate::satellite::SatelliteId::Audio,
+                        ));
+                    }),
                 );
                 overlay = overlay.panel(
                     crate::satellite::SatelliteId::Wifi,
@@ -477,7 +664,9 @@ impl Render for ControlCenterView {
                         .bt_enabled(self.is_bt_on)
                         .bt_devices(self.bt_devices.clone())
                         .on_close(move || {
-                            let _ = tx_c_wifi.send(ControlCenterMsg::CloseSatellite(crate::satellite::SatelliteId::Wifi));
+                            let _ = tx_c_wifi.send(ControlCenterMsg::CloseSatellite(
+                                crate::satellite::SatelliteId::Wifi,
+                            ));
                         }),
                 );
                 overlay = overlay.panel(
@@ -488,22 +677,17 @@ impl Render for ControlCenterView {
                         .bt_enabled(self.is_bt_on)
                         .bt_devices(self.bt_devices.clone())
                         .on_close(move || {
-                            let _ = tx_c_bt.send(ControlCenterMsg::CloseSatellite(crate::satellite::SatelliteId::Bluetooth));
+                            let _ = tx_c_bt.send(ControlCenterMsg::CloseSatellite(
+                                crate::satellite::SatelliteId::Bluetooth,
+                            ));
                         }),
                 );
                 parent.child(overlay)
             })
             .child(
                 div()
-                    .w(px(390.0))
-                    .p(px(16.0))
-                    .rounded_r_none()
-                    .rounded_l(px(24.0))
-                    .bg(beskar_theme::Theme::card_bg())
-                    .border_1()
-                    .border_r(px(0.0))
-                    .border_color(beskar_theme::Theme::card_border())
-                    .shadow_xl()
+                    .w(px(400.0))
+                    .p(px(12.0))
                     .flex()
                     .flex_col()
                     .gap(px(12.0))
@@ -511,7 +695,7 @@ impl Render for ControlCenterView {
                     .child(header::render_header(Some(Arc::new(move || {
                         let _ = tx_close.send(ControlCenterMsg::Close);
                     }))))
-                    // 2. Quick Toggles Grid
+                    // 2. 2x3 Quick Toggles Grid (Wi-Fi, Bluetooth, Night Light, Caffeine, Game Mode, Battery)
                     .child(quick_toggles::render_quick_toggles(
                         self.is_wifi_on,
                         wifi_label,
@@ -531,6 +715,20 @@ impl Render for ControlCenterView {
                         Some(Arc::new(move || {
                             let _ = tx_blist.send(ControlCenterMsg::ToggleBtList);
                         })),
+                        self.is_night_light_on,
+                        Some(Arc::new(move || {
+                            let _ = tx_night.send(ControlCenterMsg::ToggleNightLight);
+                        })),
+                        self.is_caffeine_on,
+                        Some(Arc::new(move || {
+                            let _ = tx_caffeine.send(ControlCenterMsg::ToggleCaffeine);
+                        })),
+                        self.is_game_mode_on,
+                        Some(Arc::new(move || {
+                            let _ = tx_game.send(ControlCenterMsg::ToggleGameMode);
+                        })),
+                        self.battery_percent,
+                        self.is_charging,
                     ))
                     // 3. Expandable Wi-Fi List
                     .when(self.show_wifi_list, |parent| {
@@ -545,49 +743,28 @@ impl Render for ControlCenterView {
                     .when(self.show_bt_list, |parent| {
                         parent.child(bt_list::render_bt_list(&self.bt_devices))
                     })
-                    // 5. Volume Slider & Output Sink Selector
-                    .child(sliders::render_volume_card(
+                    // 5. Compact Sliders: Brightness, Volume, and Mic in a single tight container
+                    .child(sliders::render_compact_sliders(
+                        self.brightness_percent,
+                        Some(&self.brightness_slider),
                         self.volume_percent,
                         self.is_muted,
                         Some(&self.volume_slider),
                         Some(Arc::new(move || {
                             let _ = tx_mute.send(ControlCenterMsg::ToggleMute);
                         })),
-                        &self.sinks,
-                        Some(Arc::new(move |sink_name| {
-                            let _ = tx_sink.send(ControlCenterMsg::SelectAudioSink(sink_name));
+                        self.mic_percent,
+                        self.is_mic_muted,
+                        Some(&self.mic_slider),
+                        Some(Arc::new(move || {
+                            let _ = tx_mic_mute.send(ControlCenterMsg::ToggleMicMute);
                         })),
                     ))
-                    // 6. Brightness Slider
-                    .child(sliders::render_brightness_card(
-                        self.brightness_percent,
-                        Some(&self.brightness_slider),
-                    ))
-                    // 7. Power Profile Selector
-                    .child(power_profiles::render_power_profiles(
+                    // 6. Performance Mode Row
+                    .child(power_profiles::render_performance_row(
                         &self.active_power_profile,
                         Some(Arc::new(move |prof| {
                             let _ = tx_prof.send(ControlCenterMsg::SetPowerProfile(prof));
-                        })),
-                    ))
-                    // 8. Battery Vitals
-                    .child(power_profiles::render_battery_card(
-                        self.battery_percent,
-                        self.is_charging,
-                    ))
-                    // 9. Quick Actions Footer
-                    .child(footer::render_footer(
-                        Some(Arc::new(move || {
-                            let _ = tx_launcher.send(ControlCenterMsg::OpenLauncher);
-                        })),
-                        Some(Arc::new(move || {
-                            let _ = tx_clipboard.send(ControlCenterMsg::OpenClipboard);
-                        })),
-                        Some(Arc::new(move || {
-                            let _ = tx_settings.send(ControlCenterMsg::OpenSettings);
-                        })),
-                        Some(Arc::new(move || {
-                            let _ = tx_power.send(ControlCenterMsg::OpenPower);
                         })),
                     )),
             )

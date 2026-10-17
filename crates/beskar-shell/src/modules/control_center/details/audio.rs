@@ -128,15 +128,11 @@ impl RenderOnce for AudioDetailWidget {
                                 .flex()
                                 .items_center()
                                 .justify_center()
-                                .child(
-                                    Icon::new(icon)
-                                        .size(px(14.0))
-                                        .text_color(if is_selected {
-                                            beskar_theme::Theme::accent()
-                                        } else {
-                                            beskar_theme::Theme::text_secondary()
-                                        }),
-                                ),
+                                .child(Icon::new(icon).size(px(14.0)).text_color(if is_selected {
+                                    beskar_theme::Theme::accent()
+                                } else {
+                                    beskar_theme::Theme::text_secondary()
+                                })),
                         )
                         .child(
                             div()

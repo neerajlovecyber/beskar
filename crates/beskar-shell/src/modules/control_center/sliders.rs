@@ -1,195 +1,131 @@
 use gpui_kit::assets::IconName;
-use gpui_kit::component::button::{Button, ButtonVariants};
-use gpui_kit::component::slider::{Slider, SliderState};
-use gpui_kit::component::tag::Tag;
 use gpui_kit::component::Icon;
+use gpui_kit::component::slider::{Slider, SliderState};
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 use std::sync::Arc;
 
-pub fn render_volume_card(
+/// Compact Sliders matching minflair QuickSettings.qml:
+/// Groups Brightness, Volume, and Mic sliders into a single tight container
+/// without bulky individual card borders or headers.
+pub fn render_compact_sliders(
+    brightness_percent: u8,
+    brightness_slider: Option<&Entity<SliderState>>,
     volume_percent: u8,
-    is_muted: bool,
+    is_volume_muted: bool,
     volume_slider: Option<&Entity<SliderState>>,
-    on_mute: Option<Arc<dyn Fn() + Send + Sync>>,
-    sinks: &[beskar_services::AudioSinkItem],
-    on_select_sink: Option<Arc<dyn Fn(String) + Send + Sync>>,
+    on_toggle_volume_mute: Option<Arc<dyn Fn() + Send + Sync>>,
+    mic_percent: u8,
+    is_mic_muted: bool,
+    mic_slider: Option<&Entity<SliderState>>,
+    on_toggle_mic_mute: Option<Arc<dyn Fn() + Send + Sync>>,
 ) -> impl IntoElement {
     div()
-        .p(px(12.0))
-        .rounded(px(14.0))
-        .bg(beskar_theme::Theme::glass_fill(0.04))
+        .p(px(10.0))
+        .rounded(px(12.0))
+        .bg(beskar_theme::Theme::surface())
         .border_1()
-        .border_color(beskar_theme::Theme::subtle_border())
+        .border_color(beskar_theme::Theme::border())
         .flex()
         .flex_col()
         .gap(px(8.0))
+        .w_full()
+        // 1. Brightness Slider Row
+        .child(render_slider_row(
+            IconName::SunMedium,
+            brightness_percent,
+            false,
+            brightness_slider,
+            None,
+        ))
+        // 2. Volume Slider Row
+        .child(render_slider_row(
+            if is_volume_muted {
+                IconName::VolumeX
+            } else {
+                IconName::Volume2
+            },
+            volume_percent,
+            is_volume_muted,
+            volume_slider,
+            on_toggle_volume_mute,
+        ))
+        // 3. Mic Slider Row
+        .child(render_slider_row(
+            if is_mic_muted {
+                IconName::MicOff
+            } else {
+                IconName::Mic
+            },
+            mic_percent,
+            is_mic_muted,
+            mic_slider,
+            on_toggle_mic_mute,
+        ))
+}
+
+fn render_slider_row(
+    icon: IconName,
+    percent: u8,
+    is_muted: bool,
+    slider: Option<&Entity<SliderState>>,
+    on_toggle_mute: Option<Arc<dyn Fn() + Send + Sync>>,
+) -> AnyElement {
+    div()
+        .flex()
+        .items_center()
+        .gap(px(8.0))
+        .w_full()
         .child(
             div()
+                .size(px(26.0))
+                .flex_shrink_0()
+                .rounded_full()
+                .bg(if is_muted {
+                    beskar_theme::Theme::bg_secondary()
+                } else {
+                    beskar_theme::Theme::accent_alpha(0.15)
+                })
                 .flex()
                 .items_center()
-                .justify_between()
+                .justify_center()
+                .cursor_pointer()
+                .when_some(on_toggle_mute, |btn, cb| {
+                    btn.on_mouse_down(MouseButton::Left, move |_, _, _| (cb)())
+                })
                 .child(
-                    div()
-                        .flex()
-                        .items_center()
-                        .gap(px(6.0))
-                        .child(
-                            Button::new("cc-vol-mute")
-                                .ghost()
-                                .compact()
-                                .icon(
-                                    Icon::new(if is_muted {
-                                        IconName::VolumeX
-                                    } else {
-                                        IconName::Volume2
-                                    })
-                                    .size(px(14.0))
-                                    .text_color(beskar_theme::Theme::fg()),
-                                )
-                                .when_some(on_mute, |btn, cb| {
-                                    btn.on_click(move |_, _, _| (cb)())
-                                }),
-                        )
-                        .child(
-                            div()
-                                .text_xs()
-                                .font_weight(FontWeight::MEDIUM)
-                                .text_color(beskar_theme::Theme::fg())
-                                .child("Master Volume"),
-                        ),
-                )
-                .child(Tag::secondary().child(format!("{}%", volume_percent))),
-        )
-        .child(if let Some(slider) = volume_slider {
-            div()
-                .w_full()
-                .px(px(2.0))
-                .child(Slider::new(slider).w_full())
-                .into_any_element()
-        } else {
-            div()
-                .relative()
-                .w_full()
-                .h(px(8.0))
-                .rounded_full()
-                .bg(beskar_theme::Theme::glass_fill(0.10))
-                .overflow_hidden()
-                .child(
-                    div()
-                        .h_full()
-                        .w(relative(volume_percent as f32 / 100.0))
-                        .rounded_full()
-                        .bg(if is_muted {
-                            beskar_theme::Theme::muted()
+                    Icon::new(icon)
+                        .size(px(13.0))
+                        .text_color(if is_muted {
+                            beskar_theme::Theme::foreground_muted()
                         } else {
                             beskar_theme::Theme::accent()
                         }),
-                )
-                .into_any_element()
-        })
-        .when(!sinks.is_empty(), |card| {
-            let mut sink_row = div().flex().flex_wrap().items_center().gap(px(4.0)).pt(px(2.0));
-            for sink in sinks {
-                let is_default = sink.is_default;
-                let s_name = sink.name.clone();
-                let on_sel = on_select_sink.clone();
-                let label = if sink.description.chars().count() > 20 {
-                    let mut s: String = sink.description.chars().take(20).collect();
-                    s.push('…');
-                    s
-                } else {
-                    sink.description.clone()
-                };
-
-                sink_row = sink_row.child(
-                    div()
-                        .px(px(6.0))
-                        .py(px(2.0))
-                        .rounded_md()
-                        .text_xs()
-                        .cursor_pointer()
-                        .bg(if is_default {
-                            beskar_theme::Theme::accent()
-                        } else {
-                            beskar_theme::Theme::glass_fill(0.08)
-                        })
-                        .text_color(if is_default {
-                            beskar_theme::Theme::bg()
-                        } else {
-                            beskar_theme::Theme::text_secondary()
-                        })
-                        .on_mouse_down(MouseButton::Left, move |_, _, _| {
-                            if let Some(ref cb) = on_sel {
-                                cb(s_name.clone());
-                            }
-                        })
-                        .child(label),
-                );
-            }
-            card.child(sink_row)
-        })
-}
-
-pub fn render_brightness_card(
-    brightness_percent: u8,
-    brightness_slider: Option<&Entity<SliderState>>,
-) -> impl IntoElement {
-    div()
-        .p(px(12.0))
-        .rounded(px(14.0))
-        .bg(beskar_theme::Theme::glass_fill(0.04))
-        .border_1()
-        .border_color(beskar_theme::Theme::subtle_border())
-        .flex()
-        .flex_col()
-        .gap(px(10.0))
+                ),
+        )
         .child(
             div()
-                .flex()
-                .items_center()
-                .justify_between()
-                .child(
-                    div()
-                        .flex()
-                        .items_center()
-                        .gap(px(6.0))
-                        .child(
-                            Icon::new(IconName::Sun)
-                                .size(px(14.0))
-                                .text_color(beskar_theme::Theme::accent()),
-                        )
-                        .child(
-                            div()
-                                .text_xs()
-                                .font_weight(FontWeight::MEDIUM)
-                                .text_color(beskar_theme::Theme::fg())
-                                .child("Display Brightness"),
-                        ),
-                )
-                .child(Tag::secondary().child(format!("{}%", brightness_percent))),
+                .flex_1()
+                .min_w_0()
+                .when_some(slider, |el, s| el.child(Slider::new(s))),
         )
-        .child(if let Some(slider) = brightness_slider {
+        .child(
             div()
-                .w_full()
-                .px(px(2.0))
-                .child(Slider::new(slider).w_full())
-                .into_any_element()
-        } else {
-            div()
-                .relative()
-                .w_full()
-                .h(px(8.0))
-                .rounded_full()
-                .bg(beskar_theme::Theme::glass_fill(0.10))
-                .overflow_hidden()
-                .child(
-                    div()
-                        .h_full()
-                        .w(relative(brightness_percent as f32 / 100.0))
-                        .rounded_full()
-                        .bg(beskar_theme::Theme::accent()),
-                )
-                .into_any_element()
-        })
+                .w(px(32.0))
+                .flex_shrink_0()
+                .text_right()
+                .text_xs()
+                .font_weight(FontWeight::MEDIUM)
+                .text_color(if is_muted {
+                    beskar_theme::Theme::foreground_muted()
+                } else {
+                    beskar_theme::Theme::fg()
+                })
+                .child(if is_muted {
+                    "Mute".to_string()
+                } else {
+                    format!("{}%", percent)
+                }),
+        )
+        .into_any_element()
 }

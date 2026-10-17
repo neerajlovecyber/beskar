@@ -3,7 +3,7 @@
 //! positioned dynamically via `SatelliteLayout` beside the bar or capsule.
 
 use crate::satellite::{Satellite, SatelliteId, SatelliteVisual, Side};
-use gpui_kit::gpui::{div, px, Bounds, IntoElement, Pixels, Size};
+use gpui_kit::gpui::{Bounds, IntoElement, Pixels, Size, div, px};
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 

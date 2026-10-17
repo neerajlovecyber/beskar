@@ -1,13 +1,11 @@
 use gpui_kit::assets::IconName;
-use gpui_kit::component::button::{Button, ButtonVariants};
 use gpui_kit::component::Icon;
+use gpui_kit::component::button::{Button, ButtonVariants};
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 use std::sync::Arc;
 
-pub fn render_header(
-    on_close: Option<Arc<dyn Fn() + Send + Sync>>,
-) -> impl IntoElement {
+pub fn render_header(on_close: Option<Arc<dyn Fn() + Send + Sync>>) -> impl IntoElement {
     div()
         .flex()
         .items_center()
