@@ -1,19 +1,19 @@
 pub mod calc;
 pub mod items;
 
-use std::path::PathBuf;
 use beskar_core::models::AppItem;
 use beskar_services::ClipboardService;
 use beskar_theme::Theme;
 use gpui_kit::assets::IconName;
+use gpui_kit::component::Icon;
 use gpui_kit::component::button::{Button, ButtonVariants};
 use gpui_kit::component::tag::Tag;
-use gpui_kit::component::Icon;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
+use std::path::PathBuf;
 
 use crate::panel_host::{KeyboardInteractivity, PanelEdge, PanelHost, PanelModule, Slot};
-use items::{search_unified, LauncherCategory, LauncherResult};
+use items::{LauncherCategory, LauncherResult, search_unified};
 
 /// Unified Bottom Floating Launcher (Spotlight / Omni-Bar)
 pub struct LauncherView {
@@ -46,6 +46,10 @@ impl PanelModule for LauncherView {
     fn build(cx: &mut Context<Self>) -> Self {
         Self::new(cx)
     }
+
+    fn initial_focus_handle(&self, cx: &App) -> Option<FocusHandle> {
+        Some(Focusable::focus_handle(self, cx))
+    }
 }
 
 impl LauncherView {
@@ -66,24 +70,25 @@ impl LauncherView {
         match item {
             LauncherResult::Calculation { formatted, .. } => {
                 ClipboardService::new().copy_text(formatted);
-                PanelHost::close(cx);
+                PanelHost::close_by_id(Self::ID, cx);
             }
             LauncherResult::App(app) => {
                 let _ = beskar_services::launch_app(&app.exec);
-                PanelHost::close(cx);
+                PanelHost::close_by_id(Self::ID, cx);
             }
             LauncherResult::Setting(_) => {
-                PanelHost::close(cx);
+                PanelHost::close_by_id(Self::ID, cx);
                 crate::modules::toggle_settings(cx);
             }
             LauncherResult::Power(action) => {
                 let cmd = action.default_command();
                 let is_lock = *action == crate::modules::power_menu::PowerAction::Lock;
-                PanelHost::close(cx);
+                PanelHost::close_by_id(Self::ID, cx);
                 if is_lock {
                     crate::modules::toggle_lockscreen(cx);
                 } else {
-                    let parts: Vec<String> = cmd.split_whitespace().map(|s| s.to_string()).collect();
+                    let parts: Vec<String> =
+                        cmd.split_whitespace().map(|s| s.to_string()).collect();
                     if let Some((exe, args)) = parts.split_first() {
                         let _ = std::process::Command::new(exe).args(args).spawn();
                     }
@@ -105,28 +110,18 @@ impl Render for LauncherView {
         let total_count = results.len();
         let selected_idx = self.selected_idx.min(total_count.saturating_sub(1));
 
-        let theme_bg = Theme::bg();
         let theme_fg = Theme::fg();
         let theme_accent = Theme::accent();
         let theme_muted = Theme::muted();
-        let theme_border = Theme::border();
         let theme_bg_secondary = Theme::bg_secondary();
         let current_category = self.category;
 
         div()
             .id("launcher-unified-card")
-            .w(px(680.0))
-            .max_h(px(460.0))
+            .size_full()
             .flex()
             .flex_col()
             .p(px(14.0))
-            .rounded_b_none()
-            .rounded_t(px(24.0))
-            .bg(theme_bg)
-            .border_1()
-            .border_b(px(0.0))
-            .border_color(theme_border)
-            .shadow_2xl()
             .overflow_hidden()
             .gap(px(10.0))
             .track_focus(&self.focus_handle)
@@ -137,7 +132,7 @@ impl Render for LauncherView {
                 let count = active_results.len();
 
                 if key == "escape" {
-                    PanelHost::close(cx);
+                    PanelHost::close_by_id(Self::ID, cx);
                     cx.stop_propagation();
                 } else if key == "down" {
                     if count > 0 {
@@ -200,8 +195,11 @@ impl Render for LauncherView {
                             .text_color(theme_accent),
                     )
                     .child(
-                        div().flex_1().flex().items_center().child(
-                            if self.query.is_empty() {
+                        div()
+                            .flex_1()
+                            .flex()
+                            .items_center()
+                            .child(if self.query.is_empty() {
                                 div()
                                     .text_sm()
                                     .font_weight(FontWeight::NORMAL)
@@ -213,8 +211,7 @@ impl Render for LauncherView {
                                     .font_weight(FontWeight::SEMIBOLD)
                                     .text_color(theme_fg)
                                     .child(self.query.clone())
-                            },
-                        ),
+                            }),
                     )
                     .when(!self.query.is_empty(), |this| {
                         this.child(
@@ -248,60 +245,66 @@ impl Render for LauncherView {
                     .items_center()
                     .gap(px(6.0))
                     .py(px(2.0))
-                    .children(LauncherCategory::ALL.into_iter().enumerate().map(|(idx, cat)| {
-                        let is_active = cat == current_category;
-                        div()
-                            .id(("cat-chip", idx))
-                            .flex()
-                            .items_center()
-                            .gap(px(5.0))
-                            .px(px(10.0))
-                            .py(px(3.0))
-                            .rounded_full()
-                            .cursor_pointer()
-                            .bg(if is_active {
-                                theme_accent
-                            } else {
-                                theme_bg_secondary
-                            })
-                            .text_color(if is_active {
-                                gpui_kit::white()
-                            } else {
-                                theme_muted
-                            })
-                            .hover(move |s| {
-                                if !is_active {
-                                    s.bg(beskar_theme::Theme::subtle_border())
-                                        .text_color(theme_fg)
-                                } else {
-                                    s
-                                }
-                            })
-                            .on_mouse_down(MouseButton::Left, cx.listener(move |this, _, _, cx| {
-                                this.category = cat;
-                                this.selected_idx = 0;
-                                cx.notify();
-                            }))
-                            .child(
-                                Icon::new(cat.icon())
-                                    .size(px(12.0))
+                    .children(
+                        LauncherCategory::ALL
+                            .into_iter()
+                            .enumerate()
+                            .map(|(idx, cat)| {
+                                let is_active = cat == current_category;
+                                div()
+                                    .id(("cat-chip", idx))
+                                    .flex()
+                                    .items_center()
+                                    .gap(px(5.0))
+                                    .px(px(10.0))
+                                    .py(px(3.0))
+                                    .rounded_full()
+                                    .cursor_pointer()
+                                    .bg(if is_active {
+                                        theme_accent
+                                    } else {
+                                        theme_bg_secondary
+                                    })
                                     .text_color(if is_active {
                                         gpui_kit::white()
                                     } else {
                                         theme_muted
-                                    }),
-                            )
-                            .child(
-                                div()
-                                    .text_xs()
-                                    .font_weight(if is_active {
-                                        FontWeight::BOLD
-                                    } else {
-                                        FontWeight::MEDIUM
                                     })
-                                    .child(cat.label()),
-                            )
-                    })),
+                                    .hover(move |s| {
+                                        if !is_active {
+                                            s.bg(beskar_theme::Theme::subtle_border())
+                                                .text_color(theme_fg)
+                                        } else {
+                                            s
+                                        }
+                                    })
+                                    .on_mouse_down(
+                                        MouseButton::Left,
+                                        cx.listener(move |this, _, _, cx| {
+                                            this.category = cat;
+                                            this.selected_idx = 0;
+                                            cx.notify();
+                                        }),
+                                    )
+                                    .child(Icon::new(cat.icon()).size(px(12.0)).text_color(
+                                        if is_active {
+                                            gpui_kit::white()
+                                        } else {
+                                            theme_muted
+                                        },
+                                    ))
+                                    .child(
+                                        div()
+                                            .text_xs()
+                                            .font_weight(if is_active {
+                                                FontWeight::BOLD
+                                            } else {
+                                                FontWeight::MEDIUM
+                                            })
+                                            .child(cat.label()),
+                                    )
+                            }),
+                    ),
             )
             // Results List
             .child(
@@ -368,16 +371,17 @@ impl Render for LauncherView {
                             } else {
                                 gpui_kit::transparent_black()
                             })
-                            .hover(move |s| {
-                                s.bg(theme_bg_secondary).cursor_pointer()
-                            })
-                            .on_mouse_down(MouseButton::Left, cx.listener({
-                                let item_to_exec = item_clone;
-                                move |this, _, _, cx| {
-                                    this.selected_idx = i;
-                                    this.execute_item(&item_to_exec, cx);
-                                }
-                            }))
+                            .hover(move |s| s.bg(theme_bg_secondary).cursor_pointer())
+                            .on_mouse_down(
+                                MouseButton::Left,
+                                cx.listener({
+                                    let item_to_exec = item_clone;
+                                    move |this, _, _, cx| {
+                                        this.selected_idx = i;
+                                        this.execute_item(&item_to_exec, cx);
+                                    }
+                                }),
+                            )
                             .child(
                                 div()
                                     .flex()
@@ -395,23 +399,21 @@ impl Render for LauncherView {
                                             } else {
                                                 beskar_theme::Theme::bg_secondary()
                                             })
-                                            .child(
-                                                if let Some(path) = icon_path {
-                                                    img(path)
-                                                        .size(px(20.0))
-                                                        .rounded(px(4.0))
-                                                        .into_any_element()
-                                                } else {
-                                                    Icon::new(icon_name)
-                                                        .size(px(16.0))
-                                                        .text_color(if is_current {
-                                                            theme_accent
-                                                        } else {
-                                                            theme_muted
-                                                        })
-                                                        .into_any_element()
-                                                },
-                                            ),
+                                            .child(if let Some(path) = icon_path {
+                                                img(path)
+                                                    .size(px(20.0))
+                                                    .rounded(px(4.0))
+                                                    .into_any_element()
+                                            } else {
+                                                Icon::new(icon_name)
+                                                    .size(px(16.0))
+                                                    .text_color(if is_current {
+                                                        theme_accent
+                                                    } else {
+                                                        theme_muted
+                                                    })
+                                                    .into_any_element()
+                                            }),
                                     )
                                     .child(
                                         div()
