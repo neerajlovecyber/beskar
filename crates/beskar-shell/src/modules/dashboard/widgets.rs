@@ -1,15 +1,16 @@
 use std::sync::Arc;
 
 use gpui_kit::assets::IconName;
-use gpui_kit::component::button::{Button, ButtonVariants};
 use gpui_kit::component::Icon;
+use gpui_kit::component::button::{Button, ButtonVariants};
+use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::gpui::{
-    div, px, AnyElement, FontWeight, InteractiveElement, IntoElement,
-    MouseButton, ParentElement, Styled,
+    AnyElement, FontWeight, InteractiveElement, IntoElement, MouseButton, ParentElement, Styled,
+    div, px,
 };
 
 use beskar_services::github::{ContributionDay, GithubProfile};
-use beskar_services::vitals::VitalsSnapshot;
+use beskar_services::updates::SystemUpdatesState;
 use beskar_theme::Theme;
 
 #[derive(Debug, Clone, Default)]
@@ -57,26 +58,9 @@ pub fn calculate_streaks(contributions: &[ContributionDay]) -> GitStreakStats {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct DevPullRequest {
-    pub number: u32,
-    pub title: String,
-    pub repo: String,
-    pub status: &'static str,
-    pub url: String,
-}
-
-#[derive(Debug, Clone)]
-pub struct DevRepoStatus {
-    pub name: String,
-    pub path: String,
-    pub branch: String,
-    pub is_dirty: bool,
-    pub modified_count: usize,
-}
-
-/// Header containing title, profile info, refresh button, and close button
-pub fn render_header(
+/// 1. User Profile Header matching minflair:
+/// Avatar, username, handle, short bio/quote, and clean 3-row stat summary (Total Stars, Repositories, Total Forks).
+pub fn render_user_profile_header(
     profile: &GithubProfile,
     is_fetching: bool,
     on_refresh: Arc<dyn Fn() + Send + Sync>,
@@ -99,8 +83,8 @@ pub fn render_header(
         .flex_col()
         .gap(px(10.0))
         .w_full()
+        // Top action bar
         .child(
-            // Top action bar
             div()
                 .flex()
                 .items_center()
@@ -119,34 +103,25 @@ pub fn render_header(
                                 .size(px(26.0))
                                 .rounded_full()
                                 .bg(Theme::accent_alpha(0.15))
-                                .child(Icon::new(IconName::Github).size(px(15.0)).text_color(Theme::accent())),
+                                .child(
+                                    Icon::new(IconName::Github)
+                                        .size(px(15.0))
+                                        .text_color(Theme::accent()),
+                                ),
                         )
                         .child(
                             div()
                                 .text_sm()
                                 .font_weight(FontWeight::BOLD)
                                 .text_color(Theme::fg())
-                                .child("GITHUB DEV DASHBOARD"),
-                        )
-                        .child(
-                            div()
-                                .px(px(6.0))
-                                .py(px(1.5))
-                                .rounded_full()
-                                .bg(Theme::accent_alpha(0.12))
-                                .border_1()
-                                .border_color(Theme::accent_alpha(0.3))
-                                .text_xs()
-                                .font_weight(FontWeight::SEMIBOLD)
-                                .text_color(Theme::accent())
-                                .child("LIVE"),
+                                .child("GITHUB DASHBOARD"),
                         ),
                 )
                 .child(
                     div()
                         .flex()
                         .items_center()
-                        .gap(px(6.0))
+                        .gap(px(4.0))
                         .child(
                             Button::new("dash-refresh")
                                 .ghost()
@@ -163,136 +138,129 @@ pub fn render_header(
                         ),
                 ),
         )
+        // User profile hero
         .child(
-            // Profile card
             div()
                 .flex()
-                .items_center()
-                .gap(px(12.0))
-                .p(px(10.0))
+                .flex_col()
+                .gap(px(10.0))
+                .p(px(12.0))
                 .rounded(px(12.0))
                 .bg(Theme::surface())
                 .border_1()
                 .border_color(Theme::border())
                 .child(
                     div()
-                        .size(px(38.0))
-                        .rounded_full()
-                        .bg(Theme::accent_alpha(0.2))
-                        .border_1()
-                        .border_color(Theme::accent_alpha(0.4))
                         .flex()
                         .items_center()
-                        .justify_center()
-                        .text_sm()
-                        .font_weight(FontWeight::BOLD)
-                        .text_color(Theme::accent())
-                        .child(initials),
-                )
-                .child(
-                    div()
-                        .flex_1()
-                        .min_w_0()
-                        .flex()
-                        .flex_col()
-                        .gap(px(1.0))
+                        .gap(px(12.0))
                         .child(
                             div()
+                                .size(px(42.0))
+                                .rounded_full()
+                                .bg(Theme::accent_alpha(0.2))
+                                .border_1()
+                                .border_color(Theme::accent_alpha(0.4))
                                 .flex()
                                 .items_center()
-                                .gap(px(6.0))
+                                .justify_center()
+                                .text_sm()
+                                .font_weight(FontWeight::BOLD)
+                                .text_color(Theme::accent())
+                                .child(initials),
+                        )
+                        .child(
+                            div()
+                                .flex_1()
+                                .min_w_0()
+                                .flex()
+                                .flex_col()
+                                .gap(px(1.0))
                                 .child(
                                     div()
                                         .text_sm()
-                                        .font_weight(FontWeight::SEMIBOLD)
+                                        .font_weight(FontWeight::BOLD)
                                         .text_color(Theme::fg())
                                         .child(profile.name.clone()),
                                 )
                                 .child(
                                     div()
                                         .text_xs()
-                                        .text_color(Theme::foreground_muted())
+                                        .text_color(Theme::accent())
                                         .child(format!("@{}", profile.username)),
                                 ),
-                        )
-                        .child(
-                            div()
-                                .text_xs()
-                                .text_color(Theme::foreground_muted())
-                                .whitespace_nowrap()
-                                .text_ellipsis()
-                                .child(if is_fetching {
-                                    "Updating GitHub telemetry...".to_string()
-                                } else {
-                                    profile.bio.clone()
-                                }),
                         ),
+                )
+                .when(!profile.bio.is_empty(), |hero| {
+                    hero.child(
+                        div()
+                            .text_xs()
+                            .italic()
+                            .text_color(Theme::foreground_muted())
+                            .child(if is_fetching {
+                                "Refreshing telemetry...".to_string()
+                            } else {
+                                profile.bio.clone()
+                            }),
+                    )
+                })
+                .child(
+                    div()
+                        .h(px(1.0))
+                        .w_full()
+                        .bg(Theme::border().opacity(0.6)),
+                )
+                // Clean 3-row stat summary
+                .child(
+                    div()
+                        .flex()
+                        .flex_col()
+                        .gap(px(6.0))
+                        .child(render_stat_row(
+                            IconName::Star,
+                            "Total Stars",
+                            &profile.total_stars.to_string(),
+                        ))
+                        .child(render_stat_row(
+                            IconName::Code,
+                            "Repositories",
+                            &profile.public_repos.to_string(),
+                        ))
+                        .child(render_stat_row(
+                            IconName::GitFork,
+                            "Total Forks",
+                            &profile.total_forks.to_string(),
+                        )),
                 ),
         )
         .into_any_element()
 }
 
-/// Streak & Metric summaries (Total contributions, Current streak, Longest streak)
-pub fn render_streak_metrics(stats: &GitStreakStats) -> AnyElement {
+fn render_stat_row(icon: IconName, label: &'static str, value: &str) -> AnyElement {
     div()
         .flex()
         .items_center()
-        .gap(px(8.0))
+        .justify_between()
         .w_full()
-        .child(render_metric_card(
-            "COMMITS",
-            &format!("{}", stats.total_contributions),
-            IconName::GitCommitHorizontal,
-            Theme::accent(),
-        ))
-        .child(render_metric_card(
-            "CURRENT STREAK",
-            &format!("{} days", stats.current_streak),
-            IconName::Flame,
-            Theme::warning(),
-        ))
-        .child(render_metric_card(
-            "LONGEST STREAK",
-            &format!("{} days", stats.longest_streak),
-            IconName::Activity,
-            Theme::success(),
-        ))
-        .into_any_element()
-}
-
-fn render_metric_card(
-    label: &'static str,
-    value: &str,
-    icon: IconName,
-    accent_color: gpui_kit::gpui::Hsla,
-) -> AnyElement {
-    div()
-        .flex_1()
-        .p(px(8.0))
-        .rounded(px(10.0))
-        .bg(Theme::surface())
-        .border_1()
-        .border_color(Theme::border())
-        .flex()
-        .flex_col()
-        .gap(px(3.0))
+        .px(px(4.0))
+        .py(px(2.0))
         .child(
             div()
                 .flex()
                 .items_center()
-                .justify_between()
+                .gap(px(8.0))
+                .child(Icon::new(icon).size(px(13.0)).text_color(Theme::accent()))
                 .child(
                     div()
                         .text_xs()
                         .font_weight(FontWeight::MEDIUM)
-                        .text_color(Theme::foreground_muted())
+                        .text_color(Theme::fg())
                         .child(label),
-                )
-                .child(Icon::new(icon).size(px(13.0)).text_color(accent_color)),
+                ),
         )
         .child(
             div()
-                .text_sm()
+                .text_xs()
                 .font_weight(FontWeight::BOLD)
                 .text_color(Theme::fg())
                 .child(value.to_string()),
@@ -300,8 +268,8 @@ fn render_metric_card(
         .into_any_element()
 }
 
-/// 52-week Contribution Heatmap Grid
-pub fn render_heatmap_grid(
+/// 2. Contributions Card: Clean, compact contribution heatmap grid
+pub fn render_heatmap_card(
     contributions: &[ContributionDay],
     hovered_day: Option<&ContributionDay>,
     on_hover_day: Arc<dyn Fn(Option<ContributionDay>) + Send + Sync>,
@@ -325,7 +293,7 @@ pub fn render_heatmap_grid(
         .gap(px(2.0))
         .items_center()
         .justify_start()
-        .py(px(4.0));
+        .py(px(2.0));
 
     for (week_idx, week) in weeks.into_iter().enumerate() {
         let mut col = div().flex().flex_col().gap(px(2.0));
@@ -343,15 +311,12 @@ pub fn render_heatmap_grid(
             col = col.child(
                 div()
                     .id(("heat-cell", week_idx * 7 + day_idx))
-                    .size(px(6.0))
+                    .size(px(6.5))
                     .rounded(px(1.5))
                     .bg(bg_color)
                     .cursor_pointer()
-                    .hover(|s| s.border_1().border_color(Theme::fg()))
-                    .on_mouse_down(MouseButton::Left, {
-                        let d = day_clone.clone();
-                        let h = hover_cb.clone();
-                        move |_, _, _| (h)(Some(d.clone()))
+                    .on_mouse_down(MouseButton::Left, move |_, _, _| {
+                        (hover_cb)(Some(day_clone.clone()));
                     }),
             );
         }
@@ -362,7 +327,7 @@ pub fn render_heatmap_grid(
         .flex()
         .flex_col()
         .gap(px(6.0))
-        .p(px(10.0))
+        .p(px(12.0))
         .rounded(px(12.0))
         .bg(Theme::surface())
         .border_1()
@@ -373,168 +338,45 @@ pub fn render_heatmap_grid(
                 .items_center()
                 .justify_between()
                 .w_full()
-                .child(
-                    div()
-                        .text_xs()
-                        .font_weight(FontWeight::SEMIBOLD)
-                        .text_color(Theme::fg())
-                        .child("52-WEEK CONTRIBUTION HEATMAP"),
-                )
-                .child(
-                    // Legend
-                    div()
-                        .flex()
-                        .items_center()
-                        .gap(px(3.0))
-                        .child(div().text_xs().text_color(Theme::foreground_muted()).child("Less"))
-                        .child(div().size(px(6.0)).rounded(px(1.0)).bg(Theme::border().opacity(0.35)))
-                        .child(div().size(px(6.0)).rounded(px(1.0)).bg(Theme::accent_alpha(0.28)))
-                        .child(div().size(px(6.0)).rounded(px(1.0)).bg(Theme::accent_alpha(0.52)))
-                        .child(div().size(px(6.0)).rounded(px(1.0)).bg(Theme::accent_alpha(0.78)))
-                        .child(div().size(px(6.0)).rounded(px(1.0)).bg(Theme::accent()))
-                        .child(div().text_xs().text_color(Theme::foreground_muted()).child("More")),
-                ),
-        )
-        .child(grid_row)
-        .child(
-            // Tooltip / Details pill
-            div()
-                .text_xs()
-                .text_color(Theme::foreground_muted())
-                .child(if let Some(day) = hovered_day {
-                    format!("● {} on {}", day.tooltip, day.date)
-                } else {
-                    "Click or hover any cell to inspect daily commit distribution.".to_string()
-                }),
-        )
-        .into_any_element()
-}
-
-/// Active Pull Requests Section
-pub fn render_active_prs(
-    prs: &[DevPullRequest],
-    on_open_pr: Arc<dyn Fn(String) + Send + Sync>,
-) -> AnyElement {
-    let mut list = div().flex().flex_col().gap(px(6.0)).w_full();
-
-    for (idx, pr) in prs.iter().enumerate() {
-        let pr_url = pr.url.clone();
-        let open_cb = on_open_pr.clone();
-        let (status_bg, status_fg) = match pr.status {
-            "Open" => (Theme::success_alpha(0.15), Theme::success()),
-            "Review" => (Theme::warning_alpha(0.15), Theme::warning()),
-            _ => (Theme::accent_alpha(0.15), Theme::accent()),
-        };
-
-        list = list.child(
-            div()
-                .id(("pr-item", idx))
-                .flex()
-                .items_center()
-                .justify_between()
-                .p(px(7.0))
-                .rounded(px(8.0))
-                .bg(Theme::bg())
-                .border_1()
-                .border_color(Theme::border().opacity(0.6))
-                .cursor_pointer()
-                .hover(|s| s.bg(Theme::surface_hover()).border_color(Theme::accent_alpha(0.4)))
-                .on_mouse_down(MouseButton::Left, move |_, _, _| {
-                    (open_cb)(pr_url.clone());
-                })
-                .child(
-                    div()
-                        .flex_1()
-                        .min_w_0()
-                        .flex()
-                        .items_center()
-                        .gap(px(6.0))
-                        .child(
-                            div()
-                                .px(px(5.0))
-                                .py(px(1.0))
-                                .rounded(px(4.0))
-                                .bg(Theme::surface())
-                                .text_xs()
-                                .font_weight(FontWeight::BOLD)
-                                .text_color(Theme::accent())
-                                .child(pr.repo.clone()),
-                        )
-                        .child(
-                            div()
-                                .text_xs()
-                                .text_color(Theme::fg())
-                                .whitespace_nowrap()
-                                .text_ellipsis()
-                                .child(format!("#{} {}", pr.number, pr.title)),
-                        ),
-                )
-                .child(
-                    div()
-                        .px(px(6.0))
-                        .py(px(1.5))
-                        .rounded_full()
-                        .bg(status_bg)
-                        .text_xs()
-                        .font_weight(FontWeight::SEMIBOLD)
-                        .text_color(status_fg)
-                        .child(pr.status),
-                ),
-        );
-    }
-
-    div()
-        .flex()
-        .flex_col()
-        .gap(px(8.0))
-        .p(px(10.0))
-        .rounded(px(12.0))
-        .bg(Theme::surface())
-        .border_1()
-        .border_color(Theme::border())
-        .child(
-            div()
-                .flex()
-                .items_center()
-                .justify_between()
-                .child(
-                    div()
-                        .flex()
-                        .items_center()
-                        .gap(px(6.0))
-                        .child(Icon::new(IconName::GitPullRequest).size(px(14.0)).text_color(Theme::accent()))
-                        .child(
-                            div()
-                                .text_xs()
-                                .font_weight(FontWeight::SEMIBOLD)
-                                .text_color(Theme::fg())
-                                .child("ACTIVE PULL REQUESTS"),
-                        ),
-                )
                 .child(
                     div()
                         .text_xs()
                         .font_weight(FontWeight::BOLD)
-                        .text_color(Theme::accent())
-                        .child(format!("{} active", prs.len())),
-                ),
+                        .text_color(Theme::foreground_muted())
+                        .child("CONTRIBUTIONS"),
+                )
+                .when_some(hovered_day, |header, day| {
+                    header.child(
+                        div()
+                            .text_xs()
+                            .text_color(Theme::accent())
+                            .child(format!("{}: {} commits", day.date, day.count)),
+                    )
+                }),
         )
-        .child(list)
+        .child(
+            div()
+                .w_full()
+                .overflow_hidden()
+                .child(grid_row),
+        )
         .into_any_element()
 }
 
-/// System Dev Vitals (CPU, RAM, Storage)
-pub fn render_system_vitals(vitals: &VitalsSnapshot) -> AnyElement {
-    let cpu_pct = vitals.cpu.global_usage_percent.round().clamp(0.0, 100.0) as u32;
-    let ram_pct = vitals.memory.usage_percent.round().clamp(0.0, 100.0) as u32;
-    let disk = vitals.disks.first();
-    let disk_pct = disk.map(|d| d.usage_percent.round().clamp(0.0, 100.0) as u32).unwrap_or(48);
+/// 3. System Updates Card matching minflair UpdatesCard.qml:
+/// Simple pending packages counter ("X packages pending" with "Pacman / AUR" subtext) and an "Update" pill button.
+pub fn render_updates_card(
+    updates: &SystemUpdatesState,
+    on_update: Arc<dyn Fn() + Send + Sync>,
+) -> AnyElement {
+    let total = updates.pacman_count + updates.aur_count;
+    let has_updates = total > 0;
 
     div()
         .flex()
-        .flex_col()
-        .gap(px(8.0))
-        .p(px(10.0))
+        .items_center()
+        .justify_between()
+        .p(px(12.0))
         .rounded(px(12.0))
         .bg(Theme::surface())
         .border_1()
@@ -543,195 +385,102 @@ pub fn render_system_vitals(vitals: &VitalsSnapshot) -> AnyElement {
             div()
                 .flex()
                 .items_center()
-                .gap(px(6.0))
-                .child(Icon::new(IconName::Cpu).size(px(14.0)).text_color(Theme::accent()))
+                .gap(px(10.0))
                 .child(
                     div()
-                        .text_xs()
-                        .font_weight(FontWeight::SEMIBOLD)
-                        .text_color(Theme::fg())
-                        .child("SYSTEM DEV VITALS"),
-                ),
-        )
-        .child(
-            div()
-                .flex()
-                .items_center()
-                .gap(px(8.0))
-                .w_full()
-                .child(render_vital_bar("CPU", &format!("{}%", cpu_pct), cpu_pct, Theme::accent()))
-                .child(render_vital_bar(
-                    "RAM",
-                    &format!("{}%", ram_pct),
-                    ram_pct,
-                    Theme::info(),
-                ))
-                .child(render_vital_bar(
-                    "DISK",
-                    &format!("{}%", disk_pct),
-                    disk_pct,
-                    Theme::warning(),
-                )),
-        )
-        .into_any_element()
-}
-
-fn render_vital_bar(
-    label: &'static str,
-    val_str: &str,
-    percent: u32,
-    bar_color: gpui_kit::gpui::Hsla,
-) -> AnyElement {
-    div()
-        .flex_1()
-        .flex()
-        .flex_col()
-        .gap(px(4.0))
-        .p(px(7.0))
-        .rounded(px(8.0))
-        .bg(Theme::bg())
-        .border_1()
-        .border_color(Theme::border().opacity(0.6))
-        .child(
-            div()
-                .flex()
-                .items_center()
-                .justify_between()
-                .child(div().text_xs().text_color(Theme::foreground_muted()).child(label))
-                .child(div().text_xs().font_weight(FontWeight::BOLD).text_color(Theme::fg()).child(val_str.to_string())),
-        )
-        .child(
-            div()
-                .w_full()
-                .h(px(4.0))
-                .rounded_full()
-                .bg(Theme::border())
-                .child(
-                    div()
-                        .h_full()
-                        .w(gpui_kit::gpui::relative(percent as f32 / 100.0))
+                        .size(px(32.0))
                         .rounded_full()
-                        .bg(bar_color),
-                ),
-        )
-        .into_any_element()
-}
-
-/// Active Repositories
-pub fn render_active_repos(repos: &[DevRepoStatus]) -> AnyElement {
-    let mut list = div().flex().flex_col().gap(px(6.0)).w_full();
-
-    for (idx, repo) in repos.iter().enumerate() {
-        let (status_icon, status_color, status_text) = if repo.is_dirty {
-            (IconName::Sparkles, Theme::warning(), format!("* modified ({} files)", repo.modified_count))
-        } else {
-            (IconName::Check, Theme::success(), "clean".to_string())
-        };
-
-        list = list.child(
-            div()
-                .id(("repo-item", idx))
-                .flex()
-                .items_center()
-                .justify_between()
-                .p(px(7.0))
-                .rounded(px(8.0))
-                .bg(Theme::bg())
-                .border_1()
-                .border_color(Theme::border().opacity(0.6))
+                        .bg(if has_updates {
+                            Theme::accent_alpha(0.18)
+                        } else {
+                            Theme::border().opacity(0.3)
+                        })
+                        .flex()
+                        .items_center()
+                        .justify_center()
+                        .child(
+                            Icon::new(if has_updates {
+                                IconName::Package
+                            } else {
+                                IconName::Check
+                            })
+                            .size(px(16.0))
+                            .text_color(if has_updates {
+                                Theme::accent()
+                            } else {
+                                Theme::foreground_muted()
+                            }),
+                        ),
+                )
                 .child(
                     div()
-                        .flex_1()
-                        .min_w_0()
                         .flex()
                         .flex_col()
-                        .gap(px(2.0))
+                        .gap(px(1.0))
                         .child(
                             div()
-                                .flex()
-                                .items_center()
-                                .gap(px(5.0))
-                                .child(Icon::new(IconName::Folder).size(px(12.0)).text_color(Theme::accent()))
-                                .child(
-                                    div()
-                                        .text_xs()
-                                        .font_weight(FontWeight::SEMIBOLD)
-                                        .text_color(Theme::fg())
-                                        .child(repo.name.clone()),
-                                )
-                                .child(
-                                    div()
-                                        .flex()
-                                        .items_center()
-                                        .gap(px(3.0))
-                                        .child(Icon::new(IconName::GitBranch).size(px(11.0)).text_color(Theme::foreground_muted()))
-                                        .child(
-                                            div()
-                                                .text_xs()
-                                                .text_color(Theme::foreground_muted())
-                                                .child(repo.branch.clone()),
-                                        ),
-                                ),
+                                .text_xs()
+                                .font_weight(FontWeight::BOLD)
+                                .text_color(Theme::fg())
+                                .child(if updates.is_checking {
+                                    "Checking updates...".to_string()
+                                } else if has_updates {
+                                    format!("{} packages pending", total)
+                                } else {
+                                    "System up to date".to_string()
+                                }),
                         )
                         .child(
                             div()
                                 .text_xs()
                                 .text_color(Theme::foreground_muted())
-                                .whitespace_nowrap()
-                                .text_ellipsis()
-                                .child(repo.path.clone()),
+                                .child(if updates.is_checking {
+                                    "Please wait".to_string()
+                                } else if has_updates {
+                                    format!("Pacman: {} | AUR: {}", updates.pacman_count, updates.aur_count)
+                                } else {
+                                    "All packages are currently up to date".to_string()
+                                }),
                         ),
-                )
-                .child(
-                    div()
-                        .flex()
-                        .items_center()
-                        .gap(px(4.0))
-                        .text_xs()
-                        .font_weight(FontWeight::MEDIUM)
-                        .text_color(status_color)
-                        .child(Icon::new(status_icon).size(px(11.0)).text_color(status_color))
-                        .child(status_text),
                 ),
-        );
-    }
+        )
+        .child(
+            Button::new("update-btn")
+                .primary()
+                .compact()
+                .label(if has_updates { "Update" } else { "Check" })
+                .on_click(move |_, _, _| (on_update)()),
+        )
+        .into_any_element()
+}
 
+/// 4. Footer Quote: Subtle italicized quote at the bottom.
+pub fn render_quote_footer(quote_text: &str, author: &str) -> AnyElement {
     div()
         .flex()
         .flex_col()
-        .gap(px(8.0))
-        .p(px(10.0))
-        .rounded(px(12.0))
-        .bg(Theme::surface())
-        .border_1()
-        .border_color(Theme::border())
+        .gap(px(3.0))
+        .w_full()
+        .pt(px(4.0))
+        .px(px(6.0))
+        .child(
+            div()
+                .text_xs()
+                .italic()
+                .text_color(Theme::foreground_muted().opacity(0.85))
+                .child(format!("“{}”", quote_text)),
+        )
         .child(
             div()
                 .flex()
-                .items_center()
-                .justify_between()
-                .child(
-                    div()
-                        .flex()
-                        .items_center()
-                        .gap(px(6.0))
-                        .child(Icon::new(IconName::Folder).size(px(14.0)).text_color(Theme::accent()))
-                        .child(
-                            div()
-                                .text_xs()
-                                .font_weight(FontWeight::SEMIBOLD)
-                                .text_color(Theme::fg())
-                                .child("ACTIVE REPOSITORIES"),
-                        ),
-                )
+                .justify_end()
                 .child(
                     div()
                         .text_xs()
-                        .font_weight(FontWeight::BOLD)
-                        .text_color(Theme::accent())
-                        .child(format!("{} projects", repos.len())),
+                        .font_weight(FontWeight::MEDIUM)
+                        .text_color(Theme::foreground_muted().opacity(0.65))
+                        .child(format!("— {}", author)),
                 ),
         )
-        .child(list)
         .into_any_element()
 }
