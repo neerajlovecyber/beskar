@@ -9,10 +9,9 @@ use std::sync::Arc;
 /// and Apple Dynamic Island mechanics.
 ///
 /// Features:
-/// - Primary clock readout (e.g. "9:25 AM")
-/// - Optional date readout (e.g. "Sat, Oct 10")
+/// - Primary clock and date readout (e.g. "Sat, Oct 17 | 12:12 PM")
 /// - Divider hairline
-/// - Now Playing media indicator with Lucide Play/Pause icon & interactive click
+/// - Now Playing media indicator with interactive click or idle music pill
 /// - Dynamic Island pill expansion and status transitions
 #[derive(IntoElement)]
 pub struct DynamicCenterWidget {
@@ -95,13 +94,18 @@ impl RenderOnce for DynamicCenterWidget {
             .media_title
             .as_deref()
             .map_or(false, |t| !t.trim().is_empty());
-        let has_notification = self.notification.is_some();
         let on_play_pause = self.on_play_pause;
         let on_clock_click = self.on_clock_click;
         let on_media_click = self.on_media_click;
 
         let media_text = match (&self.media_artist, &self.media_title) {
-            (Some(artist), Some(title)) => format!("{} – {}", artist, title),
+            (Some(artist), Some(title)) => {
+                if artist.trim().is_empty() {
+                    title.clone()
+                } else {
+                    format!("{} – {}", artist, title)
+                }
+            }
             (None, Some(title)) => title.clone(),
             _ => String::new(),
         };
@@ -110,7 +114,7 @@ impl RenderOnce for DynamicCenterWidget {
             .flex()
             .items_center()
             .justify_center()
-            .gap(px(10.0));
+            .gap(px(8.0));
 
         if let Some(w) = self.width {
             container = container.min_w(w);
@@ -119,12 +123,12 @@ impl RenderOnce for DynamicCenterWidget {
         let hour = chrono::Local::now().format("%H").to_string().parse::<u32>().unwrap_or(12);
         let is_day = (6..18).contains(&hour);
 
-        // Primary Clock & Date Pill with comfortable, balanced spacing
-        let clock_content = div()
+        // Primary Clock & Date Pill
+        let mut clock_content = div()
             .flex()
             .items_center()
-            .gap(px(8.0))
-            .px(px(10.0))
+            .gap(px(6.0))
+            .px(px(8.0))
             .py(px(3.0))
             .rounded_md()
             .hover(|s| s.bg(beskar_theme::Theme::bg_secondary()).cursor_pointer())
@@ -135,38 +139,41 @@ impl RenderOnce for DynamicCenterWidget {
                 Icon::new(if is_day { IconName::Sun } else { IconName::Moon })
                     .size(px(13.0))
                     .text_color(if is_day { beskar_theme::Theme::accent() } else { beskar_theme::Theme::info() })
-            )
-            // When no media is playing, show subtle date badge next to time
-            .when(!has_media && self.date_str.is_some(), |this| {
-                this.child(
+            );
+
+        if let Some(ref date) = self.date_str {
+            clock_content = clock_content
+                .child(
                     div()
                         .text_xs()
                         .font_weight(FontWeight::MEDIUM)
                         .text_color(beskar_theme::Theme::text_secondary())
-                        .child(self.date_str.unwrap_or_default()),
+                        .child(date.clone()),
                 )
                 .child(
                     div()
-                        .mx(px(3.0))
+                        .mx(px(2.0))
                         .w(px(3.0))
                         .h(px(3.0))
                         .rounded_full()
                         .bg(beskar_theme::Theme::accent_alpha(0.80)),
-                )
-            })
-            .child(
-                // Time label
-                div()
-                    .text_xs()
-                    .font_weight(FontWeight::BOLD)
-                    .text_color(beskar_theme::Theme::fg())
-                    .child(self.time_str),
-            );
+                );
+        }
 
-        container
-            .child(clock_content)
-            .when_some(self.notification, |this, (notif_title, notif_body)| {
-                this.child(
+        clock_content = clock_content.child(
+            div()
+                .text_xs()
+                .font_weight(FontWeight::BOLD)
+                .text_color(beskar_theme::Theme::fg())
+                .child(self.time_str),
+        );
+
+        container = container.child(clock_content);
+
+        // Render notification banner if active
+        if let Some((notif_title, notif_body)) = self.notification {
+            container = container
+                .child(
                     div()
                         .w(px(1.0))
                         .h(px(12.0))
@@ -193,9 +200,17 @@ impl RenderOnce for DynamicCenterWidget {
                                 .text_color(beskar_theme::Theme::text_secondary())
                                 .child(notif_body),
                         ),
-                )
-            })
-            .when(has_media && !has_notification, |this| {
+                );
+        } else {
+            // Divider hairline between Date/Clock and Music
+            container = container.child(
+                div()
+                    .w(px(1.0))
+                    .h(px(12.0))
+                    .bg(beskar_theme::Theme::subtle_border()),
+            );
+
+            if has_media {
                 let play_icon = if self.is_playing {
                     IconName::Pause
                 } else {
@@ -217,80 +232,105 @@ impl RenderOnce for DynamicCenterWidget {
                     (3.0, 3.0, 3.0, 3.0)
                 };
 
-                this.child(
-                    // Subtle vertical divider hairline
-                    div()
-                        .w(px(1.0))
-                        .h(px(12.0))
-                        .bg(beskar_theme::Theme::subtle_border()),
-                )
-                .child(
-                    // 4-bar dynamic audio equalizer matching reference screenshot
-                    div()
-                        .flex()
-                        .items_end()
-                        .gap(px(2.0))
-                        .h(px(12.0))
-                        .child(
-                            div()
-                                .w(px(2.0))
-                                .h(px(h0))
-                                .rounded(px(1.0))
-                                .bg(beskar_theme::Theme::accent()),
-                        )
-                        .child(
-                            div()
-                                .w(px(2.0))
-                                .h(px(h1))
-                                .rounded(px(1.0))
-                                .bg(beskar_theme::Theme::accent()),
-                        )
-                        .child(
-                            div()
-                                .w(px(2.0))
-                                .h(px(h2))
-                                .rounded(px(1.0))
-                                .bg(beskar_theme::Theme::accent()),
-                        )
-                        .child(
-                            div()
-                                .w(px(2.0))
-                                .h(px(h3))
-                                .rounded(px(1.0))
-                                .bg(beskar_theme::Theme::accent()),
-                        ),
-                )
-                .child(
-                    // Media indicator with play/pause state
+                container = container
+                    .child(
+                        // 4-bar dynamic audio equalizer
+                        div()
+                            .flex()
+                            .items_end()
+                            .gap(px(2.0))
+                            .h(px(12.0))
+                            .child(
+                                div()
+                                    .w(px(2.0))
+                                    .h(px(h0))
+                                    .rounded(px(1.0))
+                                    .bg(beskar_theme::Theme::accent()),
+                            )
+                            .child(
+                                div()
+                                    .w(px(2.0))
+                                    .h(px(h1))
+                                    .rounded(px(1.0))
+                                    .bg(beskar_theme::Theme::accent()),
+                            )
+                            .child(
+                                div()
+                                    .w(px(2.0))
+                                    .h(px(h2))
+                                    .rounded(px(1.0))
+                                    .bg(beskar_theme::Theme::accent()),
+                            )
+                            .child(
+                                div()
+                                    .w(px(2.0))
+                                    .h(px(h3))
+                                    .rounded(px(1.0))
+                                    .bg(beskar_theme::Theme::accent()),
+                            ),
+                    )
+                    .child(
+                        // Media pill with play/pause and click to expand
+                        div()
+                            .flex()
+                            .items_center()
+                            .gap(px(6.0))
+                            .text_xs()
+                            .text_color(beskar_theme::Theme::fg())
+                            .child(
+                                Button::new("dyn-play-pause")
+                                    .ghost()
+                                    .compact()
+                                    .icon(Icon::new(play_icon).size(px(12.0)))
+                                    .when_some(on_play_pause, |btn, cb| {
+                                        btn.on_click(move |_, _, _| (cb)())
+                                    }),
+                            )
+                            .child(
+                                div()
+                                    .max_w(px(220.0))
+                                    .overflow_hidden()
+                                    .px(px(4.0))
+                                    .py(px(2.0))
+                                    .rounded_md()
+                                    .hover(|s| s.bg(beskar_theme::Theme::bg_secondary()).cursor_pointer())
+                                    .when_some(on_media, |el, cb| {
+                                        el.on_mouse_down(MouseButton::Left, move |_, window, cx| (cb)(window, cx))
+                                    })
+                                    .child(media_text),
+                            ),
+                    );
+            } else {
+                // Default Idle Music Pill (always visible by default, clicks to expand music card)
+                let on_media_idle = on_media_click.clone();
+                container = container.child(
                     div()
                         .flex()
                         .items_center()
-                        .gap(px(6.0))
-                        .text_xs()
-                        .text_color(beskar_theme::Theme::fg())
+                        .gap(px(5.0))
+                        .px(px(6.0))
+                        .py(px(2.0))
+                        .rounded_md()
+                        .hover(|s| s.bg(beskar_theme::Theme::bg_secondary()).cursor_pointer())
+                        .when_some(on_media_idle, |el, cb| {
+                            el.on_mouse_down(MouseButton::Left, move |_, window, cx| (cb)(window, cx))
+                        })
                         .child(
-                            Button::new("dyn-play-pause")
-                                .ghost()
-                                .compact()
-                                .icon(Icon::new(play_icon).size(px(12.0)))
-                                .when_some(on_play_pause, |btn, cb| {
-                                    btn.on_click(move |_, _, _| (cb)())
-                                }),
+                            Icon::new(IconName::Music)
+                                .size(px(12.0))
+                                .text_color(beskar_theme::Theme::accent()),
                         )
                         .child(
                             div()
-                                .max_w(px(240.0))
-                                .overflow_hidden()
-                                .px(px(4.0))
-                                .py(px(2.0))
-                                .rounded_md()
-                                .hover(|s| s.bg(beskar_theme::Theme::bg_secondary()).cursor_pointer())
-                                .when_some(on_media, |el, cb| {
-                                    el.on_mouse_down(MouseButton::Left, move |_, window, cx| (cb)(window, cx))
-                                })
-                                .child(media_text),
+                                .text_xs()
+                                .font_weight(FontWeight::MEDIUM)
+                                .text_color(beskar_theme::Theme::text_secondary())
+                                .child("Music"),
                         ),
-                )
-            })
+                );
+            }
+        }
+
+        container
     }
 }

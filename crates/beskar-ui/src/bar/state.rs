@@ -49,6 +49,8 @@ pub struct BarState {
     pub workspaces: Vec<WorkspaceInfo>,
     pub active_ws: Option<u64>,
     pub active_window: Option<WindowInfo>,
+    pub workspace_windows: Vec<WindowInfo>,
+    pub all_windows: Vec<WindowInfo>,
     pub time_str: String,
     pub date_str: Option<String>,
     pub media: Option<(String, String, bool)>,
@@ -100,6 +102,7 @@ pub type BarTrayMenuCallback = Arc<dyn Fn(String, &mut gpui_kit::Window, &mut gp
 pub struct BarActions {
     pub on_select_ws: Option<Arc<dyn Fn(u64) + Send + Sync>>,
     pub on_scroll_ws: Option<Arc<dyn Fn(i32) + Send + Sync>>,
+    pub on_select_window: Option<Arc<dyn Fn(u64) + Send + Sync>>,
     pub on_play_pause: Option<Arc<dyn Fn() + Send + Sync>>,
     pub on_volume_click: Option<Arc<dyn Fn() + Send + Sync>>,
     pub on_volume_scroll: Option<Arc<dyn Fn(i32) + Send + Sync>>,
@@ -116,4 +119,3 @@ pub struct BarActions {
     pub on_window_click: Option<Arc<dyn Fn() + Send + Sync>>,
     pub on_window_close: Option<Arc<dyn Fn() + Send + Sync>>,
 }
-

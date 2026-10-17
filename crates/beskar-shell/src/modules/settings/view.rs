@@ -12,39 +12,42 @@ use super::pages::*;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SettingsCategory {
     Appearance,
+    Keybindings,
+    Extensions,
     Apps,
     Media,
     LockScreen,
     System,
     Record,
     Notifications,
-    Keybindings,
     General,
 }
 
 impl SettingsCategory {
-    pub const ALL: [Self; 9] = [
+    pub const ALL: [Self; 10] = [
         Self::Appearance,
+        Self::Keybindings,
+        Self::Extensions,
         Self::Apps,
         Self::Media,
         Self::LockScreen,
         Self::System,
         Self::Record,
         Self::Notifications,
-        Self::Keybindings,
         Self::General,
     ];
 
     pub fn title(&self) -> &'static str {
         match self {
             Self::Appearance => "Appearance",
+            Self::Keybindings => "Shortcuts & Keybinds",
+            Self::Extensions => "Extensions & Plugins",
             Self::Apps => "Apps",
             Self::Media => "Media",
             Self::LockScreen => "Lock Screen",
             Self::System => "System",
             Self::Record => "Screen Record",
             Self::Notifications => "Notifications",
-            Self::Keybindings => "Shortcuts",
             Self::General => "General",
         }
     }
@@ -52,13 +55,14 @@ impl SettingsCategory {
     pub fn icon(&self) -> IconName {
         match self {
             Self::Appearance => IconName::Palette,
+            Self::Keybindings => IconName::SquareTerminal,
+            Self::Extensions => IconName::Blocks,
             Self::Apps => IconName::LayoutGrid,
             Self::Media => IconName::Music,
             Self::LockScreen => IconName::Lock,
             Self::System => IconName::Cpu,
             Self::Record => IconName::Video,
             Self::Notifications => IconName::Bell,
-            Self::Keybindings => IconName::SquareTerminal,
             Self::General => IconName::Settings2,
         }
     }
@@ -391,7 +395,7 @@ impl RenderOnce for SettingsWidget {
                             ),
                     ),
             )
-            // ── Right Main Content Area (540px) ──
+            // ── Right Main Content Area (Responsive) ──
             .child(
                 div()
                     .id("settings-page-scroll")
@@ -437,6 +441,12 @@ impl RenderOnce for SettingsWidget {
                                 on_preset,
                             )
                         }
+                        SettingsCategory::Keybindings => {
+                            render_keybindings_page()
+                        }
+                        SettingsCategory::Extensions => {
+                            render_extensions_page()
+                        }
                         SettingsCategory::Apps => {
                             render_apps_page()
                         }
@@ -454,9 +464,6 @@ impl RenderOnce for SettingsWidget {
                         }
                         SettingsCategory::Notifications => {
                             render_notifications_page(config.notification_timeout_secs, on_test_notif)
-                        }
-                        SettingsCategory::Keybindings => {
-                            render_keybindings_page()
                         }
                         SettingsCategory::General => {
                             render_general_page()

@@ -191,6 +191,12 @@ impl Theme {
         gpui_kit::hsla(0.0, 0.0, 0.0, alpha)
     }
 
+    /// Full-screen backdrop scrim tint (Minflair/Capsule dim)
+    #[inline]
+    pub fn scrim() -> gpui_kit::Hsla {
+        Self::glass_dark(0.35)
+    }
+
     #[inline]
     pub fn font_family() -> &'static str {
         "Inter"
@@ -216,7 +222,6 @@ impl Theme {
         Self::bg_secondary()
     }
 
-
     #[inline]
     pub fn background() -> gpui_kit::Hsla {
         Self::bg()
@@ -237,7 +242,6 @@ impl Theme {
         Self::danger()
     }
 }
-
 
 /// Aesthetic Theme Tokens combining Suzuha's dark acrylic surfaces with iRiS's gold/amber & neutral palette.
 #[derive(Debug, Clone, Serialize, Deserialize)]

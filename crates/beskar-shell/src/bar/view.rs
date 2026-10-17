@@ -13,6 +13,7 @@ pub struct DesktopBarView {
     workspaces: Vec<WorkspaceInfo>,
     active_ws: u64,
     active_window: Option<WindowInfo>,
+    all_windows: Vec<WindowInfo>,
     time_str: String,
     date_str: String,
     battery_percent: u8,
@@ -265,10 +266,11 @@ impl DesktopBarView {
                         }
                         beskar_core::events::CompositorEvent::WindowsChanged(windows) => {
                             let focused = windows.iter().find(|w| w.is_focused).cloned();
+                            this.all_windows = windows;
                             if this.active_window != focused {
                                 this.active_window = focused;
-                                cx.notify();
                             }
+                            cx.notify();
                         }
                         _ => {}
                     }
@@ -307,6 +309,7 @@ impl DesktopBarView {
             workspaces,
             active_ws,
             active_window,
+            all_windows: Vec::new(),
             time_str,
             date_str,
             battery_percent: bat.percentage.round() as u8,
@@ -335,12 +338,21 @@ impl Render for DesktopBarView {
         );
 
         let active_notif = self.notifications.first().map(|n| (n.summary.clone(), n.body.clone()));
+        let current_ws_windows: Vec<WindowInfo> = self
+            .all_windows
+            .iter()
+            .filter(|w| w.workspace_id == Some(self.active_ws))
+            .cloned()
+            .collect();
+
         let state = beskar_ui::BarState {
             bar_style: self.config.bar_style,
             is_convex: self.is_convex,
             workspaces: self.workspaces.clone(),
             active_ws: Some(self.active_ws),
             active_window: self.active_window.clone(),
+            workspace_windows: current_ws_windows,
+            all_windows: self.all_windows.clone(),
             time_str: self.time_str.clone(),
             date_str: Some(self.date_str.clone()),
             media: self.media.clone(),
@@ -368,4 +380,3 @@ impl Render for DesktopBarView {
             .child(BeskarBar::from_state(state, actions))
     }
 }
-

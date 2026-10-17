@@ -27,6 +27,14 @@ pub fn build_bar_actions(
         });
     });
 
+    let comp_win_sel = compositor.clone();
+    let on_select_window = Arc::new(move |id: u64| {
+        let c = comp_win_sel.clone();
+        tokio::spawn(async move {
+            let _ = c.focus_window(id).await;
+        });
+    });
+
     let on_play_pause = Arc::new(|| {
         MprisService::play_pause();
     });
@@ -113,6 +121,7 @@ pub fn build_bar_actions(
     BarActions {
         on_select_ws: Some(on_select_ws),
         on_scroll_ws: Some(on_scroll_ws),
+        on_select_window: Some(on_select_window),
         on_play_pause: Some(on_play_pause),
         on_volume_click: Some(on_volume_click),
         on_volume_scroll: Some(on_volume_scroll),
@@ -130,4 +139,3 @@ pub fn build_bar_actions(
         on_window_close: Some(on_window_close),
     }
 }
-

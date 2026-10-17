@@ -1,370 +1,644 @@
-use beskar_services::{BatteryState, NotificationItem};
-use beskar_theme::Theme;
-use beskar_ui::widgets::dashboard::{card, CONTROLS, HEADER, SLIDER};
-use beskar_ui::widgets::style;
-use beskar_ui::{DimensionTracker, Slider};
-use gpui_kit::gpui::{
-    div, px, svg, AnyElement, App, FontWeight, InteractiveElement, IntoElement,
-    MouseDownEvent, ParentElement, StatefulInteractiveElement, Styled, Window,
-};
-use gpui_kit::prelude::*;
 use std::sync::Arc;
 
-pub struct DashboardCallbacks {
-    pub on_toggle_wifi: Arc<dyn Fn() + Send + Sync>,
-    pub on_toggle_bluetooth: Arc<dyn Fn() + Send + Sync>,
-    pub on_toggle_dnd: Arc<dyn Fn() + Send + Sync>,
-    pub on_mute: Arc<dyn Fn() + Send + Sync>,
-    pub on_clear_notifications: Arc<dyn Fn() + Send + Sync>,
-    pub on_remove_notification: Arc<dyn Fn(u32) + Send + Sync>,
-    pub on_open_settings: Arc<dyn Fn() + Send + Sync>,
-    pub on_media_play_pause: Arc<dyn Fn() + Send + Sync>,
-    pub on_media_prev: Arc<dyn Fn() + Send + Sync>,
-    pub on_media_next: Arc<dyn Fn() + Send + Sync>,
-    pub on_media_seek: Arc<dyn Fn(f64) + Send + Sync>,
+use gpui_kit::assets::IconName;
+use gpui_kit::component::button::{Button, ButtonVariants};
+use gpui_kit::component::Icon;
+use gpui_kit::gpui::{
+    div, px, AnyElement, FontWeight, InteractiveElement, IntoElement,
+    MouseButton, ParentElement, Styled,
+};
+
+use beskar_services::github::{ContributionDay, GithubProfile};
+use beskar_services::vitals::VitalsSnapshot;
+use beskar_theme::Theme;
+
+#[derive(Debug, Clone, Default)]
+pub struct GitStreakStats {
+    pub total_contributions: u32,
+    pub current_streak: u32,
+    pub longest_streak: u32,
 }
 
-pub fn render_header(
-    date: &str,
-    battery: Option<&BatteryState>,
-    on_settings: Arc<dyn Fn() + Send + Sync>,
-) -> AnyElement {
-    let mut header = div()
-        .id("dashboard-header")
-        .flex()
-        .items_center()
-        .justify_between()
-        .w_full()
-        .h(px(HEADER))
-        .flex_shrink_0()
-        .gap(px(8.0));
+pub fn calculate_streaks(contributions: &[ContributionDay]) -> GitStreakStats {
+    if contributions.is_empty() {
+        return GitStreakStats::default();
+    }
+    let total: u32 = contributions.iter().map(|d| d.count).sum();
+    let mut current_streak = 0;
+    let mut longest_streak = 0;
+    let mut current_run = 0;
 
-    let leading = div()
-        .id("dashboard-calendar")
-        .min_w_0()
-        .text_size(px(12.0))
-        .text_color(Theme::foreground_muted())
-        .whitespace_nowrap()
-        .text_ellipsis()
-        .child(date.to_string());
-
-    let mut trailing = div().flex().items_center().gap(px(8.0)).flex_shrink_0();
-    if let Some(bat) = battery {
-        let is_charging = bat.is_charging;
-        let pct = bat.percentage.round() as u32;
-        trailing = trailing.child(
-            div()
-                .flex()
-                .items_center()
-                .gap(px(4.0))
-                .text_size(px(12.0))
-                .child(
-                    svg()
-                        .path(if is_charging {
-                            "battery-charging.svg"
-                        } else if pct <= 20 {
-                            "battery-low.svg"
-                        } else {
-                            "battery-full.svg"
-                        })
-                        .size(px(16.0))
-                        .text_color(Theme::foreground_muted()),
-                )
-                .child(format!("{}%", pct)),
-        );
+    for day in contributions {
+        if day.count > 0 {
+            current_run += 1;
+            if current_run > longest_streak {
+                longest_streak = current_run;
+            }
+        } else {
+            current_run = 0;
+        }
     }
 
-    trailing = trailing.child(
-        div()
-            .id("dashboard-settings")
-            .size(px(28.0))
-            .flex_shrink_0()
-            .rounded_full()
-            .bg(style::surface())
-            .flex()
-            .items_center()
-            .justify_center()
-            .cursor_pointer()
-            .hover(|s| s.bg(style::hover()))
-            .on_click(move |_, _, _| on_settings())
-            .child(
-                svg()
-                    .path("settings.svg")
-                    .size(px(16.0))
-                    .text_color(Theme::foreground()),
-            ),
-    );
+    for day in contributions.iter().rev() {
+        if day.count > 0 {
+            current_streak += 1;
+        } else {
+            if current_streak == 0 {
+                continue;
+            }
+            break;
+        }
+    }
 
-    header = header.child(leading).child(trailing);
-    header.into_any_element()
+    GitStreakStats {
+        total_contributions: total,
+        current_streak,
+        longest_streak,
+    }
 }
 
-pub fn render_connectivity_pill(
-    id: &'static str,
-    title: &str,
-    subtitle: &str,
-    icon: &'static str,
-    enabled: bool,
-    on_toggle: Arc<dyn Fn() + Send + Sync>,
+#[derive(Debug, Clone)]
+pub struct DevPullRequest {
+    pub number: u32,
+    pub title: String,
+    pub repo: String,
+    pub status: &'static str,
+    pub url: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct DevRepoStatus {
+    pub name: String,
+    pub path: String,
+    pub branch: String,
+    pub is_dirty: bool,
+    pub modified_count: usize,
+}
+
+/// Header containing title, profile info, refresh button, and close button
+pub fn render_header(
+    profile: &GithubProfile,
+    is_fetching: bool,
+    on_refresh: Arc<dyn Fn() + Send + Sync>,
+    on_close: Arc<dyn Fn() + Send + Sync>,
 ) -> AnyElement {
-    let cb = on_toggle.clone();
+    let initials: String = profile
+        .name
+        .split_whitespace()
+        .filter_map(|w| w.chars().next())
+        .take(2)
+        .collect();
+    let initials = if initials.is_empty() {
+        "GH".to_string()
+    } else {
+        initials.to_uppercase()
+    };
+
     div()
-        .id(id)
-        .w_full()
-        .h(px(CONTROLS))
-        .flex_shrink_0()
-        .rounded(px(18.0))
-        .bg(style::surface())
-        .px(px(12.0))
         .flex()
-        .items_center()
+        .flex_col()
         .gap(px(10.0))
-        .cursor_pointer()
-        .hover(|s| s.bg(style::hover()))
-        .on_click(move |_, _, _| cb())
+        .w_full()
         .child(
+            // Top action bar
             div()
-                .id(format!("{id}-toggle"))
-                .size(px(40.0))
-                .flex_shrink_0()
-                .rounded_full()
-                .bg(if enabled {
-                    Theme::accent()
-                } else {
-                    style::background()
-                })
                 .flex()
                 .items_center()
-                .justify_center()
+                .justify_between()
+                .w_full()
                 .child(
-                    svg()
-                        .path(icon)
-                        .size(px(20.0))
-                        .text_color(if enabled {
-                            style::on_accent()
-                        } else {
-                            Theme::foreground_muted()
-                        }),
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap(px(8.0))
+                        .child(
+                            div()
+                                .flex()
+                                .items_center()
+                                .justify_center()
+                                .size(px(26.0))
+                                .rounded_full()
+                                .bg(Theme::accent_alpha(0.15))
+                                .child(Icon::new(IconName::Github).size(px(15.0)).text_color(Theme::accent())),
+                        )
+                        .child(
+                            div()
+                                .text_sm()
+                                .font_weight(FontWeight::BOLD)
+                                .text_color(Theme::fg())
+                                .child("GITHUB DEV DASHBOARD"),
+                        )
+                        .child(
+                            div()
+                                .px(px(6.0))
+                                .py(px(1.5))
+                                .rounded_full()
+                                .bg(Theme::accent_alpha(0.12))
+                                .border_1()
+                                .border_color(Theme::accent_alpha(0.3))
+                                .text_xs()
+                                .font_weight(FontWeight::SEMIBOLD)
+                                .text_color(Theme::accent())
+                                .child("LIVE"),
+                        ),
+                )
+                .child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap(px(6.0))
+                        .child(
+                            Button::new("dash-refresh")
+                                .ghost()
+                                .compact()
+                                .icon(Icon::new(IconName::RotateCcw).size(px(13.0)))
+                                .on_click(move |_, _, _| (on_refresh)()),
+                        )
+                        .child(
+                            Button::new("dash-close")
+                                .ghost()
+                                .compact()
+                                .icon(Icon::new(IconName::X).size(px(13.0)))
+                                .on_click(move |_, _, _| (on_close)()),
+                        ),
                 ),
         )
         .child(
+            // Profile card
             div()
-                .flex_1()
-                .min_w_0()
                 .flex()
-                .flex_col()
-                .gap(px(2.0))
+                .items_center()
+                .gap(px(12.0))
+                .p(px(10.0))
+                .rounded(px(12.0))
+                .bg(Theme::surface())
+                .border_1()
+                .border_color(Theme::border())
                 .child(
                     div()
-                        .text_size(px(15.0))
-                        .font_weight(FontWeight::MEDIUM)
-                        .text_ellipsis()
-                        .child(title.to_string()),
+                        .size(px(38.0))
+                        .rounded_full()
+                        .bg(Theme::accent_alpha(0.2))
+                        .border_1()
+                        .border_color(Theme::accent_alpha(0.4))
+                        .flex()
+                        .items_center()
+                        .justify_center()
+                        .text_sm()
+                        .font_weight(FontWeight::BOLD)
+                        .text_color(Theme::accent())
+                        .child(initials),
                 )
                 .child(
                     div()
-                        .text_size(px(12.0))
-                        .text_color(Theme::foreground_muted())
-                        .text_ellipsis()
-                        .child(subtitle.to_string()),
+                        .flex_1()
+                        .min_w_0()
+                        .flex()
+                        .flex_col()
+                        .gap(px(1.0))
+                        .child(
+                            div()
+                                .flex()
+                                .items_center()
+                                .gap(px(6.0))
+                                .child(
+                                    div()
+                                        .text_sm()
+                                        .font_weight(FontWeight::SEMIBOLD)
+                                        .text_color(Theme::fg())
+                                        .child(profile.name.clone()),
+                                )
+                                .child(
+                                    div()
+                                        .text_xs()
+                                        .text_color(Theme::foreground_muted())
+                                        .child(format!("@{}", profile.username)),
+                                ),
+                        )
+                        .child(
+                            div()
+                                .text_xs()
+                                .text_color(Theme::foreground_muted())
+                                .whitespace_nowrap()
+                                .text_ellipsis()
+                                .child(if is_fetching {
+                                    "Updating GitHub telemetry...".to_string()
+                                } else {
+                                    profile.bio.clone()
+                                }),
+                        ),
                 ),
         )
         .into_any_element()
 }
 
-pub fn render_sound_slider(
-    volume: u32,
-    is_muted: bool,
-    volume_tracker: &DimensionTracker,
-    on_mute: Arc<dyn Fn() + Send + Sync>,
-    on_mouse_down: impl Fn(&MouseDownEvent, &mut Window, &mut App) + 'static,
-) -> AnyElement {
-    let fraction = volume as f32 / 100.0;
-    let cb_mute = on_mute.clone();
-
-    let slider = Slider::new("dashboard-volume-slider")
-        .fraction(fraction)
-        .height(32.0)
-        .flex_1(true)
-        .icon(if is_muted {
-            "volume-x.svg"
-        } else {
-            "volume-2.svg"
-        })
-        .icon_size(20.0)
-        .track_bounds(volume_tracker)
-        .track_color(style::background())
-        .active_color(if is_muted {
-            Theme::foreground_muted()
-        } else {
-            Theme::accent()
-        })
-        .on_mouse_down(on_mouse_down);
-
-    card(18.0)
-        .id("dashboard-sound")
+/// Streak & Metric summaries (Total contributions, Current streak, Longest streak)
+pub fn render_streak_metrics(stats: &GitStreakStats) -> AnyElement {
+    div()
+        .flex()
+        .items_center()
+        .gap(px(8.0))
         .w_full()
-        .h(px(SLIDER))
-        .flex_shrink_0()
-        .px(px(12.0))
-        .py(px(10.0))
+        .child(render_metric_card(
+            "COMMITS",
+            &format!("{}", stats.total_contributions),
+            IconName::GitCommitHorizontal,
+            Theme::accent(),
+        ))
+        .child(render_metric_card(
+            "CURRENT STREAK",
+            &format!("{} days", stats.current_streak),
+            IconName::Flame,
+            Theme::warning(),
+        ))
+        .child(render_metric_card(
+            "LONGEST STREAK",
+            &format!("{} days", stats.longest_streak),
+            IconName::Activity,
+            Theme::success(),
+        ))
+        .into_any_element()
+}
+
+fn render_metric_card(
+    label: &'static str,
+    value: &str,
+    icon: IconName,
+    accent_color: gpui_kit::gpui::Hsla,
+) -> AnyElement {
+    div()
+        .flex_1()
+        .p(px(8.0))
+        .rounded(px(10.0))
+        .bg(Theme::surface())
+        .border_1()
+        .border_color(Theme::border())
         .flex()
         .flex_col()
-        .gap(px(6.0))
+        .gap(px(3.0))
         .child(
             div()
-                .h(px(22.0))
-                .flex_shrink_0()
                 .flex()
                 .items_center()
                 .justify_between()
                 .child(
                     div()
-                        .id("dashboard-mute")
-                        .text_size(px(16.0))
+                        .text_xs()
                         .font_weight(FontWeight::MEDIUM)
-                        .cursor_pointer()
-                        .on_click(move |_, _, _| cb_mute())
-                        .child("Sound"),
-                )
-                .child(
-                    div()
-                        .text_size(px(14.0))
                         .text_color(Theme::foreground_muted())
-                        .child(format!("{volume}%")),
-                ),
+                        .child(label),
+                )
+                .child(Icon::new(icon).size(px(13.0)).text_color(accent_color)),
         )
         .child(
             div()
-                .w_full()
-                .h(px(32.0))
-                .flex_shrink_0()
-                .flex()
-                .items_center()
-                .gap(px(8.0))
-                .child(slider),
+                .text_sm()
+                .font_weight(FontWeight::BOLD)
+                .text_color(Theme::fg())
+                .child(value.to_string()),
         )
         .into_any_element()
 }
 
-pub fn render_notifications_section(
-    items: &[NotificationItem],
-    on_clear: Arc<dyn Fn() + Send + Sync>,
-    on_remove: Arc<dyn Fn(u32) + Send + Sync>,
+/// 52-week Contribution Heatmap Grid
+pub fn render_heatmap_grid(
+    contributions: &[ContributionDay],
+    hovered_day: Option<&ContributionDay>,
+    on_hover_day: Arc<dyn Fn(Option<ContributionDay>) + Send + Sync>,
 ) -> AnyElement {
-    let count = items.len();
-    let cb_clear = on_clear.clone();
+    let mut weeks: Vec<Vec<ContributionDay>> = Vec::with_capacity(52);
+    let mut current_week = Vec::with_capacity(7);
 
-    let header = div()
-        .w_full()
-        .min_w_0()
-        .h(px(32.0))
-        .flex_shrink_0()
+    for day in contributions {
+        current_week.push(day.clone());
+        if current_week.len() == 7 {
+            weeks.push(current_week);
+            current_week = Vec::with_capacity(7);
+        }
+    }
+    if !current_week.is_empty() {
+        weeks.push(current_week);
+    }
+
+    let mut grid_row = div()
         .flex()
+        .gap(px(2.0))
         .items_center()
-        .justify_between()
+        .justify_start()
+        .py(px(4.0));
+
+    for (week_idx, week) in weeks.into_iter().enumerate() {
+        let mut col = div().flex().flex_col().gap(px(2.0));
+        for (day_idx, day) in week.into_iter().enumerate() {
+            let day_clone = day.clone();
+            let hover_cb = on_hover_day.clone();
+            let bg_color = match day.level {
+                0 => Theme::border().opacity(0.35),
+                1 => Theme::accent_alpha(0.28),
+                2 => Theme::accent_alpha(0.52),
+                3 => Theme::accent_alpha(0.78),
+                _ => Theme::accent(),
+            };
+
+            col = col.child(
+                div()
+                    .id(("heat-cell", week_idx * 7 + day_idx))
+                    .size(px(6.0))
+                    .rounded(px(1.5))
+                    .bg(bg_color)
+                    .cursor_pointer()
+                    .hover(|s| s.border_1().border_color(Theme::fg()))
+                    .on_mouse_down(MouseButton::Left, {
+                        let d = day_clone.clone();
+                        let h = hover_cb.clone();
+                        move |_, _, _| (h)(Some(d.clone()))
+                    }),
+            );
+        }
+        grid_row = grid_row.child(col);
+    }
+
+    div()
+        .flex()
+        .flex_col()
+        .gap(px(6.0))
+        .p(px(10.0))
+        .rounded(px(12.0))
+        .bg(Theme::surface())
+        .border_1()
+        .border_color(Theme::border())
         .child(
             div()
                 .flex()
                 .items_center()
-                .gap(px(8.0))
+                .justify_between()
+                .w_full()
                 .child(
                     div()
-                        .text_size(px(14.0))
-                        .font_weight(FontWeight::MEDIUM)
-                        .child("Notifications"),
+                        .text_xs()
+                        .font_weight(FontWeight::SEMIBOLD)
+                        .text_color(Theme::fg())
+                        .child("52-WEEK CONTRIBUTION HEATMAP"),
                 )
                 .child(
+                    // Legend
                     div()
-                        .px(px(6.0))
-                        .py(px(1.0))
-                        .rounded_full()
-                        .bg(style::surface())
-                        .text_size(px(12.0))
-                        .text_color(Theme::foreground_muted())
-                        .child(count.to_string()),
+                        .flex()
+                        .items_center()
+                        .gap(px(3.0))
+                        .child(div().text_xs().text_color(Theme::foreground_muted()).child("Less"))
+                        .child(div().size(px(6.0)).rounded(px(1.0)).bg(Theme::border().opacity(0.35)))
+                        .child(div().size(px(6.0)).rounded(px(1.0)).bg(Theme::accent_alpha(0.28)))
+                        .child(div().size(px(6.0)).rounded(px(1.0)).bg(Theme::accent_alpha(0.52)))
+                        .child(div().size(px(6.0)).rounded(px(1.0)).bg(Theme::accent_alpha(0.78)))
+                        .child(div().size(px(6.0)).rounded(px(1.0)).bg(Theme::accent()))
+                        .child(div().text_xs().text_color(Theme::foreground_muted()).child("More")),
                 ),
         )
-        .when(count > 0, |s| {
-            s.child(
-                div()
-                    .id("dashboard-clear-notifications")
-                    .size(px(28.0))
-                    .flex_shrink_0()
-                    .rounded(px(6.0))
-                    .flex()
-                    .items_center()
-                    .justify_center()
-                    .cursor_pointer()
-                    .hover(|s| s.bg(style::hover()))
-                    .on_click(move |_, _, _| cb_clear())
-                    .child(
-                        svg()
-                            .path("trash.svg")
-                            .size(px(16.0))
-                            .text_color(Theme::foreground_muted()),
-                    ),
-            )
-        });
-
-    let mut list = div()
-        .id("dashboard-notifications-list")
-        .flex_1()
-        .min_h_0()
-        .w_full()
-        .min_w_0()
-        .max_w_full()
-        .overflow_x_hidden()
-        .overflow_y_scroll()
-        .flex()
-        .flex_col()
-        .gap(px(6.0));
-
-    if count == 0 {
-        list = list.child(
+        .child(grid_row)
+        .child(
+            // Tooltip / Details pill
             div()
-                .w_full()
-                .flex_1()
-                .min_h(px(32.0))
-                .flex()
-                .items_center()
-                .justify_center()
-                .gap(px(10.0))
-                .child(
-                    svg()
-                        .path("bell.svg")
-                        .size(px(18.0))
-                        .text_color(Theme::foreground_muted().opacity(0.65)),
-                )
-                .child(
-                    div()
-                        .text_size(px(13.0))
-                        .text_color(Theme::foreground_muted())
-                        .child("No notifications"),
-                ),
-        );
-    }
+                .text_xs()
+                .text_color(Theme::foreground_muted())
+                .child(if let Some(day) = hovered_day {
+                    format!("● {} on {}", day.tooltip, day.date)
+                } else {
+                    "Click or hover any cell to inspect daily commit distribution.".to_string()
+                }),
+        )
+        .into_any_element()
+}
 
-    for item in items.iter().rev() {
-        let id = item.id;
-        let cb_rm = on_remove.clone();
-        let app_name = if !item.app_name.is_empty() {
-            &item.app_name
-        } else {
-            "Notification"
+/// Active Pull Requests Section
+pub fn render_active_prs(
+    prs: &[DevPullRequest],
+    on_open_pr: Arc<dyn Fn(String) + Send + Sync>,
+) -> AnyElement {
+    let mut list = div().flex().flex_col().gap(px(6.0)).w_full();
+
+    for (idx, pr) in prs.iter().enumerate() {
+        let pr_url = pr.url.clone();
+        let open_cb = on_open_pr.clone();
+        let (status_bg, status_fg) = match pr.status {
+            "Open" => (Theme::success_alpha(0.15), Theme::success()),
+            "Review" => (Theme::warning_alpha(0.15), Theme::warning()),
+            _ => (Theme::accent_alpha(0.15), Theme::accent()),
         };
 
         list = list.child(
             div()
-                .id(format!("dashboard-notification-{}", id))
-                .w_full()
-                .p(px(8.0))
-                .rounded(px(12.0))
-                .bg(style::surface())
+                .id(("pr-item", idx))
                 .flex()
                 .items_center()
                 .justify_between()
+                .p(px(7.0))
+                .rounded(px(8.0))
+                .bg(Theme::bg())
+                .border_1()
+                .border_color(Theme::border().opacity(0.6))
+                .cursor_pointer()
+                .hover(|s| s.bg(Theme::surface_hover()).border_color(Theme::accent_alpha(0.4)))
+                .on_mouse_down(MouseButton::Left, move |_, _, _| {
+                    (open_cb)(pr_url.clone());
+                })
+                .child(
+                    div()
+                        .flex_1()
+                        .min_w_0()
+                        .flex()
+                        .items_center()
+                        .gap(px(6.0))
+                        .child(
+                            div()
+                                .px(px(5.0))
+                                .py(px(1.0))
+                                .rounded(px(4.0))
+                                .bg(Theme::surface())
+                                .text_xs()
+                                .font_weight(FontWeight::BOLD)
+                                .text_color(Theme::accent())
+                                .child(pr.repo.clone()),
+                        )
+                        .child(
+                            div()
+                                .text_xs()
+                                .text_color(Theme::fg())
+                                .whitespace_nowrap()
+                                .text_ellipsis()
+                                .child(format!("#{} {}", pr.number, pr.title)),
+                        ),
+                )
+                .child(
+                    div()
+                        .px(px(6.0))
+                        .py(px(1.5))
+                        .rounded_full()
+                        .bg(status_bg)
+                        .text_xs()
+                        .font_weight(FontWeight::SEMIBOLD)
+                        .text_color(status_fg)
+                        .child(pr.status),
+                ),
+        );
+    }
+
+    div()
+        .flex()
+        .flex_col()
+        .gap(px(8.0))
+        .p(px(10.0))
+        .rounded(px(12.0))
+        .bg(Theme::surface())
+        .border_1()
+        .border_color(Theme::border())
+        .child(
+            div()
+                .flex()
+                .items_center()
+                .justify_between()
+                .child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap(px(6.0))
+                        .child(Icon::new(IconName::GitPullRequest).size(px(14.0)).text_color(Theme::accent()))
+                        .child(
+                            div()
+                                .text_xs()
+                                .font_weight(FontWeight::SEMIBOLD)
+                                .text_color(Theme::fg())
+                                .child("ACTIVE PULL REQUESTS"),
+                        ),
+                )
+                .child(
+                    div()
+                        .text_xs()
+                        .font_weight(FontWeight::BOLD)
+                        .text_color(Theme::accent())
+                        .child(format!("{} active", prs.len())),
+                ),
+        )
+        .child(list)
+        .into_any_element()
+}
+
+/// System Dev Vitals (CPU, RAM, Storage)
+pub fn render_system_vitals(vitals: &VitalsSnapshot) -> AnyElement {
+    let cpu_pct = vitals.cpu.global_usage_percent.round().clamp(0.0, 100.0) as u32;
+    let ram_pct = vitals.memory.usage_percent.round().clamp(0.0, 100.0) as u32;
+    let disk = vitals.disks.first();
+    let disk_pct = disk.map(|d| d.usage_percent.round().clamp(0.0, 100.0) as u32).unwrap_or(48);
+
+    div()
+        .flex()
+        .flex_col()
+        .gap(px(8.0))
+        .p(px(10.0))
+        .rounded(px(12.0))
+        .bg(Theme::surface())
+        .border_1()
+        .border_color(Theme::border())
+        .child(
+            div()
+                .flex()
+                .items_center()
+                .gap(px(6.0))
+                .child(Icon::new(IconName::Cpu).size(px(14.0)).text_color(Theme::accent()))
+                .child(
+                    div()
+                        .text_xs()
+                        .font_weight(FontWeight::SEMIBOLD)
+                        .text_color(Theme::fg())
+                        .child("SYSTEM DEV VITALS"),
+                ),
+        )
+        .child(
+            div()
+                .flex()
+                .items_center()
                 .gap(px(8.0))
+                .w_full()
+                .child(render_vital_bar("CPU", &format!("{}%", cpu_pct), cpu_pct, Theme::accent()))
+                .child(render_vital_bar(
+                    "RAM",
+                    &format!("{}%", ram_pct),
+                    ram_pct,
+                    Theme::info(),
+                ))
+                .child(render_vital_bar(
+                    "DISK",
+                    &format!("{}%", disk_pct),
+                    disk_pct,
+                    Theme::warning(),
+                )),
+        )
+        .into_any_element()
+}
+
+fn render_vital_bar(
+    label: &'static str,
+    val_str: &str,
+    percent: u32,
+    bar_color: gpui_kit::gpui::Hsla,
+) -> AnyElement {
+    div()
+        .flex_1()
+        .flex()
+        .flex_col()
+        .gap(px(4.0))
+        .p(px(7.0))
+        .rounded(px(8.0))
+        .bg(Theme::bg())
+        .border_1()
+        .border_color(Theme::border().opacity(0.6))
+        .child(
+            div()
+                .flex()
+                .items_center()
+                .justify_between()
+                .child(div().text_xs().text_color(Theme::foreground_muted()).child(label))
+                .child(div().text_xs().font_weight(FontWeight::BOLD).text_color(Theme::fg()).child(val_str.to_string())),
+        )
+        .child(
+            div()
+                .w_full()
+                .h(px(4.0))
+                .rounded_full()
+                .bg(Theme::border())
+                .child(
+                    div()
+                        .h_full()
+                        .w(gpui_kit::gpui::relative(percent as f32 / 100.0))
+                        .rounded_full()
+                        .bg(bar_color),
+                ),
+        )
+        .into_any_element()
+}
+
+/// Active Repositories
+pub fn render_active_repos(repos: &[DevRepoStatus]) -> AnyElement {
+    let mut list = div().flex().flex_col().gap(px(6.0)).w_full();
+
+    for (idx, repo) in repos.iter().enumerate() {
+        let (status_icon, status_color, status_text) = if repo.is_dirty {
+            (IconName::Sparkles, Theme::warning(), format!("* modified ({} files)", repo.modified_count))
+        } else {
+            (IconName::Check, Theme::success(), "clean".to_string())
+        };
+
+        list = list.child(
+            div()
+                .id(("repo-item", idx))
+                .flex()
+                .items_center()
+                .justify_between()
+                .p(px(7.0))
+                .rounded(px(8.0))
+                .bg(Theme::bg())
+                .border_1()
+                .border_color(Theme::border().opacity(0.6))
                 .child(
                     div()
                         .flex_1()
@@ -374,48 +648,90 @@ pub fn render_notifications_section(
                         .gap(px(2.0))
                         .child(
                             div()
-                                .text_size(px(13.0))
-                                .font_weight(FontWeight::MEDIUM)
-                                .text_ellipsis()
-                                .child(item.summary.clone()),
+                                .flex()
+                                .items_center()
+                                .gap(px(5.0))
+                                .child(Icon::new(IconName::Folder).size(px(12.0)).text_color(Theme::accent()))
+                                .child(
+                                    div()
+                                        .text_xs()
+                                        .font_weight(FontWeight::SEMIBOLD)
+                                        .text_color(Theme::fg())
+                                        .child(repo.name.clone()),
+                                )
+                                .child(
+                                    div()
+                                        .flex()
+                                        .items_center()
+                                        .gap(px(3.0))
+                                        .child(Icon::new(IconName::GitBranch).size(px(11.0)).text_color(Theme::foreground_muted()))
+                                        .child(
+                                            div()
+                                                .text_xs()
+                                                .text_color(Theme::foreground_muted())
+                                                .child(repo.branch.clone()),
+                                        ),
+                                ),
                         )
                         .child(
                             div()
-                                .text_size(px(11.0))
+                                .text_xs()
                                 .text_color(Theme::foreground_muted())
+                                .whitespace_nowrap()
                                 .text_ellipsis()
-                                .child(format!("{}: {}", app_name, item.body)),
+                                .child(repo.path.clone()),
                         ),
                 )
                 .child(
                     div()
-                        .id(format!("dashboard-notif-close-{}", id))
-                        .size(px(22.0))
-                        .flex_shrink_0()
-                        .rounded_full()
                         .flex()
                         .items_center()
-                        .justify_center()
-                        .cursor_pointer()
-                        .hover(|s| s.bg(style::hover()))
-                        .on_click(move |_, _, _| cb_rm(id))
-                        .child(
-                            svg()
-                                .path("close.svg")
-                                .size(px(12.0))
-                                .text_color(Theme::foreground_muted()),
-                        ),
+                        .gap(px(4.0))
+                        .text_xs()
+                        .font_weight(FontWeight::MEDIUM)
+                        .text_color(status_color)
+                        .child(Icon::new(status_icon).size(px(11.0)).text_color(status_color))
+                        .child(status_text),
                 ),
         );
     }
 
     div()
-        .w_full()
-        .h_full()
         .flex()
         .flex_col()
-        .gap(px(4.0))
-        .child(header)
+        .gap(px(8.0))
+        .p(px(10.0))
+        .rounded(px(12.0))
+        .bg(Theme::surface())
+        .border_1()
+        .border_color(Theme::border())
+        .child(
+            div()
+                .flex()
+                .items_center()
+                .justify_between()
+                .child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap(px(6.0))
+                        .child(Icon::new(IconName::Folder).size(px(14.0)).text_color(Theme::accent()))
+                        .child(
+                            div()
+                                .text_xs()
+                                .font_weight(FontWeight::SEMIBOLD)
+                                .text_color(Theme::fg())
+                                .child("ACTIVE REPOSITORIES"),
+                        ),
+                )
+                .child(
+                    div()
+                        .text_xs()
+                        .font_weight(FontWeight::BOLD)
+                        .text_color(Theme::accent())
+                        .child(format!("{} projects", repos.len())),
+                ),
+        )
         .child(list)
         .into_any_element()
 }

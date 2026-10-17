@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use gpui_kit::component::button::{Button, ButtonVariants};
 use gpui_kit::component::switch::Switch;
+use gpui_kit::component::tag::Tag;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 
@@ -434,16 +435,49 @@ pub fn render_keybindings_page() -> gpui::Div {
         .flex_col()
         .gap(px(12.0))
         .child(
-            settings_card("Shell Global Shortcuts")
+            settings_card("Window Management (Niri / Hyprland)")
                 .child(settings_row(
-                    "App Launcher",
-                    "Fuzzy search desktop applications & quick launch",
+                    "Close Active Window",
+                    "Terminate the currently focused application window",
+                    kbd_chip("Super + Q"),
+                ))
+                .child(settings_row(
+                    "Toggle Floating / Tile",
+                    "Switch active window between tiling column and floating layer",
+                    kbd_chip("Super + Space"),
+                ))
+                .child(settings_row(
+                    "Toggle Fullscreen Mode",
+                    "Expand active window across entire workspace area",
+                    kbd_chip("Super + F"),
+                ))
+                .child(settings_row(
+                    "Spawn Terminal Emulator",
+                    "Open default GPU-accelerated terminal (Alacritty / Foot / Kitty)",
+                    kbd_chip("Super + Return"),
+                )),
+        )
+        .child(
+            settings_card("Shell Surfaces & Omni-Launcher")
+                .child(settings_row(
+                    "Unified Omni-Launcher & Calculator",
+                    "Fuzzy desktop search, math evaluation & power actions",
                     kbd_chip("Super + D"),
                 ))
                 .child(settings_row(
                     "Control Center",
-                    "Quick toggles for Wi-Fi, Bluetooth, volume & battery",
+                    "Quick toggles matrix, PipeWire sink & brightness sliders",
                     kbd_chip("Super + C"),
+                ))
+                .child(settings_row(
+                    "GitHub Dev Dashboard",
+                    "52-week contribution heatmap, commit streaks & vitals drawer",
+                    kbd_chip("Super + G"),
+                ))
+                .child(settings_row(
+                    "Clipboard History",
+                    "Search and paste recent text and image clips",
+                    kbd_chip("Super + V"),
                 ))
                 .child(settings_row(
                     "Power Menu",
@@ -451,14 +485,175 @@ pub fn render_keybindings_page() -> gpui::Div {
                     kbd_chip("Super + X"),
                 ))
                 .child(settings_row(
-                    "Settings",
-                    "Open this preferences customizer window",
+                    "Desktop Preferences",
+                    "Open this standalone preferences customizer window",
                     kbd_chip("Super + S"),
                 ))
                 .child(settings_row(
                     "Lock Screen",
                     "Lock the active display with clock and password prompt",
                     kbd_chip("Super + L"),
+                )),
+        )
+        .child(
+            settings_card("Media & Hardware Audio")
+                .child(settings_row(
+                    "Play / Pause Active Media",
+                    "Toggle playback for currently active MPRIS media source",
+                    kbd_chip("XF86AudioPlay"),
+                ))
+                .child(settings_row(
+                    "Next Track",
+                    "Skip forward to next audio track in player queue",
+                    kbd_chip("XF86AudioNext"),
+                ))
+                .child(settings_row(
+                    "Previous Track",
+                    "Return to previous audio track in player queue",
+                    kbd_chip("XF86AudioPrev"),
+                ))
+                .child(settings_row(
+                    "Raise Master Volume",
+                    "Increase master PipeWire audio output level by 5%",
+                    kbd_chip("XF86AudioRaiseVolume"),
+                ))
+                .child(settings_row(
+                    "Lower Master Volume",
+                    "Decrease master PipeWire audio output level by 5%",
+                    kbd_chip("XF86AudioLowerVolume"),
+                ))
+                .child(settings_row(
+                    "Mute Master Output",
+                    "Toggle audio mute state on active sink",
+                    kbd_chip("XF86AudioMute"),
+                )),
+        )
+        .child(
+            settings_card("Display & Screen Capture")
+                .child(settings_row(
+                    "Full Display Screenshot",
+                    "Capture entire desktop surface directly to clipboard",
+                    kbd_chip("Print"),
+                ))
+                .child(settings_row(
+                    "Interactive Area Snipping",
+                    "Select rectangular display region for screenshot or OCR",
+                    kbd_chip("Super + Shift + S"),
+                )),
+        )
+}
+
+// ── Package & Extension Manager Page ──
+pub fn render_extensions_page() -> gpui::Div {
+    div()
+        .flex()
+        .flex_col()
+        .gap(px(12.0))
+        .child(
+            settings_card("Package & Extension Ecosystem")
+                .child(settings_row(
+                    "Extension Runtime",
+                    "Sandboxed dynamic widgets loaded from ~/.local/share/beskar/extensions",
+                    div()
+                        .px(px(8.0))
+                        .py(px(4.0))
+                        .rounded(px(6.0))
+                        .bg(beskar_theme::Theme::success_alpha(0.20))
+                        .text_xs()
+                        .font_weight(FontWeight::BOLD)
+                        .text_color(beskar_theme::Theme::success())
+                        .child("4 Active · 3 Available"),
+                )),
+        )
+        .child(
+            settings_card("Core Installed Extensions")
+                .child(settings_row(
+                    "beskar-cava-visualizer (v0.2.1)",
+                    "4-bar dynamic audio frequency visualizer integrated into the center notch",
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap(px(8.0))
+                        .child(Tag::primary().child("Active"))
+                        .child(Switch::new("ext-cava-switch").checked(true)),
+                ))
+                .child(settings_row(
+                    "beskar-github-telemetry (v1.0.0)",
+                    "52-week contribution heatmap, commit streaks, and dev metrics panel",
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap(px(8.0))
+                        .child(Tag::primary().child("Active"))
+                        .child(Switch::new("ext-gh-switch").checked(true)),
+                ))
+                .child(settings_row(
+                    "beskar-weather-notch (v0.4.0)",
+                    "Dynamic weather condition badge with temperature & 24h precipitation forecast",
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap(px(8.0))
+                        .child(Tag::primary().child("Active"))
+                        .child(Switch::new("ext-weather-switch").checked(true)),
+                ))
+                .child(settings_row(
+                    "beskar-clipboard-preview (v0.9.3)",
+                    "Rich clipboard history manager with image and text previews",
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap(px(8.0))
+                        .child(Tag::primary().child("Active"))
+                        .child(Switch::new("ext-clip-switch").checked(true)),
+                )),
+        )
+        .child(
+            settings_card("Community Extension Store")
+                .child(settings_row(
+                    "beskar-pomodoro-timer (v0.1.0)",
+                    "Productivity focus timer pill with ambient sound notifications",
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap(px(8.0))
+                        .child(Tag::secondary().child("Community"))
+                        .child(
+                            Button::new("install-pomodoro")
+                                .primary()
+                                .compact()
+                                .label("Install"),
+                        ),
+                ))
+                .child(settings_row(
+                    "beskar-spotify-lyrics (v0.3.2)",
+                    "Real-time synced lyrics streaming inside the center music player",
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap(px(8.0))
+                        .child(Tag::secondary().child("Community"))
+                        .child(
+                            Button::new("install-lyrics")
+                                .primary()
+                                .compact()
+                                .label("Install"),
+                        ),
+                ))
+                .child(settings_row(
+                    "beskar-docker-monitor (v0.1.4)",
+                    "Container telemetry and quick restart actions in the dev drawer",
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap(px(8.0))
+                        .child(Tag::secondary().child("Community"))
+                        .child(
+                            Button::new("install-docker")
+                                .primary()
+                                .compact()
+                                .label("Install"),
+                        ),
                 )),
         )
 }

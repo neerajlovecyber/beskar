@@ -1,5 +1,9 @@
-use std::path::{Path, PathBuf};
+pub mod calc;
+pub mod items;
+
+use std::path::PathBuf;
 use beskar_core::models::AppItem;
+use beskar_services::ClipboardService;
 use beskar_theme::Theme;
 use gpui_kit::assets::IconName;
 use gpui_kit::component::button::{Button, ButtonVariants};
@@ -9,11 +13,13 @@ use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 
 use crate::panel_host::{KeyboardInteractivity, LayerAnchor, PanelHost, PanelModule};
+use items::{search_unified, LauncherCategory, LauncherResult};
 
-/// Dedicated, autonomous View for the App Launcher
+/// Unified Bottom Floating Launcher (Spotlight / Omni-Bar)
 pub struct LauncherView {
     query: String,
     selected_idx: usize,
+    category: LauncherCategory,
     apps: Vec<AppItem>,
     focus_handle: FocusHandle,
 }
@@ -22,15 +28,15 @@ impl PanelModule for LauncherView {
     const ID: &'static str = "launcher";
 
     fn size() -> Size<Pixels> {
-        Size::new(px(700.0), px(520.0))
+        Size::new(px(680.0), px(460.0))
     }
 
     fn anchor() -> LayerAnchor {
-        LayerAnchor::TOP
+        LayerAnchor::BOTTOM
     }
 
     fn margin() -> (Pixels, Pixels, Pixels, Pixels) {
-        (px(90.0), px(0.0), px(0.0), px(0.0))
+        (px(0.0), px(0.0), px(54.0), px(0.0))
     }
 
     fn keyboard_interactivity() -> KeyboardInteractivity {
@@ -50,66 +56,40 @@ impl LauncherView {
         Self {
             query: String::new(),
             selected_idx: 0,
+            category: LauncherCategory::All,
             apps,
             focus_handle,
         }
     }
 
-    /// Pure filtering and ranking function matching Minflair filterApps mechanics.
-    pub fn filter_and_rank(apps: &[AppItem], query: &str) -> Vec<AppItem> {
-        let q = query.trim().to_lowercase();
-        if q.is_empty() {
-            return apps.to_vec();
+    pub fn execute_item(&self, item: &LauncherResult, cx: &mut App) {
+        match item {
+            LauncherResult::Calculation { formatted, .. } => {
+                ClipboardService::new().copy_text(formatted);
+                PanelHost::close(cx);
+            }
+            LauncherResult::App(app) => {
+                let _ = beskar_services::launch_app(&app.exec);
+                PanelHost::close(cx);
+            }
+            LauncherResult::Setting(_) => {
+                PanelHost::close(cx);
+                crate::modules::toggle_settings(cx);
+            }
+            LauncherResult::Power(action) => {
+                let cmd = action.default_command();
+                let is_lock = *action == crate::modules::power_menu::PowerAction::Lock;
+                PanelHost::close(cx);
+                if is_lock {
+                    crate::modules::toggle_lockscreen(cx);
+                } else {
+                    let parts: Vec<String> = cmd.split_whitespace().map(|s| s.to_string()).collect();
+                    if let Some((exe, args)) = parts.split_first() {
+                        let _ = std::process::Command::new(exe).args(args).spawn();
+                    }
+                }
+            }
         }
-
-        struct ScoredApp {
-            app: AppItem,
-            score: u32,
-        }
-
-        let mut scored: Vec<ScoredApp> = Vec::new();
-        for app in apps {
-            let name_lower = app.name.to_lowercase();
-            let local_lower = app.local_name.to_lowercase();
-            let cat_lower = app.categories.to_lowercase();
-            let exec_lower = app.exec.to_lowercase();
-
-            let score = if name_lower.starts_with(&q) {
-                10
-            } else if local_lower.starts_with(&q) {
-                20
-            } else if name_lower.split_whitespace().any(|w| w.starts_with(&q)) {
-                30
-            } else if name_lower.contains(&q) {
-                40
-            } else if local_lower.contains(&q) {
-                50
-            } else if cat_lower.contains(&q) {
-                60
-            } else if exec_lower.contains(&q) {
-                70
-            } else {
-                continue;
-            };
-
-            scored.push(ScoredApp {
-                app: app.clone(),
-                score,
-            });
-        }
-
-        scored.sort_by(|a, b| {
-            a.score
-                .cmp(&b.score)
-                .then_with(|| a.app.name.to_lowercase().cmp(&b.app.name.to_lowercase()))
-        });
-
-        scored.into_iter().map(|s| s.app).collect()
-    }
-
-    pub fn launch(&self, cmd: &str, cx: &mut App) {
-        let _ = beskar_services::launch_app(cmd);
-        PanelHost::close(cx);
     }
 }
 
@@ -121,8 +101,8 @@ impl Focusable for LauncherView {
 
 impl Render for LauncherView {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let filtered_apps = Self::filter_and_rank(&self.apps, &self.query);
-        let total_count = filtered_apps.len();
+        let results = search_unified(&self.apps, &self.query, self.category);
+        let total_count = results.len();
         let selected_idx = self.selected_idx.min(total_count.saturating_sub(1));
 
         let theme_bg = Theme::bg();
@@ -131,27 +111,28 @@ impl Render for LauncherView {
         let theme_muted = Theme::muted();
         let theme_border = Theme::border();
         let theme_bg_secondary = Theme::bg_secondary();
+        let current_category = self.category;
 
         div()
-            .id("launcher-card")
-            .w(px(700.0))
-            .max_h(px(520.0))
+            .id("launcher-unified-card")
+            .w(px(680.0))
+            .max_h(px(460.0))
             .flex()
             .flex_col()
-            .p(px(16.0))
-            .rounded(px(32.0))
+            .p(px(14.0))
+            .rounded(px(24.0))
             .bg(theme_bg)
             .border_1()
             .border_color(theme_border)
             .shadow_2xl()
             .overflow_hidden()
-            .gap(px(12.0))
+            .gap(px(10.0))
             .track_focus(&self.focus_handle)
-            .key_context("Launcher")
+            .key_context("UnifiedLauncher")
             .on_key_down(cx.listener(move |this, event: &KeyDownEvent, _window, cx| {
                 let key = &event.keystroke.key;
-                let filtered = Self::filter_and_rank(&this.apps, &this.query);
-                let count = filtered.len();
+                let active_results = search_unified(&this.apps, &this.query, this.category);
+                let count = active_results.len();
 
                 if key == "escape" {
                     PanelHost::close(cx);
@@ -168,9 +149,17 @@ impl Render for LauncherView {
                         cx.notify();
                     }
                     cx.stop_propagation();
+                } else if key == "tab" {
+                    let cats = LauncherCategory::ALL;
+                    let current_pos = cats.iter().position(|&c| c == this.category).unwrap_or(0);
+                    let next_pos = (current_pos + 1) % cats.len();
+                    this.category = cats[next_pos];
+                    this.selected_idx = 0;
+                    cx.notify();
+                    cx.stop_propagation();
                 } else if key == "enter" {
-                    if let Some(app) = filtered.get(this.selected_idx) {
-                        this.launch(&app.exec, cx);
+                    if let Some(item) = active_results.get(this.selected_idx) {
+                        this.execute_item(item, cx);
                     }
                     cx.stop_propagation();
                 } else if key == "backspace" {
@@ -190,134 +179,229 @@ impl Render for LauncherView {
                     cx.stop_propagation();
                 }
             }))
-                    // Search Bar
+            // Top Search Input Box
+            .child(
+                div()
+                    .w_full()
+                    .h(px(42.0))
+                    .flex()
+                    .items_center()
+                    .px(px(14.0))
+                    .rounded(px(14.0))
+                    .bg(theme_bg_secondary)
+                    .border_1()
+                    .border_color(beskar_theme::Theme::subtle_border())
+                    .gap(px(10.0))
+                    .child(
+                        Icon::new(IconName::Search)
+                            .size(px(16.0))
+                            .text_color(theme_accent),
+                    )
+                    .child(
+                        div().flex_1().flex().items_center().child(
+                            if self.query.is_empty() {
+                                div()
+                                    .text_sm()
+                                    .font_weight(FontWeight::NORMAL)
+                                    .text_color(theme_muted)
+                                    .child("Search apps, settings, calculate (25 * 4), or power...")
+                            } else {
+                                div()
+                                    .text_sm()
+                                    .font_weight(FontWeight::SEMIBOLD)
+                                    .text_color(theme_fg)
+                                    .child(self.query.clone())
+                            },
+                        ),
+                    )
+                    .when(!self.query.is_empty(), |this| {
+                        this.child(
+                            Button::new("launcher-clear")
+                                .ghost()
+                                .compact()
+                                .icon(Icon::new(IconName::X).size(px(14.0)))
+                                .on_click(cx.listener(|this, _, _, cx| {
+                                    this.query.clear();
+                                    this.selected_idx = 0;
+                                    cx.notify();
+                                })),
+                        )
+                    })
                     .child(
                         div()
-                            .w_full()
-                            .h(px(40.0))
+                            .text_xs()
+                            .px(px(6.0))
+                            .py(px(2.0))
+                            .rounded_md()
+                            .bg(beskar_theme::Theme::bg())
+                            .text_color(theme_muted)
+                            .child("ESC"),
+                    ),
+            )
+            // Category Filter Chips
+            .child(
+                div()
+                    .w_full()
+                    .flex()
+                    .items_center()
+                    .gap(px(6.0))
+                    .py(px(2.0))
+                    .children(LauncherCategory::ALL.into_iter().enumerate().map(|(idx, cat)| {
+                        let is_active = cat == current_category;
+                        div()
+                            .id(("cat-chip", idx))
                             .flex()
                             .items_center()
-                            .px(px(16.0))
-                            .rounded(px(14.0))
-                            .bg(theme_bg_secondary)
-                            .gap(px(12.0))
-                            .child(
-                                Icon::new(IconName::Search)
-                                    .size(px(16.0))
-                                    .text_color(theme_muted),
-                            )
-                            .child(
-                                div().flex_1().flex().items_center().child(
-                                    if self.query.is_empty() {
-                                        div()
-                                            .text_sm()
-                                            .font_weight(FontWeight::NORMAL)
-                                            .text_color(theme_muted)
-                                            .child("Search applications...")
-                                    } else {
-                                        div()
-                                            .text_sm()
-                                            .font_weight(FontWeight::NORMAL)
-                                            .text_color(theme_fg)
-                                            .child(self.query.clone())
-                                    },
-                                ),
-                            )
-                            .when(!self.query.is_empty(), |this| {
-                                this.child(
-                                    Button::new("launcher-clear")
-                                        .ghost()
-                                        .compact()
-                                        .icon(Icon::new(IconName::X).size(px(14.0)))
-                                        .on_click(cx.listener(|this, _, _, cx| {
-                                            this.query.clear();
-                                            this.selected_idx = 0;
-                                            cx.notify();
-                                        })),
-                                )
-                            }),
-                    )
-                    // Apps List
-                    .child(
-                        div()
-                            .id("launcher-apps-list")
-                            .w_full()
-                            .max_h(px(460.0))
-                            .overflow_y_scroll()
-                            .flex()
-                            .flex_col()
-                            .gap(px(6.0))
-                            .pb(px(8.0))
-                            .pr(px(4.0))
-                            .when(total_count == 0, |this| {
-                                this.child(
-                                    div()
-                                        .w_full()
-                                        .py(px(48.0))
-                                        .flex()
-                                        .flex_col()
-                                        .items_center()
-                                        .justify_center()
-                                        .gap(px(8.0))
-                                        .child(
-                                            Icon::new(IconName::Search)
-                                                .size(px(24.0))
-                                                .text_color(theme_muted),
-                                        )
-                                        .child(
-                                            div()
-                                                .text_sm()
-                                                .font_weight(FontWeight::NORMAL)
-                                                .text_color(theme_muted)
-                                                .child("No applications found"),
-                                        ),
-                                )
+                            .gap(px(5.0))
+                            .px(px(10.0))
+                            .py(px(3.0))
+                            .rounded_full()
+                            .cursor_pointer()
+                            .bg(if is_active {
+                                theme_accent
+                            } else {
+                                theme_bg_secondary
                             })
-                            .children(filtered_apps.iter().enumerate().map(|(i, app)| {
-                                let real_idx = i;
-                                let is_current = real_idx == selected_idx;
-                                let exec = app.exec.clone();
-                                let icon_path_exists = !app.icon.is_empty() && Path::new(&app.icon).exists();
-                                let icon_path = PathBuf::from(&app.icon);
-
+                            .text_color(if is_active {
+                                gpui_kit::white()
+                            } else {
+                                theme_muted
+                            })
+                            .hover(move |s| {
+                                if !is_active {
+                                    s.bg(beskar_theme::Theme::subtle_border())
+                                        .text_color(theme_fg)
+                                } else {
+                                    s
+                                }
+                            })
+                            .on_mouse_down(MouseButton::Left, cx.listener(move |this, _, _, cx| {
+                                this.category = cat;
+                                this.selected_idx = 0;
+                                cx.notify();
+                            }))
+                            .child(
+                                Icon::new(cat.icon())
+                                    .size(px(12.0))
+                                    .text_color(if is_active {
+                                        gpui_kit::white()
+                                    } else {
+                                        theme_muted
+                                    }),
+                            )
+                            .child(
                                 div()
-                                    .w_full()
-                                    .h(px(44.0))
+                                    .text_xs()
+                                    .font_weight(if is_active {
+                                        FontWeight::BOLD
+                                    } else {
+                                        FontWeight::MEDIUM
+                                    })
+                                    .child(cat.label()),
+                            )
+                    })),
+            )
+            // Results List
+            .child(
+                div()
+                    .id("launcher-results-list")
+                    .w_full()
+                    .max_h(px(340.0))
+                    .overflow_y_scroll()
+                    .flex()
+                    .flex_col()
+                    .gap(px(4.0))
+                    .pb(px(4.0))
+                    .pr(px(2.0))
+                    .when(total_count == 0, |this| {
+                        this.child(
+                            div()
+                                .w_full()
+                                .py(px(48.0))
+                                .flex()
+                                .flex_col()
+                                .items_center()
+                                .justify_center()
+                                .gap(px(8.0))
+                                .child(
+                                    Icon::new(IconName::Search)
+                                        .size(px(24.0))
+                                        .text_color(theme_muted),
+                                )
+                                .child(
+                                    div()
+                                        .text_sm()
+                                        .font_weight(FontWeight::NORMAL)
+                                        .text_color(theme_muted)
+                                        .child("No results found"),
+                                ),
+                        )
+                    })
+                    .children(results.into_iter().enumerate().map(|(i, item)| {
+                        let is_current = i == selected_idx;
+                        let icon_name = item.icon();
+                        let title = item.title();
+                        let subtitle = item.subtitle();
+                        let cat = item.category();
+                        let item_clone = item.clone();
+                        let icon_path = item.icon_path().map(PathBuf::from);
+
+                        div()
+                            .id(("res-item", i))
+                            .w_full()
+                            .h(px(46.0))
+                            .flex()
+                            .items_center()
+                            .justify_between()
+                            .px(px(12.0))
+                            .rounded(px(12.0))
+                            .bg(if is_current {
+                                theme_bg_secondary
+                            } else {
+                                gpui_kit::transparent_black()
+                            })
+                            .border_1()
+                            .border_color(if is_current {
+                                beskar_theme::Theme::accent_alpha(0.30)
+                            } else {
+                                gpui_kit::transparent_black()
+                            })
+                            .hover(move |s| {
+                                s.bg(theme_bg_secondary).cursor_pointer()
+                            })
+                            .on_mouse_down(MouseButton::Left, cx.listener({
+                                let item_to_exec = item_clone;
+                                move |this, _, _, cx| {
+                                    this.selected_idx = i;
+                                    this.execute_item(&item_to_exec, cx);
+                                }
+                            }))
+                            .child(
+                                div()
                                     .flex()
                                     .items_center()
-                                    .px(px(16.0))
-                                    .rounded(px(16.0))
-                                    .bg(if is_current {
-                                        theme_bg_secondary
-                                    } else {
-                                        gpui_kit::transparent_black()
-                                    })
-                                    .hover(move |s| {
-                                        s.bg(theme_bg_secondary).cursor_pointer()
-                                    })
-                                    .on_mouse_down(MouseButton::Left, cx.listener({
-                                        let exec = exec.clone();
-                                        move |this, _, _, cx| {
-                                            this.selected_idx = real_idx;
-                                            this.launch(&exec, cx);
-                                        }
-                                    }))
+                                    .gap(px(12.0))
                                     .child(
                                         div()
-                                            .size(px(24.0))
-                                            .mr(px(16.0))
+                                            .size(px(28.0))
+                                            .rounded(px(8.0))
                                             .flex()
                                             .items_center()
                                             .justify_center()
+                                            .bg(if is_current {
+                                                beskar_theme::Theme::accent_alpha(0.20)
+                                            } else {
+                                                beskar_theme::Theme::bg_secondary()
+                                            })
                                             .child(
-                                                if icon_path_exists {
-                                                    img(icon_path)
-                                                        .size(px(24.0))
+                                                if let Some(path) = icon_path {
+                                                    img(path)
+                                                        .size(px(20.0))
                                                         .rounded(px(4.0))
                                                         .into_any_element()
                                                 } else {
-                                                    Icon::new(IconName::Rocket)
-                                                        .size(px(24.0))
+                                                    Icon::new(icon_name)
+                                                        .size(px(16.0))
                                                         .text_color(if is_current {
                                                             theme_accent
                                                         } else {
@@ -329,30 +413,50 @@ impl Render for LauncherView {
                                     )
                                     .child(
                                         div()
-                                            .flex_1()
-                                            .text_sm()
-                                            .font_weight(if is_current {
-                                                FontWeight::BOLD
-                                            } else {
-                                                FontWeight::NORMAL
-                                            })
-                                            .text_color(if is_current {
-                                                theme_accent
-                                            } else {
-                                                theme_fg
-                                            })
-                                            .child(app.name.clone()),
-                                    )
-                                    .when(!app.categories.is_empty(), |this| {
-                                        let cat = app
-                                            .categories
-                                            .split(';')
-                                            .find(|c| !c.is_empty())
-                                            .unwrap_or("")
-                                            .to_string();
-                                        this.child(Tag::secondary().child(cat))
-                                    })
-                            })),
-                    )
+                                            .flex()
+                                            .flex_col()
+                                            .child(
+                                                div()
+                                                    .text_sm()
+                                                    .font_weight(if is_current {
+                                                        FontWeight::BOLD
+                                                    } else {
+                                                        FontWeight::MEDIUM
+                                                    })
+                                                    .text_color(if is_current {
+                                                        theme_accent
+                                                    } else {
+                                                        theme_fg
+                                                    })
+                                                    .child(title),
+                                            )
+                                            .child(
+                                                div()
+                                                    .text_xs()
+                                                    .text_color(theme_muted)
+                                                    .max_w(px(380.0))
+                                                    .overflow_hidden()
+                                                    .child(subtitle),
+                                            ),
+                                    ),
+                            )
+                            .child(
+                                div()
+                                    .flex()
+                                    .items_center()
+                                    .gap(px(6.0))
+                                    .child(Tag::secondary().child(cat.label()))
+                                    .when(is_current, |this| {
+                                        this.child(
+                                            div()
+                                                .text_xs()
+                                                .text_color(theme_accent)
+                                                .font_weight(FontWeight::BOLD)
+                                                .child("↵"),
+                                        )
+                                    }),
+                            )
+                    })),
+            )
     }
 }

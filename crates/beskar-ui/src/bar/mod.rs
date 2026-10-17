@@ -9,15 +9,15 @@ pub use island::{IslandBarWidget, OutgoingContent};
 pub use state::{resolve_window_icon, BarActions, BarState, BarStyle};
 
 use beskar_core::models::{WindowInfo, WorkspaceInfo};
+use gpui_kit::assets::IconName;
 use gpui_kit::component::Icon;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
-use std::sync::Arc;
 
 /// Beskar Bar surface separating the top bar into 3 distinct layout regions:
-/// - [Left Island]: Workspaces & active tasks
-/// - [Dynamic Center Island]: Dynamic morphing pill (clock, MPRIS, notifications)
-/// - [Right Island]: Vitals, battery, volume, quick sliders, system tray
+/// - [Left Island]: App launch button, Workspaces, open apps dock & active window
+/// - [Dynamic Center Island]: Dynamic morphing notch (date, clock, MPRIS, notifications)
+/// - [Right Island]: Taskbar running apps, vitals, battery, volume, system tray, power
 #[derive(IntoElement)]
 pub struct BeskarBar {
     left: Vec<AnyElement>,
@@ -123,36 +123,102 @@ impl BeskarBar {
             ws_widget = ws_widget.on_scroll(move |dir| (handler)(dir));
         }
 
-        let on_star = actions.on_launcher_click.clone();
+        // Dedicated App Launcher Button (Left Island Trigger)
+        let on_launch = actions.on_launcher_click.clone();
         let on_dash = actions.on_dashboard_click.clone();
-        let star_badge = div()
+        let app_launch_btn = div()
             .flex()
             .items_center()
-            .justify_center()
-            .w(px(24.0))
-            .h(px(24.0))
-            .mr(px(8.0))
-            .rounded_md()
+            .gap(px(5.0))
+            .px(px(8.0))
+            .py(px(2.0))
+            .mr(px(6.0))
+            .rounded_full()
+            .bg(beskar_theme::Theme::accent_alpha(0.14))
+            .border_1()
+            .border_color(beskar_theme::Theme::accent_alpha(0.32))
             .text_xs()
-            .font_weight(FontWeight::BOLD)
+            .font_weight(FontWeight::SEMIBOLD)
             .text_color(beskar_theme::Theme::accent())
+            .cursor_pointer()
             .hover(|s| {
-                s.cursor_pointer()
-                    .bg(beskar_theme::Theme::bg_secondary())
-                    .text_color(beskar_theme::Theme::accent())
+                s.bg(beskar_theme::Theme::accent_alpha(0.24))
+                    .border_color(beskar_theme::Theme::accent())
             })
             .on_mouse_down(MouseButton::Left, move |_, window, cx| {
-                if let Some(handler) = on_star.as_ref() {
+                if let Some(ref handler) = on_launch {
                     handler(window, cx);
                 }
             })
             .on_mouse_down(MouseButton::Right, move |_, window, cx| {
-                if let Some(handler) = on_dash.as_ref() {
+                if let Some(ref handler) = on_dash {
                     handler(window, cx);
                 }
             })
-            .child("✦");
+            .child(
+                Icon::new(IconName::LayoutGrid)
+                    .size(px(13.0))
+                    .text_color(beskar_theme::Theme::accent()),
+            )
+            .child("Apps");
 
+        // Open Applications in the Active Workspace (Workspace Window Icons)
+        let ws_apps_count = state.workspace_windows.len();
+        let ws_apps_row = if !state.workspace_windows.is_empty() {
+            let mut row = div().flex().items_center().gap(px(3.0)).ml(px(6.0));
+            let on_win_select = actions.on_select_window.clone();
+            for win in &state.workspace_windows {
+                let icon = resolve_window_icon(win.app_id.as_deref(), win.title.as_deref());
+                let win_id = win.id;
+                let is_focused = win.is_focused;
+                let on_sel = on_win_select.clone();
+
+                row = row.child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .justify_center()
+                        .w(px(20.0))
+                        .h(px(20.0))
+                        .rounded_md()
+                        .bg(if is_focused {
+                            beskar_theme::Theme::accent_alpha(0.25)
+                        } else {
+                            beskar_theme::Theme::bg_secondary()
+                        })
+                        .border_1()
+                        .border_color(if is_focused {
+                            beskar_theme::Theme::accent()
+                        } else {
+                            beskar_theme::Theme::subtle_border()
+                        })
+                        .cursor_pointer()
+                        .hover(|s| {
+                            s.bg(beskar_theme::Theme::bg_secondary())
+                                .border_color(beskar_theme::Theme::accent())
+                        })
+                        .on_mouse_down(MouseButton::Left, move |_, _, _| {
+                            if let Some(ref cb) = on_sel {
+                                cb(win_id);
+                            }
+                        })
+                        .child(
+                            Icon::new(icon)
+                                .size(px(11.0))
+                                .text_color(if is_focused {
+                                    beskar_theme::Theme::accent()
+                                } else {
+                                    beskar_theme::Theme::text_secondary()
+                                }),
+                        ),
+                );
+            }
+            Some(row)
+        } else {
+            None
+        };
+
+        // Current Focused Application Name and Icon Pill
         let mut active_win_element = if has_win {
             state.active_window.as_ref().and_then(|win| {
                 let title_text = win
@@ -184,7 +250,7 @@ impl BeskarBar {
                         .gap(px(6.0))
                         .ml(px(8.0))
                         .pl(px(8.0))
-                        .max_w(px(140.0))
+                        .max_w(px(160.0))
                         .overflow_hidden()
                         .border_l_1()
                         .border_color(beskar_theme::Theme::subtle_border())
@@ -199,7 +265,7 @@ impl BeskarBar {
                         .child(
                             Icon::new(icon)
                                 .size(px(13.0))
-                                .text_color(beskar_theme::Theme::text_secondary()),
+                                .text_color(beskar_theme::Theme::accent()),
                         )
                         .child(
                             div()
@@ -214,19 +280,23 @@ impl BeskarBar {
             None
         };
 
-        let mut star_badge = Some(star_badge);
+        let mut app_launch_btn = Some(app_launch_btn);
         let mut ws_widget = Some(ws_widget);
+        let mut ws_apps_row = ws_apps_row;
         let mut left_pill = IslandPill::new();
         for m in &mod_left {
             match m {
                 beskar_core::config::BarModule::BrandStar => {
-                    if let Some(badge) = star_badge.take() {
-                        left_pill = left_pill.child(badge);
+                    if let Some(btn) = app_launch_btn.take() {
+                        left_pill = left_pill.child(btn);
                     }
                 }
                 beskar_core::config::BarModule::Workspaces => {
                     if let Some(ws) = ws_widget.take() {
                         left_pill = left_pill.child(ws);
+                    }
+                    if let Some(apps) = ws_apps_row.take() {
+                        left_pill = left_pill.child(apps);
                     }
                 }
                 beskar_core::config::BarModule::ActiveWindow => {
@@ -285,6 +355,61 @@ impl BeskarBar {
             IslandPill::new().child(center_widget).into_any_element()
         };
 
+        // Taskbar Apps Dock (Running Applications in Right Island)
+        let taskbar_dock = if !state.all_windows.is_empty() {
+            let mut dock = div().flex().items_center().gap(px(3.0)).mr(px(8.0));
+            let on_win_select = actions.on_select_window.clone();
+            for win in state.all_windows.iter().take(6) {
+                let icon = resolve_window_icon(win.app_id.as_deref(), win.title.as_deref());
+                let win_id = win.id;
+                let is_focused = win.is_focused;
+                let on_sel = on_win_select.clone();
+
+                dock = dock.child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .justify_center()
+                        .w(px(22.0))
+                        .h(px(22.0))
+                        .rounded_md()
+                        .bg(if is_focused {
+                            beskar_theme::Theme::accent_alpha(0.25)
+                        } else {
+                            beskar_theme::Theme::bg_secondary()
+                        })
+                        .border_1()
+                        .border_color(if is_focused {
+                            beskar_theme::Theme::accent()
+                        } else {
+                            beskar_theme::Theme::subtle_border()
+                        })
+                        .cursor_pointer()
+                        .hover(|s| {
+                            s.bg(beskar_theme::Theme::bg_secondary())
+                                .border_color(beskar_theme::Theme::accent())
+                        })
+                        .on_mouse_down(MouseButton::Left, move |_, _, _| {
+                            if let Some(ref cb) = on_sel {
+                                cb(win_id);
+                            }
+                        })
+                        .child(
+                            Icon::new(icon)
+                                .size(px(12.0))
+                                .text_color(if is_focused {
+                                    beskar_theme::Theme::accent()
+                                } else {
+                                    beskar_theme::Theme::fg()
+                                }),
+                        ),
+                );
+            }
+            Some(dock)
+        } else {
+            None
+        };
+
         let tray_count = state.tray_items.len();
         let mut vitals_widget = VitalsWidget::new(state.volume_percent, state.battery_percent)
             .muted(state.is_muted)
@@ -317,18 +442,25 @@ impl BeskarBar {
         if let Some(handler) = actions.on_tray_menu {
             vitals_widget = vitals_widget.on_tray_menu(move |id, window, cx| (handler)(id, window, cx));
         }
-        let right_pill = IslandPill::new().child(vitals_widget);
+
+        let mut right_pill = IslandPill::new();
+        if let Some(dock) = taskbar_dock {
+            right_pill = right_pill.child(dock);
+        }
+        right_pill = right_pill.child(vitals_widget);
 
         // Dynamic notch geometry calculation matching actual rendered components
         let has_active_win = has_win && state.active_window.is_some();
-        let left_content_w = 32.0 /* Star */
+        let left_content_w = 48.0 /* App Launch Button */
             + (ws_count.max(5).min(10) as f32 * 18.0 + 36.0) /* Workspaces */
+            + (ws_apps_count as f32 * 23.0) /* Open app icons in workspace */
             + if has_active_win { 150.0 } else { 0.0 };
-        let left_w = (left_content_w + 48.0).max(220.0);
+        let left_w = (left_content_w + 48.0).max(240.0);
 
         let tray_w = (tray_count as f32 * 26.0) + if tray_count > 0 { 12.0 } else { 0.0 };
-        let right_content_w = tray_w + 160.0 /* status capsule */ + 36.0 /* power button */;
-        let right_w = (right_content_w + 48.0).max(250.0);
+        let taskbar_w = state.all_windows.len().min(6) as f32 * 25.0;
+        let right_content_w = taskbar_w + tray_w + 160.0 /* status capsule */ + 36.0 /* power button */;
+        let right_w = (right_content_w + 48.0).max(260.0);
 
         let geom = {
             let mut g = state.geometry.unwrap_or_default();
@@ -358,38 +490,12 @@ impl BeskarBar {
         time_str: impl Into<String>,
         date_str: Option<String>,
         media: Option<(String, String, bool)>,
-        notification: Option<(String, String)>,
-        volume_percent: u8,
+        volume: u8,
         is_muted: bool,
-        battery_percent: u8,
+        battery: u8,
         is_charging: bool,
-        animated_center_width: Option<f32>,
-        cava_bands: Option<[u8; 4]>,
-        tray_items: Vec<beskar_core::models::TrayItem>,
-        on_select_ws: Option<Arc<dyn Fn(u64) + Send + Sync>>,
-        on_scroll_ws: Option<Arc<dyn Fn(i32) + Send + Sync>>,
-        on_play_pause: Option<Arc<dyn Fn() + Send + Sync>>,
-        on_volume_click: Option<Arc<dyn Fn() + Send + Sync>>,
-        on_volume_scroll: Option<Arc<dyn Fn(i32) + Send + Sync>>,
-        on_control_center_click: Option<crate::bar::state::BarUiCallback>,
-        on_power_click: Option<crate::bar::state::BarUiCallback>,
-        on_launcher_click: Option<crate::bar::state::BarUiCallback>,
-        on_clock_click: Option<crate::bar::state::BarUiCallback>,
-        on_dashboard_click: Option<crate::bar::state::BarUiCallback>,
-        on_music_click: Option<crate::bar::state::BarUiCallback>,
-        on_capture_click: Option<crate::bar::state::BarUiCallback>,
-        on_wallpaper_click: Option<crate::bar::state::BarUiCallback>,
-        on_tray_click: Option<Arc<dyn Fn(String) + Send + Sync>>,
-        on_tray_menu: Option<crate::bar::state::BarTrayMenuCallback>,
-        on_window_click: Option<Arc<dyn Fn() + Send + Sync>>,
-        on_window_close: Option<Arc<dyn Fn() + Send + Sync>>,
     ) -> Self {
         let state = BarState {
-            bar_style: if is_convex {
-                beskar_core::config::BarStyleConfig::Convex
-            } else {
-                beskar_core::config::BarStyleConfig::Island
-            },
             is_convex,
             workspaces,
             active_ws,
@@ -397,107 +503,19 @@ impl BeskarBar {
             time_str: time_str.into(),
             date_str,
             media,
-            notification,
-            volume_percent,
+            volume_percent: volume,
             is_muted,
-            battery_percent,
+            battery_percent: battery,
             is_charging,
-            cpu_usage: None,
-            ram_usage: None,
-            animated_center_width,
-            cava_bands,
-            tray_items,
-            modules_left: None,
-            modules_center: None,
-            modules_right: None,
-            geometry: None,
+            ..Default::default()
         };
-        let actions = BarActions {
-            on_select_ws,
-            on_scroll_ws,
-            on_play_pause,
-            on_volume_click,
-            on_volume_scroll,
-            on_control_center_click,
-            on_power_click,
-            on_launcher_click,
-            on_clock_click,
-            on_dashboard_click,
-            on_music_click,
-            on_capture_click,
-            on_wallpaper_click,
-            on_tray_click,
-            on_tray_menu,
-            on_window_click,
-            on_window_close,
-        };
-        Self::from_state(state, actions)
-    }
-
-    pub fn default_islands(
-        active_ws: u64,
-        total_ws: usize,
-        time_str: impl Into<String>,
-        media: Option<(String, String, bool)>,
-    ) -> Self {
-        let fake_workspaces = (1..=total_ws)
-            .map(|i| WorkspaceInfo {
-                id: i as u64,
-                idx: i as u8,
-                name: None,
-                output: String::new(),
-                is_active: i as u64 == active_ws,
-                is_focused: i as u64 == active_ws,
-                has_windows: false,
-            })
-            .collect();
-
-        Self::live_islands(
-            false,
-            fake_workspaces,
-            Some(active_ws),
-            None,
-            time_str,
-            None,
-            media,
-            None,
-            65,
-            false,
-            88,
-            false,
-            None,
-            None,
-            Vec::new(),
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-        )
+        Self::from_state(state, BarActions::default())
     }
 }
 
 impl RenderOnce for BeskarBar {
     fn render(self, _window: &mut Window, _cx: &mut App) -> impl IntoElement {
-        if self.is_gaming {
-            crate::bar::GamingBarWidget::new()
-                .left(self.left)
-                .center(self.center)
-                .right(self.right)
-                .into_any_element()
-        } else if self.is_island_cluster {
+        if self.is_island_cluster {
             div()
                 .relative()
                 .size_full()
