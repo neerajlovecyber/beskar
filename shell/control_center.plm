@@ -5,7 +5,7 @@ scene MacControlCenter {
     surface {
         size: 440, 520
         anchor: top_right
-        margin: 32, 4, 0, 0
+        margin: 0, 4, 0, 0
         level: overlay
     }
 
@@ -66,11 +66,11 @@ scene MacControlCenter {
     event toggle_bt ->
 
     prop seen = 0 ~quick
-    prop scale = 0.96 ~quick
+    prop scale = 0.9 ~quick
 
     layer panel ~quick {
         shown while open { seen: 1 ~quick; scale: 1 ~quick }
-        gone             { seen: 0 ~quick; scale: 0.96 ~quick }
+        gone             { seen: 0 ~quick; scale: 0.9 ~quick }
     }
 
     // Dismiss click zone for outside
@@ -79,8 +79,8 @@ scene MacControlCenter {
     on press right dismiss { }
 
     group {
-        move: 40, 16
-        pivot: 320, 20
+        move: 40, -4
+        pivot: 340, 0
         scale: scale
         opacity: seen
 
@@ -96,6 +96,8 @@ scene MacControlCenter {
             tint: tint_amt
             rim: rim_amt
             shadow: 0, 14, 30, shadow_amt
+            // The card tucks right under the right island (the bar's strip is 42 px) and grows
+            // out of it: it scales from its top-right corner, so it reads as the island opening.
             box { from: 0, 0; size: 360, 448; corner: 22 }
         }
 

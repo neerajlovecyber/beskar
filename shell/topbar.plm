@@ -40,7 +40,16 @@ scene MacTopBar {
     fact skin = 0
 
     //  Reported by topbar.luau
-    fact focused_ws = 1
+    fact run_1 = 0
+    fact run_2 = 0
+    fact run_3 = 0
+    fact run_4 = 0
+    fact run_5 = 0
+    fact run_6 = 0
+    fact run_7 = 0
+    fact run_8 = 0
+    //  One record per monitor, in niri's output order: the workspace each one shows.
+    model mon max 4 { active: number = 1 }
     text weather_temp = "--°"
     text weather_icon = "󰖐"
 
@@ -189,7 +198,7 @@ scene MacTopBar {
                 corner: 10
                 align: center
                 text "󰊯" { size: 10; color: stroke_c }
-                text "{focused_ws}" { size: 11.5; weight: 700; color: ink_c }
+                text "{mon.$screen.active}" { size: 11.5; weight: 700; color: ink_c }
             }
 
             row {
@@ -262,7 +271,7 @@ scene MacTopBar {
                 text "{bat.percent}" { size: 11; weight: 700; color: accent_c }
             }
 
-            Glyph("󱒓", open_control_center)
+            Glyph("󰒓", open_control_center)
             Glyph("󰂚", open_widgets)
         }
 
@@ -273,14 +282,14 @@ scene MacTopBar {
             gap: 10
             align: center
 
-            DockItem(icon_term, 1, true)
-            DockItem(icon_files, 2, true)
-            DockItem(icon_code, 3, true)
-            DockItem(icon_steam, 4)
-            DockItem(icon_obsidian, 5)
-            DockItem(icon_browser, 6, true)
-            DockItem(icon_discord, 7)
-            DockItem(icon_telegram, 8)
+            DockItem(icon_term, 1, run_1 == 1)
+            DockItem(icon_files, 2, run_2 == 1)
+            DockItem(icon_code, 3, run_3 == 1)
+            DockItem(icon_steam, 4, run_4 == 1)
+            DockItem(icon_obsidian, 5, run_5 == 1)
+            DockItem(icon_browser, 6, run_6 == 1)
+            DockItem(icon_discord, 7, run_7 == 1)
+            DockItem(icon_telegram, 8, run_8 == 1)
         }
     }
 

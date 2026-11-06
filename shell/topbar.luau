@@ -38,20 +38,58 @@ on("tray_activate", tray_action("tray.activate"))       -- left click
 on("tray_secondary", tray_action("tray.secondary"))     -- middle click
 on("tray_context", tray_action("tray.context"))         -- right click: the app's own menu
 
--- ── dock: launch an app ──────────────────────────────────────────
--- Same order as the DockItem(…, n) calls in topbar.plm. Each name must also be in `run:`.
-local APPS = { "kitty", "nautilus", "code", "steam", "obsidian", "firefox", "discord", "telegram-desktop" }
+-- ── dock: launch an app, light the dot of the ones that are running ──
+-- Same order as the DockItem(…, n) calls in topbar.plm. `cmd` must also be in `run:`; `ids` are
+-- the app_ids niri reports for its windows (lower case).
+local APPS = {
+    { cmd = "kitty",            ids = { "kitty", "com.mitchellh.ghostty", "alacritty", "foot" } },
+    { cmd = "nautilus",         ids = { "org.gnome.nautilus", "thunar", "org.kde.dolphin" } },
+    { cmd = "code",             ids = { "code", "code-oss", "visual-studio-code" } },
+    { cmd = "steam",            ids = { "steam" } },
+    { cmd = "obsidian",         ids = { "obsidian" } },
+    { cmd = "firefox",          ids = { "firefox", "chromium", "google-chrome" } },
+    { cmd = "discord",          ids = { "discord", "vesktop" } },
+    { cmd = "telegram-desktop", ids = { "org.telegram.desktop", "telegramdesktop" } },
+}
 
 on("launch", function(n)
-    local cmd = APPS[n]
-    if cmd then
+    local app = APPS[n]
+    if app then
         -- No callback and no output wanted: the app lives on its own, we do not wait for it.
-        pcall(run, cmd, {}, nil, { output = false })
+        pcall(run, app.cmd, {}, nil, { output = false })
     end
 end)
 
--- ── niri: focused workspace ──────────────────────────────────────
-local function refresh_workspace()
+local function refresh_running()
+    run("niri", { "msg", "-j", "windows" }, function(out, code)
+        if code ~= 0 or not out then
+            return
+        end
+        local ok, list = pcall(json.decode, out)
+        if not ok or type(list) ~= "table" then
+            return
+        end
+        local open = {}
+        for _, w in ipairs(list) do
+            open[string.lower(w.app_id or "")] = true
+        end
+        for n, app in ipairs(APPS) do
+            local on_ = 0
+            for _, id in ipairs(app.ids) do
+                if open[id] then
+                    on_ = 1
+                    break
+                end
+            end
+            fact["run_" .. n] = on_
+        end
+    end)
+end
+
+-- ── niri: the workspace each monitor shows ───────────────────────
+-- `model mon` has one record per monitor, in the order of `niri msg outputs`.
+local OUTPUTS = {}
+local function refresh_workspaces()
     run("niri", { "msg", "-j", "workspaces" }, function(out, code)
         if code ~= 0 or not out then
             return
@@ -60,19 +98,38 @@ local function refresh_workspace()
         if not ok or type(list) ~= "table" then
             return
         end
+        local shown = {}
         for _, w in ipairs(list) do
-            if w.is_focused then
-                fact.focused_ws = w.idx or 1
-                return
+            if w.is_active and w.output then
+                shown[w.output] = w.idx or 1
             end
         end
+        local recs = {}
+        for i, name in ipairs(OUTPUTS) do
+            recs[i] = { active = shown[name] or 1 }
+        end
+        model.mon = recs
     end)
 end
 
-refresh_workspace()
+local function refresh_niri()
+    refresh_workspaces()
+    refresh_running()
+end
 
--- niri prints one JSON object per event. Only workspace events can change what we show, and the
--- stream names the workspace by id, so ask niri for the idx again instead of guessing.
+run("niri", { "msg", "-j", "outputs" }, function(out, code)
+    local ok, o = pcall(json.decode, out or "")
+    if code == 0 and ok and type(o) == "table" then
+        for name in pairs(o) do
+            OUTPUTS[#OUTPUTS + 1] = name
+        end
+        table.sort(OUTPUTS)
+    end
+    refresh_niri()
+end)
+
+-- niri prints one JSON object per event. Workspaces and windows are all that can change what we
+-- show; ask niri again instead of reading the event.
 local streaming = false
 local function follow_niri()
     if streaming then
@@ -80,8 +137,8 @@ local function follow_niri()
     end
     streaming = true
     spawn("niri", { "msg", "-j", "event-stream" }, function(line)
-        if line:find("Workspace", 1, true) then
-            refresh_workspace()
+        if line:find("Workspace", 1, true) or line:find("WindowOpenedOrChanged", 1, true) or line:find("WindowClosed", 1, true) then
+            refresh_niri()
         end
     end, function()
         streaming = false      -- niri went away; the timer below retries
