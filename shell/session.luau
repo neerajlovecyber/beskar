@@ -21,7 +21,7 @@ on("confirm_action", function()
         run("systemctl", { "reboot" })
     else
         log("Session: Logging out...")
-        run("loginctl", { "terminate-user", os.getenv("USER") or "nsp" })
+        run("loginctl", { "terminate-user", os.getenv("USER") or os.getenv("LOGNAME") or "" })
     end
 end)
 

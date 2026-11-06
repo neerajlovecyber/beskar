@@ -54,17 +54,17 @@ Add the following shortcuts to your compositor configuration:
 ### For Hyprland (`~/.config/hypr/hyprland.conf`)
 ```ini
 # Toggle Spotlight Search (Super + Space)
-bind = SUPER, SPACE, exec, /home/nsp/Documents/p/beskar/beskar/shell/start.sh spotlight
+bind = SUPER, SPACE, exec, /path/to/beskar/shell/start.sh spotlight
 
 # Toggle Control Center (Super + C)
-bind = SUPER, C, exec, /home/nsp/Documents/p/beskar/beskar/shell/start.sh control-center
+bind = SUPER, C, exec, /path/to/beskar/shell/start.sh control-center
 ```
 
 ### For Niri (`~/.config/niri/config.kdl`)
 ```kdl
 binds {
-    Mod+Space { spawn "/home/nsp/Documents/p/beskar/beskar/shell/start.sh" "spotlight"; }
-    Mod+C     { spawn "/home/nsp/Documents/p/beskar/beskar/shell/start.sh" "control-center"; }
+    Mod+Space { spawn "/path/to/beskar/shell/start.sh" "spotlight"; }
+    Mod+C     { spawn "/path/to/beskar/shell/start.sh" "control-center"; }
 }
 ```
 

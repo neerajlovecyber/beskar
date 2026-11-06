@@ -25,7 +25,7 @@ scene MacTopBar {
     //  the weather, and the dock's apps. Undeclared is nothing.
     permissions {
         services: "clock", "network", "battery", "window", "tray", "tray.*", "say:control_center", "say:spotlight", "say:apple_menu", "say:notifications", "say:dashboard"
-        run: "niri msg", "curl", "kitty", "alacritty", "foot", "nautilus", "thunar", "dolphin", "code", "zed", "steam", "obsidian", "firefox", "chromium", "discord", "vesktop", "telegram-desktop"
+        run: "niri msg", "curl", "sh", "kitty", "alacritty", "foot", "nautilus", "thunar", "dolphin", "code", "zed", "steam", "obsidian", "firefox", "chromium", "discord", "vesktop", "telegram-desktop"
     }
 
     service clock as now { time: text = "--:--"; date: text }

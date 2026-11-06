@@ -20,6 +20,7 @@ scene MacLock {
     }
 
     fact locked = false
+    text user_name = ""
     fact checking = false
     fact with_exit = true     // Emergency Esc exit for desktop security safety
 
@@ -72,7 +73,7 @@ scene MacLock {
         text "󰀉" { at: 0, -2; anchor: center; size: 48; color: accent_c }
 
         // Username
-        text "nsp" {
+        text user_name {
             at: 0, 64
             anchor: center
             size: 16

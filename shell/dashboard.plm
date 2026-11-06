@@ -24,7 +24,10 @@ scene MacDashboard {
     fact disk_pct = 52
     text weather_temp = "24°C"
     text weather_cond = "Partly Cloudy"
-    text weather_city = "New Delhi"
+    text weather_city = "…"
+    text zone_local = "Local"
+    text zone_utc = "--:--"
+    text zone_off = ""
     text weather_icon = "󰖐"
     text weather_range = "H: –° · L: –°"
     text cal_month = "NOVEMBER"
@@ -167,27 +170,20 @@ scene MacDashboard {
 
             row {
                 at: 16, 14
-                gap: 32
+                gap: 64
 
                 column {
                     gap: 3
                     text "Local" { size: 11; color: ink_sub }
                     text now.time { size: 16; weight: 600; color: ink_c }
-                    text "Today" { size: 10.5; color: ink_sub }
+                    text zone_local { size: 10.5; color: ink_sub }
                 }
 
                 column {
                     gap: 3
-                    text "New Delhi" { size: 11; color: ink_sub }
-                    text "IST" { size: 16; weight: 600; color: ink_c }
-                    text "Same time" { size: 10.5; color: ink_sub }
-                }
-
-                column {
-                    gap: 3
-                    text "UTC / London" { size: 11; color: ink_sub }
-                    text "GMT" { size: 16; weight: 600; color: ink_c }
-                    text "-5.5 hrs" { size: 10.5; color: ink_sub }
+                    text "UTC" { size: 11; color: ink_sub }
+                    text zone_utc { size: 16; weight: 600; color: ink_c }
+                    text zone_off { size: 10.5; color: ink_sub }
                 }
             }
         }

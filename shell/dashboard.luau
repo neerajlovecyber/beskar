@@ -51,7 +51,7 @@ on("refresh_stats", function()
 end)
 
 -- ── weather (same place as the top bar) ──────────────────────────
-local LAT, LON = 28.61, 77.20
+local locate = require("location")
 local function icon_for(code)
     if code == 0 then return "󰖙"
     elseif code <= 3 then return "󰖐"
@@ -74,25 +74,45 @@ local function words_for(code)
 end
 
 local function refresh_weather()
-    local url = string.format(
-        "https://api.open-meteo.com/v1/forecast?latitude=%s&longitude=%s&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=1",
-        LAT, LON)
-    run("curl", { "-fsS", "--max-time", "6", url }, function(out, code)
-        if code ~= 0 or not out then return end
-        local ok, d = pcall(json.decode, out)
-        local cur = ok and type(d) == "table" and d.current
-        if type(cur) ~= "table" or cur.temperature_2m == nil then return end
-        local wc = cur.weather_code or 0
-        text.weather_temp = string.format("%d°C", math.floor(cur.temperature_2m + 0.5))
-        text.weather_cond = words_for(wc)
-        text.weather_icon = icon_for(wc)
-        local day = d.daily
-        if type(day) == "table" and day.temperature_2m_max and day.temperature_2m_min then
-            text.weather_range = string.format("H: %d° · L: %d°",
-                math.floor(day.temperature_2m_max[1] + 0.5), math.floor(day.temperature_2m_min[1] + 0.5))
+    locate(function(place)
+        if not place then
+            return
+        end
+        text.weather_city = place.city
+        local url = string.format(
+            "https://api.open-meteo.com/v1/forecast?latitude=%s&longitude=%s&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=1",
+            place.lat, place.lon)
+        run("curl", { "-fsS", "--max-time", "6", url }, function(out, code)
+            if code ~= 0 or not out then return end
+            local ok, d = pcall(json.decode, out)
+            local cur = ok and type(d) == "table" and d.current
+            if type(cur) ~= "table" or cur.temperature_2m == nil then return end
+            local wc = cur.weather_code or 0
+            text.weather_temp = string.format("%d°C", math.floor(cur.temperature_2m + 0.5))
+            text.weather_cond = words_for(wc)
+            text.weather_icon = icon_for(wc)
+            local day = d.daily
+            if type(day) == "table" and day.temperature_2m_max and day.temperature_2m_min then
+                text.weather_range = string.format("H: %d° · L: %d°",
+                    math.floor(day.temperature_2m_max[1] + 0.5), math.floor(day.temperature_2m_min[1] + 0.5))
+            end
+        end)
+    end)
+end
+
+-- The clocks: this machine's time zone, and UTC.
+local function refresh_zones()
+    run("sh", { "-c", "date +%Z; date -u +%H:%M; date +%z" }, function(out)
+        local zone, utc, off = (out or ""):match("([^\n]*)\n([^\n]*)\n([^\n]*)")
+        if zone then
+            text.zone_local = zone ~= "" and zone or "Local"
+            text.zone_utc = utc or "--:--"
+            text.zone_off = off and (off:sub(1, 3) .. ":" .. off:sub(4, 5)) or ""
         end
     end)
 end
+refresh_zones()
+every(60000, refresh_zones)
 
 refresh_weather()
 every(15 * 60 * 1000, refresh_weather)

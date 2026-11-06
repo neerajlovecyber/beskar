@@ -135,3 +135,37 @@ end)
 
 -- one panel at a time
 require("exclusive")("settings")
+
+-- ── who is logged in: the full name if the account has one, else the login name ──
+local function load_user_name()
+    run("sh", { "-c", 'n=$(getent passwd "$(id -un)" | cut -d: -f5 | cut -d, -f1); [ -n "$n" ] && echo "$n" || id -un' }, function(out)
+        local n = (out or ""):match("([^\n]+)")
+        if n and n ~= "" then
+            text.user_name = n
+        end
+    end)
+end
+load_user_name()
+
+-- ── Displays: what niri says is connected ───────────────────────
+run("niri", { "msg", "-j", "outputs" }, function(out, code)
+    local ok, o = pcall(json.decode, out or "")
+    if code ~= 0 or not ok or type(o) ~= "table" then
+        return
+    end
+    local names = {}
+    for name in pairs(o) do
+        names[#names + 1] = name
+    end
+    table.sort(names)
+    fact.disp_count = math.min(2, #names)
+    for i = 1, math.min(2, #names) do
+        local d = o[names[i]]
+        local make = ((d.model and d.model ~= "") and d.model or (d.make or "")):gsub("^%s+", ""):gsub("%s+$", "")
+        text["disp_name_" .. (i - 1)] = (make ~= "" and make or "Display") .. " (" .. names[i] .. ")"
+        local mode = d.modes and d.current_mode and d.modes[d.current_mode + 1]
+        if mode then
+            text["disp_mode_" .. (i - 1)] = string.format("%d × %d @ %d Hz", mode.width, mode.height, math.floor(mode.refresh_rate / 1000 + 0.5))
+        end
+    end
+end)

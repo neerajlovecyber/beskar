@@ -26,3 +26,14 @@ on("unlock", function()
         emit("wrong_password")
     end
 end)
+
+-- ── who is logged in: the full name if the account has one, else the login name ──
+local function load_user_name()
+    run("sh", { "-c", 'n=$(getent passwd "$(id -un)" | cut -d: -f5 | cut -d, -f1); [ -n "$n" ] && echo "$n" || id -un' }, function(out)
+        local n = (out or ""):match("([^\n]+)")
+        if n and n ~= "" then
+            text.user_name = n
+        end
+    end)
+end
+load_user_name()

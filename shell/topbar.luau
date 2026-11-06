@@ -2,7 +2,7 @@
 -- what the weather is. It only reports facts; every command goes through `run`/`spawn`
 -- (declared in topbar.plm's `permissions`), so nothing here blocks the logic thread.
 
-local LAT, LON = 28.61, 77.20          -- weather location (Open-Meteo)
+local locate = require("location")      -- where you are (see location.luau)
 local WEATHER_EVERY_MS = 15 * 60 * 1000
 
 -- ── panels ───────────────────────────────────────────────────────
@@ -206,21 +206,26 @@ local function icon_for(code)
 end
 
 local function refresh_weather()
-    local url = string.format(
-        "https://api.open-meteo.com/v1/forecast?latitude=%s&longitude=%s&current=temperature_2m,weather_code",
-        LAT, LON
-    )
-    run("curl", { "-fsS", "--max-time", "5", url }, function(out, code)
-        if code ~= 0 or not out then
-            return          -- keep the last reading
+    locate(function(place)
+        if not place then
+            return          -- no place yet: keep the last reading
         end
-        local ok, data = pcall(json.decode, out)
-        local cur = ok and type(data) == "table" and data.current
-        if type(cur) ~= "table" or cur.temperature_2m == nil then
-            return
-        end
-        text.weather_temp = string.format("%d°", math.floor(cur.temperature_2m + 0.5))
-        text.weather_icon = icon_for(cur.weather_code or 0)
+        local url = string.format(
+            "https://api.open-meteo.com/v1/forecast?latitude=%s&longitude=%s&current=temperature_2m,weather_code",
+            place.lat, place.lon
+        )
+        run("curl", { "-fsS", "--max-time", "5", url }, function(out, code)
+            if code ~= 0 or not out then
+                return
+            end
+            local ok, data = pcall(json.decode, out)
+            local cur = ok and type(data) == "table" and data.current
+            if type(cur) ~= "table" or cur.temperature_2m == nil then
+                return
+            end
+            text.weather_temp = string.format("%d°", math.floor(cur.temperature_2m + 0.5))
+            text.weather_icon = icon_for(cur.weather_code or 0)
+        end)
     end)
 end
 

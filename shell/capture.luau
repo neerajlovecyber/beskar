@@ -4,14 +4,14 @@ local rec_pid = nil
 local timer_id = nil
 
 local function get_pictures_dir()
-    local home = os.getenv("HOME") or "/home/nsp"
+    local home = os.getenv("HOME") or "~"
     local dir = home .. "/Pictures/Screenshots"
     os.execute("mkdir -p " .. dir)
     return dir
 end
 
 local function get_videos_dir()
-    local home = os.getenv("HOME") or "/home/nsp"
+    local home = os.getenv("HOME") or "~"
     local dir = home .. "/Videos/Captures"
     os.execute("mkdir -p " .. dir)
     return dir

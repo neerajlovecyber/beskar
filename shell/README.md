@@ -28,21 +28,21 @@ An ultra-performant, GPU-accelerated macOS Sequoia/Sonoma desktop shell for Wayl
 
 | Component | File Path | Description |
 | :--- | :--- | :--- |
-| **App Switcher** | [`shell/appswitcher.plm`](file:///home/nsp/Documents/p/beskar/beskar/shell/appswitcher.plm) | macOS Cmd+Tab application switcher HUD showing running windows from niri/Wayland with active selection capsule and focus switching. |
-| **Clipboard History** | [`shell/clipboard.plm`](file:///home/nsp/Documents/p/beskar/beskar/shell/clipboard.plm) | macOS Super+V Clipboard Manager with live cliphist history, 1-click restore/paste, and Clear All action. |
-| **System Settings** | [`shell/settings.plm`](file:///home/nsp/Documents/p/beskar/beskar/shell/settings.plm) | Dedicated macOS 2-column System Settings app: Appearance, Displays (eDP-1 + HDMI-A-1), Sound, Wi-Fi, Bluetooth, Notifications, Wallpaper picker (awww), Software Update (yay/pacman), and About This Mac specs. |
-| **Lock Screen** | [`shell/lock.plm`](file:///home/nsp/Documents/p/beskar/beskar/shell/lock.plm) | Native Wayland session lock (`ext-session-lock` protocol) with full-screen blur, Apple typography clock, avatar, password verification via PAM, and spring headshake. |
-| **Session Dialog** | [`shell/session.plm`](file:///home/nsp/Documents/p/beskar/beskar/shell/session.plm) | macOS Shutdown/Restart/Logout confirmation dialog with 60-second automatic timer and window reopen toggle. |
-| **Screen Capture & Record HUD** | [`shell/capture.plm`](file:///home/nsp/Documents/p/beskar/beskar/shell/capture.plm) | macOS Cmd+Shift+5 floating HUD with Entire Screen, Selected Window, Selected Area capture (`grim`+`slurp`), and video recording (`wf-recorder`). |
-| **Frame (top bar + dock)** | [`shell/topbar.plm`](file:///home/nsp/Documents/p/beskar/beskar/shell/topbar.plm) | One full-screen glass silhouette: a thin ring round all four edges with curved inner corners, three content-sized islands hanging from the top, and the dock rising from the bottom. Islands are as wide as their content and morph with springs. Logic (workspace, weather, app launch) in `topbar.luau`. |
-| **Control Center** | [`shell/control_center.plm`](file:///home/nsp/Documents/p/beskar/beskar/shell/control_center.plm) | 4-page panel: overview, Wi-Fi picker, Bluetooth picker, Audio outputs selector, and Appearance/Glass look customizer. |
-| **Notification Center** | [`shell/notifications.plm`](file:///home/nsp/Documents/p/beskar/beskar/shell/notifications.plm) | The notification server. The bell opens a centre of macOS-style cards (icon, bold title, two lines of body, hover ×, Clear All); a new notification also drops a banner from the right island. |
-| **Wallpapers** | [`shell/wallpapers.plm`](file:///home/nsp/Documents/p/beskar/beskar/shell/wallpapers.plm) | Super+W picker: thumbnails of `~/Pictures/wallpapers`, Beskar's built-in wallpapers (`assets/wallpapers/`, from iNiR) and the system's; applies with a transition (awww) and remembers the choice. |
-| **Dashboard** | [`shell/dashboard.plm`](file:///home/nsp/Documents/p/beskar/beskar/shell/dashboard.plm) | Drops from the centre island when you click the clock: date, live weather, CPU / memory / disk, world clocks. |
-| **Bezel OSD (HUD)** | [`shell/osd.plm`](file:///home/nsp/Documents/p/beskar/beskar/shell/osd.plm) | Centered floating bezel HUD for Volume and Brightness adjustments with auto-dismiss timer and spring physics. |
-| **Spotlight Search** | [`shell/spotlight.plm`](file:///home/nsp/Documents/p/beskar/beskar/shell/spotlight.plm) | Centered search bar with live fuzzy filtering of desktop applications, arrow-key navigation, and Enter to launch. |
-| **Apple Menu** | [`shell/apple_menu.plm`](file:///home/nsp/Documents/p/beskar/beskar/shell/apple_menu.plm) | Dropdown providing quick access to About, System Settings, Screen Lock, Reboot, and Power off. |
-| **Supervisor & CLI** | [`shell/start.sh`](file:///home/nsp/Documents/p/beskar/beskar/shell/start.sh) | Process supervisor, theme persistence, and CLI hotkey runner. |
+| **App Switcher** | [`shell/appswitcher.plm`](appswitcher.plm) | macOS Cmd+Tab application switcher HUD showing running windows from niri/Wayland with active selection capsule and focus switching. |
+| **Clipboard History** | [`shell/clipboard.plm`](clipboard.plm) | macOS Super+V Clipboard Manager with live cliphist history, 1-click restore/paste, and Clear All action. |
+| **System Settings** | [`shell/settings.plm`](settings.plm) | Dedicated macOS 2-column System Settings app: Appearance, Displays (eDP-1 + HDMI-A-1), Sound, Wi-Fi, Bluetooth, Notifications, Wallpaper picker (awww), Software Update (yay/pacman), and About This Mac specs. |
+| **Lock Screen** | [`shell/lock.plm`](lock.plm) | Native Wayland session lock (`ext-session-lock` protocol) with full-screen blur, Apple typography clock, avatar, password verification via PAM, and spring headshake. |
+| **Session Dialog** | [`shell/session.plm`](session.plm) | macOS Shutdown/Restart/Logout confirmation dialog with 60-second automatic timer and window reopen toggle. |
+| **Screen Capture & Record HUD** | [`shell/capture.plm`](capture.plm) | macOS Cmd+Shift+5 floating HUD with Entire Screen, Selected Window, Selected Area capture (`grim`+`slurp`), and video recording (`wf-recorder`). |
+| **Frame (top bar + dock)** | [`shell/topbar.plm`](topbar.plm) | One full-screen glass silhouette: a thin ring round all four edges with curved inner corners, three content-sized islands hanging from the top, and the dock rising from the bottom. Islands are as wide as their content and morph with springs. Logic (workspace, weather, app launch) in `topbar.luau`. |
+| **Control Center** | [`shell/control_center.plm`](control_center.plm) | 4-page panel: overview, Wi-Fi picker, Bluetooth picker, Audio outputs selector, and Appearance/Glass look customizer. |
+| **Notification Center** | [`shell/notifications.plm`](notifications.plm) | The notification server. The bell opens a centre of macOS-style cards (icon, bold title, two lines of body, hover ×, Clear All); a new notification also drops a banner from the right island. |
+| **Wallpapers** | [`shell/wallpapers.plm`](wallpapers.plm) | Super+W picker: thumbnails of `~/Pictures/wallpapers`, Beskar's built-in wallpapers (`assets/wallpapers/`, from iNiR) and the system's; applies with a transition (awww) and remembers the choice. |
+| **Dashboard** | [`shell/dashboard.plm`](dashboard.plm) | Drops from the centre island when you click the clock: date, live weather, CPU / memory / disk, world clocks. |
+| **Bezel OSD (HUD)** | [`shell/osd.plm`](osd.plm) | Centered floating bezel HUD for Volume and Brightness adjustments with auto-dismiss timer and spring physics. |
+| **Spotlight Search** | [`shell/spotlight.plm`](spotlight.plm) | Centered search bar with live fuzzy filtering of desktop applications, arrow-key navigation, and Enter to launch. |
+| **Apple Menu** | [`shell/apple_menu.plm`](apple_menu.plm) | Dropdown providing quick access to About, System Settings, Screen Lock, Reboot, and Power off. |
+| **Supervisor & CLI** | [`shell/start.sh`](start.sh) | Process supervisor, theme persistence, and CLI hotkey runner. |
 
 ---
 

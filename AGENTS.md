@@ -26,7 +26,7 @@ Use the `pleamar` skill when touching any `.plm` / `.luau` file.
 grim -o HDMI-A-1 out.png                   # screenshot a monitor
 ```
 
-Scene sockets are named after the file stem in `/run/user/1000/pleamar/`. Logs: `/tmp/pleamar_<name>.log`.
+Scene sockets are named after the file stem in `$XDG_RUNTIME_DIR/pleamar/`. Logs: `/tmp/pleamar_<name>.log`.
 Restart one scene by killing its PID (never `pkill -f` / `pgrep -f` from the same shell line: the
 pattern matches the invoking command) and relaunching `bin/pleamar --no-hud --scene shell/x.plm`.
 
@@ -51,6 +51,8 @@ pattern matches the invoking command) and relaunching `bin/pleamar --no-hud --sc
 9. **niri.** The `workspaces` service is Hyprland-only: use `niri msg -j workspaces|windows|outputs`
    and `niri msg -j event-stream`. The 6 px ring is kept clear of windows by `struts` in
    `~/.config/niri/config.kdl`.
+   Nothing user- or machine-specific is hard-coded: the user name, home, monitors, weather location and
+   time zone all come from the system (`location.luau`, `$HOME`, `niri msg`, `date`).
 10. **One panel at a time.** A panel's logic ends with `require("exclusive")("<scene>")` (`shell/exclusive.luau`), which closes the other panels when it opens. A new panel must be added to `PANELS` there and get `say:<scene>` permissions both ways.
 11. **Colours come from `shell/common/theme.plm`.** It is a `part`: put `include "common/theme.plm"` as the first line of a scene and use its tokens (`accent_c`, `ok_c`, `danger_c`, `focus_c`, `ink_c`, `ink_sub`, `card_fill`, `item_solid`, `bg_color`, …) instead of hex values. It declares the `dark_mode`, `skin` and `accent` facts; Settings broadcasts them to every scene and saves them to `~/.config/pleamar_shell.json`.
 12. **Names.** Component-scoped names are mangled (`hit#Shell7#DockItem36`); `--say` can see them via `describe`.

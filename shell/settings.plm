@@ -12,7 +12,7 @@ scene MacSettings {
 
     permissions {
         services: "clock", "audio", "audio.*", "brightness", "brightness.*", "network", "network.*", "bluetooth", "bluetooth.*", "say:topbar", "say:dock", "say:spotlight", "say:control_center", "say:apple_menu", "say:notifications", "say:dashboard", "say:osd", "say:clipboard", "say:wallpapers"
-        run: "awww", "awww-daemon", "gsettings", "systemctl", "loginctl", "kitty", "pacman", "yay", "paru", "sh"
+        run: "awww", "awww-daemon", "gsettings", "systemctl", "loginctl", "kitty", "pacman", "yay", "paru", "sh", "niri msg"
     }
 
     service audio as sound { volume: number; muted: bool }
@@ -21,10 +21,16 @@ scene MacSettings {
     service bluetooth as bt { powered: bool }
 
     fact open = false
+    text user_name = ""
     fact tab = 0             // 0: Appearance, 1: Displays, 2: Sound, 3: Wi-Fi, 4: Bluetooth, 5: Notifications, 6: Wallpaper, 7: General / About
 
     // Displays facts
-    fact disp_choice = 0     // 0: Built-in (eDP-1), 1: LG UltraGear (HDMI-A-1)
+    fact disp_choice = 0     // which of the listed displays is selected
+    fact disp_count = 0
+    text disp_name_0 = ""
+    text disp_mode_0 = ""
+    text disp_name_1 = ""
+    text disp_mode_1 = ""
     fact night_shift = false
     //  About this PC: filled in by settings.luau from the machine itself
     text about_os = "Linux"
@@ -143,7 +149,7 @@ scene MacSettings {
             column {
                 at: 52, 17
                 gap: 2
-                text "nsp" { size: 13; weight: 600; color: ink_c }
+                text user_name { size: 13; weight: 600; color: ink_c }
                 text "Account & Media" { size: 10.5; color: ink_sub }
             }
         }
@@ -306,29 +312,26 @@ scene MacSettings {
                 at: 50, 42
                 gap: 36
 
-                // Display 0: Built-in (eDP-1)
+                //  Up to two displays, as niri reports them (name, make/model, mode).
                 group {
+                    show: disp_count > 0
                     size: 190, 104
-                    box { from: 0, 0; size: 190, 80; corner: 8; color: if(disp_choice == 0, #1a2736, #161820) }
+                    box { from: 0, 0; size: 190, 80; corner: 8; color: item_solid }
                     box { from: 0, 0; size: 190, 80; corner: 8; stroke: if(disp_choice == 0, 2, 1); color: if(disp_choice == 0, accent_c, c_border); opacity: if(disp_choice == 0, 100%, c_border_op) }
-                    // Monitor Mockup
-                    text "󰍹" { at: 95, 32; anchor: center; size: 24; color: if(disp_choice == 0, accent_c, ink_sub) }
-                    text "Built-in Display (eDP-1)" { at: 95, 54; anchor: center; size: 11; weight: 600; color: ink_c }
-                    text "1920 × 1080 @ 60 Hz" { at: 95, 92; anchor: center; size: 10.5; color: ink_sub }
-
+                    text "󰍹" { at: 95, 30; anchor: center; size: 24; color: if(disp_choice == 0, accent_c, ink_sub) }
+                    text disp_name_0 { at: 95, 56; anchor: center; size: 11; weight: 600; color: ink_c; width: 176; lines: 1 }
+                    text disp_mode_0 { at: 95, 92; anchor: center; size: 10.5; color: ink_sub }
                     zone box hit_disp0 { from: 0, 0; size: 190, 104; cursor: pointer }
                     on press hit_disp0 { disp_choice = 0 }
                 }
-
-                // Display 1: External (HDMI-A-1)
                 group {
+                    show: disp_count > 1
                     size: 190, 104
-                    box { from: 0, 0; size: 190, 80; corner: 8; color: if(disp_choice == 1, #1a2736, #161820) }
+                    box { from: 0, 0; size: 190, 80; corner: 8; color: item_solid }
                     box { from: 0, 0; size: 190, 80; corner: 8; stroke: if(disp_choice == 1, 2, 1); color: if(disp_choice == 1, accent_c, c_border); opacity: if(disp_choice == 1, 100%, c_border_op) }
-                    text "󰍹" { at: 95, 32; anchor: center; size: 24; color: if(disp_choice == 1, accent_c, ink_sub) }
-                    text "LG ULTRAGEAR (HDMI-A-1)" { at: 95, 54; anchor: center; size: 11; weight: 600; color: ink_c }
-                    text "1920 × 1080 @ 120 Hz" { at: 95, 92; anchor: center; size: 10.5; color: ink_sub }
-
+                    text "󰍹" { at: 95, 30; anchor: center; size: 24; color: if(disp_choice == 1, accent_c, ink_sub) }
+                    text disp_name_1 { at: 95, 56; anchor: center; size: 11; weight: 600; color: ink_c; width: 176; lines: 1 }
+                    text disp_mode_1 { at: 95, 92; anchor: center; size: 10.5; color: ink_sub }
                     zone box hit_disp1 { from: 0, 0; size: 190, 104; cursor: pointer }
                     on press hit_disp1 { disp_choice = 1 }
                 }
