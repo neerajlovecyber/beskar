@@ -14,6 +14,18 @@ scene MacAppleMenu {
     }
 
     fact open = false
+    fact dark_mode = true
+    fact skin = 0
+
+    let menu_color = if(dark_mode, if(skin == 2, #1e2026, if(skin == 1, #1c1e28, #161820)), if(skin == 2, #f2f3f7, if(skin == 1, #eaecf2, #f8f9fc)))
+    let menu_glass = if(skin == 2, 0%, if(skin == 1, 55%, 85%))
+    let menu_tint = if(skin == 2, 0%, if(dark_mode, 40%, 25%))
+    let menu_rim = if(skin == 2, 0%, 14%)
+    let menu_shadow = if(dark_mode, 35%, 15%)
+    let ink_c = if(dark_mode, #f5f7f5, #1d1d1f)
+    let ink_sub = if(dark_mode, #8e8e93, #6e6e73)
+    let line_color = if(dark_mode, #ffffff, #000000)
+    let line_op = if(dark_mode, 10%, 8%)
 
     event toggle
     event action_settings ->
@@ -41,16 +53,16 @@ scene MacAppleMenu {
         scale: scale
         opacity: seen
 
-        // Frosted Glass Window Frame
+        // Window Frame
         body {
-            color: #161820
-            glass: 85%
+            color: menu_color
+            glass: menu_glass
             frost: 100%
             dispersion: 0
             refraction: 0
-            tint: 40%
-            rim: 14%
-            shadow: 0, 12, 28, 35%
+            tint: menu_tint
+            rim: menu_rim
+            shadow: 0, 12, 28, menu_shadow
             box { from: 0, 0; size: 230, 250; corner: 14 }
         }
 
@@ -63,7 +75,7 @@ scene MacAppleMenu {
                 size: 214, 28
                 prop hot1 = 0 ~quick
                 box { from: 0, 0; size: 214, 28; corner: 6; color: blue; opacity: hot1 * 80% }
-                text "About This Mac" { at: 10, 6; size: 13; color: ink }
+                text "About This Mac" { at: 10, 6; size: 13; color: if(hot1 > 0.5, #ffffff, ink_c) }
                 zone box hit_about { from: 0, 0; size: 214, 28; cursor: pointer; active: open }
                 on enter hit_about { hot1: 1 }
                 on leave hit_about { hot1: 0 }
@@ -71,14 +83,14 @@ scene MacAppleMenu {
             }
 
             // Divider
-            box { size: 214, 1; color: #ffffff; opacity: 10% }
+            box { size: 214, 1; color: line_color; opacity: line_op }
 
             // System Settings
             group {
                 size: 214, 28
                 prop hot2 = 0 ~quick
                 box { from: 0, 0; size: 214, 28; corner: 6; color: blue; opacity: hot2 * 80% }
-                text "System Settings..." { at: 10, 6; size: 13; color: ink }
+                text "System Settings..." { at: 10, 6; size: 13; color: if(hot2 > 0.5, #ffffff, ink_c) }
                 zone box hit_settings { from: 0, 0; size: 214, 28; cursor: pointer; active: open }
                 on enter hit_settings { hot2: 1 }
                 on leave hit_settings { hot2: 0 }
@@ -90,7 +102,7 @@ scene MacAppleMenu {
                 size: 214, 28
                 prop hot3 = 0 ~quick
                 box { from: 0, 0; size: 214, 28; corner: 6; color: blue; opacity: hot3 * 80% }
-                text "App Store..." { at: 10, 6; size: 13; color: ink }
+                text "App Store..." { at: 10, 6; size: 13; color: if(hot3 > 0.5, #ffffff, ink_c) }
                 zone box hit_store { from: 0, 0; size: 214, 28; cursor: pointer; active: open }
                 on enter hit_store { hot3: 1 }
                 on leave hit_store { hot3: 0 }
@@ -98,15 +110,15 @@ scene MacAppleMenu {
             }
 
             // Divider
-            box { size: 214, 1; color: #ffffff; opacity: 10% }
+            box { size: 214, 1; color: line_color; opacity: line_op }
 
             // Lock Screen
             group {
                 size: 214, 28
                 prop hot4 = 0 ~quick
                 box { from: 0, 0; size: 214, 28; corner: 6; color: blue; opacity: hot4 * 80% }
-                text "Lock Screen" { at: 10, 6; size: 13; color: ink }
-                text "⌃⌘Q" { at: 170, 7; size: 11; color: ink; opacity: 60% }
+                text "Lock Screen" { at: 10, 6; size: 13; color: if(hot4 > 0.5, #ffffff, ink_c) }
+                text "⌃⌘Q" { at: 170, 7; size: 11; color: if(hot4 > 0.5, #ffffff, ink_sub) }
                 zone box hit_lock { from: 0, 0; size: 214, 28; cursor: pointer; active: open }
                 on enter hit_lock { hot4: 1 }
                 on leave hit_lock { hot4: 0 }
@@ -118,7 +130,7 @@ scene MacAppleMenu {
                 size: 214, 28
                 prop hot5 = 0 ~quick
                 box { from: 0, 0; size: 214, 28; corner: 6; color: blue; opacity: hot5 * 80% }
-                text "Restart..." { at: 10, 6; size: 13; color: ink }
+                text "Restart..." { at: 10, 6; size: 13; color: if(hot5 > 0.5, #ffffff, ink_c) }
                 zone box hit_restart { from: 0, 0; size: 214, 28; cursor: pointer; active: open }
                 on enter hit_restart { hot5: 1 }
                 on leave hit_restart { hot5: 0 }
@@ -130,7 +142,7 @@ scene MacAppleMenu {
                 size: 214, 28
                 prop hot6 = 0 ~quick
                 box { from: 0, 0; size: 214, 28; corner: 6; color: blue; opacity: hot6 * 80% }
-                text "Shut Down..." { at: 10, 6; size: 13; color: ink }
+                text "Shut Down..." { at: 10, 6; size: 13; color: if(hot6 > 0.5, #ffffff, ink_c) }
                 zone box hit_power { from: 0, 0; size: 214, 28; cursor: pointer; active: open }
                 on enter hit_power { hot6: 1 }
                 on leave hit_power { hot6: 0 }

@@ -4,6 +4,7 @@ set -e
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BIN="$DIR/bin/pleamar"
 PID_FILE="/tmp/pleamar_macos_shell.pids"
+CONFIG_FILE="$HOME/.config/pleamar_shell.json"
 
 if [ ! -f "$BIN" ]; then
     echo "Pleamar binary not found at $BIN. Building..."
@@ -29,6 +30,21 @@ check_status() {
     done
 }
 
+apply_saved_theme() {
+    if [ -f "$CONFIG_FILE" ]; then
+        DM=$(grep -o '"dark_mode": *[a-z]*' "$CONFIG_FILE" | awk '{print $2}' || true)
+        SKIN=$(grep -o '"skin": *[0-9]*' "$CONFIG_FILE" | awk '{print $2}' || true)
+        
+        [ -z "$DM" ] && DM="true"
+        [ -z "$SKIN" ] && SKIN="0"
+
+        for comp in topbar dock spotlight control_center apple_menu; do
+            "$BIN" --say "$comp" "fact dark_mode $DM" >/dev/null 2>&1 || true
+            "$BIN" --say "$comp" "fact skin $SKIN" >/dev/null 2>&1 || true
+        done
+    fi
+}
+
 start_shell() {
     kill_all
     sleep 0.3
@@ -49,6 +65,8 @@ start_shell() {
     echo "$PID_BAR $PID_DOCK $PID_SPOTLIGHT $PID_CC $PID_APPLE" > "$PID_FILE"
     sleep 0.6
 
+    apply_saved_theme
+
     echo "macOS Shell is active!"
     echo "  - Top Bar: PID $PID_BAR"
     echo "  - Dock: PID $PID_DOCK"
@@ -60,6 +78,8 @@ start_shell() {
     echo "  - $0 spotlight       (Toggle Spotlight search)"
     echo "  - $0 control-center  (Toggle Control Center)"
     echo "  - $0 apple-menu      (Toggle Apple menu)"
+    echo "  - $0 dark-mode [on|off]"
+    echo "  - $0 skin [0|1|2]    (0=Liquid Glass, 1=Light Acrylic, 2=Classic Solid)"
     echo "  - $0 status          (Check shell status)"
     echo "  - $0 stop            (Stop shell)"
 }
@@ -83,6 +103,25 @@ case "$1" in
         ;;
     apple-menu)
         "$BIN" --say apple_menu "emit toggle"
+        ;;
+    dark-mode)
+        VAL="true"
+        [ "$2" = "off" ] && VAL="false"
+        for comp in topbar dock spotlight control_center apple_menu; do
+            "$BIN" --say "$comp" "fact dark_mode $VAL"
+        done
+        mkdir -p "$(dirname "$CONFIG_FILE")"
+        echo "{\"dark_mode\": $VAL, \"skin\": 0}" > "$CONFIG_FILE"
+        echo "Dark mode set to $VAL."
+        ;;
+    skin)
+        SKIN_VAL="${2:-0}"
+        for comp in topbar dock spotlight control_center apple_menu; do
+            "$BIN" --say "$comp" "fact skin $SKIN_VAL"
+        done
+        mkdir -p "$(dirname "$CONFIG_FILE")"
+        echo "{\"dark_mode\": true, \"skin\": $SKIN_VAL}" > "$CONFIG_FILE"
+        echo "Glass skin set to $SKIN_VAL."
         ;;
     *)
         start_shell

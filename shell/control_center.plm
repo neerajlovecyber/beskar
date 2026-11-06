@@ -10,7 +10,7 @@ scene MacControlCenter {
     }
 
     permissions {
-        services: "audio", "audio.*", "brightness", "brightness.*", "media", "media.*", "network", "network.*", "bluetooth", "bluetooth.*"
+        services: "audio", "audio.*", "brightness", "brightness.*", "media", "media.*", "network", "network.*", "bluetooth", "bluetooth.*", "say:topbar", "say:dock", "say:spotlight", "say:apple_menu"
     }
 
     // ── Built-in System Models ────────────────────────────────────
@@ -25,15 +25,33 @@ scene MacControlCenter {
     service bluetooth as bt { powered: bool; devices: gadgets }
     service media as song { playing: bool; title: text; artist: text }
 
-    // ── Navigation State: 0 = Main, 1 = Wi-Fi, 2 = Bluetooth, 3 = Sound
+    // ── Navigation & Theme Facts ──────────────────────────────────
+    // Navigation: 0 = Main, 1 = Wi-Fi, 2 = Bluetooth, 3 = Sound, 4 = Appearance
     fact page = 0
     fact open = false
+    fact dark_mode = true
+    fact skin = 0
+
+    let bg_color = if(dark_mode, if(skin == 2, #1e2026, if(skin == 1, #1c1e28, #161820)), if(skin == 2, #f2f3f7, if(skin == 1, #eaecf2, #f8f9fc)))
+    let glass_amt = if(skin == 2, 0%, if(skin == 1, 55%, 85%))
+    let tint_amt = if(skin == 2, 0%, if(dark_mode, 40%, 25%))
+    let rim_amt = if(skin == 2, 0%, 14%)
+    let shadow_amt = if(dark_mode, 35%, 15%)
+    let card_fill = if(dark_mode, #232630, #ffffff)
+    let card_fill_op = if(dark_mode, 78%, 88%)
+    let card_stroke = if(dark_mode, #ffffff, #000000)
+    let card_stroke_op = if(dark_mode, 6%, 8%)
+    let ink_c = if(dark_mode, #f5f7f5, #1d1d1f)
+    let ink_sub = if(dark_mode, #8e8e93, #6e6e73)
+    let item_bg = if(dark_mode, #343740, #e2e4ea)
+    let slider_bg = if(dark_mode, #343740, #dcdfe6)
+    let slider_bar = if(dark_mode, #ffffff, #007aff)
+    let slider_icon = if(dark_mode, #16181d, #ffffff)
 
     event toggle
-    event go_main
-    event go_wifi
-    event go_bt
-    event go_sound
+    event toggle_dark ->
+    event set_dark_mode ->
+    event choose_skin ->
 
     event volume_set ->
     event brightness_set ->
@@ -63,16 +81,16 @@ scene MacControlCenter {
         scale: scale
         opacity: seen
 
-        // ── Frosted Glass Main Window Frame ───────────────────────
+        // ── Window Frame ──────────────────────────────────────────
         body {
-            color: #161820
-            glass: 85%
+            color: bg_color
+            glass: glass_amt
             frost: 100%
             dispersion: 0
             refraction: 0
-            tint: 40%
-            rim: 14%
-            shadow: 0, 14, 28, 35%
+            tint: tint_amt
+            rim: rim_amt
+            shadow: 0, 14, 28, shadow_amt
             box { from: 0, 0; size: 360, 480; corner: 22 }
         }
 
@@ -82,7 +100,7 @@ scene MacControlCenter {
         group {
             show: page == 0
 
-            // ── Top Row: Connectivity & Focus ─────────────────────
+            // Top Row: Connectivity & Controls
             row {
                 at: 16, 16
                 gap: 12
@@ -90,147 +108,167 @@ scene MacControlCenter {
                 // Connectivity 2x2 Card
                 group {
                     size: 158, 134
-                    box { from: 0, 0; size: 158, 134; corner: 16; color: #232630; opacity: 78% }
-                    box { from: 0, 0; size: 158, 134; corner: 16; stroke: 1; color: #ffffff; opacity: 6% }
+                    box { from: 0, 0; size: 158, 134; corner: 16; color: card_fill; opacity: card_fill_op }
+                    box { from: 0, 0; size: 158, 134; corner: 16; stroke: 1; color: card_stroke; opacity: card_stroke_op }
 
                     // Wi-Fi Row
                     group {
                         size: 34, 34
                         move: 12, 14
-                        ellipse { at: 17, 17; radius: 17; color: if(net.online, #007aff, #343740) }
-                        text "󰤨" { at: 17, 17; anchor: center; size: 15; color: ink }
+                        ellipse { at: 17, 17; radius: 17; color: if(net.online, #007aff, item_bg) }
+                        text "󰤨" { at: 17, 17; anchor: center; size: 15; color: if(net.online, #ffffff, ink_c) }
                         zone box wifi_icon_hit { from: 0, 0; size: 34, 34; cursor: pointer }
                     }
-                    text "Wi-Fi" { at: 54, 22; anchor: left center; size: 12.5; weight: 600; color: ink }
-                    text if(net.online, net.name, "Off") { at: 54, 36; anchor: left center; size: 10.5; color: ink; opacity: 60%; width: 80; lines: 1 }
-                    text "󰅂" { at: 142, 28; anchor: center; size: 14; color: ink; opacity: 40% }
+                    text "Wi-Fi" { at: 54, 22; anchor: left center; size: 12.5; weight: 600; color: ink_c }
+                    text if(net.online, net.name, "Off") { at: 54, 36; anchor: left center; size: 10.5; color: ink_sub; width: 80; lines: 1 }
+                    text "󰅂" { at: 142, 28; anchor: center; size: 14; color: ink_sub }
                     zone box wifi_chevron_hit { at: 142, 28; size: 24, 24; corner: 12; cursor: pointer }
 
                     // Bluetooth Row
                     group {
                         size: 34, 34
                         move: 12, 72
-                        ellipse { at: 17, 17; radius: 17; color: if(bt.powered, #007aff, #343740) }
-                        text "󰂯" { at: 17, 17; anchor: center; size: 15; color: ink }
+                        ellipse { at: 17, 17; radius: 17; color: if(bt.powered, #007aff, item_bg) }
+                        text "󰂯" { at: 17, 17; anchor: center; size: 15; color: if(bt.powered, #ffffff, ink_c) }
                         zone box bt_icon_hit { from: 0, 0; size: 34, 34; cursor: pointer }
                     }
-                    text "Bluetooth" { at: 54, 80; anchor: left center; size: 12.5; weight: 600; color: ink }
-                    text if(bt.powered, "On", "Off") { at: 54, 94; anchor: left center; size: 10.5; color: ink; opacity: 60% }
-                    text "󰅂" { at: 142, 86; anchor: center; size: 14; color: ink; opacity: 40% }
+                    text "Bluetooth" { at: 54, 80; anchor: left center; size: 12.5; weight: 600; color: ink_c }
+                    text if(bt.powered, "On", "Off") { at: 54, 94; anchor: left center; size: 10.5; color: ink_sub }
+                    text "󰅂" { at: 142, 86; anchor: center; size: 14; color: ink_sub }
                     zone box bt_chevron_hit { at: 142, 86; size: 24, 24; corner: 12; cursor: pointer }
                 }
 
-                // Focus & Controls Right Column
+                // Focus & Dark Mode Right Column
                 column {
                     gap: 12
 
                     // Do Not Disturb Card
                     group {
                         size: 158, 61
-                        box { from: 0, 0; size: 158, 61; corner: 16; color: #232630; opacity: 78% }
-                        box { from: 0, 0; size: 158, 61; corner: 16; stroke: 1; color: #ffffff; opacity: 6% }
-                        ellipse { at: 24, 30; radius: 15; color: #343740 }
-                        text "󱄎" { at: 24, 30; anchor: center; size: 15; color: ink }
-                        text "Focus" { at: 48, 30; anchor: left center; size: 12.5; weight: 600; color: ink }
+                        box { from: 0, 0; size: 158, 61; corner: 16; color: card_fill; opacity: card_fill_op }
+                        box { from: 0, 0; size: 158, 61; corner: 16; stroke: 1; color: card_stroke; opacity: card_stroke_op }
+                        ellipse { at: 24, 30; radius: 15; color: item_bg }
+                        text "󰒎" { at: 24, 30; anchor: center; size: 15; color: ink_c }
+                        text "Focus" { at: 48, 30; anchor: left center; size: 12.5; weight: 600; color: ink_c }
                     }
 
-                    // AirDrop / Hotspot Card
+                    // Dark Mode Toggle Card
                     group {
                         size: 158, 61
-                        box { from: 0, 0; size: 158, 61; corner: 16; color: #232630; opacity: 78% }
-                        box { from: 0, 0; size: 158, 61; corner: 16; stroke: 1; color: #ffffff; opacity: 6% }
-                        ellipse { at: 24, 30; radius: 15; color: #343740 }
-                        text "󰀝" { at: 24, 30; anchor: center; size: 15; color: ink }
-                        text "AirDrop" { at: 48, 30; anchor: left center; size: 12.5; weight: 600; color: ink }
+                        box { from: 0, 0; size: 158, 61; corner: 16; color: card_fill; opacity: card_fill_op }
+                        box { from: 0, 0; size: 158, 61; corner: 16; stroke: 1; color: card_stroke; opacity: card_stroke_op }
+                        ellipse { at: 24, 30; radius: 15; color: if(dark_mode, #007aff, item_bg) }
+                        text if(dark_mode, "󰔎", "󰖨") { at: 24, 30; anchor: center; size: 15; color: if(dark_mode, #ffffff, ink_c) }
+                        text "Dark Mode" { at: 48, 22; anchor: left center; size: 12.5; weight: 600; color: ink_c }
+                        text if(dark_mode, "On", "Off") { at: 48, 38; anchor: left center; size: 10.5; color: ink_sub }
+                        zone box dm_tile_hit { from: 0, 0; size: 158, 61; corner: 16; cursor: pointer }
                     }
                 }
             }
 
-            // ── Sliders Section ───────────────────────────────────
+            // Sliders Section
             column {
-                at: 16, 162
-                gap: 12
+                at: 16, 160
+                gap: 10
 
                 // Display Brightness Card
                 group {
-                    size: 328, 56
-                    box { from: 0, 0; size: 328, 56; corner: 16; color: #232630; opacity: 78% }
-                    box { from: 0, 0; size: 328, 56; corner: 16; stroke: 1; color: #ffffff; opacity: 6% }
-                    text "Display" { at: 14, 16; anchor: left center; size: 11; weight: 600; color: ink; opacity: 70% }
+                    size: 328, 52
+                    box { from: 0, 0; size: 328, 52; corner: 16; color: card_fill; opacity: card_fill_op }
+                    box { from: 0, 0; size: 328, 52; corner: 16; stroke: 1; color: card_stroke; opacity: card_stroke_op }
+                    text "Display" { at: 14, 15; anchor: left center; size: 11; weight: 600; color: ink_c; opacity: 75% }
                     group {
-                        move: 14, 27
-                        size: 300, 19
-                        box { from: 0, 0; size: 300, 19; corner: 9.5; color: #343740 }
-                        box { from: 0, 0; size: 300 * max(display.level, 0.15), 19; corner: 9.5; color: #ffffff }
-                        text "󰃠" { at: 13, 9.5; anchor: center; size: 12; color: #16181d }
-                        zone box br_hit { from: 0, 0; size: 300, 19; cursor: pointer }
+                        move: 14, 25
+                        size: 300, 18
+                        box { from: 0, 0; size: 300, 18; corner: 9; color: slider_bg }
+                        box { from: 0, 0; size: 300 * max(display.level, 0.15), 18; corner: 9; color: slider_bar }
+                        text "󰃠" { at: 13, 9; anchor: center; size: 11.5; color: slider_icon }
+                        zone box br_hit { from: 0, 0; size: 300, 18; cursor: pointer }
                     }
                 }
 
-                // Sound Volume Card (With Chevron to audio outputs)
+                // Sound Volume Card
                 group {
-                    size: 328, 56
-                    box { from: 0, 0; size: 328, 56; corner: 16; color: #232630; opacity: 78% }
-                    box { from: 0, 0; size: 328, 56; corner: 16; stroke: 1; color: #ffffff; opacity: 6% }
-                    text "Sound" { at: 14, 16; anchor: left center; size: 11; weight: 600; color: ink; opacity: 70% }
-                    text "󰅂" { at: 310, 16; anchor: center; size: 14; color: ink; opacity: 40% }
-                    zone box snd_chevron_hit { at: 310, 16; size: 24, 20; corner: 10; cursor: pointer }
+                    size: 328, 52
+                    box { from: 0, 0; size: 328, 52; corner: 16; color: card_fill; opacity: card_fill_op }
+                    box { from: 0, 0; size: 328, 52; corner: 16; stroke: 1; color: card_stroke; opacity: card_stroke_op }
+                    text "Sound" { at: 14, 15; anchor: left center; size: 11; weight: 600; color: ink_c; opacity: 75% }
+                    text "󰅂" { at: 310, 15; anchor: center; size: 14; color: ink_sub }
+                    zone box snd_chevron_hit { at: 310, 15; size: 24, 20; corner: 10; cursor: pointer }
 
                     group {
-                        move: 14, 27
-                        size: 300, 19
-                        box { from: 0, 0; size: 300, 19; corner: 9.5; color: #343740 }
-                        box { from: 0, 0; size: 300 * sound.volume, 19; corner: 9.5; color: #ffffff }
-                        text "󰕾" { at: 13, 9.5; anchor: center; size: 12; color: #16181d }
-                        zone box vol_hit { from: 0, 0; size: 300, 19; cursor: pointer }
+                        move: 14, 25
+                        size: 300, 18
+                        box { from: 0, 0; size: 300, 18; corner: 9; color: slider_bg }
+                        box { from: 0, 0; size: 300 * sound.volume, 18; corner: 9; color: slider_bar }
+                        text "󰕾" { at: 13, 9; anchor: center; size: 11.5; color: slider_icon }
+                        zone box vol_hit { from: 0, 0; size: 300, 18; cursor: pointer }
                     }
                 }
             }
 
-            // ── Now Playing / Media Card ──────────────────────────
+            // Now Playing / Media Card
             group {
-                move: 16, 302
-                size: 328, 120
-                box { from: 0, 0; size: 328, 120; corner: 16; color: #232630; opacity: 78% }
-                box { from: 0, 0; size: 328, 120; corner: 16; stroke: 1; color: #ffffff; opacity: 6% }
+                move: 16, 284
+                size: 328, 98
+                box { from: 0, 0; size: 328, 98; corner: 16; color: card_fill; opacity: card_fill_op }
+                box { from: 0, 0; size: 328, 98; corner: 16; stroke: 1; color: card_stroke; opacity: card_stroke_op }
 
-                box { from: 14, 14; size: 54, 54; corner: 8; color: #007aff; opacity: 25% }
-                text "󰎆" { at: 41, 41; anchor: center; size: 24; color: #007aff }
+                box { from: 14, 12; size: 44, 44; corner: 8; color: #007aff; opacity: 25% }
+                text "󰎆" { at: 36, 34; anchor: center; size: 20; color: #007aff }
 
                 text song.title {
-                    at: 80, 30
+                    at: 68, 24
                     anchor: left center
-                    size: 13.5
+                    size: 13
                     weight: 600
-                    color: ink
-                    width: 230
+                    color: ink_c
+                    width: 240
                     lines: 1
                 }
                 text song.artist {
-                    at: 80, 50
+                    at: 68, 42
                     anchor: left center
-                    size: 11.5
-                    color: ink
-                    opacity: 60%
-                    width: 230
+                    size: 11
+                    color: ink_sub
+                    width: 240
                     lines: 1
                 }
 
                 row {
-                    at: 164, 94
+                    at: 164, 76
                     anchor: center
                     gap: 30
                     align: center
 
-                    text "󰒮" { size: 16; color: ink; opacity: 70% }
+                    text "󰒮" { size: 16; color: ink_c; opacity: 70% }
                     group {
-                        size: 28, 28
-                        ellipse { at: 14, 14; radius: 14; color: ink; opacity: 15% }
-                        text if(song.playing, "󰏤", "󰐊") { at: 14, 14; anchor: center; size: 14; color: ink }
-                        zone box play_hit { from: 0, 0; size: 28, 28; cursor: pointer }
+                        size: 26, 26
+                        ellipse { at: 13, 13; radius: 13; color: item_bg }
+                        text if(song.playing, "󰏤", "󰐊") { at: 13, 13; anchor: center; size: 13; color: ink_c }
+                        zone box play_hit { from: 0, 0; size: 26, 26; cursor: pointer }
                     }
-                    text "󰒭" { size: 16; color: ink; opacity: 70% }
+                    text "󰒭" { size: 16; color: ink_c; opacity: 70% }
                 }
+            }
+
+            // Appearance & Glass Tile
+            group {
+                move: 16, 392
+                size: 328, 44
+                box { from: 0, 0; size: 328, 44; corner: 14; color: card_fill; opacity: card_fill_op }
+                box { from: 0, 0; size: 328, 44; corner: 14; stroke: 1; color: card_stroke; opacity: card_stroke_op }
+
+                ellipse { at: 24, 22; radius: 14; color: #007aff; opacity: 20% }
+                text "󰏘" { at: 24, 22; anchor: center; size: 14; color: #007aff }
+
+                text "Appearance & Glass" { at: 48, 16; anchor: left center; size: 12; weight: 600; color: ink_c }
+                text "Liquid Glass" { at: 48, 29; anchor: left center; size: 10.5; color: ink_sub; show: skin == 0 }
+                text "Light Acrylic" { at: 48, 29; anchor: left center; size: 10.5; color: ink_sub; show: skin == 1 }
+                text "Classic Solid" { at: 48, 29; anchor: left center; size: 10.5; color: ink_sub; show: skin == 2 }
+
+                text "󰅂" { at: 310, 22; anchor: center; size: 14; color: ink_sub }
+                zone box appear_tile_hit { from: 0, 0; size: 328, 44; corner: 14; cursor: pointer }
             }
         }
 
@@ -240,30 +278,29 @@ scene MacControlCenter {
         group {
             show: page == 1
 
-            // Header with Back button
             group {
                 move: 16, 20
                 size: 100, 32
                 row {
                     gap: 8
                     align: center
-                    text "󰅁" { size: 18; color: ink; opacity: 70% }
-                    text "Wi-Fi" { size: 16; weight: 600; color: ink }
+                    text "󰅁" { size: 18; color: ink_c; opacity: 70% }
+                    text "Wi-Fi" { size: 16; weight: 600; color: ink_c }
                 }
                 zone box wifi_back_hit { from: 0, 0; size: 100, 32; cursor: pointer }
             }
 
-            // Available Networks List
             column {
                 at: 16, 62
                 gap: 6
                 for n in nets {
                     group {
                         size: 328, 38
-                        box { from: 0, 0; size: 328, 38; corner: 10; color: #24262d; opacity: if(n.active, 95%, 70%) }
-                        text "󰤨" { at: 20, 19; anchor: center; size: 14; color: if(n.active, #007aff, ink) }
-                        text n.ssid { at: 42, 19; anchor: left center; size: 13; weight: if(n.active, 600, 400); color: ink; width: 220; lines: 1 }
-                        text if(n.secure, "󰌾", "") { at: 290, 19; anchor: center; size: 12; color: ink; opacity: 50% }
+                        box { from: 0, 0; size: 328, 38; corner: 10; color: card_fill; opacity: if(n.active, 95%, card_fill_op) }
+                        box { from: 0, 0; size: 328, 38; corner: 10; stroke: 1; color: card_stroke; opacity: card_stroke_op }
+                        text "󰤨" { at: 20, 19; anchor: center; size: 14; color: if(n.active, #007aff, ink_c) }
+                        text n.ssid { at: 42, 19; anchor: left center; size: 13; weight: if(n.active, 600, 400); color: ink_c; width: 220; lines: 1 }
+                        text if(n.secure, "󰌾", "") { at: 290, 19; anchor: center; size: 12; color: ink_sub }
                         text if(n.active, "✓", "") { at: 312, 19; anchor: center; size: 14; color: #007aff }
                         zone box net_row_hit { from: 0, 0; size: 328, 38; cursor: pointer }
                         on press net_row_hit { emit pick_network(n.index) }
@@ -274,8 +311,7 @@ scene MacControlCenter {
                 at: 180, 200
                 anchor: center
                 size: 13
-                color: ink
-                opacity: 50%
+                color: ink_sub
                 show: nets.count < 1
             }
         }
@@ -286,31 +322,30 @@ scene MacControlCenter {
         group {
             show: page == 2
 
-            // Header with Back button
             group {
                 move: 16, 20
                 size: 130, 32
                 row {
                     gap: 8
                     align: center
-                    text "󰅁" { size: 18; color: ink; opacity: 70% }
-                    text "Bluetooth" { size: 16; weight: 600; color: ink }
+                    text "󰅁" { size: 18; color: ink_c; opacity: 70% }
+                    text "Bluetooth" { size: 16; weight: 600; color: ink_c }
                 }
                 zone box bt_back_hit { from: 0, 0; size: 130, 32; cursor: pointer }
             }
 
-            // Available Devices List
             column {
                 at: 16, 62
                 gap: 6
                 for g in gadgets {
                     group {
                         size: 328, 42
-                        box { from: 0, 0; size: 328, 42; corner: 10; color: #24262d; opacity: if(g.connected, 95%, 70%) }
-                        text "󰂯" { at: 20, 21; anchor: center; size: 15; color: if(g.connected, #007aff, ink) }
-                        text g.name { at: 42, 16; anchor: left center; size: 13; weight: if(g.connected, 600, 400); color: ink; width: 220; lines: 1 }
-                        text if(g.connected, "Connected", "Not Connected") { at: 42, 29; anchor: left center; size: 10.5; color: if(g.connected, mint, ink); opacity: 70% }
-                        text if(g.battery >= 0, "{g.battery}%", "") { at: 300, 21; anchor: right center; size: 11; color: ink; opacity: 60% }
+                        box { from: 0, 0; size: 328, 42; corner: 10; color: card_fill; opacity: if(g.connected, 95%, card_fill_op) }
+                        box { from: 0, 0; size: 328, 42; corner: 10; stroke: 1; color: card_stroke; opacity: card_stroke_op }
+                        text "󰂯" { at: 20, 21; anchor: center; size: 15; color: if(g.connected, #007aff, ink_c) }
+                        text g.name { at: 42, 16; anchor: left center; size: 13; weight: if(g.connected, 600, 400); color: ink_c; width: 220; lines: 1 }
+                        text if(g.connected, "Connected", "Not Connected") { at: 42, 29; anchor: left center; size: 10.5; color: if(g.connected, mint, ink_sub) }
+                        text if(g.battery >= 0, "{g.battery}%", "") { at: 300, 21; anchor: right center; size: 11; color: ink_sub }
                         zone box bt_row_hit { from: 0, 0; size: 328, 42; cursor: pointer }
                         on press bt_row_hit { emit pick_device(g.index) }
                     }
@@ -320,8 +355,7 @@ scene MacControlCenter {
                 at: 180, 200
                 anchor: center
                 size: 13
-                color: ink
-                opacity: 50%
+                color: ink_sub
                 show: gadgets.count < 1
             }
         }
@@ -332,29 +366,28 @@ scene MacControlCenter {
         group {
             show: page == 3
 
-            // Header with Back button
             group {
                 move: 16, 20
                 size: 150, 32
                 row {
                     gap: 8
                     align: center
-                    text "󰅁" { size: 18; color: ink; opacity: 70% }
-                    text "Sound Output" { size: 16; weight: 600; color: ink }
+                    text "󰅁" { size: 18; color: ink_c; opacity: 70% }
+                    text "Sound Output" { size: 16; weight: 600; color: ink_c }
                 }
                 zone box snd_back_hit { from: 0, 0; size: 150, 32; cursor: pointer }
             }
 
-            // Audio Sinks List
             column {
                 at: 16, 62
                 gap: 6
                 for o in outs {
                     group {
                         size: 328, 38
-                        box { from: 0, 0; size: 328, 38; corner: 10; color: #24262d; opacity: if(o.default, 95%, 70%) }
-                        text "󰕾" { at: 20, 19; anchor: center; size: 14; color: if(o.default, #007aff, ink) }
-                        text o.name { at: 42, 19; anchor: left center; size: 12.5; weight: if(o.default, 600, 400); color: ink; width: 250; lines: 1 }
+                        box { from: 0, 0; size: 328, 38; corner: 10; color: card_fill; opacity: if(o.default, 95%, card_fill_op) }
+                        box { from: 0, 0; size: 328, 38; corner: 10; stroke: 1; color: card_stroke; opacity: card_stroke_op }
+                        text "󰕾" { at: 20, 19; anchor: center; size: 14; color: if(o.default, #007aff, ink_c) }
+                        text o.name { at: 42, 19; anchor: left center; size: 12.5; weight: if(o.default, 600, 400); color: ink_c; width: 250; lines: 1 }
                         text if(o.default, "✓", "") { at: 310, 19; anchor: center; size: 14; color: #007aff }
                         zone box out_row_hit { from: 0, 0; size: 328, 38; cursor: pointer }
                         on press out_row_hit { emit pick_output(o.id) }
@@ -362,16 +395,129 @@ scene MacControlCenter {
                 }
             }
         }
+
+        // ==========================================================
+        // PAGE 4: APPEARANCE & GLASS CUSTOMIZER SUB-PAGE
+        // ==========================================================
+        group {
+            show: page == 4
+
+            group {
+                move: 16, 20
+                size: 160, 32
+                row {
+                    gap: 8
+                    align: center
+                    text "󰅁" { size: 18; color: ink_c; opacity: 70% }
+                    text "Appearance" { size: 16; weight: 600; color: ink_c }
+                }
+                zone box appear_back_hit { from: 0, 0; size: 160, 32; cursor: pointer }
+            }
+
+            text "THEME MODE" { at: 18, 62; size: 10.5; weight: 600; color: ink_sub }
+
+            // Theme Mode Selector: Dark vs Light Cards
+            row {
+                at: 16, 76
+                gap: 12
+
+                // Dark Mode Card
+                group {
+                    size: 158, 68
+                    box { from: 0, 0; size: 158, 68; corner: 14; color: #1e2026 }
+                    box { from: 0, 0; size: 158, 68; corner: 14; stroke: if(dark_mode, 2, 1); color: if(dark_mode, #007aff, card_stroke); opacity: if(dark_mode, 100%, 15%) }
+
+                    ellipse { at: 24, 34; radius: 15; color: #2e323e }
+                    text "󰔎" { at: 24, 34; anchor: center; size: 16; color: #ffffff }
+                    text "Dark" { at: 48, 26; anchor: left center; size: 13; weight: 600; color: #ffffff }
+                    text "Mode" { at: 48, 42; anchor: left center; size: 10.5; color: #8e8e93 }
+                    text if(dark_mode, "✓", "") { at: 138, 34; anchor: center; size: 15; weight: 700; color: #007aff }
+
+                    zone box opt_dark_hit { from: 0, 0; size: 158, 68; corner: 14; cursor: pointer }
+                }
+
+                // Light Mode Card
+                group {
+                    size: 158, 68
+                    box { from: 0, 0; size: 158, 68; corner: 14; color: #f4f5f8 }
+                    box { from: 0, 0; size: 158, 68; corner: 14; stroke: if(dark_mode == false, 2, 1); color: if(dark_mode == false, #007aff, card_stroke); opacity: if(dark_mode == false, 100%, 15%) }
+
+                    ellipse { at: 24, 34; radius: 15; color: #e2e4ea }
+                    text "󰖨" { at: 24, 34; anchor: center; size: 16; color: #1d1d1f }
+                    text "Light" { at: 48, 26; anchor: left center; size: 13; weight: 600; color: #1d1d1f }
+                    text "Mode" { at: 48, 42; anchor: left center; size: 10.5; color: #6e6e73 }
+                    text if(dark_mode == false, "✓", "") { at: 138, 34; anchor: center; size: 15; weight: 700; color: #007aff }
+
+                    zone box opt_light_hit { from: 0, 0; size: 158, 68; corner: 14; cursor: pointer }
+                }
+            }
+
+            text "BACKGROUND & GLASS STYLE" { at: 18, 160; size: 10.5; weight: 600; color: ink_sub }
+
+            // 3 Glass Modes
+            column {
+                at: 16, 174
+                gap: 8
+
+                // Skin 0: Liquid Glass
+                group {
+                    size: 328, 52
+                    box { from: 0, 0; size: 328, 52; corner: 12; color: card_fill; opacity: card_fill_op }
+                    box { from: 0, 0; size: 328, 52; corner: 12; stroke: if(skin == 0, 2, 1); color: if(skin == 0, #007aff, card_stroke); opacity: if(skin == 0, 100%, card_stroke_op) }
+
+                    ellipse { at: 24, 26; radius: 14; color: #007aff; opacity: 20% }
+                    text "󰹩" { at: 24, 26; anchor: center; size: 14; color: #007aff }
+
+                    text "Liquid Glass" { at: 48, 18; anchor: left center; size: 13; weight: 600; color: ink_c }
+                    text "Frosted blur with specular rim highlights" { at: 48, 34; anchor: left center; size: 10.5; color: ink_sub }
+
+                    text if(skin == 0, "✓", "") { at: 308, 26; anchor: center; size: 16; weight: 700; color: #007aff }
+                    zone box skin0_hit { from: 0, 0; size: 328, 52; corner: 12; cursor: pointer }
+                }
+
+                // Skin 1: Light Acrylic
+                group {
+                    size: 328, 52
+                    box { from: 0, 0; size: 328, 52; corner: 12; color: card_fill; opacity: card_fill_op }
+                    box { from: 0, 0; size: 328, 52; corner: 12; stroke: if(skin == 1, 2, 1); color: if(skin == 1, #007aff, card_stroke); opacity: if(skin == 1, 100%, card_stroke_op) }
+
+                    ellipse { at: 24, 26; radius: 14; color: #007aff; opacity: 20% }
+                    text "󰝤" { at: 24, 26; anchor: center; size: 14; color: #007aff }
+
+                    text "Light Acrylic" { at: 48, 18; anchor: left center; size: 13; weight: 600; color: ink_c }
+                    text "Soft translucency with higher tint opacity" { at: 48, 34; anchor: left center; size: 10.5; color: ink_sub }
+
+                    text if(skin == 1, "✓", "") { at: 308, 26; anchor: center; size: 16; weight: 700; color: #007aff }
+                    zone box skin1_hit { from: 0, 0; size: 328, 52; corner: 12; cursor: pointer }
+                }
+
+                // Skin 2: Classic Solid
+                group {
+                    size: 328, 52
+                    box { from: 0, 0; size: 328, 52; corner: 12; color: card_fill; opacity: card_fill_op }
+                    box { from: 0, 0; size: 328, 52; corner: 12; stroke: if(skin == 2, 2, 1); color: if(skin == 2, #007aff, card_stroke); opacity: if(skin == 2, 100%, card_stroke_op) }
+
+                    ellipse { at: 24, 26; radius: 14; color: #007aff; opacity: 20% }
+                    text "󰍹" { at: 24, 26; anchor: center; size: 14; color: #007aff }
+
+                    text "Classic Solid" { at: 48, 18; anchor: left center; size: 13; weight: 600; color: ink_c }
+                    text "High contrast opaque HIG cards (fastest)" { at: 48, 34; anchor: left center; size: 10.5; color: ink_sub }
+
+                    text if(skin == 2, "✓", "") { at: 308, 26; anchor: center; size: 16; weight: 700; color: #007aff }
+                    zone box skin2_hit { from: 0, 0; size: 328, 52; corner: 12; cursor: pointer }
+                }
+            }
+        }
     }
 
-    // ── Sliders & Media Actions ───────────────────────────────────
+    // Sliders & Media Actions
     on press br_hit   { emit brightness_set(clamp(local.x / 300, 0.1, 1)) }
     on drag br_hit    { emit brightness_set(clamp(local.x / 300, 0.1, 1)) }
     on press vol_hit  { emit volume_set(clamp(local.x / 300, 0, 1)) }
     on drag vol_hit   { emit volume_set(clamp(local.x / 300, 0, 1)) }
     on press play_hit { emit play_pause }
 
-    // ── Navigation Transitions ────────────────────────────────────
+    // Navigation Transitions
     on press wifi_chevron_hit { page = 1 }
     on press wifi_back_hit    { page = 0 }
     on press wifi_icon_hit    { emit toggle_wifi }
@@ -383,7 +529,18 @@ scene MacControlCenter {
     on press snd_chevron_hit  { page = 3 }
     on press snd_back_hit     { page = 0 }
 
-    // ── Window Lifecycle ──────────────────────────────────────────
+    on press appear_tile_hit  { page = 4 }
+    on press appear_back_hit  { page = 0 }
+
+    // Theme Actions
+    on press dm_tile_hit   { emit toggle_dark }
+    on press opt_dark_hit  { emit set_dark_mode(true) }
+    on press opt_light_hit { emit set_dark_mode(false) }
+    on press skin0_hit     { emit choose_skin(0) }
+    on press skin1_hit     { emit choose_skin(1) }
+    on press skin2_hit     { emit choose_skin(2) }
+
+    // Window Lifecycle
     on toggle     { toggle open; page = 0 }
     on key Escape { open = false; page = 0 }
     on blur       { open = false; page = 0 }

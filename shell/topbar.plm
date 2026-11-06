@@ -19,6 +19,17 @@ scene MacTopBar {
     service battery as bat { percent: number; charging: bool }
     service window as win { title: text }
 
+    fact dark_mode = true
+    fact skin = 0
+
+    let bar_color = if(dark_mode, if(skin == 2, #181a20, if(skin == 1, #161820, #14161c)), if(skin == 2, #f2f3f7, if(skin == 1, #eaecf2, #f6f7fb)))
+    let bar_glass = if(skin == 2, 0%, if(skin == 1, 55%, 85%))
+    let bar_tint = if(skin == 2, 0%, if(dark_mode, 40%, 25%))
+    let bar_stroke = if(dark_mode, #ffffff, #000000)
+    let bar_stroke_op = if(dark_mode, 12%, 8%)
+    let ink_c = if(dark_mode, #f5f7f5, #1d1d1f)
+    let ink_sub = if(dark_mode, #8e8e93, #6e6e73)
+
     event open_apple_menu ->
     event open_control_center ->
     event open_spotlight ->
@@ -27,20 +38,20 @@ scene MacTopBar {
     zone box topbar_bg { from: 0, 0; size: screen.width, 30 }
     on press right topbar_bg { }
 
-    // ── Frosted Glass Bar Background ──────────────────────────────
+    // ── Bar Background ──────────────────────────────────────────
     body {
-        color: #14161c
-        glass: 85%
+        color: bar_color
+        glass: bar_glass
         frost: 100%
         dispersion: 0
         refraction: 0
-        tint: 40%
+        tint: bar_tint
         shadow: 0, 2, 8, 20%
         box { from: 0, 0; size: screen.width, 30 }
     }
-    box { from: 0, 29; size: screen.width, 1; color: #ffffff; opacity: 12% }
+    box { from: 0, 29; size: screen.width, 1; color: bar_stroke; opacity: bar_stroke_op }
 
-    // ── Left: Apple Menu & App Title ──────────────────────────────
+    // ── Left: Apple Menu & App Title ────────────────────────────
     row {
         at: 14, 5
         gap: 16
@@ -49,22 +60,22 @@ scene MacTopBar {
         // Apple Icon with Click Zone
         group {
             size: 18, 20
-            text "" { at: 0, 0; size: 15; weight: 700; color: ink }
+            text "" { at: 0, 0; size: 15; weight: 700; color: ink_c }
             zone box apple_hit { from: -4, -4; size: 26, 28; cursor: pointer }
         }
 
         // Active App Title or Fallback
-        text "Finder" { size: 13; weight: 600; color: ink }
+        text "Finder" { size: 13; weight: 600; color: ink_c }
 
         // Standard Menus
-        text "File" { size: 13; color: ink; opacity: 75% }
-        text "Edit" { size: 13; color: ink; opacity: 75% }
-        text "View" { size: 13; color: ink; opacity: 75% }
-        text "Window" { size: 13; color: ink; opacity: 75% }
-        text "Help" { size: 13; color: ink; opacity: 75% }
+        text "File" { size: 13; color: ink_c; opacity: 75% }
+        text "Edit" { size: 13; color: ink_c; opacity: 75% }
+        text "View" { size: 13; color: ink_c; opacity: 75% }
+        text "Window" { size: 13; color: ink_c; opacity: 75% }
+        text "Help" { size: 13; color: ink_c; opacity: 75% }
     }
 
-    // ── Right: Status Indicators & Clock ──────────────────────────
+    // ── Right: Status Indicators & Clock ────────────────────────
     row {
         at: screen.width - 14, 5
         anchor: right
@@ -74,33 +85,33 @@ scene MacTopBar {
         // Battery with icon
         row {
             gap: 5; align: center
-            text if(bat.charging, "󰂄", "󰁹") { size: 14; color: if(bat.charging, mint, ink); opacity: 90% }
-            text "{bat.percent}%" { size: 12; color: ink; opacity: 80% }
+            text if(bat.charging, "󰂄", "󰁹") { size: 14; color: if(bat.charging, mint, ink_c); opacity: 90% }
+            text "{bat.percent}%" { size: 12; color: ink_c; opacity: 80% }
         }
 
         // Wi-Fi (Nerd Font icon)
-        text if(net.online, "󰤨", "󰤭") { size: 14; color: if(net.online, ink, #8e8e93); opacity: 85% }
+        text if(net.online, "󰤨", "󰤭") { size: 14; color: if(net.online, ink_c, ink_sub); opacity: 85% }
 
         // Volume (Nerd Font icon)
-        text if(sound.muted, "󰝟", "󰕾") { size: 14; color: ink; opacity: 85% }
+        text if(sound.muted, "󰝟", "󰕾") { size: 14; color: ink_c; opacity: 85% }
 
         // Spotlight Search Icon (Clickable)
         group {
             size: 16, 16
-            text "󰍉" { at: 0, 0; size: 14; color: ink; opacity: 85% }
+            text "󰍉" { at: 0, 0; size: 14; color: ink_c; opacity: 85% }
             zone box spot_hit { from: -4, -4; size: 24, 24; cursor: pointer }
         }
 
         // Control Center Toggle Icon (Clickable)
         group {
             size: 20, 16
-            text "󰍜" { at: 2, 0; size: 15; color: ink; opacity: 85% }
+            text "󰍜" { at: 2, 0; size: 15; color: ink_c; opacity: 85% }
             zone box cc_hit { from: -4, -4; size: 28, 24; cursor: pointer }
         }
 
         // Date & Time
-        text now.date { size: 12.5; color: ink; opacity: 75% }
-        text now.time { size: 13; weight: 600; color: ink }
+        text now.date { size: 12.5; color: ink_c; opacity: 75% }
+        text now.time { size: 13; weight: 600; color: ink_c }
     }
 
     on press apple_hit { emit open_apple_menu }
