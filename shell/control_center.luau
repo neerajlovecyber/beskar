@@ -193,6 +193,15 @@ on("toggle_wifi", function()
 end)
 on("wifi_rescan", function() pcall(sys.call, "network.scan") end)
 
+-- ── Do Not Disturb: no banners while it is on (they still land in the centre) ──
+on("toggle_dnd", function()
+    local now_on = not (fact.dnd == true)
+    fact.dnd = now_on
+    local v = tostring(now_on)
+    pcall(sys.call, "say", "notifications", "fact dnd " .. v)
+    pcall(sys.call, "say", "topbar", "fact dnd " .. v)
+end)
+
 -- ── Settings shortcut ────────────────────────────────────────────
 on("open_settings", function()
     pcall(sys.call, "say", "settings", "emit toggle")

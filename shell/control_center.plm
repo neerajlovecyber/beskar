@@ -32,6 +32,9 @@ scene MacControlCenter {
     // ── Navigation & Theme Facts ──────────────────────────────────
     // Navigation: 0 = Main, 1 = Wi-Fi, 2 = Bluetooth, 3 = Sound
     fact page = 0
+    fact dnd = false
+    prop dm_k = 0 ~quick
+    follow dm_k = if(dark_mode, 1, 0)
 
     //  Wi-Fi, from control_center.luau. state: 0 off · 1 not connected · 2 connected · 3 cable · 4 joining
     fact wifi_state = 1
@@ -101,6 +104,7 @@ scene MacControlCenter {
     event bt_power ->
     event bt_scan ->
     event open_settings ->
+    event toggle_dnd ->
     event previous ->
     event next ->
     event seek ->
@@ -196,7 +200,10 @@ scene MacControlCenter {
                         size: 34, 34
                         move: 12, 14
                         ellipse { at: 17, 17; radius: 17; color: if(net.online, #007aff, item_bg); opacity: if(net.online, 100%, item_bg_op) }
-                        text "󰤨" { at: 17, 17; anchor: center; size: 15; color: if(net.online, #ffffff, ink_c) }
+                        repeat a in 1..4 {
+                            arc { at: 17, 24; radius: a * 4.4; span: 100deg; width: 2; color: if(net.online, #ffffff, ink_c) }
+                        }
+                        ellipse { at: 17, 24.5; radius: 1.7; color: if(net.online, #ffffff, ink_c) }
                         zone box wifi_icon_hit { from: 0, 0; size: 34, 34; cursor: pointer }
                     }
                     text "Wi-Fi" { at: 54, 22; anchor: left center; size: 12.5; weight: 600; color: ink_c }
@@ -209,7 +216,7 @@ scene MacControlCenter {
                         size: 34, 34
                         move: 12, 72
                         ellipse { at: 17, 17; radius: 17; color: if(bt_on, #007aff, item_bg); opacity: if(bt_on, 100%, item_bg_op) }
-                        text "󰂯" { at: 17, 17; anchor: center; size: 15; color: if(bt_on, #ffffff, ink_c) }
+                        path { at: 13, 8.5; color: if(bt_on, #ffffff, ink_c); stroke: 1.7; move 0, 5; line 8, 13; line 4, 17; line 4, 0; line 8, 4; line 0, 12 }
                         zone box bt_icon_hit { from: 0, 0; size: 34, 34; cursor: pointer }
                     }
                     text "Bluetooth" { at: 54, 80; anchor: left center; size: 12.5; weight: 600; color: ink_c }
@@ -218,32 +225,66 @@ scene MacControlCenter {
                     zone box bt_chevron_hit { at: 142, 86; size: 24, 24; corner: 12; cursor: pointer }
                 }
 
-                // Focus & Dark Mode Right Column
+                // Dark Mode, and below it Do Not Disturb + Settings
                 column {
                     gap: 12
 
-                    // Dark Mode Toggle Card
+                    // Dark Mode: a moon (dark) or a sun (light) in a coloured disc, and a switch
                     group {
                         size: 158, 61
                         box { from: 0, 0; size: 158, 61; corner: 16; color: card_fill; opacity: card_fill_op }
                         box { from: 0, 0; size: 158, 61; corner: 16; stroke: 1; color: card_stroke; opacity: card_stroke_op }
-                        ellipse { at: 24, 30; radius: 15; color: if(dark_mode, #007aff, item_bg); opacity: if(dark_mode, 100%, item_bg_op) }
-                        text if(dark_mode, "󰔎", "󰖨") { at: 24, 30; anchor: center; size: 15; color: if(dark_mode, #ffffff, ink_c) }
-                        text "Dark Mode" { at: 48, 22; anchor: left center; size: 12.5; weight: 600; color: ink_c }
-                        text if(dark_mode, "On", "Off") { at: 48, 38; anchor: left center; size: 10.5; color: ink_sub }
+                        ellipse { at: 26, 30.5; radius: 16; color: if(dark_mode, #5e5ce6, #ff9f0a) }
+                        //  moon: a white disc with a bite out of it, in the disc's own colour
+                        group {
+                            show: dark_mode
+                            ellipse { at: 25, 31; radius: 7.5; color: #ffffff }
+                            ellipse { at: 29, 27.5; radius: 6.5; color: #5e5ce6 }
+                        }
+                        //  sun: a disc and eight rays
+                        group {
+                            show: not dark_mode
+                            ellipse { at: 26, 30.5; radius: 4.6; color: #ffffff }
+                            repeat k in 0..8 { line { from: 26 + 7.4 * cos(k * 45), 30.5 + 7.4 * sin(k * 45); to: 26 + 10 * cos(k * 45), 30.5 + 10 * sin(k * 45); width: 1.8; color: #ffffff } }
+                        }
+                        text "Dark Mode" { at: 48, 24; anchor: left center; size: 11.5; weight: 600; color: ink_c }
+                        text if(dark_mode, "On", "Off") { at: 48, 40; anchor: left center; size: 10.5; color: ink_sub }
+                        //  the switch
+                        box { from: 118, 21; size: 32, 20; corner: 10; color: if(dark_mode, #5e5ce6, item_bg); opacity: if(dark_mode, 100%, item_bg_op) }
+                        ellipse { at: 128 + dm_k * 12, 31; radius: 7.5; color: #ffffff }
                         zone box dm_tile_hit { from: 0, 0; size: 158, 61; corner: 16; cursor: pointer }
                     }
 
-                    // Settings shortcut
-                    group {
-                        size: 158, 61
-                        box { from: 0, 0; size: 158, 61; corner: 16; color: card_fill; opacity: card_fill_op }
-                        box { from: 0, 0; size: 158, 61; corner: 16; stroke: 1; color: card_stroke; opacity: card_stroke_op }
-                        ellipse { at: 24, 30; radius: 15; color: item_bg; opacity: item_bg_op }
-                        text "󰒓" { at: 24, 30; anchor: center; size: 15; color: ink_c }
-                        text "Settings" { at: 48, 22; anchor: left center; size: 12.5; weight: 600; color: ink_c }
-                        text "All preferences" { at: 48, 38; anchor: left center; size: 10.5; color: ink_sub }
-                        zone box settings_tile_hit { from: 0, 0; size: 158, 61; corner: 16; cursor: pointer }
+                    row {
+                        gap: 12
+
+                        // Do Not Disturb: a bell, slashed while on
+                        group {
+                            size: 73, 61
+                            box { from: 0, 0; size: 73, 61; corner: 16; color: card_fill; opacity: card_fill_op }
+                            box { from: 0, 0; size: 73, 61; corner: 16; stroke: 1; color: card_stroke; opacity: card_stroke_op }
+                            ellipse { at: 36.5, 22; radius: 15; color: if(dnd, #bf5af2, item_bg); opacity: if(dnd, 100%, item_bg_op) }
+                            path { at: 29.5, 13.5; color: if(dnd, #ffffff, ink_c); move 0, 15; line 2.5, 15; line 3, 7; line 5, 2; line 9, 2; line 11, 7; line 11.5, 15; line 14, 15; line 14, 17; line 0, 17; close }
+                            line { from: 28, 12.5; to: 45, 31; width: 2; color: if(dnd, #ffffff, ink_c); show: dnd }
+                            text "Do Not Disturb" { at: 36.5, 49; anchor: center; size: 9; weight: 600; color: ink_c; width: 68; tight: true }
+                            zone box dnd_hit { from: 0, 0; size: 73, 61; corner: 16; cursor: pointer }
+                        }
+
+                        // Settings: three sliders
+                        group {
+                            size: 73, 61
+                            box { from: 0, 0; size: 73, 61; corner: 16; color: card_fill; opacity: card_fill_op }
+                            box { from: 0, 0; size: 73, 61; corner: 16; stroke: 1; color: card_stroke; opacity: card_stroke_op }
+                            ellipse { at: 36.5, 22; radius: 15; color: item_bg; opacity: item_bg_op }
+                            line { from: 28, 16.5; to: 45, 16.5; width: 1.6; color: ink_c }
+                            line { from: 28, 22; to: 45, 22; width: 1.6; color: ink_c }
+                            line { from: 28, 27.5; to: 45, 27.5; width: 1.6; color: ink_c }
+                            ellipse { at: 33, 16.5; radius: 2.6; color: ink_c }
+                            ellipse { at: 41, 22; radius: 2.6; color: ink_c }
+                            ellipse { at: 35, 27.5; radius: 2.6; color: ink_c }
+                            text "Settings" { at: 36.5, 49; anchor: center; size: 9; weight: 600; color: ink_c }
+                            zone box settings_tile_hit { from: 0, 0; size: 73, 61; corner: 16; cursor: pointer }
+                        }
                     }
                 }
             }
@@ -602,6 +643,7 @@ scene MacControlCenter {
     on press prev_hit { emit previous }
     on press next_hit { emit next }
     on press seek_hit { emit seek(clamp(local.x / 300, 0, 1)) }
+    on press dnd_hit { emit toggle_dnd }
     on press settings_tile_hit { emit open_settings; open = false; page = 0 }
     on press bt_power_hit { emit bt_power }
     on press bt_scan_hit  { emit bt_scan }

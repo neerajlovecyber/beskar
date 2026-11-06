@@ -37,6 +37,7 @@ scene MacTopBar {
     model icons max 8 { icon: image 18, 18 }
 
     fact dark_mode = true
+    fact dnd = false            // Do Not Disturb, from the Control Center
     fact notif_count = 0       // set by notifications.luau: how many are waiting
     fact skin = 0
 
@@ -289,6 +290,7 @@ scene MacTopBar {
                 size: 24, 24
                 Glyph("󰂚", open_notifications)
                 ellipse { at: 19, 5; radius: 5.5; color: #ff453a; opacity: if(notif_count > 0, 100%, 0%) }
+                line { from: 6, 5; to: 18, 19; width: 1.8; color: ink_c; opacity: if(dnd, 100%, 0%) }
                 text "{notif_count}" { at: 19, 5; anchor: center; size: 7.5; weight: 700; color: #ffffff; opacity: if(notif_count > 0, 100%, 0%) }
             }
         }

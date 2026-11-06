@@ -24,6 +24,7 @@ scene MacNotifications {
     fact dark_mode = true
     fact skin = 0
     fact last_n = 0
+    fact dnd = false            // Do Not Disturb: no banners (they still land in the centre)
 
     event toggle
     event arrived
@@ -203,7 +204,7 @@ scene MacNotifications {
         anchor: top_right
         margin: 0, 12, 0, 0
         level: overlay
-        open: tin > 0.02 and not open
+        open: tin > 0.02 and not open and not dnd
 
         group {
             move: 16, 8 + (1 - tin) * -26
