@@ -1,11 +1,11 @@
-// macOS / iNiR 3-Island Liquid Glass Top Bar
+// iNiR / iRiS 3-Island Top Bar with True Continuous Morphing Fillets
 import "common/palette.plm"
 
 scene MacTopBar {
     surface {
         size: full, 48
         anchor: top
-        reserve: 44
+        reserve: 40
         screens: each
     }
 
@@ -25,17 +25,18 @@ scene MacTopBar {
     fact dark_mode = true
     fact skin = 0
 
+    // iNiR facts updated by topbar.luau
     fact focused_ws = 1
+    text focused_app = "Terminal"
     text weather_temp = "16°"
     text weather_icon = "󰖐"
 
-    // Real Pleamar Liquid Glass Materials
-    let bar_color = if(dark_mode, if(skin == 2, #181a20, if(skin == 1, #161820, #14161d)), if(skin == 2, #f2f3f7, if(skin == 1, #eaecf2, #f8f9fc)))
-    let bar_glass = if(skin == 2, 0%, if(skin == 1, 60%, 80%))
-    let bar_tint = if(skin == 2, 0%, if(dark_mode, 35%, 20%))
-    let bar_rim = if(skin == 2, 0%, 16%)
+    let bar_color = if(dark_mode, if(skin == 2, #181a20, if(skin == 1, #161820, #14161c)), if(skin == 2, #f2f3f7, if(skin == 1, #eaecf2, #f6f7fb)))
+    let bar_glass = if(skin == 2, 0%, if(skin == 1, 55%, 75%))
+    let bar_tint = if(skin == 2, 0%, if(dark_mode, 40%, 25%))
+    let bar_rim = if(skin == 2, 0%, 14%)
     let stroke_c = if(dark_mode, #b4a8ff, #7f52ff)
-    let stroke_op = if(dark_mode, 30%, 18%)
+    let stroke_op = if(dark_mode, 25%, 15%)
     let ink_c = if(dark_mode, #f5f7f5, #1d1d1f)
     let ink_sub = if(dark_mode, #9a9ea7, #6e6e73)
     let accent_c = #e8a048
@@ -48,64 +49,81 @@ scene MacTopBar {
     event open_widgets ->
     event tray_activate ->
 
+    // Precise island dimensions
+    let left_w = 260
+    let center_w = 250
+    let right_w = 270
+
     // ── Safe Background Zone ──────────────────────────────────────
     zone box topbar_bg { from: 0, 0; size: screen.width, 48 }
     on press right topbar_bg { }
 
-    // ── 3 Liquid Glass Floating Islands with Clean Under-Curved Corners ──
+    // ── Unified Liquid Glass Body with Smooth Morphing Fillets ────
     body {
         color: bar_color
         glass: bar_glass
         lens: false
         frost: 100%
-        dispersion: 0
-        refraction: 0
         tint: bar_tint
         rim: bar_rim
-        shadow: 0, 6, 20, 30%
+        shadow: 0, 4, 16, 25%
 
-        // 1. Left Island (Apple Menu + Workspace + Focused App Title)
+        // 1. Continuous Top Wire: runs along top edge across full width
+        box top_wire {
+            from: 0, -10
+            size: screen.width, 14
+        }
+
+        // 2. Left Island: Workspace & Active App
         box left_island {
-            from: 14, 6
-            size: 280, 36
-            corner: 18
+            from: 20, -4
+            size: left_w, 42
+            corner: 16
+            blend: 12
         }
 
-        // 2. Center Island (Date, Clock, Weather, Volume Pill)
+        // 3. Center Notch Island: Clock, Date, Weather & Sound
         box center_island {
-            from: screen.width / 2 - 120, 6
-            size: 240, 36
-            corner: 18
+            at: screen.width / 2, 17
+            size: center_w, 42
+            corner: 16
+            blend: 14
         }
 
-        // 3. Right Island (Tray Icons, Network, Battery, CC, Bell)
+        // 4. Right Island: Tray, Battery & Control Center
         box right_island {
-            from: screen.width - 294, 6
-            size: 280, 36
-            corner: 18
+            from: screen.width - right_w - 20, -4
+            size: right_w, 42
+            corner: 16
+            blend: 12
         }
     }
 
-    // Specular Rim Highlighting on All 3 Islands
-    box { from: 14, 6; size: 280, 36; corner: 18; stroke: 1; color: stroke_c; opacity: stroke_op }
-    box { from: screen.width / 2 - 120, 6; size: 240, 36; corner: 18; stroke: 1; color: stroke_c; opacity: stroke_op }
-    box { from: screen.width - 294, 6; size: 280, 36; corner: 18; stroke: 1; color: stroke_c; opacity: stroke_op }
+    // Top Perimeter Wire Highlight
+    line {
+        from: 0, 4
+        to: screen.width, 4
+        width: 1.0
+        color: stroke_c
+        opacity: stroke_op
+    }
 
     // ==============================================================
-    // LEFT ISLAND CONTENTS
+    // LEFT ISLAND CONTENTS: Logo + Workspace Pill + Active App Title
     // ==============================================================
-    row {
-        at: 26, 24
+    row left_row {
+        at: 32, 17
         anchor: left center
         gap: 10
         align: center
 
-        // Profile / Apple Menu Orb
+        // Profile / Menu Orb
         group {
             size: 24, 24
-            ellipse { at: 12, 12; radius: 11; stroke: 1.5; color: stroke_c; opacity: 60% }
-            text "󰀵" { at: 12, 12; anchor: center; size: 13; color: ink_c }
-            zone box apple_hit { from: -2, -2; size: 28, 28; cursor: pointer }
+            ellipse { at: 12, 12; radius: 11; stroke: 1.2; color: stroke_c; opacity: 60% }
+            text "󱡄" { at: 12, 12; anchor: center; size: 13.5; color: stroke_c; opacity: 90% }
+            zone box logo_hit { from: -2, -2; size: 28, 28; cursor: pointer }
+            on press logo_hit { emit open_apple_menu }
         }
 
         // Workspace Pill Indicator
@@ -120,60 +138,77 @@ scene MacTopBar {
         row {
             gap: 6
             align: center
-            text "󱂔" { size: 12; color: ink_sub }
+            text "󰘔" { size: 12; color: ink_sub }
             text "{win.title}" {
                 size: 11.5
                 weight: 600
                 color: ink_c
-                width: 140
+                width: 135
                 lines: 1
             }
         }
     }
 
     // ==============================================================
-    // CENTER ISLAND CONTENTS
+    // CENTER ISLAND CONTENTS: Avatar + Date + Time + Weather + Sound
     // ==============================================================
-    row {
-        at: screen.width / 2, 24
+    row center_row {
+        at: screen.width / 2, 17
         anchor: center
-        gap: 12
+        gap: 10
         align: center
 
-        // Date & Time Group (Clickable for Widgets / Calendar)
+        // Mini Avatar Orb
         group {
-            size: 110, 24
+            size: 22, 22
+            ellipse { at: 11, 11; radius: 10; stroke: 1.2; color: stroke_c; opacity: 70% }
+            text "󰊠" { at: 11, 11; anchor: center; size: 12; color: #a9b1d6 }
+            zone box avatar_hit { from: 0, 0; size: 22, 22; cursor: pointer }
+            on press avatar_hit { emit open_apple_menu }
+        }
+
+        // Date ("Fri 06 Nov") & Time ("15:40")
+        group {
+            size: 110, 22
             row {
-                at: 0, 3
+                at: 0, 2
                 gap: 5
                 align: center
-                text now.date { size: 11.5; weight: 600; color: ink_sub }
-                text now.time { size: 13.5; weight: 700; color: ink_c }
+                text now.date { size: 11; weight: 600; color: ink_sub }
+                text now.time { size: 12.5; weight: 700; color: ink_c }
             }
-            zone box clock_hit { from: 0, 0; size: 110, 24; cursor: pointer }
+            zone box clock_hit { from: 0, 0; size: 110, 22; cursor: pointer }
+            on press clock_hit { emit open_widgets }
         }
 
         // Weather Pill (Condition Icon + Temperature)
         row {
             gap: 4
             align: center
-            text weather_icon { size: 13.5; color: accent_c }
-            text weather_temp { size: 11.5; weight: 600; color: ink_c }
+            text weather_icon { size: 12.5; color: accent_c }
+            text weather_temp { size: 11; weight: 600; color: ink_c }
         }
 
-        // Compact Volume Pill
+        // Mini Audio Indicator
         group {
-            size: 22, 22
-            ellipse { at: 11, 11; radius: 10; color: pill_bg; opacity: pill_op }
-            text if(sound.muted, "󰝟", "󰕾") { at: 11, 11; anchor: center; size: 11; color: ink_c }
+            size: 18, 18
+            text if(sound.muted, "󰝟", "󰕾") {
+                at: 9, 9
+                anchor: center
+                size: 11.5
+                color: ink_sub
+                opacity: 85%
+            }
+            zone box vol_hit { from: 0, 0; size: 18, 18; cursor: pointer }
+            on press vol_hit { emit open_control_center }
         }
     }
 
     // ==============================================================
-    // RIGHT ISLAND CONTENTS
+    // RIGHT ISLAND CONTENTS: Tray Icons + Battery + Status + CC + Bell
     // ==============================================================
-    row {
-        at: screen.width - 24, 24
+    row right_row {
+        at: screen.width - 32, 17
         anchor: right center
         gap: 12
         align: center
@@ -184,44 +219,45 @@ scene MacTopBar {
             align: center
             for i in icons {
                 group {
-                    size: 18, 18
-                    image i.icon { at: 0, 0; size: 18, 18 }
-                    zone box tray_hit { from: -2, -2; size: 22, 22; cursor: pointer }
+                    size: 20, 20
+                    image i.icon { at: 1, 1; size: 18, 18 }
+                    zone box tray_hit { from: 0, 0; size: 20, 20; cursor: pointer }
                     on press tray_hit { emit tray_activate(i.index) }
                 }
             }
         }
 
-        // Wi-Fi
-        text if(net.online, "󰤨", "󰤭") { size: 13.5; color: if(net.online, ink_c, ink_sub); opacity: 90% }
+        // Steam Icon
+        text "󰓓" { size: 13.5; color: ink_sub; opacity: 75% }
 
-        // Battery Pill with Percentage Badge
+        // Music note
+        text "󰎆" { size: 12.5; color: #ff757f; opacity: 80% }
+
+        // Network Status
+        text if(net.online, "󰤨", "󰤭") { size: 13; color: if(net.online, ink_c, ink_sub); opacity: 85% }
+
+        // Battery Percent Badge
         row {
-            gap: 4
+            gap: 3
             align: center
             text if(bat.charging, "󰂄", "󰁹") { size: 13; color: if(bat.charging, mint, ink_c) }
-            text "{bat.percent}%" { size: 11; weight: 600; color: accent_c }
+            text "{bat.percent}" { size: 11; weight: 700; color: accent_c }
         }
 
-        // Control Center Quick Switcher Button
+        // Sliders / Control Center Quick Button
         group {
-            size: 26, 26
-            ellipse { at: 13, 13; radius: 12; color: pill_bg; opacity: pill_op }
-            text "󰒓" { at: 13, 13; anchor: center; size: 13; color: ink_c }
-            zone box cc_hit { from: 0, 0; size: 26, 26; cursor: pointer }
+            size: 22, 22
+            text "󰒓" { at: 11, 11; anchor: center; size: 13; color: ink_c; opacity: 85% }
+            zone box cc_hit { from: 0, 0; size: 22, 22; cursor: pointer }
+            on press cc_hit { emit open_control_center }
         }
 
         // Notification Bell Button
         group {
-            size: 24, 24
-            text "󰂚" { at: 12, 12; anchor: center; size: 13.5; color: ink_c; opacity: 90% }
-            zone box notif_hit { from: 0, 0; size: 24, 24; cursor: pointer }
+            size: 22, 22
+            text "󰂚" { at: 11, 11; anchor: center; size: 13; color: ink_c; opacity: 85% }
+            zone box notif_hit { from: 0, 0; size: 22, 22; cursor: pointer }
+            on press notif_hit { emit open_widgets }
         }
     }
-
-    // ── Interaction Bindings ──────────────────────────────────────
-    on press apple_hit { emit open_apple_menu }
-    on press cc_hit { emit open_control_center }
-    on press clock_hit { emit open_widgets }
-    on press notif_hit { emit open_widgets }
 }

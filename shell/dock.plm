@@ -1,9 +1,9 @@
-// macOS / iNiR Floating Liquid Glass Dock
+// iNiR / iRiS Floating Liquid Glass Dock
 import "common/palette.plm"
 
 scene MacDock {
     surface {
-        size: 520, 80
+        size: full, 80
         anchor: bottom
         margin: 0, 0, 16, 0
         screens: each
@@ -11,7 +11,7 @@ scene MacDock {
 
     permissions {
         services: "say:settings"
-        run: "nautilus", "thunar", "dolphin", "firefox", "chromium", "kitty", "alacritty", "foot", "code", "zed", "gnome-control-center", "discord", "telegram-desktop"
+        run: "kitty", "alacritty", "foot", "nautilus", "thunar", "dolphin", "code", "zed", "steam", "obsidian", "firefox", "chromium", "discord", "vesktop", "telegram-desktop"
     }
 
     fact dark_mode = true
@@ -24,20 +24,23 @@ scene MacDock {
     let stroke_c = if(dark_mode, #b4a8ff, #7f52ff)
     let stroke_op = if(dark_mode, 30%, 18%)
     let dot_color = if(dark_mode, #f5f7f5, #1d1d1f)
-    let div_color = if(dark_mode, #ffffff, #000000)
-    let div_op = if(dark_mode, 16%, 12%)
 
     event launch ->
 
-    image icon_files    = icon "system-file-manager", 44, 44
-    image icon_browser  = icon "firefox", 44, 44
-    image icon_terminal = icon "utilities-terminal", 44, 44
-    image icon_editor   = icon "code", 44, 44
-    image icon_music    = icon "org.gnome.Music", 44, 44
-    image icon_settings = icon "preferences-system", 44, 44
-    image icon_trash    = icon "user-trash", 44, 44
+    image icon_term     = icon "utilities-terminal", 38, 38
+    image icon_files    = icon "system-file-manager", 38, 38
+    image icon_code     = icon "code", 38, 38
+    image icon_steam    = icon "steam", 38, 38
+    image icon_obsidian = icon "obsidian", 38, 38
+    image icon_browser  = icon "firefox", 38, 38
+    image icon_discord  = icon "discord", 38, 38
+    image icon_telegram = icon "telegram", 38, 38
 
-    // Floating Glass Pill Body
+    // Precise dock dimensions: 8 items * 40px + 7 gaps * 10px + 24px padding = 414px
+    let dock_w = 420
+    let dock_h = 58
+
+    // Floating Glass Pill Body - Perfectly Centered on Display
     body {
         color: dock_color
         glass: dock_glass
@@ -48,146 +51,159 @@ scene MacDock {
         rim: dock_rim
 
         box dock_pill {
-            from: 15, 6
-            size: 490, 68
-            corner: 22
+            at: screen.width / 2, 40
+            size: dock_w, dock_h
+            corner: 24
         }
     }
 
-    // Outer Specular Stroke
+    // Outer Specular Stroke - Aligned exactly with pill
     box {
-        from: 15, 6
-        size: 490, 68
-        corner: 22
+        at: screen.width / 2, 40
+        size: dock_w, dock_h
+        corner: 24
         stroke: 1.2
         color: stroke_c
         opacity: stroke_op
     }
 
-    // Centered Dock Icons with Smooth Hover Bounce
-    row {
-        at: 260, 40
+    // Centered Dock Container Layout - Dead Centered in Pill
+    row dock_row {
+        at: screen.width / 2, 40
         anchor: center
         gap: 10
         align: center
 
-        // 1. Files / Finder
+        // 1. Terminal
         group {
-            size: 50, 56
+            size: 40, 44
             prop hot1 = 0 ~quick
             prop scale1 = 1.0 ~quick
-            follow scale1 = 1.0 + hot1 * 0.25
+            follow scale1 = 1.0 + hot1 * 0.22
             group {
-                pivot: 25, 25; scale: scale1
-                image icon_files { at: 3, 3; size: 44, 44 }
+                pivot: 20, 20; scale: scale1
+                image icon_term { at: 1, 1; size: 38, 38 }
             }
-            ellipse { at: 25, 52; radius: 2; color: dot_color; opacity: 75% }
-            zone box hit1 { from: 0, 0; size: 50, 56; cursor: pointer }
+            ellipse { at: 20, 42; radius: 1.8; color: stroke_c; opacity: 90% }
+            zone box hit1 { from: 0, 0; size: 40, 44; cursor: pointer }
             on enter hit1 { hot1: 1 }
             on leave hit1 { hot1: 0 }
             on press hit1 { emit launch(1) }
         }
 
-        // 2. Browser
+        // 2. Files
         group {
-            size: 50, 56
+            size: 40, 44
             prop hot2 = 0 ~quick
             prop scale2 = 1.0 ~quick
-            follow scale2 = 1.0 + hot2 * 0.25
+            follow scale2 = 1.0 + hot2 * 0.22
             group {
-                pivot: 25, 25; scale: scale2
-                image icon_browser { at: 3, 3; size: 44, 44 }
+                pivot: 20, 20; scale: scale2
+                image icon_files { at: 1, 1; size: 38, 38 }
             }
-            ellipse { at: 25, 52; radius: 2; color: dot_color; opacity: 75% }
-            zone box hit2 { from: 0, 0; size: 50, 56; cursor: pointer }
+            ellipse { at: 20, 42; radius: 1.8; color: dot_color; opacity: 80% }
+            zone box hit2 { from: 0, 0; size: 40, 44; cursor: pointer }
             on enter hit2 { hot2: 1 }
             on leave hit2 { hot2: 0 }
             on press hit2 { emit launch(2) }
         }
 
-        // 3. Terminal
+        // 3. Code Editor
         group {
-            size: 50, 56
+            size: 40, 44
             prop hot3 = 0 ~quick
             prop scale3 = 1.0 ~quick
-            follow scale3 = 1.0 + hot3 * 0.25
+            follow scale3 = 1.0 + hot3 * 0.22
             group {
-                pivot: 25, 25; scale: scale3
-                image icon_terminal { at: 3, 3; size: 44, 44 }
+                pivot: 20, 20; scale: scale3
+                image icon_code { at: 1, 1; size: 38, 38 }
             }
-            ellipse { at: 25, 52; radius: 2; color: stroke_c; opacity: 90% }
-            zone box hit3 { from: 0, 0; size: 50, 56; cursor: pointer }
+            ellipse { at: 20, 42; radius: 1.8; color: dot_color; opacity: 80% }
+            zone box hit3 { from: 0, 0; size: 40, 44; cursor: pointer }
             on enter hit3 { hot3: 1 }
             on leave hit3 { hot3: 0 }
             on press hit3 { emit launch(3) }
         }
 
-        // 4. Code Editor
+        // 4. Steam
         group {
-            size: 50, 56
+            size: 40, 44
             prop hot4 = 0 ~quick
             prop scale4 = 1.0 ~quick
-            follow scale4 = 1.0 + hot4 * 0.25
+            follow scale4 = 1.0 + hot4 * 0.22
             group {
-                pivot: 25, 25; scale: scale4
-                image icon_editor { at: 3, 3; size: 44, 44 }
+                pivot: 20, 20; scale: scale4
+                image icon_steam { at: 1, 1; size: 38, 38 }
             }
-            ellipse { at: 25, 52; radius: 2; color: dot_color; opacity: 75% }
-            zone box hit4 { from: 0, 0; size: 50, 56; cursor: pointer }
+            zone box hit4 { from: 0, 0; size: 40, 44; cursor: pointer }
             on enter hit4 { hot4: 1 }
             on leave hit4 { hot4: 0 }
             on press hit4 { emit launch(4) }
         }
 
-        // 5. Music
+        // 5. Obsidian
         group {
-            size: 50, 56
+            size: 40, 44
             prop hot5 = 0 ~quick
             prop scale5 = 1.0 ~quick
-            follow scale5 = 1.0 + hot5 * 0.25
+            follow scale5 = 1.0 + hot5 * 0.22
             group {
-                pivot: 25, 25; scale: scale5
-                image icon_music { at: 3, 3; size: 44, 44 }
+                pivot: 20, 20; scale: scale5
+                image icon_obsidian { at: 1, 1; size: 38, 38 }
             }
-            zone box hit5 { from: 0, 0; size: 50, 56; cursor: pointer }
+            zone box hit5 { from: 0, 0; size: 40, 44; cursor: pointer }
             on enter hit5 { hot5: 1 }
             on leave hit5 { hot5: 0 }
             on press hit5 { emit launch(5) }
         }
 
-        // 6. System Settings
+        // 6. Browser
         group {
-            size: 50, 56
+            size: 40, 44
             prop hot6 = 0 ~quick
             prop scale6 = 1.0 ~quick
-            follow scale6 = 1.0 + hot6 * 0.25
+            follow scale6 = 1.0 + hot6 * 0.22
             group {
-                pivot: 25, 25; scale: scale6
-                image icon_settings { at: 3, 3; size: 44, 44 }
+                pivot: 20, 20; scale: scale6
+                image icon_browser { at: 1, 1; size: 38, 38 }
             }
-            zone box hit6 { from: 0, 0; size: 50, 56; cursor: pointer }
+            ellipse { at: 20, 42; radius: 1.8; color: dot_color; opacity: 80% }
+            zone box hit6 { from: 0, 0; size: 40, 44; cursor: pointer }
             on enter hit6 { hot6: 1 }
             on leave hit6 { hot6: 0 }
             on press hit6 { emit launch(6) }
         }
 
-        // Dock Divider
-        box { size: 1, 38; color: div_color; opacity: div_op }
-
-        // 7. Trash
+        // 7. Discord
         group {
-            size: 50, 56
+            size: 40, 44
             prop hot7 = 0 ~quick
             prop scale7 = 1.0 ~quick
-            follow scale7 = 1.0 + hot7 * 0.25
+            follow scale7 = 1.0 + hot7 * 0.22
             group {
-                pivot: 25, 25; scale: scale7
-                image icon_trash { at: 3, 3; size: 44, 44 }
+                pivot: 20, 20; scale: scale7
+                image icon_discord { at: 1, 1; size: 38, 38 }
             }
-            zone box hit7 { from: 0, 0; size: 50, 56; cursor: pointer }
+            zone box hit7 { from: 0, 0; size: 40, 44; cursor: pointer }
             on enter hit7 { hot7: 1 }
             on leave hit7 { hot7: 0 }
             on press hit7 { emit launch(7) }
+        }
+
+        // 8. Telegram
+        group {
+            size: 40, 44
+            prop hot8 = 0 ~quick
+            prop scale8 = 1.0 ~quick
+            follow scale8 = 1.0 + hot8 * 0.22
+            group {
+                pivot: 20, 20; scale: scale8
+                image icon_telegram { at: 1, 1; size: 38, 38 }
+            }
+            zone box hit8 { from: 0, 0; size: 40, 44; cursor: pointer }
+            on enter hit8 { hot8: 1 }
+            on leave hit8 { hot8: 0 }
+            on press hit8 { emit launch(8) }
         }
     }
 }
