@@ -2,6 +2,7 @@
 import "common/palette.plm"
 
 scene MacAppSwitcher {
+    include "common/theme.plm"
     surface {
         size: 700, 160
         anchor: center
@@ -15,8 +16,6 @@ scene MacAppSwitcher {
     }
 
     fact open = false
-    fact dark_mode = true
-    fact skin = 0
     fact sel = 0
 
     model wins max 7 { id: number; title: text; app_id: text; icon: image 48, 48 }
@@ -29,15 +28,8 @@ scene MacAppSwitcher {
         gone             { seen: 0 ~quick; scale: 0.95 ~quick }
     }
 
-    let bg_color = if(dark_mode, if(skin == 2, #181a20, if(skin == 1, #161822, #12141a)), if(skin == 2, #f5f6fa, if(skin == 1, #eceef5, #f8f9fd)))
-    let glass_amt = if(skin == 2, 0%, if(skin == 1, 60%, 85%))
-    let tint_amt = if(skin == 2, 0%, if(dark_mode, 40%, 25%))
-    let rim_amt = if(skin == 2, 0%, 14%)
-    let shadow_amt = if(dark_mode, 45%, 20%)
-    let stroke_c = if(dark_mode, #ffffff, #000000)
-    let stroke_op = if(dark_mode, 12%, 8%)
-    let ink_c = if(dark_mode, #f5f7f5, #1d1d1f)
-    let ink_sub = if(dark_mode, #8e8e93, #6e6e73)
+    let stroke_c = card_stroke
+    let stroke_op = card_stroke_op
 
     event toggle
     event next_app ->
@@ -103,7 +95,7 @@ scene MacAppSwitcher {
             from: 0, 0
             size: 72, 72
             corner: 14
-            color: #007aff
+            color: accent_c
             opacity: on * 28%
             cursor: pointer
         }
@@ -112,7 +104,7 @@ scene MacAppSwitcher {
             size: 72, 72
             corner: 14
             stroke: 1.5
-            color: #007aff
+            color: accent_c
             opacity: on * 90%
         }
 

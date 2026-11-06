@@ -2,6 +2,7 @@
 import "common/palette.plm"
 
 scene MacAppleMenu {
+    include "common/theme.plm"
     surface {
         size: 280, 290
         anchor: top_left
@@ -15,18 +16,14 @@ scene MacAppleMenu {
     }
 
     fact open = false
-    fact dark_mode = true
-    fact skin = 0
 
-    let menu_color = if(dark_mode, if(skin == 2, #1e2026, if(skin == 1, #1c1e28, #161820)), if(skin == 2, #f2f3f7, if(skin == 1, #eaecf2, #f8f9fc)))
-    let menu_glass = if(skin == 2, 0%, if(skin == 1, 55%, 85%))
-    let menu_tint = if(skin == 2, 0%, if(dark_mode, 40%, 25%))
-    let menu_rim = if(skin == 2, 0%, 14%)
-    let menu_shadow = if(dark_mode, 35%, 15%)
-    let ink_c = if(dark_mode, #f5f7f5, #1d1d1f)
-    let ink_sub = if(dark_mode, #8e8e93, #6e6e73)
-    let line_color = if(dark_mode, #ffffff, #000000)
-    let line_op = if(dark_mode, 10%, 8%)
+    let menu_color = bg_color
+    let menu_glass = glass_amt
+    let menu_tint = tint_amt
+    let menu_rim = rim_amt
+    let menu_shadow = 0%
+    let line_color = card_stroke
+    let line_op = card_stroke_op
 
     event toggle
     event action_settings ->

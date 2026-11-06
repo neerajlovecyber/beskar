@@ -2,6 +2,7 @@
 import "common/palette.plm"
 
 scene MacSettings {
+    include "common/theme.plm"
     surface {
         size: 900, 620
         anchor: center
@@ -20,9 +21,6 @@ scene MacSettings {
     service bluetooth as bt { powered: bool }
 
     fact open = false
-    fact dark_mode = true
-    fact skin = 0
-    fact accent = 0          // 0: Blue, 1: Purple, 2: Pink, 3: Red, 4: Orange, 5: Mint, 6: Graphite
     fact tab = 0             // 0: Appearance, 1: Displays, 2: Sound, 3: Wi-Fi, 4: Bluetooth, 5: Notifications, 6: Wallpaper, 7: General / About
 
     // Displays facts
@@ -56,23 +54,13 @@ scene MacSettings {
     }
 
     // Dynamic theme colors
-    let bg_color = if(dark_mode, if(skin == 2, #181a20, if(skin == 1, #161822, #12141a)), if(skin == 2, #f5f6fa, if(skin == 1, #eceef5, #f8f9fd)))
     let sidebar_bg = if(dark_mode, if(skin == 2, #13151a, if(skin == 1, #11131c, #0d0f14)), if(skin == 2, #ebecee, if(skin == 1, #e4e6ee, #f0f2f7)))
-    let glass_amt = if(skin == 2, 0%, if(skin == 1, 60%, 85%))
-    let tint_amt = if(skin == 2, 0%, if(dark_mode, 40%, 25%))
-    let rim_amt = if(skin == 2, 0%, 14%)
-    let shadow_amt = if(dark_mode, 45%, 20%)
 
-    let card_fill = if(dark_mode, #20232a, #ffffff)
-    let card_fill_op = if(dark_mode, if(skin == 2, 95%, 70%), if(skin == 2, 95%, 85%))
-    let c_border = if(dark_mode, #ffffff, #000000)
-    let c_border_op = if(dark_mode, 10%, 8%)
+    let c_border = card_stroke
+    let c_border_op = card_stroke_op
 
-    let stroke_c = if(dark_mode, #ffffff, #000000)
-    let stroke_op = if(dark_mode, 12%, 8%)
-    let ink_c = if(dark_mode, #f5f7f5, #1d1d1f)
-    let ink_sub = if(dark_mode, #8e8e93, #6e6e73)
-    let accent_c = pick(accent, #007aff, #af52de, #ff2d55, #ff3b30, #ff9500, #34c759, #8e8e93)
+    let stroke_c = card_stroke
+    let stroke_op = card_stroke_op
 
     event toggle
     event toggle_dark ->
@@ -172,14 +160,14 @@ scene MacSettings {
             gap: 2
 
             SidebarItem(0, "󰏘", #5856d6, "Appearance")
-            SidebarItem(1, "󰍹", #007aff, "Displays")
+            SidebarItem(1, "󰍹", accent_c, "Displays")
             SidebarItem(2, "󰕾", #ff2d55, "Sound")
-            SidebarItem(3, "󰤨", #007aff, "Wi-Fi")
-            SidebarItem(4, "󰂯", #007aff, "Bluetooth")
-            SidebarItem(5, "󰒎", #ff3b30, "Notifications")
+            SidebarItem(3, "󰤨", accent_c, "Wi-Fi")
+            SidebarItem(4, "󰂯", accent_c, "Bluetooth")
+            SidebarItem(5, "󰒎", danger_c, "Notifications")
             SidebarItem(6, "󰖐", #30b0c7, "Wallpaper")
             SidebarItem(7, "󰋚", #8e8e93, "General")
-            SidebarItem(8, "󰚰", #34c759, "Software Update")
+            SidebarItem(8, "󰚰", ok_c, "Software Update")
         }
 
         // ==========================================================
@@ -461,14 +449,14 @@ scene MacSettings {
             row {
                 at: 18, 116
                 gap: 14; align: center
-                ellipse { radius: 18; color: #007aff }
+                ellipse { radius: 18; color: accent_c }
                 text "󰤨" { anchor: center; size: 18; color: #ffffff }
                 column {
                     gap: 3
                     text if(net.online, net.name, "Disconnected") { size: 14; weight: 600; color: ink_c }
                     row {
                         gap: 6; align: center
-                        ellipse { radius: 3.5; color: if(net.online, #34c759, #ff3b30) }
+                        ellipse { radius: 3.5; color: if(net.online, ok_c, danger_c) }
                         text if(net.online, "Connected · 5 GHz WPA3 · IP: 192.168.1.105", "No network connection") { size: 11; color: ink_sub }
                     }
                 }
@@ -644,7 +632,7 @@ scene MacSettings {
 
             group {
                 move: 20, 18
-                ellipse { at: 24, 24; radius: 24; color: #34c759 }
+                ellipse { at: 24, 24; radius: 24; color: ok_c }
                 text "󰚰" { at: 24, 24; anchor: center; size: 24; color: #ffffff }
                 column {
                     at: 60, 6
@@ -676,7 +664,7 @@ scene MacSettings {
                 gap: 12
                 group {
                     size: 150, 34
-                    box { from: 0, 0; size: 150, 34; corner: 8; color: #007aff }
+                    box { from: 0, 0; size: 150, 34; corner: 8; color: accent_c }
                     text "Update All Now" { at: 75, 17; anchor: center; size: 13; weight: 600; color: #ffffff }
                     zone box btn_up_now { from: 0, 0; size: 150, 34; cursor: pointer }
                     on press btn_up_now { emit run_update }
@@ -757,7 +745,7 @@ scene MacSettings {
         on press hit { emit choose_skin(idx) }
     }
 
-    // Accent Color Swatch
+    // Accent Color Swatch (the colours here are the accent palette itself: keep in step with `accent_c` in common/theme.plm)
     component AccentCircle(idx: number, col: color) {
         size: 28, 28
         prop on = 0 ~quick
@@ -813,7 +801,7 @@ scene MacSettings {
             column {
                 gap: 2
                 text name_t { size: 12.5; weight: 600; color: ink_c }
-                text status_t { size: 10.5; color: if(connected, #34c759, ink_sub) }
+                text status_t { size: 10.5; color: if(connected, ok_c, ink_sub) }
             }
         }
     }
@@ -867,7 +855,7 @@ scene MacSettings {
         row {
             at: 10, 6
             gap: 12; align: center
-            text icon_t { size: 18; color: #007aff }
+            text icon_t { size: 18; color: accent_c }
             column {
                 gap: 2
                 text name_t { size: 12.5; weight: 600; color: ink_c }

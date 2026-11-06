@@ -10,8 +10,9 @@ local wallpapers = {
 }
 
 -- Scenes that follow the shared theme (shell/common/theme.plm) and so have an `accent` fact too.
-local THEMED = { "topbar", "control_center", "notifications", "dashboard", "settings", "wallpapers" }
-local PLAIN = { "spotlight", "apple_menu", "osd", "clipboard", "session", "capture" }
+local THEMED = { "topbar", "control_center", "notifications", "dashboard", "settings", "wallpapers",
+                "spotlight", "apple_menu", "osd", "clipboard", "session", "capture", "appswitcher", "lock" }
+local PLAIN = {}
 
 local function save_theme(dm_str, skin_str, accent_str)
     -- ~/.config/pleamar_shell.json is read by start.sh to restore the look after a restart.

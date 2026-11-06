@@ -2,6 +2,7 @@
 import "common/palette.plm"
 
 scene MacLock {
+    include "common/theme.plm"
     surface {
         kind: lock
         size: 640, 480
@@ -68,7 +69,7 @@ scene MacLock {
             rim: 15%
             ellipse { at: 0, 0; radius: 46 }
         }
-        text "󰀉" { at: 0, -2; anchor: center; size: 48; color: #007aff }
+        text "󰀉" { at: 0, -2; anchor: center; size: 48; color: accent_c }
 
         // Username
         text "nsp" {
@@ -99,7 +100,7 @@ scene MacLock {
             size: 280, 40
             corner: 20
             stroke: 1.5
-            color: if(checking, #007aff, if(abs(headshake) > 2, #ff3b30, #ffffff))
+            color: if(checking, accent_c, if(abs(headshake) > 2, danger_c, #ffffff))
             opacity: if(checking or abs(headshake) > 2, 80%, 15%)
         }
 
@@ -117,7 +118,7 @@ scene MacLock {
         // Arrow Submit Button inside pill
         group {
             move: 116, 0
-            ellipse { at: 0, 0; radius: 13; color: if(checking, #8e8e93, #007aff); opacity: 85% }
+            ellipse { at: 0, 0; radius: 13; color: if(checking, #8e8e93, accent_c); opacity: 85% }
             text if(checking, "󰑮", "󰅂") { at: 0, 0; anchor: center; size: 13; color: #ffffff }
             zone box btn_submit { from: -13, -13; size: 26, 26; cursor: pointer }
             on press btn_submit { emit unlock }
@@ -137,7 +138,7 @@ scene MacLock {
         at: 320, 452
         anchor: center
         size: 10.5
-        color: #30d158
+        color: ok_c
         opacity: 65%
         show: with_exit
     }

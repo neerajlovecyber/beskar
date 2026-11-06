@@ -45,7 +45,7 @@ apply_saved_theme() {
             "$BIN" --say "$comp" "fact dark_mode $DM" >/dev/null 2>&1 || true
             "$BIN" --say "$comp" "fact skin $SKIN" >/dev/null 2>&1 || true
         done
-        for comp in topbar control_center notifications dashboard settings wallpapers; do
+        for comp in topbar control_center notifications dashboard settings wallpapers spotlight apple_menu osd clipboard session capture appswitcher lock; do
             "$BIN" --say "$comp" "fact accent $ACCENT" >/dev/null 2>&1 || true
         done
     fi

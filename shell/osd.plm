@@ -2,6 +2,7 @@
 import "common/palette.plm"
 
 scene MacOsd {
+    include "common/theme.plm"
     surface {
         size: 260, 260
         anchor: center
@@ -16,21 +17,12 @@ scene MacOsd {
     service brightness as display { present: bool; level: number }
 
     fact open = false
-    fact dark_mode = true
-    fact skin = 0
     fact kind = 0   // 0 = Volume, 1 = Brightness
     fact level = 0.5
     fact muted = false
 
-    let bg_color = if(dark_mode, if(skin == 2, #1e2026, if(skin == 1, #1c1e28, #161820)), if(skin == 2, #f2f3f7, if(skin == 1, #eaecf2, #f8f9fc)))
-    let glass_amt = if(skin == 2, 0%, if(skin == 1, 55%, 85%))
-    let tint_amt = if(skin == 2, 0%, if(dark_mode, 40%, 25%))
-    let rim_amt = if(skin == 2, 0%, 14%)
-    let shadow_amt = if(dark_mode, 40%, 20%)
-    let ink_c = if(dark_mode, #f5f7f5, #1d1d1f)
-    let ink_sub = if(dark_mode, #8e8e93, #6e6e73)
-    let track_bg = if(dark_mode, #343740, #dcdfe6)
-    let bar_fill = if(dark_mode, #ffffff, #007aff)
+    let track_bg = item_solid
+    let bar_fill = slider_bar
 
     event popup
     event volume_up ->

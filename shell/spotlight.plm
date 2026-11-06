@@ -2,6 +2,7 @@
 import "common/palette.plm"
 
 scene MacSpotlight {
+    include "common/theme.plm"
     surface {
         size: 680, 500
         anchor: center
@@ -14,18 +15,14 @@ scene MacSpotlight {
     }
 
     fact open  = false
-    fact dark_mode = true
-    fact skin = 0
 
-    let spot_color = if(dark_mode, if(skin == 2, #1e2026, if(skin == 1, #1c1e28, #161820)), if(skin == 2, #f2f3f7, if(skin == 1, #eaecf2, #f8f9fc)))
-    let spot_glass = if(skin == 2, 0%, if(skin == 1, 55%, 85%))
-    let spot_tint = if(skin == 2, 0%, if(dark_mode, 40%, 25%))
-    let spot_rim = if(skin == 2, 0%, 12%)
-    let spot_shadow = if(dark_mode, 35%, 15%)
-    let ink_c = if(dark_mode, #f5f7f5, #1d1d1f)
-    let ink_sub = if(dark_mode, #8e8e93, #6e6e73)
-    let line_color = if(dark_mode, #ffffff, #000000)
-    let line_op = if(dark_mode, 10%, 8%)
+    let spot_color = bg_color
+    let spot_glass = glass_amt
+    let spot_tint = tint_amt
+    let spot_rim = rim_amt
+    let spot_shadow = 0%
+    let line_color = card_stroke
+    let line_op = card_stroke_op
 
     model hits max 7 { name: text; icon: image 26, 26 }
     fact sel   = 0
@@ -75,7 +72,7 @@ scene MacSpotlight {
             size: 19
             color: ink_c
             placeholder: "Spotlight Search"
-            selection: #007aff
+            selection: accent_c
         }
 
         // Separator Line
@@ -98,13 +95,13 @@ scene MacSpotlight {
             from: 0, 0
             size: 576, 42
             corner: 12
-            color: #007aff
+            color: accent_c
             opacity: on * 22%
             cursor: pointer
         }
 
         // Blue selection pill bar on left
-        box { from: 0, 11; size: 3, 20; corner: 1.5; color: #007aff; opacity: on }
+        box { from: 0, 11; size: 3, 20; corner: 1.5; color: accent_c; opacity: on }
 
         image h.icon { at: 16, 8; size: 26, 26 }
         text h.name {

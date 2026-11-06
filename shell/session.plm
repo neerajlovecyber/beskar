@@ -2,6 +2,7 @@
 import "common/palette.plm"
 
 scene MacSession {
+    include "common/theme.plm"
     surface {
         size: 520, 360
         anchor: center
@@ -15,8 +16,6 @@ scene MacSession {
     }
 
     fact open = false
-    fact dark_mode = true
-    fact skin = 0
     fact kind = 0            // 0: Shut Down, 1: Restart, 2: Log Out
     fact countdown = 60      // 60-second automatic timer
     fact reopen = true       // Reopen windows when logging back in
@@ -29,15 +28,8 @@ scene MacSession {
         gone             { seen: 0 ~quick; scale: 0.96 ~quick }
     }
 
-    let bg_color = if(dark_mode, if(skin == 2, #181a20, if(skin == 1, #161822, #12141a)), if(skin == 2, #f5f6fa, if(skin == 1, #eceef5, #f8f9fd)))
-    let glass_amt = if(skin == 2, 0%, if(skin == 1, 60%, 85%))
-    let tint_amt = if(skin == 2, 0%, if(dark_mode, 40%, 25%))
-    let rim_amt = if(skin == 2, 0%, 14%)
-    let shadow_amt = if(dark_mode, 45%, 20%)
-    let stroke_c = if(dark_mode, #ffffff, #000000)
-    let stroke_op = if(dark_mode, 12%, 8%)
-    let ink_c = if(dark_mode, #f5f7f5, #1d1d1f)
-    let ink_sub = if(dark_mode, #8e8e93, #6e6e73)
+    let stroke_c = card_stroke
+    let stroke_op = card_stroke_op
 
     event toggle
     event confirm_action ->
@@ -73,7 +65,7 @@ scene MacSession {
         // Top Big Icon
         group {
             move: 220, 52
-            ellipse { at: 0, 0; radius: 26; color: pick(kind, #ff3b30, #ff9500, #5856d6) }
+            ellipse { at: 0, 0; radius: 26; color: pick(kind, danger_c, warn_c, focus_c) }
             text pick(kind, "󰐥", "󰑐", "󰍃") { at: 0, 0; anchor: center; size: 26; color: #ffffff }
         }
 
@@ -102,7 +94,7 @@ scene MacSession {
         group {
             move: 50, 160
             box hit_reopen { from: 0, 0; size: 340, 30; corner: 6; color: #000000; opacity: 0%; cursor: pointer }
-            box { from: 10, 7; size: 16, 16; corner: 4; color: if(reopen, #007aff, #3a3d46) }
+            box { from: 10, 7; size: 16, 16; corner: 4; color: if(reopen, accent_c, item_solid) }
             text "󰄲" { at: 18, 15; anchor: center; size: 12; color: #ffffff; show: reopen }
             text "Reopen windows when logging back in" { at: 36, 15; anchor: left center; size: 12; color: ink_c }
             on press hit_reopen { toggle reopen }
@@ -117,7 +109,7 @@ scene MacSession {
             // Cancel Button
             group {
                 size: 120, 32
-                box { from: 0, 0; size: 120, 32; corner: 8; color: if(dark_mode, #282c35, #e5e7eb) }
+                box { from: 0, 0; size: 120, 32; corner: 8; color: if(dark_mode, item_solid, item_solid) }
                 text "Cancel" { at: 60, 16; anchor: center; size: 13; weight: 500; color: ink_c }
                 zone box btn_cancel { from: 0, 0; size: 120, 32; cursor: pointer }
                 on press btn_cancel { emit dismiss }
@@ -126,7 +118,7 @@ scene MacSession {
             // Primary Action Button (Shut Down / Restart / Log Out)
             group {
                 size: 130, 32
-                box { from: 0, 0; size: 130, 32; corner: 8; color: pick(kind, #ff3b30, #ff9500, #007aff) }
+                box { from: 0, 0; size: 130, 32; corner: 8; color: pick(kind, danger_c, warn_c, accent_c) }
                 text pick(kind, "Shut Down", "Restart", "Log Out") { at: 65, 16; anchor: center; size: 13; weight: 600; color: #ffffff }
                 zone box btn_confirm { from: 0, 0; size: 130, 32; cursor: pointer }
                 on press btn_confirm { emit confirm_action }
