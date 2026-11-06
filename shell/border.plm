@@ -1,25 +1,57 @@
-// Full-screen desktop perimeter border framing the display (iNiR aesthetic)
+// iNiR Perimeter Display Frame with Top Notch
+import "common/palette.plm"
+
 scene ScreenBorder {
     surface {
         size: full, full
         anchor: center
-        level: bottom
+        level: overlay
         screens: each
     }
 
     fact dark_mode = true
     fact skin = 0
 
-    let border_color = if(dark_mode, #ffffff, #000000)
-    let border_opacity = if(dark_mode, 14%, 10%)
+    // iNiR neon purple specular border
+    let stroke_c = if(dark_mode, #9d7cd8, #7f52ff)
+    let stroke_op = if(dark_mode, 65%, 45%)
 
-    // Subtle 1.5px refined glass frame with rounded display corners
-    box {
-        from: 2, 2
-        size: screen.width - 4, screen.height - 4
-        corner: 14
+    // Outer perimeter line tracing the screen with smooth corners and a center notch dip
+    path {
         stroke: 1.5
-        color: border_color
-        opacity: border_opacity
+        color: stroke_c
+        opacity: stroke_op
+
+        // 1. Top-Left rounded corner (r = 45px arc)
+        move 15, 60
+        curve 60, 8 via 15, 8
+
+        // 2. Top-edge baseline to the center notch
+        line screen.width / 2 - 120, 8
+
+        // 3. Notch entrance downward S-curve (fillet)
+        curve screen.width / 2 - 105, 26 via screen.width / 2 - 112, 8
+        curve screen.width / 2 - 90, 44 via screen.width / 2 - 98, 44
+
+        // 4. Notch bottom straight span
+        line screen.width / 2 + 90, 44
+
+        // 5. Notch exit upward S-curve (fillet)
+        curve screen.width / 2 + 105, 26 via screen.width / 2 + 98, 44
+        curve screen.width / 2 + 120, 8 via screen.width / 2 + 112, 8
+
+        // 6. Top-edge baseline to top-right corner
+        line screen.width - 60, 8
+        curve screen.width - 15, 60 via screen.width - 15, 8
+
+        // 7. Right edge
+        line screen.width - 15, screen.height - 60
+        curve screen.width - 60, screen.height - 15 via screen.width - 15, screen.height - 15
+
+        // 8. Bottom edge
+        line 60, screen.height - 15
+        curve 15, screen.height - 60 via 15, screen.height - 15
+
+        close
     }
 }
