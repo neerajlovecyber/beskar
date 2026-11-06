@@ -51,7 +51,7 @@ scene MacSpotlight {
         }
 
         // Spotlight Magnifying Glass & Search Field
-        text "􀊫" { at: 42, 48; anchor: center; size: 19; color: ink; opacity: 60% }
+        text "󰍉" { at: 42, 48; anchor: center; size: 19; color: ink; opacity: 60% }
         input query {
             at: 64, 38
             width: 530

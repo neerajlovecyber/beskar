@@ -6,10 +6,12 @@ scene MacTopBar {
         size: full, 30
         anchor: top
         reserve: 30
+        screens: each
     }
 
     permissions {
         services: "clock", "audio", "network", "battery", "window"
+        run: "pleamar"
     }
 
     service clock as now { time: text = "--:--"; date: text }
@@ -17,6 +19,8 @@ scene MacTopBar {
     service network as net { online: bool; name: text }
     service battery as bat { percent: number; charging: bool }
     service window as win { title: text }
+
+    event open_control_center ->
 
     // ── Frosted Glass Bar Background ──────────────────────────────
     body {
@@ -26,7 +30,6 @@ scene MacTopBar {
         shadow: 0, 2, 8, 20%
         box { from: 0, 0; size: screen.width, 30 }
     }
-    // Bottom border line
     box { from: 0, 29; size: screen.width, 1; color: #ffffff; opacity: 12% }
 
     // ── Left: Apple Menu & App Title ──────────────────────────────
@@ -56,31 +59,30 @@ scene MacTopBar {
         gap: 14
         align: center
 
-        // Battery
+        // Battery with icon
         row {
-            gap: 4; align: center
+            gap: 5; align: center
+            text if(bat.charging, "󰂄", "󰁹") { size: 14; color: if(bat.charging, mint, ink); opacity: 90% }
             text "{bat.percent}%" { size: 12; color: ink; opacity: 80% }
-            box { size: 20, 10; corner: 2; color: #ffffff; opacity: 20% }
-            box { size: bat.percent * 0.16, 6; corner: 1; color: if(bat.charging, mint, ink); opacity: 90% }
         }
 
-        // Wi-Fi
-        text if(net.online, "􀙇", "􀙈") { size: 13; color: ink; opacity: 85% }
+        // Wi-Fi (Nerd Font icon)
+        text if(net.online, "󰤨", "󰤭") { size: 14; color: if(net.online, ink, #8e8e93); opacity: 85% }
 
-        // Volume
-        text if(sound.muted, "􀊢", "􀊠") { size: 13; color: ink; opacity: 85% }
+        // Volume (Nerd Font icon)
+        text if(sound.muted, "󰝟", "󰕾") { size: 14; color: ink; opacity: 85% }
 
-        // Control Center Toggle Icon
+        // Control Center Toggle Icon (Clickable)
         group {
-            size: 16, 12
-            box { from: 0, 0; size: 16, 5; corner: 2.5; color: ink; opacity: 85% }
-            box { from: 0, 7; size: 16, 5; corner: 2.5; color: ink; opacity: 85% }
-            ellipse { at: 4, 2.5; radius: 1.5; color: #16181d }
-            ellipse { at: 12, 9.5; radius: 1.5; color: #16181d }
+            size: 20, 16
+            text "󰍜" { at: 2, 0; size: 15; color: ink; opacity: 85% }
+            zone box cc_hit { from: -4, -4; size: 28, 24; cursor: pointer }
         }
 
         // Date & Time
         text now.date { size: 12.5; color: ink; opacity: 75% }
         text now.time { size: 13; weight: 600; color: ink }
     }
+
+    on press cc_hit { emit open_control_center }
 }

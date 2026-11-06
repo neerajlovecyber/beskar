@@ -19,15 +19,15 @@ scene MacControlCenter {
     service bluetooth as bt { powered: bool }
     service media as song { playing: bool; title: text; artist: text }
 
-    // ── Open / Close State ────────────────────────────────────────
-    fact open = true
+    // ── Open / Close State (Closed by default) ────────────────────
+    fact open = false
     event toggle
     event volume_set ->
     event brightness_set ->
     event play_pause ->
 
-    prop seen = 1 ~quick
-    prop scale = 1 ~quick
+    prop seen = 0 ~quick
+    prop scale = 0.96 ~quick
 
     layer panel ~quick {
         shown while open { seen: 1 ~quick; scale: 1 ~quick }
@@ -69,7 +69,7 @@ scene MacControlCenter {
                     size: 36, 36
                     move: 12, 14
                     ellipse { at: 18, 18; radius: 18; color: if(net.online, #007aff, #343740) }
-                    text "􀙇" { at: 18, 18; anchor: center; size: 15; color: ink }
+                    text "󰤨" { at: 18, 18; anchor: center; size: 16; color: ink }
                 }
                 text "Wi-Fi" { at: 56, 24; anchor: left center; size: 12.5; weight: 600; color: ink }
                 text if(net.online, net.name, "Off") { at: 56, 38; anchor: left center; size: 10.5; color: ink; opacity: 60%; width: 85; lines: 1 }
@@ -79,7 +79,7 @@ scene MacControlCenter {
                     size: 36, 36
                     move: 12, 70
                     ellipse { at: 18, 18; radius: 18; color: if(bt.powered, #007aff, #343740) }
-                    text "􀊫" { at: 18, 18; anchor: center; size: 15; color: ink }
+                    text "󰂯" { at: 18, 18; anchor: center; size: 16; color: ink }
                 }
                 text "Bluetooth" { at: 56, 80; anchor: left center; size: 12.5; weight: 600; color: ink }
                 text if(bt.powered, "On", "Off") { at: 56, 94; anchor: left center; size: 10.5; color: ink; opacity: 60% }
@@ -99,7 +99,7 @@ scene MacControlCenter {
                         box { from: 0, 0; size: 150, 59; corner: 16 }
                     }
                     ellipse { at: 24, 29; radius: 15; color: #343740 }
-                    text "􀆹" { at: 24, 29; anchor: center; size: 14; color: ink }
+                    text "󰔎" { at: 24, 29; anchor: center; size: 15; color: ink }
                     text "Focus" { at: 48, 29; anchor: left center; size: 12.5; weight: 600; color: ink }
                 }
 
@@ -113,7 +113,7 @@ scene MacControlCenter {
                         box { from: 0, 0; size: 150, 59; corner: 16 }
                     }
                     ellipse { at: 24, 29; radius: 15; color: #343740 }
-                    text "􀈟" { at: 24, 29; anchor: center; size: 14; color: ink }
+                    text "󰀝" { at: 24, 29; anchor: center; size: 15; color: ink }
                     text "AirDrop" { at: 48, 29; anchor: left center; size: 12.5; weight: 600; color: ink }
                 }
             }
@@ -139,7 +139,7 @@ scene MacControlCenter {
                     size: 284, 18
                     box { from: 0, 0; size: 284, 18; corner: 9; color: #343740 }
                     box { from: 0, 0; size: 284 * max(display.level, 0.2), 18; corner: 9; color: #ffffff }
-                    text "􀆮" { at: 12, 9; anchor: center; size: 11; color: #16181d }
+                    text "󰃠" { at: 12, 9; anchor: center; size: 12; color: #16181d }
                     zone box br_hit { from: 0, 0; size: 284, 18; cursor: pointer }
                 }
             }
@@ -159,7 +159,7 @@ scene MacControlCenter {
                     size: 284, 18
                     box { from: 0, 0; size: 284, 18; corner: 9; color: #343740 }
                     box { from: 0, 0; size: 284 * sound.volume, 18; corner: 9; color: #ffffff }
-                    text "􀊠" { at: 12, 9; anchor: center; size: 11; color: #16181d }
+                    text "󰕾" { at: 12, 9; anchor: center; size: 12; color: #16181d }
                     zone box vol_hit { from: 0, 0; size: 284, 18; cursor: pointer }
                 }
             }
@@ -178,7 +178,7 @@ scene MacControlCenter {
 
             // Album Artwork Box
             box { from: 14, 14; size: 52, 52; corner: 8; color: #007aff; opacity: 30% }
-            text "􀑪" { at: 40, 40; anchor: center; size: 22; color: #007aff }
+            text "󰎆" { at: 40, 40; anchor: center; size: 22; color: #007aff }
 
             // Title & Artist
             text song.title {
@@ -207,14 +207,14 @@ scene MacControlCenter {
                 gap: 28
                 align: center
 
-                text "􀊌" { size: 16; color: ink; opacity: 70% }
+                text "󰒮" { size: 16; color: ink; opacity: 70% }
                 group {
                     size: 28, 28
                     ellipse { at: 14, 14; radius: 14; color: ink; opacity: 15% }
-                    text if(song.playing, "􀊆", "􀊄") { at: 14, 14; anchor: center; size: 14; color: ink }
+                    text if(song.playing, "󰏤", "󰐊") { at: 14, 14; anchor: center; size: 14; color: ink }
                     zone box play_hit { from: 0, 0; size: 28, 28; cursor: pointer }
                 }
-                text "􀊎" { size: 16; color: ink; opacity: 70% }
+                text "󰒭" { size: 16; color: ink; opacity: 70% }
             }
         }
     }

@@ -48,7 +48,7 @@ scene MacDock {
             follow scale1 = 1.0 + hot1 * 0.28
             group {
                 pivot: 25, 25; scale: scale1
-                image icon_files { at: 3, 2; size: 44, 44 }
+                image icon_files { at: 3, 3; size: 44, 44 }
             }
             ellipse { at: 25, 52; radius: 2; color: ink; opacity: 75% }
             zone box hit1 { from: 0, 0; size: 50, 56; cursor: pointer }
@@ -65,7 +65,7 @@ scene MacDock {
             follow scale2 = 1.0 + hot2 * 0.28
             group {
                 pivot: 25, 25; scale: scale2
-                image icon_browser { at: 3, 2; size: 44, 44 }
+                image icon_browser { at: 3, 3; size: 44, 44 }
             }
             ellipse { at: 25, 52; radius: 2; color: ink; opacity: 75% }
             zone box hit2 { from: 0, 0; size: 50, 56; cursor: pointer }
@@ -82,7 +82,7 @@ scene MacDock {
             follow scale3 = 1.0 + hot3 * 0.28
             group {
                 pivot: 25, 25; scale: scale3
-                image icon_terminal { at: 3, 2; size: 44, 44 }
+                image icon_terminal { at: 3, 3; size: 44, 44 }
             }
             ellipse { at: 25, 52; radius: 2; color: ink; opacity: 75% }
             zone box hit3 { from: 0, 0; size: 50, 56; cursor: pointer }
@@ -99,7 +99,7 @@ scene MacDock {
             follow scale4 = 1.0 + hot4 * 0.28
             group {
                 pivot: 25, 25; scale: scale4
-                image icon_editor { at: 3, 2; size: 44, 44 }
+                image icon_editor { at: 3, 3; size: 44, 44 }
             }
             zone box hit4 { from: 0, 0; size: 50, 56; cursor: pointer }
             on enter hit4 { hot4: 1 }
@@ -115,7 +115,7 @@ scene MacDock {
             follow scale5 = 1.0 + hot5 * 0.28
             group {
                 pivot: 25, 25; scale: scale5
-                image icon_music { at: 3, 2; size: 44, 44 }
+                image icon_music { at: 3, 3; size: 44, 44 }
             }
             zone box hit5 { from: 0, 0; size: 50, 56; cursor: pointer }
             on enter hit5 { hot5: 1 }
@@ -131,7 +131,7 @@ scene MacDock {
             follow scale6 = 1.0 + hot6 * 0.28
             group {
                 pivot: 25, 25; scale: scale6
-                image icon_settings { at: 3, 2; size: 44, 44 }
+                image icon_settings { at: 3, 3; size: 44, 44 }
             }
             zone box hit6 { from: 0, 0; size: 50, 56; cursor: pointer }
             on enter hit6 { hot6: 1 }
@@ -150,7 +150,7 @@ scene MacDock {
             follow scale7 = 1.0 + hot7 * 0.28
             group {
                 pivot: 25, 25; scale: scale7
-                image icon_trash { at: 3, 2; size: 44, 44 }
+                image icon_trash { at: 3, 3; size: 44, 44 }
             }
             zone box hit7 { from: 0, 0; size: 50, 56; cursor: pointer }
             on enter hit7 { hot7: 1 }
