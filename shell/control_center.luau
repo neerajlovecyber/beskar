@@ -202,6 +202,18 @@ on("toggle_dnd", function()
     pcall(sys.call, "say", "topbar", "fact dnd " .. v)
 end)
 
+-- ── the four round shortcuts ─────────────────────────────────────
+local function say_later(scene, words)
+    -- the panel is closing; give it a moment so the new window does not fight it for focus
+    after(250, function()
+        pcall(sys.call, "say", scene, words)
+    end)
+end
+on("sc_search", function() say_later("spotlight", "emit toggle") end)
+on("sc_clip", function() say_later("clipboard", "emit toggle") end)
+on("sc_shot", function() say_later("capture", "emit toggle") end)
+on("sc_lock", function() say_later("lock", "fact locked true") end)
+
 -- ── Settings shortcut ────────────────────────────────────────────
 on("open_settings", function()
     pcall(sys.call, "say", "settings", "emit toggle")

@@ -11,7 +11,7 @@ scene MacControlCenter {
     }
 
     permissions {
-        services: "audio", "audio.*", "brightness", "brightness.*", "media", "media.*", "network", "network.*", "bluetooth", "bluetooth.*", "say:topbar", "say:dock", "say:settings", "say:spotlight", "say:apple_menu", "say:notifications", "say:dashboard", "say:osd"
+        services: "audio", "audio.*", "brightness", "brightness.*", "media", "media.*", "network", "network.*", "bluetooth", "bluetooth.*", "say:topbar", "say:dock", "say:settings", "say:clipboard", "say:capture", "say:lock", "say:spotlight", "say:apple_menu", "say:notifications", "say:dashboard", "say:osd"
     }
 
     // ── Built-in System Models ────────────────────────────────────
@@ -78,6 +78,7 @@ scene MacControlCenter {
     let ink_c = if(dark_mode, #f5f7f5, #1d1d1f)
     let ink_sub = if(dark_mode, #9a9ea7, #6e6e73)
     let item_bg = if(skin == 2, if(dark_mode, #343740, #e2e4ea), if(dark_mode, #ffffff, #000000))
+    let item_solid = if(dark_mode, #3c3f4b, #dcdee6)
     let item_bg_op = if(skin == 2, 100%, if(dark_mode, 14%, 8%))
     let slider_bg = if(dark_mode, #000000, #000000)
     let slider_bg_op = if(dark_mode, 25%, 8%)
@@ -105,6 +106,10 @@ scene MacControlCenter {
     event bt_scan ->
     event open_settings ->
     event toggle_dnd ->
+    event sc_search ->
+    event sc_clip ->
+    event sc_shot ->
+    event sc_lock ->
     event previous ->
     event next ->
     event seek ->
@@ -118,8 +123,8 @@ scene MacControlCenter {
     prop askhold = 0 ~calm
     follow askhold = if(asking, 1, 0)
     //  The card is shorter on the overview than on the pickers, and grows when one opens.
-    prop ch = 430 ~calm
-    follow ch = if(page == 0, 430,
+    prop ch = 434 ~calm
+    follow ch = if(page == 0, 434,
                 if(page == 1, if(asking, 240, max(230, 176 + wifi_rows.count * 40)),
                 if(page == 2, max(200, 78 + bt_rows.count * 52),
                 max(190, 100 + outs.count * 40 + app_rows.count * 56 + if(app_rows.count > 0, 12, 40)))))
@@ -184,114 +189,140 @@ scene MacControlCenter {
         group {
             show: page == 0
 
-            // Top Row: Connectivity & Controls
-            row {
-                at: 16, 16
-                gap: 12
+            // ── Wi-Fi: a wide pill. The disc toggles the radio, the rest opens the page ──
+            group {
+                move: 16, 16
+                size: 158, 60
+                box { from: 0, 0; size: 158, 60; corner: 30; color: card_fill; opacity: card_fill_op }
+                box { from: 0, 0; size: 158, 60; corner: 30; color: #007aff; opacity: if(net.online, 100%, 0%) }
+                box { from: 0, 0; size: 158, 60; corner: 30; stroke: 1; color: card_stroke; opacity: card_stroke_op }
+                ellipse { at: 30, 30; radius: 20; color: if(net.online, #ffffff, item_solid) }
+                repeat a in 1..4 {
+                    arc { at: 30, 37; radius: a * 4.8; span: 100deg; width: 2.2; color: if(net.online, #007aff, ink_c) }
+                }
+                ellipse { at: 30, 37.5; radius: 1.9; color: if(net.online, #007aff, ink_c) }
+                text "Wi-Fi" { at: 58, 22; anchor: left center; size: 12; weight: 600; color: if(net.online, #ffffff, ink_c) }
+                text if(net.online, net.name, "Off") { at: 58, 38; anchor: left center; size: 10; color: if(net.online, #ffffff, ink_sub); opacity: if(net.online, 80%, 100%); width: 80; lines: 1 }
+                zone box wifi_chevron_hit { from: 52, 0; size: 106, 60; corner: 30; cursor: pointer }
+                zone box wifi_icon_hit { at: 30, 30; size: 40, 40; corner: 20; cursor: pointer }
+            }
 
-                // Connectivity 2x2 Card
+            // ── Bluetooth ──
+            group {
+                move: 16, 88
+                size: 158, 60
+                box { from: 0, 0; size: 158, 60; corner: 30; color: card_fill; opacity: card_fill_op }
+                box { from: 0, 0; size: 158, 60; corner: 30; color: #007aff; opacity: if(bt_on, 100%, 0%) }
+                box { from: 0, 0; size: 158, 60; corner: 30; stroke: 1; color: card_stroke; opacity: card_stroke_op }
+                ellipse { at: 30, 30; radius: 20; color: if(bt_on, #ffffff, item_solid) }
+                path { at: 25.5, 20; color: if(bt_on, #007aff, ink_c); stroke: 2; move 0, 6; line 9, 15; line 4.5, 20; line 4.5, 0; line 9, 5; line 0, 14 }
+                text "Bluetooth" { at: 58, 22; anchor: left center; size: 12; weight: 600; color: if(bt_on, #ffffff, ink_c) }
+                text bt_sub { at: 58, 38; anchor: left center; size: 10; color: if(bt_on, #ffffff, ink_sub); opacity: if(bt_on, 80%, 100%); width: 80; lines: 1 }
+                zone box bt_chevron_hit { from: 52, 0; size: 106, 60; corner: 30; cursor: pointer }
+                zone box bt_icon_hit { at: 30, 30; size: 40, 40; corner: 20; cursor: pointer }
+            }
+
+            // ── Now Playing: a tile on the right, as tall as the two pills ──
+            group {
+                move: 186, 16
+                size: 158, 132
+                box { from: 0, 0; size: 158, 132; corner: 26; color: card_fill; opacity: card_fill_op }
+                box { from: 0, 0; size: 158, 132; corner: 26; stroke: 1; color: card_stroke; opacity: card_stroke_op }
+
                 group {
-                    size: 158, 134
-                    box { from: 0, 0; size: 158, 134; corner: 16; color: card_fill; opacity: card_fill_op }
-                    box { from: 0, 0; size: 158, 134; corner: 16; stroke: 1; color: card_stroke; opacity: card_stroke_op }
-
-                    // Wi-Fi Row
-                    group {
-                        size: 34, 34
-                        move: 12, 14
-                        ellipse { at: 17, 17; radius: 17; color: if(net.online, #007aff, item_bg); opacity: if(net.online, 100%, item_bg_op) }
-                        repeat a in 1..4 {
-                            arc { at: 17, 24; radius: a * 4.4; span: 100deg; width: 2; color: if(net.online, #ffffff, ink_c) }
-                        }
-                        ellipse { at: 17, 24.5; radius: 1.7; color: if(net.online, #ffffff, ink_c) }
-                        zone box wifi_icon_hit { from: 0, 0; size: 34, 34; cursor: pointer }
-                    }
-                    text "Wi-Fi" { at: 54, 22; anchor: left center; size: 12.5; weight: 600; color: ink_c }
-                    text if(net.online, net.name, "Off") { at: 54, 36; anchor: left center; size: 10.5; color: ink_sub; width: 80; lines: 1 }
-                    text "󰅂" { at: 142, 28; anchor: center; size: 14; color: ink_sub }
-                    zone box wifi_chevron_hit { at: 142, 28; size: 24, 24; corner: 12; cursor: pointer }
-
-                    // Bluetooth Row
-                    group {
-                        size: 34, 34
-                        move: 12, 72
-                        ellipse { at: 17, 17; radius: 17; color: if(bt_on, #007aff, item_bg); opacity: if(bt_on, 100%, item_bg_op) }
-                        path { at: 13, 8.5; color: if(bt_on, #ffffff, ink_c); stroke: 1.7; move 0, 5; line 8, 13; line 4, 17; line 4, 0; line 8, 4; line 0, 12 }
-                        zone box bt_icon_hit { from: 0, 0; size: 34, 34; cursor: pointer }
-                    }
-                    text "Bluetooth" { at: 54, 80; anchor: left center; size: 12.5; weight: 600; color: ink_c }
-                    text bt_sub { at: 54, 94; anchor: left center; size: 10.5; color: ink_sub; width: 80; lines: 1 }
-                    text "󰅂" { at: 142, 86; anchor: center; size: 14; color: ink_sub }
-                    zone box bt_chevron_hit { at: 142, 86; size: 24, 24; corner: 12; cursor: pointer }
+                    show: not has_player
+                    ellipse { at: 79, 48; radius: 22; color: item_solid }
+                    path { at: 71, 37; color: ink_sub; move 0, 0; line 17, 11; line 0, 22; close }
+                    text "Not Playing" { at: 79, 96; anchor: center; size: 12; weight: 600; color: ink_sub }
                 }
 
-                // Dark Mode, and below it Do Not Disturb + Settings
-                column {
-                    gap: 12
+                group {
+                    show: has_player
+                    body {
+                        gradient: 0, 0 to 46, 46, #e8a048, #7f52ff
+                        box { from: 14, 14; size: 46, 46; corner: 11 }
+                    }
+                    image cover { at: 14, 14; size: 46, 46; show: has_art }
+                    text track_title { at: 14, 74; anchor: left center; size: 12; weight: 600; color: ink_c; width: 132; lines: 1 }
+                    text track_artist { at: 14, 90; anchor: left center; size: 10.5; color: ink_sub; width: 132; lines: 1 }
 
-                    // Dark Mode: a moon (dark) or a sun (light) in a coloured disc, and a switch
+                    //  progress
+                    box { from: 14, 102; size: 130, 3; corner: 1.5; color: slider_bg; opacity: slider_bg_op }
+                    box { from: 14, 102; size: max(3, 130 * clamp(track_pos / max(track_len, 1), 0, 1)), 3; corner: 1.5; color: slider_bar; opacity: slider_bar_op; show: track_len > 0 }
+                    zone box seek_hit { from: 14, 96; size: 130, 14; cursor: pointer; active: track_len > 0 }
+
+                    //  previous · play/pause · next
+                    path { at: 38, 112; color: ink_c; move 9, 0; line 9, 11; line 0, 5.5; close }
+                    box { from: 36, 112; size: 2, 11; corner: 1; color: ink_c }
                     group {
-                        size: 158, 61
-                        box { from: 0, 0; size: 158, 61; corner: 16; color: card_fill; opacity: card_fill_op }
-                        box { from: 0, 0; size: 158, 61; corner: 16; stroke: 1; color: card_stroke; opacity: card_stroke_op }
-                        ellipse { at: 26, 30.5; radius: 16; color: if(dark_mode, #5e5ce6, #ff9f0a) }
-                        //  moon: a white disc with a bite out of it, in the disc's own colour
-                        group {
-                            show: dark_mode
-                            ellipse { at: 25, 31; radius: 7.5; color: #ffffff }
-                            ellipse { at: 29, 27.5; radius: 6.5; color: #5e5ce6 }
-                        }
-                        //  sun: a disc and eight rays
-                        group {
-                            show: not dark_mode
-                            ellipse { at: 26, 30.5; radius: 4.6; color: #ffffff }
-                            repeat k in 0..8 { line { from: 26 + 7.4 * cos(k * 45), 30.5 + 7.4 * sin(k * 45); to: 26 + 10 * cos(k * 45), 30.5 + 10 * sin(k * 45); width: 1.8; color: #ffffff } }
-                        }
-                        text "Dark Mode" { at: 48, 24; anchor: left center; size: 11.5; weight: 600; color: ink_c }
-                        text if(dark_mode, "On", "Off") { at: 48, 40; anchor: left center; size: 10.5; color: ink_sub }
-                        //  the switch
-                        box { from: 118, 21; size: 32, 20; corner: 10; color: if(dark_mode, #5e5ce6, item_bg); opacity: if(dark_mode, 100%, item_bg_op) }
-                        ellipse { at: 128 + dm_k * 12, 31; radius: 7.5; color: #ffffff }
-                        zone box dm_tile_hit { from: 0, 0; size: 158, 61; corner: 16; cursor: pointer }
+                        show: is_playing
+                        box { from: 74, 111; size: 3, 13; corner: 1.5; color: ink_c }
+                        box { from: 81, 111; size: 3, 13; corner: 1.5; color: ink_c }
                     }
-
-                    row {
-                        gap: 12
-
-                        // Do Not Disturb: a bell, slashed while on
-                        group {
-                            size: 73, 61
-                            box { from: 0, 0; size: 73, 61; corner: 16; color: card_fill; opacity: card_fill_op }
-                            box { from: 0, 0; size: 73, 61; corner: 16; stroke: 1; color: card_stroke; opacity: card_stroke_op }
-                            ellipse { at: 36.5, 22; radius: 15; color: if(dnd, #bf5af2, item_bg); opacity: if(dnd, 100%, item_bg_op) }
-                            path { at: 29.5, 13.5; color: if(dnd, #ffffff, ink_c); move 0, 15; line 2.5, 15; line 3, 7; line 5, 2; line 9, 2; line 11, 7; line 11.5, 15; line 14, 15; line 14, 17; line 0, 17; close }
-                            line { from: 28, 12.5; to: 45, 31; width: 2; color: if(dnd, #ffffff, ink_c); show: dnd }
-                            text "Do Not Disturb" { at: 36.5, 49; anchor: center; size: 9; weight: 600; color: ink_c; width: 68; tight: true }
-                            zone box dnd_hit { from: 0, 0; size: 73, 61; corner: 16; cursor: pointer }
-                        }
-
-                        // Settings: three sliders
-                        group {
-                            size: 73, 61
-                            box { from: 0, 0; size: 73, 61; corner: 16; color: card_fill; opacity: card_fill_op }
-                            box { from: 0, 0; size: 73, 61; corner: 16; stroke: 1; color: card_stroke; opacity: card_stroke_op }
-                            ellipse { at: 36.5, 22; radius: 15; color: item_bg; opacity: item_bg_op }
-                            line { from: 28, 16.5; to: 45, 16.5; width: 1.6; color: ink_c }
-                            line { from: 28, 22; to: 45, 22; width: 1.6; color: ink_c }
-                            line { from: 28, 27.5; to: 45, 27.5; width: 1.6; color: ink_c }
-                            ellipse { at: 33, 16.5; radius: 2.6; color: ink_c }
-                            ellipse { at: 41, 22; radius: 2.6; color: ink_c }
-                            ellipse { at: 35, 27.5; radius: 2.6; color: ink_c }
-                            text "Settings" { at: 36.5, 49; anchor: center; size: 9; weight: 600; color: ink_c }
-                            zone box settings_tile_hit { from: 0, 0; size: 73, 61; corner: 16; cursor: pointer }
-                        }
-                    }
+                    path { at: 74, 111; color: ink_c; show: not is_playing; move 0, 0; line 11, 6.5; line 0, 13; close }
+                    path { at: 112, 112; color: ink_c; move 0, 0; line 9, 5.5; line 0, 11; close }
+                    box { from: 122, 112; size: 2, 11; corner: 1; color: ink_c }
+                    zone box prev_hit { at: 43, 117.5; size: 26, 22; corner: 11; cursor: pointer }
+                    zone box play_hit { at: 79, 117.5; size: 30, 22; corner: 11; cursor: pointer }
+                    zone box next_hit { at: 117, 117.5; size: 26, 22; corner: 11; cursor: pointer }
                 }
+            }
+
+            // ── Do Not Disturb: a wide pill with a moon ──
+            group {
+                move: 16, 160
+                size: 158, 60
+                box { from: 0, 0; size: 158, 60; corner: 30; color: card_fill; opacity: card_fill_op }
+                box { from: 0, 0; size: 158, 60; corner: 30; color: #5e5ce6; opacity: if(dnd, 100%, 0%) }
+                box { from: 0, 0; size: 158, 60; corner: 30; stroke: 1; color: card_stroke; opacity: card_stroke_op }
+                ellipse { at: 30, 30; radius: 20; color: if(dnd, #ffffff, item_solid) }
+                //  the moon: a disc with a bite out of it, the bite in the disc's own colour
+                ellipse { at: 29, 31; radius: 9; color: if(dnd, #5e5ce6, ink_c) }
+                ellipse { at: 34, 27; radius: 8; color: if(dnd, #ffffff, item_solid) }
+                text "Do Not" { at: 58, 24; anchor: left center; size: 12; weight: 600; color: if(dnd, #ffffff, ink_c) }
+                text "Disturb" { at: 58, 38; anchor: left center; size: 12; weight: 600; color: if(dnd, #ffffff, ink_c) }
+                zone box dnd_hit { from: 0, 0; size: 158, 60; corner: 30; cursor: pointer }
+            }
+
+            // ── Dark Mode: a square that is a sun or a moon ──
+            group {
+                move: 186, 160
+                size: 73, 60
+                box { from: 0, 0; size: 73, 60; corner: 22; color: card_fill; opacity: card_fill_op }
+                box { from: 0, 0; size: 73, 60; corner: 22; stroke: 1; color: card_stroke; opacity: card_stroke_op }
+                ellipse { at: 36.5, 30; radius: 19; color: if(dark_mode, #5e5ce6, #ff9f0a) }
+                group {
+                    show: dark_mode
+                    ellipse { at: 35.5, 31; radius: 9; color: #ffffff }
+                    ellipse { at: 40, 27; radius: 8; color: #5e5ce6 }
+                }
+                group {
+                    show: not dark_mode
+                    ellipse { at: 36.5, 30; radius: 5.5; color: #ffffff }
+                    repeat k in 0..8 { line { from: 36.5 + 9 * cos(k * 45), 30 + 9 * sin(k * 45); to: 36.5 + 12 * cos(k * 45), 30 + 12 * sin(k * 45); width: 2; color: #ffffff } }
+                }
+                zone box dm_tile_hit { from: 0, 0; size: 73, 60; corner: 22; cursor: pointer }
+            }
+
+            // ── Settings: a square with three sliders ──
+            group {
+                move: 271, 160
+                size: 73, 60
+                box { from: 0, 0; size: 73, 60; corner: 22; color: card_fill; opacity: card_fill_op }
+                box { from: 0, 0; size: 73, 60; corner: 22; stroke: 1; color: card_stroke; opacity: card_stroke_op }
+                ellipse { at: 36.5, 30; radius: 19; color: item_solid }
+                line { from: 26, 23; to: 47, 23; width: 1.8; color: ink_c }
+                line { from: 26, 30; to: 47, 30; width: 1.8; color: ink_c }
+                line { from: 26, 37; to: 47, 37; width: 1.8; color: ink_c }
+                ellipse { at: 32, 23; radius: 3; color: ink_c }
+                ellipse { at: 42, 30; radius: 3; color: ink_c }
+                ellipse { at: 35, 37; radius: 3; color: ink_c }
+                zone box settings_tile_hit { from: 0, 0; size: 73, 60; corner: 22; cursor: pointer }
             }
 
             // Sliders Section
             column {
-                at: 16, 160
+                at: 16, 232
                 gap: 10
 
                 // Display Brightness Card
@@ -334,58 +365,40 @@ scene MacControlCenter {
                 }
             }
 
-            // Now Playing / Media Card
+
+            // ── four round shortcuts ──
             group {
-                move: 16, 286
-                size: 328, 128
-                box { from: 0, 0; size: 328, 128; corner: 16; color: card_fill; opacity: card_fill_op }
-                box { from: 0, 0; size: 328, 128; corner: 16; stroke: 1; color: card_stroke; opacity: card_stroke_op }
+                move: 16, 362
+                //  Search
+                ellipse { at: 28, 28; radius: 28; color: card_fill; opacity: card_fill_op }
+                ellipse { at: 28, 28; radius: 28; stroke: 1; color: card_stroke; opacity: card_stroke_op }
+                ellipse { at: 26, 26; radius: 8; stroke: 2.2; color: ink_c }
+                line { from: 32, 32; to: 38, 38; width: 2.4; color: ink_c }
+                zone box sc_search_hit { at: 28, 28; size: 56, 56; corner: 28; cursor: pointer }
 
-                //  Nothing is playing
-                group {
-                    show: not has_player
-                    ellipse { at: 164, 48; radius: 22; color: item_bg; opacity: item_bg_op }
-                    path { at: 155, 36; color: ink_sub; move 0, 0; line 20, 12; line 0, 24; close }
-                    text "Nothing playing" { at: 164, 90; anchor: center; size: 12; weight: 500; color: ink_sub }
-                    text "Start a song in any player" { at: 164, 106; anchor: center; size: 10; color: ink_sub; opacity: 70% }
-                }
+                //  Clipboard
+                ellipse { at: 118.7, 28; radius: 28; color: card_fill; opacity: card_fill_op }
+                ellipse { at: 118.7, 28; radius: 28; stroke: 1; color: card_stroke; opacity: card_stroke_op }
+                box { from: 108.7, 18; size: 20, 24; corner: 4; stroke: 2.2; color: ink_c }
+                box { from: 113.7, 15; size: 10, 6; corner: 2; color: ink_c }
+                zone box sc_clip_hit { at: 118.7, 28; size: 56, 56; corner: 28; cursor: pointer }
 
-                //  A player has something
-                group {
-                    show: has_player
+                //  Screenshot: a viewfinder
+                ellipse { at: 209.3, 28; radius: 28; color: card_fill; opacity: card_fill_op }
+                ellipse { at: 209.3, 28; radius: 28; stroke: 1; color: card_stroke; opacity: card_stroke_op }
+                path { at: 198.3, 17; color: ink_c; stroke: 2.2; move 0, 6; line 0, 0; line 6, 0 }
+                path { at: 214.3, 17; color: ink_c; stroke: 2.2; move 0, 0; line 6, 0; line 6, 6 }
+                path { at: 198.3, 33; color: ink_c; stroke: 2.2; move 0, 0; line 0, 6; line 6, 6 }
+                path { at: 214.3, 33; color: ink_c; stroke: 2.2; move 6, 0; line 6, 6; line 0, 6 }
+                ellipse { at: 209.3, 28; radius: 3; color: ink_c }
+                zone box sc_shot_hit { at: 209.3, 28; size: 56, 56; corner: 28; cursor: pointer }
 
-                    //  Cover: a soft gradient, and the real artwork over it when the player has one
-                    body {
-                        gradient: 0, 0 to 52, 52, #e8a048, #7f52ff
-                        box { from: 14, 12; size: 52, 52; corner: 11 }
-                    }
-                    image cover { at: 14, 12; size: 52, 52; show: has_art }
-                    text track_title { at: 78, 28; anchor: left center; size: 13; weight: 600; color: ink_c; width: 236; lines: 1 }
-                    text track_artist { at: 78, 46; anchor: left center; size: 11; color: ink_sub; width: 236; lines: 1 }
-
-                    //  Progress; a click on the bar seeks
-                    box { from: 14, 74; size: 300, 4; corner: 2; color: slider_bg; opacity: slider_bg_op }
-                    box { from: 14, 74; size: max(4, 300 * clamp(track_pos / max(track_len, 1), 0, 1)), 4; corner: 2; color: slider_bar; opacity: slider_bar_op; show: track_len > 0 }
-                    text time_pos { at: 14, 88; anchor: left center; size: 9.5; color: ink_sub }
-                    text time_len { at: 314, 88; anchor: right center; size: 9.5; color: ink_sub; show: track_len > 0 }
-                    zone box seek_hit { from: 14, 68; size: 300, 16; cursor: pointer; active: track_len > 0 }
-
-                    //  Previous · play/pause · next, drawn
-                    path { at: 112, 99; color: ink_c; move 11, 0; line 11, 14; line 0, 7; close }
-                    box { from: 109, 99; size: 2.6, 14; corner: 1.3; color: ink_c }
-                    ellipse { at: 164, 106; radius: 16; color: item_bg; opacity: item_bg_op }
-                    group {
-                        show: is_playing
-                        box { from: 158, 99; size: 3.6, 14; corner: 1.8; color: ink_c }
-                        box { from: 166.5, 99; size: 3.6, 14; corner: 1.8; color: ink_c }
-                    }
-                    path { at: 160, 98.5; color: ink_c; show: not is_playing; move 0, 0; line 13, 7.5; line 0, 15; close }
-                    path { at: 205, 99; color: ink_c; move 0, 0; line 11, 7; line 0, 14; close }
-                    box { from: 216, 99; size: 2.6, 14; corner: 1.3; color: ink_c }
-                    zone box prev_hit { at: 118, 106; size: 34, 34; corner: 17; cursor: pointer }
-                    zone box play_hit { at: 164, 106; size: 38, 38; corner: 19; cursor: pointer }
-                    zone box next_hit { at: 211, 106; size: 34, 34; corner: 17; cursor: pointer }
-                }
+                //  Lock
+                ellipse { at: 300, 28; radius: 28; color: card_fill; opacity: card_fill_op }
+                ellipse { at: 300, 28; radius: 28; stroke: 1; color: card_stroke; opacity: card_stroke_op }
+                box { from: 290, 27; size: 20, 15; corner: 4; color: ink_c }
+                arc { at: 300, 27; radius: 6; span: 180deg; width: 2.2; color: ink_c }
+                zone box sc_lock_hit { at: 300, 28; size: 56, 56; corner: 28; cursor: pointer }
             }
         }
 
@@ -642,8 +655,12 @@ scene MacControlCenter {
     on press play_hit { emit play_pause }
     on press prev_hit { emit previous }
     on press next_hit { emit next }
-    on press seek_hit { emit seek(clamp(local.x / 300, 0, 1)) }
+    on press seek_hit { emit seek(clamp(local.x / 130, 0, 1)) }
     on press dnd_hit { emit toggle_dnd }
+    on press sc_search_hit { emit sc_search; open = false; page = 0 }
+    on press sc_clip_hit   { emit sc_clip; open = false; page = 0 }
+    on press sc_shot_hit   { emit sc_shot; open = false; page = 0 }
+    on press sc_lock_hit   { emit sc_lock; open = false; page = 0 }
     on press settings_tile_hit { emit open_settings; open = false; page = 0 }
     on press bt_power_hit { emit bt_power }
     on press bt_scan_hit  { emit bt_scan }
