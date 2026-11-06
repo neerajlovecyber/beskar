@@ -10,6 +10,10 @@ local apps = {
 }
 
 on("launch", function(index)
+    if index == 6 then
+        pcall(sys.call, "say", "settings", "emit toggle")
+        return
+    end
     local cmd = apps[index]
     if cmd then
         log("Dock: launching", cmd)

@@ -1,0 +1,833 @@
+// macOS System Settings for Wayland Compositors (Pleamar Engine)
+import "common/palette.plm"
+
+scene MacSettings {
+    surface {
+        size: 900, 620
+        anchor: center
+        level: overlay
+        keyboard: on_demand
+    }
+
+    permissions {
+        services: "clock", "audio", "audio.*", "brightness", "brightness.*", "network", "network.*", "bluetooth", "bluetooth.*", "say:topbar", "say:dock", "say:spotlight", "say:control_center", "say:apple_menu", "say:widgets", "say:osd"
+        run: "awww", "awww-daemon", "gsettings", "systemctl", "loginctl", "sh"
+    }
+
+    service audio as sound { volume: number; muted: bool }
+    service brightness as bright { level: number }
+    service network as net { online: bool; name: text }
+    service bluetooth as bt { powered: bool }
+
+    fact open = false
+    fact dark_mode = true
+    fact skin = 0
+    fact accent = 0          // 0: Blue, 1: Purple, 2: Pink, 3: Red, 4: Orange, 5: Mint, 6: Graphite
+    fact tab = 0             // 0: Appearance, 1: Displays, 2: Sound, 3: Wi-Fi, 4: Bluetooth, 5: Notifications, 6: Wallpaper, 7: General / About
+
+    // Displays facts
+    fact disp_choice = 0     // 0: Built-in (eDP-1), 1: LG UltraGear (HDMI-A-1)
+    fact night_shift = false
+    fact true_tone = true
+
+    // Audio sink
+    fact sound_sink = 0      // 0: Built-in Speakers, 1: HDMI Audio, 2: Headphones
+
+    // Wallpaper selection
+    fact wall_choice = 0
+
+    // Notification facts
+    fact dnd = false
+
+    // Appearance preview hover & animation props
+    prop seen = 0 ~quick
+    prop scale = 0.96 ~lively
+
+    layer panel ~quick {
+        shown while open { seen: 1 ~quick; scale: 1 ~lively }
+        gone             { seen: 0 ~quick; scale: 0.96 ~quick }
+    }
+
+    // Dynamic theme colors
+    let bg_color = if(dark_mode, if(skin == 2, #181a20, if(skin == 1, #161822, #12141a)), if(skin == 2, #f5f6fa, if(skin == 1, #eceef5, #f8f9fd)))
+    let sidebar_bg = if(dark_mode, if(skin == 2, #13151a, if(skin == 1, #11131c, #0d0f14)), if(skin == 2, #ebecee, if(skin == 1, #e4e6ee, #f0f2f7)))
+    let glass_amt = if(skin == 2, 0%, if(skin == 1, 60%, 85%))
+    let tint_amt = if(skin == 2, 0%, if(dark_mode, 40%, 25%))
+    let rim_amt = if(skin == 2, 0%, 14%)
+    let shadow_amt = if(dark_mode, 45%, 20%)
+
+    let card_fill = if(dark_mode, #20232a, #ffffff)
+    let card_fill_op = if(dark_mode, if(skin == 2, 95%, 70%), if(skin == 2, 95%, 85%))
+    let c_border = if(dark_mode, #ffffff, #000000)
+    let c_border_op = if(dark_mode, 10%, 8%)
+
+    let stroke_c = if(dark_mode, #ffffff, #000000)
+    let stroke_op = if(dark_mode, 12%, 8%)
+    let ink_c = if(dark_mode, #f5f7f5, #1d1d1f)
+    let ink_sub = if(dark_mode, #8e8e93, #6e6e73)
+    let accent_c = pick(accent, #007aff, #af52de, #ff2d55, #ff3b30, #ff9500, #34c759, #8e8e93)
+
+    event toggle
+    event toggle_dark ->
+    event choose_skin ->
+    event choose_accent ->
+    event volume_set ->
+    event brightness_set ->
+    event apply_wallpaper ->
+    event toggle_wifi ->
+    event toggle_bt ->
+    event toggle_dnd ->
+
+    // ── Full-screen Scrim click zone for outside dismiss ──
+    zone box dismiss { from: 0, 0; size: 900, 620; active: open }
+    on press dismiss { open = false }
+    on press right dismiss { }
+
+    group {
+        move: 30, 20
+        pivot: 420, 290
+        scale: scale
+        opacity: seen
+
+        // Window Frame Glass Base
+        body {
+            color: bg_color
+            glass: glass_amt
+            frost: 100%
+            dispersion: 0
+            refraction: 0
+            tint: tint_amt
+            rim: rim_amt
+            shadow: 0, 18, 48, shadow_amt
+            box { from: 0, 0; size: 840, 580; corner: 20 }
+        }
+        box { from: 0, 0; size: 840, 580; corner: 20; stroke: 1; color: stroke_c; opacity: stroke_op }
+
+        // Sidebar Background
+        box { from: 0, 0; size: 230, 580; corner: 20; color: sidebar_bg; opacity: 85% }
+        // Sidebar Separator Line
+        box { from: 230, 0; size: 1, 580; color: stroke_c; opacity: stroke_op }
+
+        // ==========================================================
+        // LEFT SIDEBAR: Traffic Lights, User ID, Search, Categories
+        // ==========================================================
+
+        // Traffic Light Window Controls
+        group {
+            move: 18, 18
+            // Close (Red)
+            ellipse { at: 6, 6; radius: 6; color: #ff5f56 }
+            zone box btn_close { from: 0, 0; size: 14, 14; cursor: pointer }
+            on press btn_close { open = false }
+
+            // Minimize (Yellow)
+            ellipse { at: 26, 6; radius: 6; color: #ffbd2e }
+            zone box btn_min { from: 20, 0; size: 14, 14; cursor: pointer }
+            on press btn_min { open = false }
+
+            // Zoom (Green)
+            ellipse { at: 46, 6; radius: 6; color: #27c93f }
+            zone box btn_zoom { from: 40, 0; size: 14, 14; cursor: pointer }
+        }
+
+        // User ID Profile Card (Apple ID Style)
+        group {
+            move: 14, 46
+            box { from: 0, 0; size: 202, 54; corner: 10; color: card_fill; opacity: card_fill_op * 50% }
+            box { from: 0, 0; size: 202, 54; corner: 10; stroke: 1; color: c_border; opacity: c_border_op }
+
+            // Avatar Circle
+            ellipse { at: 26, 27; radius: 18; color: accent_c }
+            text "󰀉" { at: 26, 27; anchor: center; size: 18; color: #ffffff }
+
+            // User Info
+            column {
+                at: 52, 17
+                gap: 2
+                text "nsp" { size: 13; weight: 600; color: ink_c }
+                text "Apple ID & Media" { size: 10.5; color: ink_sub }
+            }
+        }
+
+        // Search Field Mockup
+        group {
+            move: 14, 108
+            box { from: 0, 0; size: 202, 28; corner: 7; color: if(dark_mode, #242730, #e8eaf0) }
+            text "󰍉" { at: 18, 14; anchor: center; size: 13; color: ink_sub }
+            text "Search" { at: 32, 14; anchor: left center; size: 12; color: ink_sub }
+        }
+
+        // Category List
+        column cat_list {
+            at: 12, 144
+            gap: 2
+
+            SidebarItem(0, "󰏘", #5856d6, "Appearance")
+            SidebarItem(1, "󰍹", #007aff, "Displays")
+            SidebarItem(2, "󰕾", #ff2d55, "Sound")
+            SidebarItem(3, "󰤨", #007aff, "Wi-Fi")
+            SidebarItem(4, "󰂯", #007aff, "Bluetooth")
+            SidebarItem(5, "󰒎", #ff3b30, "Notifications")
+            SidebarItem(6, "󰖐", #30b0c7, "Wallpaper")
+            SidebarItem(7, "󰋚", #8e8e93, "General")
+        }
+
+        // ==========================================================
+        // RIGHT DETAIL CONTENT PANE
+        // ==========================================================
+
+        // Pane Header Bar
+        group {
+            move: 254, 20
+            row {
+                gap: 10; align: center
+                text pick(tab, "Appearance", "Displays", "Sound", "Wi-Fi", "Bluetooth", "Notifications", "Wallpaper", "General") {
+                    size: 20; weight: 700; color: ink_c
+                }
+            }
+        }
+
+        // ──────────────────────────────────────────────────────────
+        // TAB 0: APPEARANCE
+        // ──────────────────────────────────────────────────────────
+        group tab_0 {
+            show: tab == 0
+            move: 254, 60
+
+            // 1. Appearance Mode Card (Light / Dark)
+            box { from: 0, 0; size: 556, 138; corner: 14; color: card_fill; opacity: card_fill_op }
+            box { from: 0, 0; size: 556, 138; corner: 14; stroke: 1; color: c_border; opacity: c_border_op }
+            text "Appearance" { at: 18, 16; size: 13; weight: 600; color: ink_c }
+
+            row {
+                at: 40, 42
+                gap: 28
+
+                // Light Mode Preview
+                group {
+                    size: 100, 78
+                    box { from: 0, 0; size: 100, 60; corner: 8; color: #f2f3f7 }
+                    box { from: 0, 0; size: 100, 60; corner: 8; stroke: if(not dark_mode, 2.5, 1); color: if(not dark_mode, accent_c, #d1d5db) }
+                    // Miniature macOS Mockup Light
+                    box { from: 6, 6; size: 88, 8; corner: 2; color: #e5e7eb }
+                    box { from: 6, 18; size: 26, 36; corner: 2; color: #ffffff }
+                    box { from: 36, 18; size: 58, 36; corner: 2; color: #ffffff }
+                    text "Light" { at: 50, 72; anchor: center; size: 12; weight: if(not dark_mode, 600, 400); color: if(not dark_mode, accent_c, ink_c) }
+
+                    zone box hit_light { from: 0, 0; size: 100, 78; cursor: pointer }
+                    on press hit_light { emit toggle_dark }
+                }
+
+                // Dark Mode Preview
+                group {
+                    size: 100, 78
+                    box { from: 0, 0; size: 100, 60; corner: 8; color: #1e2026 }
+                    box { from: 0, 0; size: 100, 60; corner: 8; stroke: if(dark_mode, 2.5, 1); color: if(dark_mode, accent_c, #374151) }
+                    // Miniature macOS Mockup Dark
+                    box { from: 6, 6; size: 88, 8; corner: 2; color: #2d3139 }
+                    box { from: 6, 18; size: 26, 36; corner: 2; color: #252830 }
+                    box { from: 36, 18; size: 58, 36; corner: 2; color: #252830 }
+                    text "Dark" { at: 50, 72; anchor: center; size: 12; weight: if(dark_mode, 600, 400); color: if(dark_mode, accent_c, ink_c) }
+
+                    zone box hit_dark { from: 0, 0; size: 100, 78; cursor: pointer }
+                    on press hit_dark { emit toggle_dark }
+                }
+
+                // Auto Mode Preview
+                group {
+                    size: 100, 78
+                    box { from: 0, 0; size: 100, 60; corner: 8; color: #1e2026 }
+                    box { from: 0, 0; size: 50, 60; corner: 8; color: #f2f3f7 }
+                    box { from: 0, 0; size: 100, 60; corner: 8; stroke: 1; color: #4b5563 }
+                    text "Auto" { at: 50, 72; anchor: center; size: 12; color: ink_c }
+                    zone box hit_auto { from: 0, 0; size: 100, 78; cursor: pointer }
+                    on press hit_auto { emit toggle_dark }
+                }
+            }
+
+            // 2. Glass Style (Marea Skins)
+            box { from: 0, 150; size: 556, 134; corner: 14; color: card_fill; opacity: card_fill_op }
+            box { from: 0, 150; size: 556, 134; corner: 14; stroke: 1; color: c_border; opacity: c_border_op }
+            text "Window Glass Style" { at: 18, 166; size: 13; weight: 600; color: ink_c }
+            text "Control transparency, blur effects, and acrylic materials across all shell components." { at: 18, 184; size: 11; color: ink_sub }
+
+            row {
+                at: 18, 204
+                gap: 14
+
+                SkinPill(0, "Liquid Glass", "Dynamic blur & reflection")
+                SkinPill(1, "Light Acrylic", "Smooth frosted acrylic")
+                SkinPill(2, "Classic Solid", "Opaque high-contrast")
+            }
+
+            // 3. Accent Colors Card
+            box { from: 0, 296; size: 556, 92; corner: 14; color: card_fill; opacity: card_fill_op }
+            box { from: 0, 296; size: 556, 92; corner: 14; stroke: 1; color: c_border; opacity: c_border_op }
+            text "Accent Color" { at: 18, 312; size: 13; weight: 600; color: ink_c }
+
+            row swatches {
+                at: 18, 338
+                gap: 16
+                AccentCircle(0, #007aff)
+                AccentCircle(1, #af52de)
+                AccentCircle(2, #ff2d55)
+                AccentCircle(3, #ff3b30)
+                AccentCircle(4, #ff9500)
+                AccentCircle(5, #34c759)
+                AccentCircle(6, #8e8e93)
+            }
+
+            // 4. Desktop & Dock Preferences Card
+            box { from: 0, 400; size: 556, 96; corner: 14; color: card_fill; opacity: card_fill_op }
+            box { from: 0, 400; size: 556, 96; corner: 14; stroke: 1; color: c_border; opacity: c_border_op }
+            row {
+                at: 18, 416
+                text "Automatically hide and show the Dock" { size: 12.5; color: ink_c; width: 440 }
+                SwitchToggle(false)
+            }
+            box { from: 18, 448; size: 520, 1; color: c_border; opacity: c_border_op }
+            row {
+                at: 18, 464
+                text "Allow wallpaper tinting in windows" { size: 12.5; color: ink_c; width: 440 }
+                SwitchToggle(true)
+            }
+        }
+
+        // ──────────────────────────────────────────────────────────
+        // TAB 1: DISPLAYS
+        // ──────────────────────────────────────────────────────────
+        group tab_1 {
+            show: tab == 1
+            move: 254, 60
+
+            // Monitor Preview Canvas Card
+            box { from: 0, 0; size: 556, 170; corner: 14; color: card_fill; opacity: card_fill_op }
+            box { from: 0, 0; size: 556, 170; corner: 14; stroke: 1; color: c_border; opacity: c_border_op }
+            text "Connected Displays" { at: 18, 16; size: 13; weight: 600; color: ink_c }
+
+            row {
+                at: 50, 42
+                gap: 36
+
+                // Display 0: Built-in (eDP-1)
+                group {
+                    size: 190, 104
+                    box { from: 0, 0; size: 190, 80; corner: 8; color: if(disp_choice == 0, #1a2736, #161820) }
+                    box { from: 0, 0; size: 190, 80; corner: 8; stroke: if(disp_choice == 0, 2, 1); color: if(disp_choice == 0, accent_c, c_border); opacity: if(disp_choice == 0, 100%, c_border_op) }
+                    // Monitor Mockup
+                    text "󰍹" { at: 95, 32; anchor: center; size: 24; color: if(disp_choice == 0, accent_c, ink_sub) }
+                    text "Built-in Display (eDP-1)" { at: 95, 54; anchor: center; size: 11; weight: 600; color: ink_c }
+                    text "1920 × 1080 @ 60 Hz" { at: 95, 92; anchor: center; size: 10.5; color: ink_sub }
+
+                    zone box hit_disp0 { from: 0, 0; size: 190, 104; cursor: pointer }
+                    on press hit_disp0 { disp_choice = 0 }
+                }
+
+                // Display 1: External (HDMI-A-1)
+                group {
+                    size: 190, 104
+                    box { from: 0, 0; size: 190, 80; corner: 8; color: if(disp_choice == 1, #1a2736, #161820) }
+                    box { from: 0, 0; size: 190, 80; corner: 8; stroke: if(disp_choice == 1, 2, 1); color: if(disp_choice == 1, accent_c, c_border); opacity: if(disp_choice == 1, 100%, c_border_op) }
+                    text "󰍹" { at: 95, 32; anchor: center; size: 24; color: if(disp_choice == 1, accent_c, ink_sub) }
+                    text "LG ULTRAGEAR (HDMI-A-1)" { at: 95, 54; anchor: center; size: 11; weight: 600; color: ink_c }
+                    text "1920 × 1080 @ 120 Hz" { at: 95, 92; anchor: center; size: 10.5; color: ink_sub }
+
+                    zone box hit_disp1 { from: 0, 0; size: 190, 104; cursor: pointer }
+                    on press hit_disp1 { disp_choice = 1 }
+                }
+            }
+
+            // Display Brightness Slider Card
+            box { from: 0, 182; size: 556, 120; corner: 14; color: card_fill; opacity: card_fill_op }
+            box { from: 0, 182; size: 556, 120; corner: 14; stroke: 1; color: c_border; opacity: c_border_op }
+            text "Brightness" { at: 18, 198; size: 13; weight: 600; color: ink_c }
+            text "Adjust the screen luminance for optimal viewing comfort." { at: 18, 216; size: 11; color: ink_sub }
+
+            // Brightness Track
+            group {
+                move: 18, 244
+                size: 520, 36
+                box { from: 0, 0; size: 520, 36; corner: 18; color: if(dark_mode, #282c35, #e5e7eb) }
+                box { from: 0, 0; size: 52 + bright.level * 468, 36; corner: 18; color: #ffffff }
+                text "󰃠" { at: 20, 18; anchor: center; size: 16; color: if(bright.level > 0.08, #1d1d1f, ink_c) }
+                text "{bright.level * 100}%" { at: 490, 18; anchor: right center; size: 12.5; weight: 600; color: if(bright.level > 0.88, #1d1d1f, ink_c) }
+
+                zone box bright_hit { from: 0, 0; size: 520, 36; cursor: pointer }
+                on press bright_hit { emit brightness_set(0.75) }
+            }
+
+            // True Tone & Night Shift Options Card
+            box { from: 0, 314; size: 556, 96; corner: 14; color: card_fill; opacity: card_fill_op }
+            box { from: 0, 314; size: 556, 96; corner: 14; stroke: 1; color: c_border; opacity: c_border_op }
+            row {
+                at: 18, 330
+                text "True Tone (Adaptive Color Temperature)" { size: 12.5; color: ink_c; width: 440 }
+                SwitchToggle(true)
+            }
+            box { from: 18, 362; size: 520, 1; color: c_border; opacity: c_border_op }
+            row {
+                at: 18, 378
+                text "Night Shift (Warm Display Tone)" { size: 12.5; color: ink_c; width: 440 }
+                SwitchToggle(false)
+            }
+        }
+
+        // ──────────────────────────────────────────────────────────
+        // TAB 2: SOUND
+        // ──────────────────────────────────────────────────────────
+        group tab_2 {
+            show: tab == 2
+            move: 254, 60
+
+            // Output Volume Card
+            box { from: 0, 0; size: 556, 120; corner: 14; color: card_fill; opacity: card_fill_op }
+            box { from: 0, 0; size: 556, 120; corner: 14; stroke: 1; color: c_border; opacity: c_border_op }
+            text "Output Volume" { at: 18, 16; size: 13; weight: 600; color: ink_c }
+            text "Master system playback level across all audio devices." { at: 18, 34; size: 11; color: ink_sub }
+
+            // Volume Slider Track
+            group {
+                move: 18, 62
+                size: 520, 36
+                box { from: 0, 0; size: 520, 36; corner: 18; color: if(dark_mode, #282c35, #e5e7eb) }
+                box { from: 0, 0; size: if(sound.muted, 0, 52 + sound.volume * 468), 36; corner: 18; color: #ffffff }
+                text if(sound.muted, "󰝟", "󰕾") { at: 20, 18; anchor: center; size: 16; color: if(sound.volume > 0.08 and not sound.muted, #1d1d1f, ink_c) }
+                text if(sound.muted, "Muted", "{sound.volume * 100}%") { at: 490, 18; anchor: right center; size: 12.5; weight: 600; color: if(sound.volume > 0.88 and not sound.muted, #1d1d1f, ink_c) }
+
+                zone box vol_hit { from: 0, 0; size: 520, 36; cursor: pointer }
+                on press vol_hit { emit volume_set(0.65) }
+            }
+
+            // Output Devices Card
+            box { from: 0, 132; size: 556, 176; corner: 14; color: card_fill; opacity: card_fill_op }
+            box { from: 0, 132; size: 556, 176; corner: 14; stroke: 1; color: c_border; opacity: c_border_op }
+            text "Select Output Device" { at: 18, 148; size: 13; weight: 600; color: ink_c }
+
+            column {
+                at: 18, 174
+                gap: 4
+                SinkRow(0, "󰓃", "Built-in Internal Speakers", "Internal Stereo Audio")
+                SinkRow(1, "󰍹", "HDMI / DisplayPort Audio", "LG ULTRAGEAR Audio")
+                SinkRow(2, "󰋋", "Headphones (3.5mm Output)", "Direct Analog Port")
+            }
+
+            // Sound Effects Card
+            box { from: 0, 320; size: 556, 96; corner: 14; color: card_fill; opacity: card_fill_op }
+            box { from: 0, 320; size: 556, 96; corner: 14; stroke: 1; color: c_border; opacity: c_border_op }
+            row {
+                at: 18, 336
+                text "Play sound effects on startup" { size: 12.5; color: ink_c; width: 440 }
+                SwitchToggle(true)
+            }
+            box { from: 18, 368; size: 520, 1; color: c_border; opacity: c_border_op }
+            row {
+                at: 18, 384
+                text "Play user interface sound effects" { size: 12.5; color: ink_c; width: 440 }
+                SwitchToggle(true)
+            }
+        }
+
+        // ──────────────────────────────────────────────────────────
+        // TAB 3: WI-FI & NETWORKING
+        // ──────────────────────────────────────────────────────────
+        group tab_3 {
+            show: tab == 3
+            move: 254, 60
+
+            // Master Wi-Fi Card
+            box { from: 0, 0; size: 556, 60; corner: 14; color: card_fill; opacity: card_fill_op }
+            box { from: 0, 0; size: 556, 60; corner: 14; stroke: 1; color: c_border; opacity: c_border_op }
+            row {
+                at: 18, 16
+                text "Wi-Fi" { size: 14; weight: 600; color: ink_c; width: 440 }
+                SwitchToggle(net.online)
+            }
+
+            // Current Connected Network Card
+            box { from: 0, 72; size: 556, 134; corner: 14; color: card_fill; opacity: card_fill_op }
+            box { from: 0, 72; size: 556, 134; corner: 14; stroke: 1; color: c_border; opacity: c_border_op }
+            text "Known Network" { at: 18, 88; size: 13; weight: 600; color: ink_c }
+
+            row {
+                at: 18, 116
+                gap: 14; align: center
+                ellipse { radius: 18; color: #007aff }
+                text "󰤨" { anchor: center; size: 18; color: #ffffff }
+                column {
+                    gap: 3
+                    text if(net.online, net.name, "Disconnected") { size: 14; weight: 600; color: ink_c }
+                    row {
+                        gap: 6; align: center
+                        ellipse { radius: 3.5; color: if(net.online, #34c759, #ff3b30) }
+                        text if(net.online, "Connected · 5 GHz WPA3 · IP: 192.168.1.105", "No network connection") { size: 11; color: ink_sub }
+                    }
+                }
+            }
+
+            // Other Nearby Networks Card
+            box { from: 0, 218; size: 556, 160; corner: 14; color: card_fill; opacity: card_fill_op }
+            box { from: 0, 218; size: 556, 160; corner: 14; stroke: 1; color: c_border; opacity: c_border_op }
+            text "Nearby Networks" { at: 18, 234; size: 13; weight: 600; color: ink_c }
+
+            column {
+                at: 18, 260
+                gap: 4
+                NetItem("󰤨", "Home_Fiber_5G", "Secured (WPA3)", true)
+                NetItem("󰤥", "Studio_Guest_Network", "Secured (WPA2)", true)
+                NetItem("󰤢", "City_Public_WiFi", "Open Network", false)
+            }
+        }
+
+        // ──────────────────────────────────────────────────────────
+        // TAB 4: BLUETOOTH
+        // ──────────────────────────────────────────────────────────
+        group tab_4 {
+            show: tab == 4
+            move: 254, 60
+
+            // Master Bluetooth Card
+            box { from: 0, 0; size: 556, 60; corner: 14; color: card_fill; opacity: card_fill_op }
+            box { from: 0, 0; size: 556, 60; corner: 14; stroke: 1; color: c_border; opacity: c_border_op }
+            row {
+                at: 18, 16
+                text "Bluetooth" { size: 14; weight: 600; color: ink_c; width: 440 }
+                SwitchToggle(bt.powered)
+            }
+
+            // Paired Devices Card
+            box { from: 0, 72; size: 556, 216; corner: 14; color: card_fill; opacity: card_fill_op }
+            box { from: 0, 72; size: 556, 216; corner: 14; stroke: 1; color: c_border; opacity: c_border_op }
+            text "My Devices" { at: 18, 88; size: 13; weight: 600; color: ink_c }
+
+            column {
+                at: 18, 114
+                gap: 6
+                BtItem("󰌌", "Magic Keyboard with Touch ID", "Connected · 88% Battery", true)
+                BtItem("󰋋", "AirPods Pro", "Saved · Dual Beamforming", false)
+                BtItem("󰍽", "Logitech MX Master 3S", "Connected · 94% Battery", true)
+            }
+        }
+
+        // ──────────────────────────────────────────────────────────
+        // TAB 5: NOTIFICATIONS & FOCUS
+        // ──────────────────────────────────────────────────────────
+        group tab_5 {
+            show: tab == 5
+            move: 254, 60
+
+            // Master Focus / DND Card
+            box { from: 0, 0; size: 556, 68; corner: 14; color: card_fill; opacity: card_fill_op }
+            box { from: 0, 0; size: 556, 68; corner: 14; stroke: 1; color: c_border; opacity: c_border_op }
+            row {
+                at: 18, 14
+                gap: 12; align: center
+                ellipse { radius: 18; color: #5856d6 }
+                text "󰒎" { anchor: center; size: 18; color: #ffffff }
+                column {
+                    gap: 2
+                    text "Do Not Disturb" { size: 13.5; weight: 600; color: ink_c; width: 380 }
+                    text "Silence all notification banners and sound alerts" { size: 10.5; color: ink_sub }
+                }
+                SwitchToggle(dnd)
+            }
+
+            // Application Notifications Preferences
+            box { from: 0, 80; size: 556, 260; corner: 14; color: card_fill; opacity: card_fill_op }
+            box { from: 0, 80; size: 556, 260; corner: 14; stroke: 1; color: c_border; opacity: c_border_op }
+            text "Application Notifications" { at: 18, 96; size: 13; weight: 600; color: ink_c }
+
+            column {
+                at: 18, 122
+                gap: 6
+                AppNoticeRow("󰈹", "Firefox Web Browser", "Banners, Sounds, Badges", true)
+                AppNoticeRow("󰉋", "Files (Nautilus)", "Banners and Sounds", true)
+                AppNoticeRow("󰞷", "Terminal (Kitty)", "Badges only", false)
+                AppNoticeRow("󰎆", "Music Player", "Lock Screen & Banners", true)
+            }
+        }
+
+        // ──────────────────────────────────────────────────────────
+        // TAB 6: WALLPAPER
+        // ──────────────────────────────────────────────────────────
+        group tab_6 {
+            show: tab == 6
+            move: 254, 60
+
+            // Current Wallpaper Preview
+            box { from: 0, 0; size: 556, 128; corner: 14; color: card_fill; opacity: card_fill_op }
+            box { from: 0, 0; size: 556, 128; corner: 14; stroke: 1; color: c_border; opacity: c_border_op }
+            text "Current Desktop Background" { at: 18, 16; size: 13; weight: 600; color: ink_c }
+
+            row {
+                at: 18, 42
+                gap: 16; align: center
+                box { from: 0, 0; size: 120, 68; corner: 8; color: #2d3748 }
+                text "󰖐" { at: 60, 34; anchor: center; size: 28; color: accent_c }
+                column {
+                    gap: 4
+                    text pick(wall_choice, "CachyOS Liquid Flow", "Abstract Color Waves", "Topography Contours", "Deep Dimensions", "Lines Minimalist", "Dark Streaks") {
+                        size: 14; weight: 600; color: ink_c
+                    }
+                    text "High Dynamic Range · 5K Resolution · Automatically adapts to theme" { size: 11; color: ink_sub }
+                }
+            }
+
+            // Grid of Wallpaper Options
+            box { from: 0, 140; size: 556, 320; corner: 14; color: card_fill; opacity: card_fill_op }
+            box { from: 0, 140; size: 556, 320; corner: 14; stroke: 1; color: c_border; opacity: c_border_op }
+            text "Wallpapers & Graphics" { at: 18, 156; size: 13; weight: 600; color: ink_c }
+
+            grid {
+                at: 18, 184
+                columns: 3
+                gap: 14
+                width: 520
+                row: 110
+
+                WallTile(0, "Liquid Flow", #2b4c7e)
+                WallTile(1, "Abstract", #8b3a62)
+                WallTile(2, "Topography", #1f3a34)
+                WallTile(3, "Dimensions", #312e81)
+                WallTile(4, "Lines", #374151)
+                WallTile(5, "Dark Streaks", #18181b)
+            }
+        }
+
+        // ──────────────────────────────────────────────────────────
+        // TAB 7: GENERAL & ABOUT THIS MAC
+        // ──────────────────────────────────────────────────────────
+        group tab_7 {
+            show: tab == 7
+            move: 254, 60
+
+            // Header Banner with Big Apple Logo
+            box { from: 0, 0; size: 556, 120; corner: 14; color: card_fill; opacity: card_fill_op }
+            box { from: 0, 0; size: 556, 120; corner: 14; stroke: 1; color: c_border; opacity: c_border_op }
+
+            group {
+                move: 30, 20
+                text "" { at: 30, 40; anchor: center; size: 54; weight: 700; color: ink_c }
+                column {
+                    at: 75, 12
+                    gap: 3
+                    text "macOS Sequoia" { size: 22; weight: 700; color: ink_c }
+                    text "Version 15.1 (Linux CachyOS Wayland Edition)" { size: 12; color: ink_sub }
+                    text "MacBook Pro (16-inch, 2026 Edition)" { size: 12; weight: 500; color: ink_c }
+                }
+            }
+
+            // Specs Table Card
+            box { from: 0, 132; size: 556, 252; corner: 14; color: card_fill; opacity: card_fill_op }
+            box { from: 0, 132; size: 556, 252; corner: 14; stroke: 1; color: c_border; opacity: c_border_op }
+            text "Hardware Overview" { at: 18, 148; size: 13; weight: 600; color: ink_c }
+
+            column {
+                at: 18, 172
+                gap: 8
+                SpecRow("Processor", "AMD Ryzen 5 4600H with Radeon Graphics (12 Threads)")
+                SpecRow("Graphics", "NVIDIA GeForce GTX 1650 Mobile / Max-Q + AMD Vega")
+                SpecRow("Memory", "16 GB High-Speed Unified Memory")
+                SpecRow("Compositor", "niri Wayland Engine with Pleamar Glass Shell")
+                SpecRow("Kernel", "Linux 7.3.1-1-cachyos x86_64")
+                SpecRow("Storage", "512 GB NVMe SSD (184 GB Available)")
+            }
+
+            // Action Buttons
+            row {
+                at: 0, 396
+                gap: 12
+                group {
+                    size: 140, 32
+                    box { from: 0, 0; size: 140, 32; corner: 8; color: if(dark_mode, #282c35, #e5e7eb) }
+                    text "Software Update..." { at: 70, 16; anchor: center; size: 12; weight: 600; color: ink_c }
+                }
+                group {
+                    size: 140, 32
+                    box { from: 0, 0; size: 140, 32; corner: 8; color: if(dark_mode, #282c35, #e5e7eb) }
+                    text "System Report..." { at: 70, 16; anchor: center; size: 12; weight: 600; color: ink_c }
+                }
+            }
+        }
+    }
+
+    // ==============================================================
+    // REUSABLE COMPONENTS
+    // ==============================================================
+
+    // Category Sidebar Item
+    component SidebarItem(idx: number, icon_sym: text, icon_bg: color, label_text: text) {
+        size: 206, 32
+        prop on = 0 ~quick
+        follow on = if(tab == idx, 1, 0)
+
+        // Active background pill
+        box hit {
+            from: 0, 0
+            size: 206, 32
+            corner: 8
+            color: accent_c
+            opacity: if(tab == idx, 95%, 0%)
+            cursor: pointer
+        }
+
+        // Icon Box
+        group {
+            move: 6, 5
+            box { from: 0, 0; size: 22, 22; corner: 5; color: icon_bg }
+            text icon_sym { at: 11, 11; anchor: center; size: 13; color: #ffffff }
+        }
+
+        // Label
+        text label_text {
+            at: 36, 16
+            anchor: left center
+            size: 13
+            weight: if(tab == idx, 600, 400)
+            color: if(tab == idx, #ffffff, ink_c)
+        }
+
+        on press hit { tab = idx }
+    }
+
+    // Glass Skin Selector Pill
+    component SkinPill(idx: number, title_t: text, desc_t: text) {
+        size: 164, 60
+        prop on = 0 ~quick
+        follow on = if(skin == idx, 1, 0)
+
+        box hit {
+            from: 0, 0
+            size: 164, 60
+            corner: 10
+            color: if(skin == idx, if(dark_mode, #2c3240, #ebf2ff), if(dark_mode, #1e2026, #f3f4f6))
+            cursor: pointer
+        }
+        box {
+            from: 0, 0
+            size: 164, 60
+            corner: 10
+            stroke: if(skin == idx, 2, 1)
+            color: if(skin == idx, accent_c, c_border)
+            opacity: if(skin == idx, 100%, c_border_op)
+        }
+
+        text title_t { at: 12, 18; size: 12; weight: 600; color: if(skin == idx, accent_c, ink_c) }
+        text desc_t { at: 12, 36; size: 10; color: ink_sub; width: 140; lines: 1 }
+
+        on press hit { emit choose_skin(idx) }
+    }
+
+    // Accent Color Swatch
+    component AccentCircle(idx: number, col: color) {
+        size: 28, 28
+        prop on = 0 ~quick
+        follow on = if(accent == idx, 1, 0)
+
+        ellipse { at: 14, 14; radius: 10; color: col }
+        ellipse { at: 14, 14; radius: 13; stroke: 2; color: col; opacity: on * 100% }
+
+        zone box hit { from: 0, 0; size: 28, 28; cursor: pointer }
+        on press hit { emit choose_accent(idx) }
+    }
+
+    // Switch Toggle Component
+    component SwitchToggle(state: bool) {
+        size: 44, 24
+        box { from: 0, 0; size: 44, 24; corner: 12; color: if(state, accent_c, if(dark_mode, #3a3d46, #d1d5db)) }
+        ellipse { at: if(state, 32, 12), 12; radius: 9.5; color: #ffffff }
+    }
+
+    // Audio Sink Device Row
+    component SinkRow(idx: number, icon_t: text, name_t: text, desc_t: text) {
+        size: 520, 36
+        box hit {
+            from: 0, 0
+            size: 520, 36
+            corner: 8
+            color: if(sound_sink == idx, if(dark_mode, #283040, #eef4ff), #000000)
+            opacity: if(sound_sink == idx, 100%, 0%)
+            cursor: pointer
+        }
+        text icon_t { at: 12, 18; anchor: left center; size: 16; color: if(sound_sink == idx, accent_c, ink_sub) }
+        text name_t { at: 38, 18; anchor: left center; size: 12.5; weight: if(sound_sink == idx, 600, 400); color: ink_c }
+        text desc_t { at: 480, 18; anchor: right center; size: 11; color: ink_sub }
+
+        on press hit { sound_sink = idx }
+    }
+
+    // Network Row Item
+    component NetItem(icon_t: text, name_t: text, sec_t: text, locked: bool) {
+        size: 520, 32
+        text icon_t { at: 10, 16; anchor: left center; size: 14; color: ink_sub }
+        text name_t { at: 34, 16; anchor: left center; size: 12.5; color: ink_c }
+        text sec_t { at: 500, 16; anchor: right center; size: 11; color: ink_sub }
+    }
+
+    // Bluetooth Item
+    component BtItem(icon_t: text, name_t: text, status_t: text, connected: bool) {
+        size: 520, 38
+        row {
+            at: 10, 8
+            gap: 12; align: center
+            text icon_t { size: 18; color: if(connected, accent_c, ink_sub) }
+            column {
+                gap: 2
+                text name_t { size: 12.5; weight: 600; color: ink_c }
+                text status_t { size: 10.5; color: if(connected, #34c759, ink_sub) }
+            }
+        }
+    }
+
+    // Notification App Row
+    component AppNoticeRow(icon_t: text, name_t: text, desc_t: text, enabled: bool) {
+        size: 520, 36
+        row {
+            at: 10, 6
+            gap: 12; align: center
+            text icon_t { size: 18; color: ink_c }
+            column {
+                gap: 2
+                text name_t { size: 12.5; weight: 500; color: ink_c; width: 380 }
+                text desc_t { size: 10.5; color: ink_sub }
+            }
+            SwitchToggle(enabled)
+        }
+    }
+
+    // Wallpaper Grid Tile
+    component WallTile(idx: number, name_t: text, bg_col: color) {
+        size: 160, 96
+        prop on = 0 ~quick
+        follow on = if(wall_choice == idx, 1, 0)
+
+        box hit {
+            from: 0, 0
+            size: 160, 72
+            corner: 8
+            color: bg_col
+            cursor: pointer
+        }
+        box {
+            from: 0, 0
+            size: 160, 72
+            corner: 8
+            stroke: if(wall_choice == idx, 2.5, 1)
+            color: if(wall_choice == idx, accent_c, c_border)
+            opacity: if(wall_choice == idx, 100%, c_border_op)
+        }
+        text "󰖐" { at: 80, 36; anchor: center; size: 22; color: #ffffff; opacity: 75% }
+        text name_t { at: 80, 84; anchor: center; size: 11; weight: if(wall_choice == idx, 600, 400); color: if(wall_choice == idx, accent_c, ink_c) }
+
+        on press hit { emit apply_wallpaper(idx) }
+    }
+
+    // Hardware Specification Row
+    component SpecRow(label_t: text, val_t: text) {
+        size: 520, 26
+        text label_t { at: 0, 13; anchor: left center; size: 12; weight: 600; color: ink_sub; width: 110 }
+        text val_t { at: 120, 13; anchor: left center; size: 12; color: ink_c; width: 390; lines: 1 }
+    }
+
+    on toggle     { toggle open }
+    on key Escape { open = false }
+}

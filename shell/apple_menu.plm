@@ -10,6 +10,7 @@ scene MacAppleMenu {
     }
 
     permissions {
+        services: "say:settings"
         run: "gnome-control-center", "systemctl", "loginctl", "nautilus"
     }
 

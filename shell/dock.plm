@@ -10,6 +10,7 @@ scene MacDock {
     }
 
     permissions {
+        services: "say:settings"
         run: "nautilus", "thunar", "dolphin", "firefox", "chromium", "kitty", "alacritty", "foot", "code", "zed", "gnome-control-center"
     }
 

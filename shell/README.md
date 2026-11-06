@@ -28,6 +28,7 @@ An ultra-performant, GPU-accelerated macOS Sequoia/Sonoma desktop shell for Wayl
 
 | Component | File Path | Description |
 | :--- | :--- | :--- |
+| **System Settings** | [`shell/settings.plm`](file:///home/nsp/Documents/p/beskar/beskar/shell/settings.plm) | Dedicated macOS 2-column System Settings app: Appearance, Displays (eDP-1 + HDMI-A-1), Sound, Wi-Fi, Bluetooth, Notifications, Wallpaper picker (awww), and About This Mac specs. |
 | **Top Menu Bar** | [`shell/topbar.plm`](file:///home/nsp/Documents/p/beskar/beskar/shell/topbar.plm) | Global 30px bar with Apple icon, dynamic active window title, battery, wifi, volume, Spotlight & Control Center triggers, and clickable clock. |
 | **Dock** | [`shell/dock.plm`](file:///home/nsp/Documents/p/beskar/beskar/shell/dock.plm) | Floating bottom capsule with smooth spring magnification physics, running indicators, and specular rim. |
 | **Control Center** | [`shell/control_center.plm`](file:///home/nsp/Documents/p/beskar/beskar/shell/control_center.plm) | 4-page panel: overview, Wi-Fi picker, Bluetooth picker, Audio outputs selector, and Appearance/Glass look customizer. |

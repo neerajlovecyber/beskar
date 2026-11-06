@@ -1,6 +1,7 @@
 -- macOS Apple Menu Companion Logic
 on("action_settings", function()
-    run("gnome-control-center", {})
+    pcall(sys.call, "say", "settings", "fact tab 0")
+    pcall(sys.call, "say", "settings", "fact open true")
 end)
 
 on("action_lock", function()
@@ -16,5 +17,6 @@ on("action_power", function()
 end)
 
 on("action_about", function()
-    run("gnome-control-center", { "info-overview" })
+    pcall(sys.call, "say", "settings", "fact tab 7")
+    pcall(sys.call, "say", "settings", "fact open true")
 end)
