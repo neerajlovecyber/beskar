@@ -49,7 +49,7 @@ scene MacTopBar {
     fact run_7 = 0
     fact run_8 = 0
     //  One record per monitor, in niri's output order: the workspace each one shows.
-    model mon max 4 { active: number = 1 }
+    model mon max 4 { active: number = 1; busy: number = 0 }
     text weather_temp = "--°"
     text weather_icon = "󰖐"
 
@@ -61,6 +61,8 @@ scene MacTopBar {
     event tray_secondary ->
     event tray_context ->
     event launch ->
+    event reveal ->        // pointer reached the bottom edge
+    event keep_dock ->     // pointer is on the dock
 
     // ── look ─────────────────────────────────────────────────────
     let bar_color = if(dark_mode, if(skin == 2, #181a20, if(skin == 1, #161820, #14161d)), if(skin == 2, #f2f3f7, if(skin == 1, #eaecf2, #f6f7fb)))
@@ -122,7 +124,7 @@ scene MacTopBar {
         }
         ellipse { at: 20, 42; radius: 1.8; color: dot_color; opacity: if(running, 85%, 0%) }
         zone box hit { from: 0, 0; size: 40, 44; cursor: pointer }
-        on enter hit { hot: 1 }
+        on enter hit { hot: 1; emit keep_dock }
         on leave hit { hot: 0 }
         on press hit { emit launch(n) }
     }
@@ -141,6 +143,16 @@ scene MacTopBar {
         follow cw = center_row.width + pad * 2
         follow rw = right_row.width + pad * 2
         follow dw = dock_row.width + dock_pad * 2
+
+        //  Auto-hide: while a window is on this monitor's workspace the dock sinks into the ring.
+        //  It comes back when the pointer reaches the bottom edge (or is on the dock) and goes
+        //  again 2.5 s after the pointer stops asking for it. With an empty workspace it stays up.
+        prop vis = 1 ~calm
+        layer dockshow ~calm {
+            empty  while mon.$screen.busy == 0 { vis: 1 }
+            peek   for 2500ms after reveal, keep_dock { vis: 1 }
+            away   { vis: 0 }
+        }
 
         // ── the glass: ring + top islands + dock, one silhouette ──
         body {
@@ -170,7 +182,7 @@ scene MacTopBar {
             box right_notch  { from: screen.width - rw, -14; size: rw + ext, notch_h; corner: 18; blend: fillet }
 
             //  The dock, rising from the floor.
-            box dock_island { from: screen.width / 2 - dw / 2, screen.height - dock_h; size: dw, dock_h + ext; corner: 24; blend: dock_fillet }
+            box dock_island { from: screen.width / 2 - dw / 2, screen.height - dock_h * vis; size: dw, dock_h + ext; corner: 24; blend: dock_fillet }
         }
 
         // ── left island: menu orb · workspace · window ───────────
@@ -275,10 +287,16 @@ scene MacTopBar {
             Glyph("󰂚", open_widgets)
         }
 
+        //  A thin strip along the bottom edge brings a hidden dock back.
+        zone box dock_edge { from: screen.width / 2 - 300, screen.height - 4; size: 600, 4; active: vis < 0.5 }
+        on enter dock_edge { emit reveal }
+        on press right dock_edge { }
+
         // ── the dock ─────────────────────────────────────────────
         row dock_row {
-            at: screen.width / 2, screen.height - dock_h / 2 - 1
+            at: screen.width / 2, screen.height - dock_h / 2 - 1 + (1 - vis) * (dock_h + 20)
             anchor: center middle
+            opacity: vis
             gap: 10
             align: center
 

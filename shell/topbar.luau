@@ -72,6 +72,30 @@ on("launch", function(n)
     end
 end)
 
+-- Last answers from niri, combined into `model.mon` (workspace shown + how many windows it holds).
+local WS, WINS = {}, {}
+local OUTPUTS = {}
+local function push_mon()
+    local shown, busy = {}, {}
+    for _, w in ipairs(WS) do
+        if w.is_active and w.output then
+            shown[w.output] = w.idx or 1
+            busy[w.output] = w.id
+        end
+    end
+    local count = {}
+    for _, win in ipairs(WINS) do
+        if win.workspace_id then
+            count[win.workspace_id] = (count[win.workspace_id] or 0) + 1
+        end
+    end
+    local recs = {}
+    for i, name in ipairs(OUTPUTS) do
+        recs[i] = { active = shown[name] or 1, busy = count[busy[name] or -1] or 0 }
+    end
+    model.mon = recs
+end
+
 local function refresh_running()
     run("niri", { "msg", "-j", "windows" }, function(out, code)
         if code ~= 0 or not out then
@@ -81,6 +105,8 @@ local function refresh_running()
         if not ok or type(list) ~= "table" then
             return
         end
+        WINS = list
+        push_mon()
         local open = {}
         for _, w in ipairs(list) do
             open[string.lower(w.app_id or "")] = true
@@ -100,7 +126,6 @@ end
 
 -- ── niri: the workspace each monitor shows ───────────────────────
 -- `model mon` has one record per monitor, in the order of `niri msg outputs`.
-local OUTPUTS = {}
 local function refresh_workspaces()
     run("niri", { "msg", "-j", "workspaces" }, function(out, code)
         if code ~= 0 or not out then
@@ -110,17 +135,8 @@ local function refresh_workspaces()
         if not ok or type(list) ~= "table" then
             return
         end
-        local shown = {}
-        for _, w in ipairs(list) do
-            if w.is_active and w.output then
-                shown[w.output] = w.idx or 1
-            end
-        end
-        local recs = {}
-        for i, name in ipairs(OUTPUTS) do
-            recs[i] = { active = shown[name] or 1 }
-        end
-        model.mon = recs
+        WS = list
+        push_mon()
     end)
 end
 
