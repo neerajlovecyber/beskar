@@ -61,30 +61,211 @@ on("tray_activate", tray_action("tray.activate"))       -- left click
 on("tray_secondary", tray_action("tray.secondary"))     -- middle click
 on("tray_context", tray_action("tray.context"))         -- right click: the app's own menu
 
--- ── dock: launch an app, light the dot of the ones that are running ──
--- Same order as the DockItem(…, n) calls in topbar.plm. `cmd` must also be in `run:`; `ids` are
--- the app_ids niri reports for its windows (lower case).
-local APPS = {
-    { cmd = "kitty",            ids = { "kitty", "com.mitchellh.ghostty", "alacritty", "foot" } },
-    { cmd = "nautilus",         ids = { "org.gnome.nautilus", "thunar", "org.kde.dolphin" } },
-    { cmd = "code",             ids = { "code", "code-oss", "visual-studio-code" } },
-    { cmd = "steam",            ids = { "steam" } },
-    { cmd = "obsidian",         ids = { "obsidian" } },
-    { cmd = "firefox",          ids = { "firefox", "chromium", "google-chrome" } },
-    { cmd = "discord",          ids = { "discord", "vesktop" } },
-    { cmd = "telegram-desktop", ids = { "org.telegram.desktop", "telegramdesktop" } },
-}
+-- Last answers from niri, combined into `model.mon` (workspace shown + how many windows it holds).
+local WS, WINS = {}, {}
+local build_dock
 
-on("launch", function(n)
-    local app = APPS[n]
-    if app then
-        -- No callback and no output wanted: the app lives on its own, we do not wait for it.
-        pcall(run, app.cmd, {}, nil, { output = false })
+-- ── dock: the apps you pinned, plus the ones running ─────────────
+-- Pinned apps are the lines of ~/.config/beskar/dock (desktop ids: org.gnome.Nautilus, kitty, …); edit it by
+-- hand or right-click an icon → "Keep in Dock". With no file the dock shows two: a file manager and a terminal.
+local pinned = nil          -- list of desktop ids, nil = the defaults
+local entries = {}          -- desktop entries (apps service)
+local by_key = {}           -- lower-case id / wmclass / last part of the id → entry
+local items = {}            -- what the dock shows now, in model order
+
+local function lower(s)
+    return string.lower(s or "")
+end
+
+local function index_entries(list)
+    entries = list or {}
+    by_key = {}
+    for _, e in ipairs(entries) do
+        local id = lower(e.id):gsub("%.desktop$", "")
+        by_key[id] = e
+        if e.wmclass and e.wmclass ~= "" then
+            by_key[lower(e.wmclass)] = e
+        end
+        local last = id:match("([^%.]+)$")
+        if last and not by_key[last] then
+            by_key[last] = e
+        end
+    end
+end
+
+local function entry_for(app_id)
+    local k = lower(app_id)
+    return by_key[k] or by_key[k:match("([^%.]+)$") or k]
+end
+
+local FILE_MANAGERS = { "org.gnome.nautilus", "nautilus", "thunar", "org.kde.dolphin", "dolphin", "nemo", "pcmanfm", "pcmanfm-qt" }
+local TERMINALS = { "kitty", "com.mitchellh.ghostty", "ghostty", "alacritty", "foot", "org.wezfurlong.wezterm", "wezterm", "org.gnome.terminal", "konsole", "xterm" }
+
+local function default_of(preferred, category)
+    for _, id in ipairs(preferred) do
+        if by_key[id] then
+            return by_key[id]
+        end
+    end
+    for _, e in ipairs(entries) do
+        if (e.categories or ""):find(category, 1, true) then
+            return e
+        end
+    end
+end
+
+local function default_pins()
+    local out = {}
+    local files = default_of(FILE_MANAGERS, "FileManager")
+    local term = default_of(TERMINALS, "TerminalEmulator")
+    if files then out[#out + 1] = files.id end
+    if term then out[#out + 1] = term.id end
+    return out
+end
+
+local function save_pins(list)
+    pinned = list
+    local script = 'mkdir -p "$HOME/.config/beskar" && : > "$HOME/.config/beskar/dock" && for a in "$@"; do printf "%s\\n" "$a" >> "$HOME/.config/beskar/dock"; done'
+    local args = { "-c", script, "x" }
+    for _, id in ipairs(list) do
+        args[#args + 1] = id
+    end
+    run("sh", args, nil, { output = false })
+end
+
+local function name_of(e)
+    return (e.local_name and e.local_name ~= "") and e.local_name or e.name or e.id
+end
+
+build_dock = function()
+    local pins = pinned or default_pins()
+    local groups, order = {}, {}
+    for _, w in ipairs(WINS) do
+        local e = entry_for(w.app_id)
+        local key = e and lower(e.id) or ("app:" .. lower(w.app_id))
+        local g = groups[key]
+        if not g then
+            g = { entry = e, app_id = w.app_id or "", wins = {} }
+            groups[key] = g
+            order[#order + 1] = key
+        end
+        g.wins[#g.wins + 1] = w.id
+    end
+    local list, used = {}, {}
+    for _, id in ipairs(pins) do
+        local e = by_key[lower(id)]
+        if e and not used[lower(e.id)] and #list < 12 then
+            local key = lower(e.id)
+            used[key] = true
+            list[#list + 1] = { entry = e, name = name_of(e), icon = e.icon or "", pinned = true,
+                                wins = groups[key] and groups[key].wins or {} }
+        end
+    end
+    for _, key in ipairs(order) do
+        if not used[key] and #list < 12 then
+            local g = groups[key]
+            local e = g.entry
+            list[#list + 1] = { entry = e, name = e and name_of(e) or g.app_id, icon = e and e.icon or lower(g.app_id),
+                                pinned = false, wins = g.wins }
+        end
+    end
+    items = list
+    local rows = {}
+    for i, it in ipairs(list) do
+        rows[i] = { icon = it.icon, name = it.name, running = #it.wins > 0, pinned = it.pinned, canpin = it.entry ~= nil }
+    end
+    model.dock_items = rows
+end
+
+local function launch(entry)
+    local exec = (entry.exec or ""):gsub("%%[%a%%]", ""):gsub("%s+$", "")
+    if exec ~= "" then
+        pcall(sys.call, "apps.launch", exec)
+    end
+end
+
+on("dock_click", function(i)
+    local it = items[(i or 0) + 1]
+    if not it then
+        return
+    end
+    if #it.wins > 0 then
+        run("niri", { "msg", "action", "focus-window", "--id", tostring(it.wins[1]) }, nil, { output = false })
+    elseif it.entry then
+        launch(it.entry)
     end
 end)
 
--- Last answers from niri, combined into `model.mon` (workspace shown + how many windows it holds).
-local WS, WINS = {}, {}
+on("dock_pin", function(i)
+    local it = items[(i or 0) + 1]
+    if not it or not it.entry then
+        return
+    end
+    local current = {}
+    for _, id in ipairs(pinned or default_pins()) do
+        current[#current + 1] = id
+    end
+    local out, found = {}, false
+    for _, id in ipairs(current) do
+        if lower(id) == lower(it.entry.id) then
+            found = true               -- unpin: leave it out
+        else
+            out[#out + 1] = id
+        end
+    end
+    if not found then
+        out[#out + 1] = it.entry.id    -- pin
+    end
+    save_pins(out)
+    build_dock()
+end)
+
+on("dock_quit", function(i)
+    local it = items[(i or 0) + 1]
+    if not it then
+        return
+    end
+    for _, wid in ipairs(it.wins) do
+        run("niri", { "msg", "action", "close-window", "--id", tostring(wid) }, nil, { output = false })
+    end
+end)
+
+sys.watch("apps", function(list)
+    index_entries(list)
+    build_dock()
+end)
+
+-- ~/.config/beskar/dock, read now and every few seconds so a hand edit shows up
+local function read_pins()
+    run("sh", { "-c", 'if [ -f "$HOME/.config/beskar/dock" ]; then cat "$HOME/.config/beskar/dock"; else echo "__none__"; fi' }, function(out)
+        if not out then
+            return
+        end
+        local list, none = {}, false
+        for line in out:gmatch("[^\n]+") do
+            if line == "__none__" then
+                none = true
+            elseif line:match("%S") then
+                list[#list + 1] = line:gsub("^%s+", ""):gsub("%s+$", "")
+            end
+        end
+        local new = (not none) and list or nil
+        local same = (new == nil and pinned == nil)
+        if new and pinned and #new == #pinned then
+            same = true
+            for k = 1, #new do
+                if new[k] ~= pinned[k] then same = false end
+            end
+        end
+        if not same then
+            pinned = new
+            build_dock()
+        end
+    end)
+end
+read_pins()
+every(5000, read_pins)
+
 local OUTPUTS = {}
 local function push_mon()
     local shown, busy = {}, {}
@@ -118,20 +299,7 @@ local function refresh_running()
         end
         WINS = list
         push_mon()
-        local open = {}
-        for _, w in ipairs(list) do
-            open[string.lower(w.app_id or "")] = true
-        end
-        for n, app in ipairs(APPS) do
-            local on_ = 0
-            for _, id in ipairs(app.ids) do
-                if open[id] then
-                    on_ = 1
-                    break
-                end
-            end
-            fact["run_" .. n] = on_
-        end
+        build_dock()
     end)
 end
 

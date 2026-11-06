@@ -24,8 +24,8 @@ scene MacTopBar {
     //  What topbar.luau may touch. `run` is only what it needs: niri for the workspace, curl for
     //  the weather, and the dock's apps. Undeclared is nothing.
     permissions {
-        services: "clock", "network", "battery", "window", "tray", "tray.*", "say:control_center", "say:spotlight", "say:apple_menu", "say:notifications", "say:dashboard"
-        run: "niri msg", "curl", "sh", "kitty", "alacritty", "foot", "nautilus", "thunar", "dolphin", "code", "zed", "steam", "obsidian", "firefox", "chromium", "discord", "vesktop", "telegram-desktop"
+        services: "clock", "network", "battery", "window", "tray", "tray.*", "apps", "apps.launch", "say:control_center", "say:spotlight", "say:apple_menu", "say:notifications", "say:dashboard"
+        run: "niri msg", "curl", "sh"
     }
 
     service clock as now { time: text = "--:--"; date: text }
@@ -42,14 +42,9 @@ scene MacTopBar {
     fact notif_count = 0       // set by notifications.luau: how many are waiting
 
     //  Reported by topbar.luau
-    fact run_1 = 0
-    fact run_2 = 0
-    fact run_3 = 0
-    fact run_4 = 0
-    fact run_5 = 0
-    fact run_6 = 0
-    fact run_7 = 0
-    fact run_8 = 0
+    //  The dock is data: topbar.luau fills this from the apps you pinned plus the ones that are running.
+    model dock_items max 12 { icon: image 38, 38; name: text; running: bool; pinned: bool; canpin: bool }
+    fact menu_i = -1          // which dock item has its right-click menu open (-1 none)
     //  One record per monitor, in niri's output order: the workspace each one shows.
     model mon max 4 { active: number = 1; busy: number = 0 }
     text weather_temp = "--°"
@@ -65,7 +60,9 @@ scene MacTopBar {
     event tray_activate ->
     event tray_secondary ->
     event tray_context ->
-    event launch ->
+    event dock_click ->
+    event dock_pin ->
+    event dock_quit ->
     event reveal ->        // pointer reached the bottom edge
     event keep_dock ->     // pointer is on the dock
 
@@ -94,14 +91,6 @@ scene MacTopBar {
     let dock_pad    = 18      // room between the dock's sides and its icons
     let dock_fillet = 26      // how far the dock flares into the ring
 
-    image icon_term     = icon "utilities-terminal", 38, 38
-    image icon_files    = icon "system-file-manager", 38, 38
-    image icon_code     = icon "code", 38, 38
-    image icon_steam    = icon "steam", 38, 38
-    image icon_obsidian = icon "obsidian", 38, 38
-    image icon_browser  = icon "firefox", 38, 38
-    image icon_discord  = icon "discord", 38, 38
-    image icon_telegram = icon "telegram", 38, 38
 
     // ── one small round button: glyph + hover halo ───────────────
     component Glyph(g: text, tap: event, tone: color = ink_c, sz: number = 12.5) {
@@ -198,20 +187,67 @@ scene MacTopBar {
     }
 
     // ── one dock app: the icon lifts and grows under the pointer ─
-    component DockItem(ic: image, n: number, running: bool = false) {
+    // ── one dock app: the icon lifts under the pointer, a dot says it is running, right-click opens a menu ─
+    component DockItem(it: record) {
         size: 40, 44
         prop hot = 0 ~quick
+        prop pin_hot = 0 ~quick
+        prop quit_hot = 0 ~quick
+        let rows = if(it.canpin, 1, 0) + if(it.running, 1, 0)
         group {
             pivot: 20, 38
             scale: 1 + hot * 0.22
             move: 0, hot * -6
-            image ic { at: 1, 0; size: 38, 38 }
+            image it.icon { at: 1, 0; size: 38, 38 }
         }
-        ellipse { at: 20, 42; radius: 1.8; color: dot_color; opacity: if(running, 85%, 0%) }
+        ellipse { at: 20, 42; radius: 1.8; color: dot_color; opacity: if(it.running, 85%, 0%) }
+
+        //  its name, while the pointer rests on it
+        row {
+            at: 20, -12
+            anchor: center bottom
+            padding: 6
+            fill: item_solid
+            corner: 9
+            opacity: if(menu_i == it.index, 0, hot)
+            text it.name { size: 11; weight: 600; color: ink_c; tight: true }
+        }
+
         zone box hit { from: 0, 0; size: 40, 44; cursor: pointer }
         on enter hit { hot: 1; emit keep_dock }
         on leave hit { hot: 0 }
-        on press hit { emit launch(n) }
+        on press hit { menu_i = -1; emit dock_click(it.index) }
+        on press right hit { menu_i = it.index; emit keep_dock }
+
+        //  the menu: Keep in Dock / Remove from Dock, and Quit while it has windows
+        group {
+            show: menu_i == it.index and rows > 0
+            box { from: -55, -16 - rows * 34; size: 150, rows * 34 + 8; corner: 13; color: item_solid }
+            box { from: -55, -16 - rows * 34; size: 150, rows * 34 + 8; corner: 13; stroke: 1; color: ink_c; opacity: 14% }
+            group {
+                show: it.canpin
+                move: -49, -12 - rows * 34
+                box { from: 0, 0; size: 138, 30; corner: 9; color: ink_c; opacity: pin_hot * 12% }
+                text if(it.pinned, "Remove from Dock", "Keep in Dock") { at: 69, 15; anchor: center; size: 12; weight: 500; color: ink_c }
+                zone box pin_hit { from: 0, 0; size: 138, 30; corner: 9; cursor: pointer }
+                on enter pin_hit { pin_hot: 1; emit keep_dock }
+                on leave pin_hit { pin_hot: 0 }
+                on press pin_hit { menu_i = -1; emit dock_pin(it.index) }
+                on press right pin_hit { }
+            }
+            group {
+                show: it.running
+                move: -49, -12 - rows * 34 + if(it.canpin, 34, 0)
+                box { from: 0, 0; size: 138, 30; corner: 9; color: danger_c; opacity: quit_hot * 22% }
+                text "Quit" { at: 69, 15; anchor: center; size: 12; weight: 500; color: danger_c }
+                zone box quit_hit { from: 0, 0; size: 138, 30; corner: 9; cursor: pointer }
+                on enter quit_hit { quit_hot: 1; emit keep_dock }
+                on leave quit_hit { quit_hot: 0 }
+                on press quit_hit { menu_i = -1; emit dock_quit(it.index) }
+                on press right quit_hit { }
+            }
+            on away hit, pin_hit, quit_hit for 900ms { menu_i = -1 }
+        }
     }
 
     //  Everything that is drawn lives in a component. With `screens: each` a surface's loose
@@ -384,14 +420,7 @@ scene MacTopBar {
             gap: 10
             align: center
 
-            DockItem(icon_term, 1, run_1 == 1)
-            DockItem(icon_files, 2, run_2 == 1)
-            DockItem(icon_code, 3, run_3 == 1)
-            DockItem(icon_steam, 4, run_4 == 1)
-            DockItem(icon_obsidian, 5, run_5 == 1)
-            DockItem(icon_browser, 6, run_6 == 1)
-            DockItem(icon_discord, 7, run_7 == 1)
-            DockItem(icon_telegram, 8, run_8 == 1)
+            for it in dock_items { DockItem(it) }
         }
     }
 
