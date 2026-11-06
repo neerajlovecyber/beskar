@@ -10,24 +10,41 @@ scene MacControlCenter {
     }
 
     permissions {
-        services: "audio", "audio.*", "brightness", "brightness.*", "media", "media.*", "network", "network.*", "bluetooth", "bluetooth.*", "say:topbar", "say:dock", "say:spotlight", "say:apple_menu", "say:widgets", "say:osd"
+        services: "audio", "audio.*", "brightness", "brightness.*", "media", "media.*", "network", "network.*", "bluetooth", "bluetooth.*", "say:topbar", "say:dock", "say:settings", "say:spotlight", "say:apple_menu", "say:widgets", "say:osd"
     }
 
     // ── Built-in System Models ────────────────────────────────────
     model nets max 8 { ssid: text; strength: number; secure: bool; known: bool; active: bool }
-    model gadgets max 8 { name: text; address: text; connected: bool; battery: number = -1 }
+    //  One row per Bluetooth device, painted by control_center.luau. kind: 0 any · 1 headphones · 2 mouse ·
+    //  3 keyboard · 4 phone · 5 computer · 6 gamepad · 7 speaker. state: 0 paired · 1 connected · 2 working · 3 new.
+    model bt_rows max 8 { name: text; status: text; kind: number; state: number; battery: number = -1 }
     model outs max 6 { id: number; name: text; default: bool }
 
     // ── System Services & Lists ───────────────────────────────────
     service audio as sound { volume: number; muted: bool; outputs: outs }
     service brightness as display { present: bool; level: number }
     service network as net { online: bool; name: text; networks: nets }
-    service bluetooth as bt { powered: bool; devices: gadgets }
-    service media as song { playing: bool; title: text; artist: text }
 
     // ── Navigation & Theme Facts ──────────────────────────────────
     // Navigation: 0 = Main, 1 = Wi-Fi, 2 = Bluetooth, 3 = Sound
     fact page = 0
+
+    //  Reported by control_center.luau: Bluetooth, and what is playing
+    fact bt_on = false
+    fact bt_present = true
+    fact bt_scanning = false
+    text bt_sub = "Off"
+    fact has_player = false
+    fact is_playing = false
+    fact has_art = false
+    fact track_len = 0
+    fact track_pos = 0
+    text track_title = ""
+    text track_artist = ""
+    text cover_art = ""
+    text time_pos = "0:00"
+    text time_len = "0:00"
+    image cover = from cover_art, 52, 52
     fact open = false
     fact dark_mode = true
     fact skin = 0
@@ -60,15 +77,21 @@ scene MacControlCenter {
     event brightness_set ->
     event play_pause ->
     event pick_network ->
-    event pick_device ->
+    event bt_action ->
+    event bt_power ->
+    event bt_scan ->
+    event open_settings ->
+    event previous ->
+    event next ->
+    event seek ->
     event pick_output ->
     event toggle_wifi ->
     event toggle_bt ->
 
     prop seen = 0 ~quick
     //  The card is shorter on the overview than on the pickers, and grows when one opens.
-    prop ch = 386 ~calm
-    follow ch = if(page == 0, 386, 448)
+    prop ch = 430 ~calm
+    follow ch = if(page == 0, 430, 448)
     prop scale = 0.9 ~quick
 
     layer panel ~quick {
@@ -138,12 +161,12 @@ scene MacControlCenter {
                     group {
                         size: 34, 34
                         move: 12, 72
-                        ellipse { at: 17, 17; radius: 17; color: if(bt.powered, #007aff, item_bg); opacity: if(bt.powered, 100%, item_bg_op) }
-                        text "󰂯" { at: 17, 17; anchor: center; size: 15; color: if(bt.powered, #ffffff, ink_c) }
+                        ellipse { at: 17, 17; radius: 17; color: if(bt_on, #007aff, item_bg); opacity: if(bt_on, 100%, item_bg_op) }
+                        text "󰂯" { at: 17, 17; anchor: center; size: 15; color: if(bt_on, #ffffff, ink_c) }
                         zone box bt_icon_hit { from: 0, 0; size: 34, 34; cursor: pointer }
                     }
                     text "Bluetooth" { at: 54, 80; anchor: left center; size: 12.5; weight: 600; color: ink_c }
-                    text if(bt.powered, "On", "Off") { at: 54, 94; anchor: left center; size: 10.5; color: ink_sub }
+                    text bt_sub { at: 54, 94; anchor: left center; size: 10.5; color: ink_sub; width: 80; lines: 1 }
                     text "󰅂" { at: 142, 86; anchor: center; size: 14; color: ink_sub }
                     zone box bt_chevron_hit { at: 142, 86; size: 24, 24; corner: 12; cursor: pointer }
                 }
@@ -151,16 +174,6 @@ scene MacControlCenter {
                 // Focus & Dark Mode Right Column
                 column {
                     gap: 12
-
-                    // Do Not Disturb Card
-                    group {
-                        size: 158, 61
-                        box { from: 0, 0; size: 158, 61; corner: 16; color: card_fill; opacity: card_fill_op }
-                        box { from: 0, 0; size: 158, 61; corner: 16; stroke: 1; color: card_stroke; opacity: card_stroke_op }
-                        ellipse { at: 24, 30; radius: 15; color: item_bg; opacity: item_bg_op }
-                        text "󱂎" { at: 24, 30; anchor: center; size: 15; color: ink_c }
-                        text "Focus" { at: 48, 30; anchor: left center; size: 12.5; weight: 600; color: ink_c }
-                    }
 
                     // Dark Mode Toggle Card
                     group {
@@ -172,6 +185,18 @@ scene MacControlCenter {
                         text "Dark Mode" { at: 48, 22; anchor: left center; size: 12.5; weight: 600; color: ink_c }
                         text if(dark_mode, "On", "Off") { at: 48, 38; anchor: left center; size: 10.5; color: ink_sub }
                         zone box dm_tile_hit { from: 0, 0; size: 158, 61; corner: 16; cursor: pointer }
+                    }
+
+                    // Settings shortcut
+                    group {
+                        size: 158, 61
+                        box { from: 0, 0; size: 158, 61; corner: 16; color: card_fill; opacity: card_fill_op }
+                        box { from: 0, 0; size: 158, 61; corner: 16; stroke: 1; color: card_stroke; opacity: card_stroke_op }
+                        ellipse { at: 24, 30; radius: 15; color: item_bg; opacity: item_bg_op }
+                        text "󰒓" { at: 24, 30; anchor: center; size: 15; color: ink_c }
+                        text "Settings" { at: 48, 22; anchor: left center; size: 12.5; weight: 600; color: ink_c }
+                        text "All preferences" { at: 48, 38; anchor: left center; size: 10.5; color: ink_sub }
+                        zone box settings_tile_hit { from: 0, 0; size: 158, 61; corner: 16; cursor: pointer }
                     }
                 }
             }
@@ -193,7 +218,8 @@ scene MacControlCenter {
                         size: 300, 20
                         box { from: 0, 0; size: 300, 20; corner: 10; color: slider_bg; opacity: slider_bg_op }
                         box { from: 0, 0; size: 300 * max(display.level, 0.12), 20; corner: 10; color: slider_bar; opacity: slider_bar_op }
-                        text "󰃠" { at: 14, 10; anchor: center; size: 12; color: slider_icon }
+                        ellipse { at: 14, 10; radius: 3.3; color: slider_icon }
+                        repeat k in 0..8 { line { from: 14 + 5.6 * cos(k * 45), 10 + 5.6 * sin(k * 45); to: 14 + 7.4 * cos(k * 45), 10 + 7.4 * sin(k * 45); width: 1.3; color: slider_icon } }
                         zone box br_hit { from: 0, 0; size: 300, 20; cursor: pointer }
                     }
                 }
@@ -213,7 +239,8 @@ scene MacControlCenter {
                         size: 300, 20
                         box { from: 0, 0; size: 300, 20; corner: 10; color: slider_bg; opacity: slider_bg_op }
                         box { from: 0, 0; size: 300 * sound.volume, 20; corner: 10; color: slider_bar; opacity: slider_bar_op }
-                        text "󱕾" { at: 14, 10; anchor: center; size: 12; color: slider_icon }
+                        path { at: 7, 4; color: slider_icon; move 0, 4; line 4, 4; line 9, 0; line 9, 12; line 4, 8; line 0, 8; close }
+                        arc { at: 17, 10; radius: 4.2; span: 110deg; rotate: -55deg; width: 1.5; color: slider_icon }
                         zone box vol_hit { from: 0, 0; size: 300, 20; cursor: pointer }
                     }
                 }
@@ -222,46 +249,54 @@ scene MacControlCenter {
             // Now Playing / Media Card
             group {
                 move: 16, 286
-                size: 328, 90
-                box { from: 0, 0; size: 328, 90; corner: 16; color: card_fill; opacity: card_fill_op }
-                box { from: 0, 0; size: 328, 90; corner: 16; stroke: 1; color: card_stroke; opacity: card_stroke_op }
+                size: 328, 128
+                box { from: 0, 0; size: 328, 128; corner: 16; color: card_fill; opacity: card_fill_op }
+                box { from: 0, 0; size: 328, 128; corner: 16; stroke: 1; color: card_stroke; opacity: card_stroke_op }
 
-                box { from: 14, 12; size: 40, 40; corner: 10; color: #007aff; opacity: 20% }
-                text "󰾆" { at: 34, 32; anchor: center; size: 20; color: #007aff }
-
-                text if(song.playing, song.title, "Not Playing") {
-                    at: 66, 22
-                    anchor: left center
-                    size: 12.5
-                    weight: 600
-                    color: ink_c
-                    width: 240
-                    lines: 1
-                }
-                text song.artist {
-                    show: song.playing
-                    at: 66, 38
-                    anchor: left center
-                    size: 10.5
-                    color: ink_sub
-                    width: 240
-                    lines: 1
+                //  Nothing is playing
+                group {
+                    show: not has_player
+                    ellipse { at: 164, 48; radius: 22; color: item_bg; opacity: item_bg_op }
+                    path { at: 155, 36; color: ink_sub; move 0, 0; line 20, 12; line 0, 24; close }
+                    text "Nothing playing" { at: 164, 90; anchor: center; size: 12; weight: 500; color: ink_sub }
+                    text "Start a song in any player" { at: 164, 106; anchor: center; size: 10; color: ink_sub; opacity: 70% }
                 }
 
-                row {
-                    at: 164, 68
-                    anchor: center
-                    gap: 32
-                    align: center
+                //  A player has something
+                group {
+                    show: has_player
 
-                    text "󱲮" { size: 16; color: ink_c; opacity: 70% }
-                    group {
-                        size: 26, 26
-                        ellipse { at: 13, 13; radius: 13; color: item_bg; opacity: item_bg_op }
-                        text if(song.playing, "󰿤", "󱐊") { at: 13, 13; anchor: center; size: 13; color: ink_c }
-                        zone box play_hit { from: 0, 0; size: 26, 26; cursor: pointer }
+                    //  Cover: a soft gradient, and the real artwork over it when the player has one
+                    body {
+                        gradient: 0, 0 to 52, 52, #e8a048, #7f52ff
+                        box { from: 14, 12; size: 52, 52; corner: 11 }
                     }
-                    text "󱲭" { size: 16; color: ink_c; opacity: 70% }
+                    image cover { at: 14, 12; size: 52, 52; show: has_art }
+                    text track_title { at: 78, 28; anchor: left center; size: 13; weight: 600; color: ink_c; width: 236; lines: 1 }
+                    text track_artist { at: 78, 46; anchor: left center; size: 11; color: ink_sub; width: 236; lines: 1 }
+
+                    //  Progress; a click on the bar seeks
+                    box { from: 14, 74; size: 300, 4; corner: 2; color: slider_bg; opacity: slider_bg_op }
+                    box { from: 14, 74; size: max(4, 300 * clamp(track_pos / max(track_len, 1), 0, 1)), 4; corner: 2; color: slider_bar; opacity: slider_bar_op; show: track_len > 0 }
+                    text time_pos { at: 14, 88; anchor: left center; size: 9.5; color: ink_sub }
+                    text time_len { at: 314, 88; anchor: right center; size: 9.5; color: ink_sub; show: track_len > 0 }
+                    zone box seek_hit { from: 14, 68; size: 300, 16; cursor: pointer; active: track_len > 0 }
+
+                    //  Previous · play/pause · next, drawn
+                    path { at: 112, 99; color: ink_c; move 11, 0; line 11, 14; line 0, 7; close }
+                    box { from: 109, 99; size: 2.6, 14; corner: 1.3; color: ink_c }
+                    ellipse { at: 164, 106; radius: 16; color: item_bg; opacity: item_bg_op }
+                    group {
+                        show: is_playing
+                        box { from: 158, 99; size: 3.6, 14; corner: 1.8; color: ink_c }
+                        box { from: 166.5, 99; size: 3.6, 14; corner: 1.8; color: ink_c }
+                    }
+                    path { at: 160, 98.5; color: ink_c; show: not is_playing; move 0, 0; line 13, 7.5; line 0, 15; close }
+                    path { at: 205, 99; color: ink_c; move 0, 0; line 11, 7; line 0, 14; close }
+                    box { from: 216, 99; size: 2.6, 14; corner: 1.3; color: ink_c }
+                    zone box prev_hit { at: 118, 106; size: 34, 34; corner: 17; cursor: pointer }
+                    zone box play_hit { at: 164, 106; size: 38, 38; corner: 19; cursor: pointer }
+                    zone box next_hit { at: 211, 106; size: 34, 34; corner: 17; cursor: pointer }
                 }
             }
         }
@@ -328,29 +363,39 @@ scene MacControlCenter {
                 zone box bt_back_hit { from: 0, 0; size: 130, 32; cursor: pointer }
             }
 
+            //  Power switch, and the search button beside it
+            box { from: 306, 25; size: 38, 22; corner: 11; color: if(bt_on, #34c759, item_bg); opacity: if(bt_on, 100%, item_bg_op) }
+            ellipse { at: if(bt_on, 335, 316), 36; radius: 9; color: #ffffff }
+            zone box bt_power_hit { from: 306, 25; size: 38, 22; corner: 11; cursor: pointer; active: bt_present }
+            text if(bt_scanning, "Searching…", "Search") { at: 292, 36; anchor: right center; size: 11.5; weight: 500; color: if(bt_scanning, #007aff, ink_sub); show: bt_on }
+            zone box bt_scan_hit { from: 200, 24; size: 94, 24; corner: 12; cursor: pointer; active: bt_on }
+
             column {
                 at: 16, 62
                 gap: 6
-                for g in gadgets {
+                for g in bt_rows {
                     group {
-                        size: 328, 42
-                        box { from: 0, 0; size: 328, 42; corner: 10; color: card_fill; opacity: if(g.connected, 95%, card_fill_op) }
-                        box { from: 0, 0; size: 328, 42; corner: 10; stroke: 1; color: card_stroke; opacity: card_stroke_op }
-                        text "󰂯" { at: 20, 21; anchor: center; size: 15; color: if(g.connected, #007aff, ink_c) }
-                        text g.name { at: 42, 16; anchor: left center; size: 13; weight: if(g.connected, 600, 400); color: ink_c; width: 220; lines: 1 }
-                        text if(g.connected, "Connected", "Not Connected") { at: 42, 29; anchor: left center; size: 10.5; color: if(g.connected, mint, ink_sub) }
-                        text if(g.battery >= 0, "{g.battery}%", "") { at: 300, 21; anchor: right center; size: 11; color: ink_sub }
-                        zone box bt_row_hit { from: 0, 0; size: 328, 42; cursor: pointer }
-                        on press bt_row_hit { emit pick_device(g.index) }
+                        size: 328, 46
+                        box { from: 0, 0; size: 328, 46; corner: 12; color: card_fill; opacity: if(g.state == 1, 95%, card_fill_op) }
+                        box { from: 0, 0; size: 328, 46; corner: 12; stroke: 1; color: card_stroke; opacity: card_stroke_op }
+                        ellipse { at: 24, 23; radius: 15; color: if(g.state == 1, #007aff, item_bg); opacity: if(g.state == 1, 100%, item_bg_op) }
+                        text pick(g.kind, "󰂯", "󰋋", "󰍽", "󰌌", "󰏲", "󰟀", "󰊴", "󰓃") { at: 24, 23; anchor: center; size: 14; color: if(g.state == 1, #ffffff, ink_c) }
+                        text g.name { at: 48, 17; anchor: left center; size: 13; weight: if(g.state == 1, 600, 500); color: ink_c; width: 150; lines: 1 }
+                        text g.status { at: 48, 32; anchor: left center; size: 10.5; color: if(g.state == 1, mint, ink_sub); width: 150; lines: 1 }
+                        text if(g.battery >= 0, "{g.battery * 100, 0}%", "") { at: 208, 23; anchor: right center; size: 10.5; color: ink_sub }
+                        box { from: 246, 9; size: 72, 28; corner: 9; color: if(g.state == 0 or g.state == 3, #007aff, item_bg); opacity: if(g.state == 0 or g.state == 3, 100%, item_bg_op) }
+                        text pick(g.state, "Connect", "Disconnect", "…", "Pair") { at: 282, 23; anchor: center; size: 10.5; weight: 600; color: if(g.state == 0 or g.state == 3, #ffffff, ink_c) }
+                        zone box bt_row_hit { from: 246, 9; size: 72, 28; corner: 9; cursor: pointer }
+                        on press bt_row_hit { emit bt_action(g.index) }
                     }
                 }
             }
-            text "No devices found" {
-                at: 180, 200
-                anchor: center
-                size: 13
-                color: ink_sub
-                show: gadgets.count < 1
+            group {
+                show: bt_rows.count < 1
+                text "Looking around…" { at: 180, 200; anchor: center; size: 12; color: ink_sub; show: bt_on and bt_scanning }
+                text "No paired devices. Press Search." { at: 180, 200; anchor: center; size: 12; color: ink_sub; show: bt_on and not bt_scanning }
+                text "Bluetooth is off. Use the switch to turn it on." { at: 180, 200; anchor: center; size: 12; color: ink_sub; show: bt_present and not bt_on }
+                text "No Bluetooth adapter found" { at: 180, 200; anchor: center; size: 12; color: ink_sub; show: not bt_present }
             }
         }
 
@@ -397,6 +442,12 @@ scene MacControlCenter {
     on press vol_hit  { emit volume_set(clamp(local.x / 300, 0, 1)) }
     on drag vol_hit   { emit volume_set(clamp(local.x / 300, 0, 1)) }
     on press play_hit { emit play_pause }
+    on press prev_hit { emit previous }
+    on press next_hit { emit next }
+    on press seek_hit { emit seek(clamp(local.x / 300, 0, 1)) }
+    on press settings_tile_hit { emit open_settings; open = false; page = 0 }
+    on press bt_power_hit { emit bt_power }
+    on press bt_scan_hit  { emit bt_scan }
 
     // Navigation Transitions
     on press wifi_chevron_hit { page = 1 }
