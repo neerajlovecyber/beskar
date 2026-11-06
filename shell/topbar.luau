@@ -21,8 +21,20 @@ on("open_widgets", toggle("widgets"))
 -- The service's list goes to the scene's `icons` model (it draws the picture). Reading the model
 -- back gives each record with EVERYTHING it carried, `key` included, which is what
 -- tray.activate / tray.secondary / tray.context need.
+-- Tray items that stay out of the bar: the shell already has its own network and Bluetooth
+-- indicators (and the Control Center), so nm-applet and blueman would only repeat them. Chrome's
+-- background icon never goes away while it runs. Add an item's `id` here to hide it too
+-- (`id`s: nm-applet, blueman, chrome_status_icon_1, Cachy-Update, …).
+local HIDE = { ["nm-applet"] = true, ["blueman"] = true, ["chrome_status_icon_1"] = true }
+
 sys.watch("tray", function(list)
-    model.icons = list or {}
+    local shown = {}
+    for _, it in ipairs(list or {}) do
+        if not HIDE[it.id or ""] and it.status ~= "Passive" then
+            shown[#shown + 1] = it
+        end
+    end
+    model.icons = shown
 end)
 
 local function tray_action(call)
