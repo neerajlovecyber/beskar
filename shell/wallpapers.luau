@@ -1,7 +1,8 @@
 -- Wallpaper picker logic. Like Marea's: the folders are scanned, small copies are made once and cached,
 -- and the picture is painted by a daemon that outlives the shell (here `awww`, with a transition).
 --
---   Mine      ~/Pictures/wallpapers, ~/Pictures/Wallpapers, ~/Wallpapers, and the pictures directly in ~/Pictures
+--   Mine      ~/Pictures/wallpapers, ~/Pictures/Wallpapers, ~/Wallpapers (never the rest of ~/Pictures, and never
+--             files named screenshot / mock)
 --   Built-in  the ones Beskar ships (copied to ~/.local/share/beskar/wallpapers by start.sh), /usr/share/wallpapers,
 --             /usr/share/backgrounds
 --
@@ -115,13 +116,13 @@ end
 -- ── scanning ─────────────────────────────────────────────────────
 local SCAN = [[
 H="$HOME"
-img() { fd -t f -e jpg -e jpeg -e png -e webp -S +120k "$@" 2>/dev/null; }
+img() { fd -t f -e jpg -e jpeg -e png -e webp -S +120k -E "*[Ss]creenshot*" -E "*[Ss]creen_[Ss]hot*" -E "*mock*" "$@" 2>/dev/null; }
 for d in "$H/Pictures/wallpapers" "$H/Pictures/Wallpapers" "$H/Wallpapers" "$H/Imágenes/Wallpapers"; do
     [ -d "$d" ] && img --max-depth 3 . "$d" | sed 's/^/1|/'
 done
-[ -d "$H/Pictures" ] && img --max-depth 1 . "$H/Pictures" | sed 's/^/1|/'
-for d in "$H/.local/share/beskar/wallpapers" /usr/share/wallpapers /usr/share/backgrounds; do
-    [ -d "$d" ] && img --max-depth 3 . "$d" | sed 's/^/2|/'
+[ -d "$H/.local/share/beskar/wallpapers" ] && img --max-depth 2 . "$H/.local/share/beskar/wallpapers" | sed 's/^/2|/'
+for d in /usr/share/wallpapers /usr/share/backgrounds; do
+    [ -d "$d" ] && img --max-depth 3 . "$d" | sed 's/^/3|/'
 done
 printf 'HOME|%s\n' "$H"
 ]]
@@ -137,7 +138,7 @@ local function scan()
         if code ~= 0 or not out then
             return
         end
-        local mine, built, seen = {}, {}, {}
+        local mine, built, system, seen = {}, {}, {}, {}
         for line in out:gmatch("[^\n]+") do
             local kind, path = line:match("^(%w+)|(.+)$")
             if kind == "HOME" then
@@ -145,9 +146,11 @@ local function scan()
                 CACHE = HOME .. "/.cache/beskar/wallpapers"
             elseif path and not seen[path] then
                 seen[path] = true
-                local entry = { path = path, name = pretty(path), builtin = kind == "2" }
+                local entry = { path = path, name = pretty(path), builtin = kind ~= "1" }
                 if kind == "2" then
                     built[#built + 1] = entry
+                elseif kind == "3" then
+                    system[#system + 1] = entry
                 else
                     mine[#mine + 1] = entry
                 end
@@ -156,9 +159,11 @@ local function scan()
         local function by_name(a, b) return a.name:lower() < b.name:lower() end
         table.sort(mine, by_name)
         table.sort(built, by_name)
+        table.sort(system, by_name)
         all = {}
         for _, e in ipairs(mine) do all[#all + 1] = e end
-        for _, e in ipairs(built) do all[#all + 1] = e end
+        for _, e in ipairs(built) do all[#all + 1] = e end      -- Beskar's own first
+        for _, e in ipairs(system) do all[#all + 1] = e end     -- then the system's
         read_current(function()
             rebuild(tonumber(fact.wall_tab) or 0)
             show_current_row()
