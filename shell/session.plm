@@ -46,6 +46,9 @@ scene MacSession {
     // Dismiss zone
     zone box dismiss_scrim { from: 0, 0; size: 520, 360; active: open }
     on press dismiss_scrim { open = false }
+    // A scene that never uses the right button is closed by pleamar on any right click
+    // (its prototype emergency exit). This empty rule says the right button is ours: nothing happens.
+    on press right dismiss_scrim { }
 
     group {
         move: 40, 40

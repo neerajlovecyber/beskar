@@ -11,7 +11,7 @@ Featuring native hardware frosted glass shaders (`frost: auto`), spring physics 
 - ** Top Menu Bar (`shell/topbar.plm`)**:
   - Apple menu (``), active window/app title, standard macOS menus (`File`, `Edit`, `View`, `Window`, `Help`).
   - Right status bar with battery percentage and charging indicator, Wi-Fi status, volume status, Control Center trigger, date, and clock.
-- **🏝️ Bottom Dock (`shell/dock.plm`)**:
+- **🏝️ Bottom Dock (inside `shell/topbar.plm`, one silhouette with the top bar)**:
   - Floating frosted glass capsule with rounded corners.
   - Interactive icon magnification with spring physics (`scale = 1.0 + hot * 0.28`).
   - Running app indicator dots and launch bindings.
@@ -79,9 +79,8 @@ beskar/
 ├── shell/
 │   ├── common/
 │   │   └── palette.plm             # Apple HIG color definitions
-│   ├── topbar.plm                  # Top Menu Bar scene
-│   ├── dock.plm                    # Bottom Dock scene
-│   ├── dock.luau                   # App launcher logic
+│   ├── topbar.plm                  # Frame: ring + top islands + dock (one scene)
+│   ├── topbar.luau                 # Workspace, weather, dock app launcher
 │   ├── spotlight.plm               # Spotlight search scene
 │   ├── spotlight.luau              # App filtering & launch logic
 │   ├── control_center.plm          # Control Center popover scene

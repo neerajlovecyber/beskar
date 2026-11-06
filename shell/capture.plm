@@ -80,6 +80,7 @@ scene MacCapture {
                 text "󰅖" { at: 14, 23; anchor: center; size: 12; color: ink_c }
                 zone box btn_x { from: 0, 0; size: 28, 46; cursor: pointer }
                 on press btn_x { open = false }
+                on press right btn_x { }   // right button is ours: without a rule, pleamar quits on right click
             }
 
             // Separator 1

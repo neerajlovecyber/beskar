@@ -22,7 +22,7 @@ kill_all() {
 
 check_status() {
     echo "macOS / iNiR Shell Status:"
-    for comp in topbar dock border spotlight control_center apple_menu widgets osd settings lock session capture appswitcher clipboard; do
+    for comp in topbar border spotlight control_center apple_menu widgets osd settings lock session capture appswitcher clipboard; do
         if pgrep -f "pleamar.*$comp\.plm" >/dev/null 2>&1; then
             echo "  ✔ $comp is RUNNING"
         else
@@ -39,7 +39,7 @@ apply_saved_theme() {
         [ -z "$DM" ] && DM="true"
         [ -z "$SKIN" ] && SKIN="0"
 
-        for comp in topbar dock border spotlight control_center apple_menu widgets osd settings session capture appswitcher clipboard; do
+        for comp in topbar border spotlight control_center apple_menu widgets osd settings session capture appswitcher clipboard; do
             "$BIN" --say "$comp" "fact dark_mode $DM" >/dev/null 2>&1 || true
             "$BIN" --say "$comp" "fact skin $SKIN" >/dev/null 2>&1 || true
         done
@@ -64,8 +64,6 @@ start_shell() {
 
     setsid "$BIN" --no-hud --scene "$DIR/shell/topbar.plm" </dev/null >/tmp/pleamar_topbar.log 2>&1 &
     PID_BAR=$!
-    setsid "$BIN" --no-hud --scene "$DIR/shell/dock.plm" </dev/null >/tmp/pleamar_dock.log 2>&1 &
-    PID_DOCK=$!
     # Border neutralized - window borders handled natively by compositor
     PID_BORDER=""
     setsid "$BIN" --no-hud --scene "$DIR/shell/spotlight.plm" </dev/null >/tmp/pleamar_spotlight.log 2>&1 &
@@ -91,14 +89,13 @@ start_shell() {
     setsid "$BIN" --no-hud --scene "$DIR/shell/clipboard.plm" </dev/null >/tmp/pleamar_clipboard.log 2>&1 &
     PID_CLIP=$!
 
-    echo "$PID_BAR $PID_DOCK $PID_BORDER $PID_SPOTLIGHT $PID_CC $PID_APPLE $PID_WIDGETS $PID_OSD $PID_SETTINGS $PID_LOCK $PID_SESSION $PID_CAPTURE $PID_SWITCHER $PID_CLIP" > "$PID_FILE"
+    echo "$PID_BAR $PID_BORDER $PID_SPOTLIGHT $PID_CC $PID_APPLE $PID_WIDGETS $PID_OSD $PID_SETTINGS $PID_LOCK $PID_SESSION $PID_CAPTURE $PID_SWITCHER $PID_CLIP" > "$PID_FILE"
     sleep 0.6
 
     apply_saved_theme
 
     echo "macOS / iNiR Shell is active!"
-    echo "  - Top Bar (3 Islands): PID $PID_BAR"
-    echo "  - Bottom Dock (Flared): PID $PID_DOCK"
+    echo "  - Frame (ring + 3 top islands + bottom dock): PID $PID_BAR"
     echo "  - Screen Border: PID $PID_BORDER"
     echo "  - Spotlight Search: PID $PID_SPOTLIGHT"
     echo "  - Control Center: PID $PID_CC"
@@ -198,7 +195,7 @@ case "$1" in
     dark-mode)
         VAL="true"
         [ "$2" = "off" ] && VAL="false"
-        for comp in topbar dock spotlight control_center apple_menu widgets osd settings session capture; do
+        for comp in topbar spotlight control_center apple_menu widgets osd settings session capture; do
             "$BIN" --say "$comp" "fact dark_mode $VAL"
         done
         mkdir -p "$(dirname "$CONFIG_FILE")"
@@ -207,7 +204,7 @@ case "$1" in
         ;;
     skin)
         SKIN_VAL="${2:-0}"
-        for comp in topbar dock spotlight control_center apple_menu widgets osd settings session capture; do
+        for comp in topbar spotlight control_center apple_menu widgets osd settings session capture; do
             "$BIN" --say "$comp" "fact skin $SKIN_VAL"
         done
         mkdir -p "$(dirname "$CONFIG_FILE")"

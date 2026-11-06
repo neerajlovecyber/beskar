@@ -1,277 +1,288 @@
-// iNiR / iRiS Morphing Glass Top Bar with Fully Covered Content Notches
+// iNiR / iRiS style shell frame: ONE glass silhouette that runs all the way round the screen.
+//
+//   · a thin padded ring along the four edges, its inner corners curved
+//   · three islands (left / centre / right) hanging from the top of the ring
+//   · the dock, an island rising from the bottom of the ring
+//
+// They are one body, so every junction melts into the next one instead of being drawn twice.
+// Islands are as wide as the row they hold (`left_row.width`, `dock_row.width`, …) and chase
+// that with a spring: when the window title, the tray or the dock change, the glass morphs.
+//
+// The surface is the whole monitor, but only the zones catch the mouse: everywhere else the
+// click goes through to the windows.
 import "common/palette.plm"
 
 scene MacTopBar {
     surface {
-        size: full, 68
+        size: full, full
         anchor: top
-        reserve: 42
+        reserve: 42          // windows leave the top strip; the ring only overlaps their edges
         screens: each
     }
 
+    //  What topbar.luau may touch. `run` is only what it needs: niri for the workspace, curl for
+    //  the weather, and the dock's apps. Undeclared is nothing.
     permissions {
-        services: "clock", "audio", "network", "battery", "window", "tray", "tray.*", "say:control_center", "say:spotlight", "say:apple_menu", "say:widgets"
+        services: "clock", "network", "battery", "window", "tray", "tray.*", "say:control_center", "say:spotlight", "say:apple_menu", "say:widgets"
+        run: "niri msg", "curl", "kitty", "alacritty", "foot", "nautilus", "thunar", "dolphin", "code", "zed", "steam", "obsidian", "firefox", "chromium", "discord", "vesktop", "telegram-desktop"
     }
 
     service clock as now { time: text = "--:--"; date: text }
-    service audio as sound { volume: number; muted: bool }
     service network as net { online: bool; name: text }
     service battery as bat { percent: number; charging: bool }
     service window as win { title: text }
 
+    //  The tray list is filled by topbar.luau (`sys.watch("tray")` → `model.icons = list`). It must
+    //  not also be a `service tray` here: the tray has one listener, and two would fight over it.
     model icons max 8 { icon: image 18, 18 }
-    service tray { list: icons }
 
     fact dark_mode = true
     fact skin = 0
 
-    // iNiR facts updated by topbar.luau
+    //  Reported by topbar.luau
     fact focused_ws = 1
-    text focused_app = "Terminal"
-    text weather_temp = "16°"
+    text weather_temp = "--°"
     text weather_icon = "󰖐"
-
-    let bar_color = if(dark_mode, if(skin == 2, #181a20, if(skin == 1, #161820, #14161d)), if(skin == 2, #f2f3f7, if(skin == 1, #eaecf2, #f6f7fb)))
-    let bar_glass = if(skin == 2, 0%, if(skin == 1, 55%, 75%))
-    let bar_tint = if(skin == 2, 0%, if(dark_mode, 40%, 25%))
-    let bar_rim = if(skin == 2, 0%, 14%)
-    let stroke_c = if(dark_mode, #b4a8ff, #7f52ff)
-    let stroke_op = if(dark_mode, 25%, 15%)
-    let ink_c = if(dark_mode, #f5f7f5, #1d1d1f)
-    let ink_sub = if(dark_mode, #9a9ea7, #6e6e73)
-    let accent_c = #e8a048
-    let pill_bg = if(dark_mode, #ffffff, #000000)
-    let pill_op = if(dark_mode, 12%, 8%)
 
     event open_apple_menu ->
     event open_control_center ->
     event open_spotlight ->
     event open_widgets ->
     event tray_activate ->
+    event tray_secondary ->
+    event tray_context ->
+    event launch ->
 
-    // Dynamic content-fitted notch dimensions:
-    // Left: Profile orb (24) + ws pill (44) + window title (145) + gaps & generous padding = 280
-    let left_w = 280
+    // ── look ─────────────────────────────────────────────────────
+    let bar_color = if(dark_mode, if(skin == 2, #181a20, if(skin == 1, #161820, #14161d)), if(skin == 2, #f2f3f7, if(skin == 1, #eaecf2, #f6f7fb)))
+    let bar_glass = if(skin == 2, 0%, if(skin == 1, 45%, 55%))
+    let bar_tint  = if(skin == 2, 0%, if(dark_mode, 60%, 45%))
+    let bar_rim   = if(skin == 2, 0%, 16%)
+    //  Smoke (dark) / milk (light) keep words readable over any wallpaper.
+    let bar_smoke = if(dark_mode, 75%, 0%)
+    let bar_milk  = if(dark_mode, 0%, 70%)
+    let stroke_c  = if(dark_mode, #b4a8ff, #7f52ff)
+    let ink_c     = if(dark_mode, #f5f7f5, #1d1d1f)
+    let ink_sub   = if(dark_mode, #9a9ea7, #6e6e73)
+    let accent_c  = #e8a048
+    let pill_fill = if(dark_mode, #2a2c35, #dcdde6)
+    let dot_color = if(dark_mode, #f5f7f5, #1d1d1f)
 
-    // Center: Avatar (22) + Date & Time (118) + Weather (40) + Sound (18) + gaps & padding = 260
-    let center_w = 260
+    // ── geometry ─────────────────────────────────────────────────
+    let ring        = 6       // thickness of the border that goes all the way round
+    let curve       = 30      // how round the ring's inner corners are (how much its sides melt)
+    let ext         = 28      // how far the glass reaches past the screen edge (never seen)
+    let pad         = 16      // room between a top island's edge and its content
+    let cy          = 19      // vertical centre of the top islands' content
+    let notch_h     = 54      // top islands start 14 px above the screen and end 40 px down
+    let fillet      = 14      // how much a top island melts into the ring
+    let dock_h      = 64      // how tall the dock stands above the bottom edge
+    let dock_pad    = 18      // room between the dock's sides and its icons
+    let dock_fillet = 26      // how far the dock flares into the ring
 
-    // Right: Tray icons (icons.total * 26) + status icons (Steam, Music, Net, Battery, CC, Bell = 186) + padding = 230
-    let right_w = icons.total * 26 + 230
+    image icon_term     = icon "utilities-terminal", 38, 38
+    image icon_files    = icon "system-file-manager", 38, 38
+    image icon_code     = icon "code", 38, 38
+    image icon_steam    = icon "steam", 38, 38
+    image icon_obsidian = icon "obsidian", 38, 38
+    image icon_browser  = icon "firefox", 38, 38
+    image icon_discord  = icon "discord", 38, 38
+    image icon_telegram = icon "telegram", 38, 38
 
-    // ── Safe Background Zone ───────────────────────────────────────────
-    zone box topbar_bg { from: 0, 0; size: screen.width, 68 }
-    on press right topbar_bg { }
-
-    // ── Continuous Liquid Glass Body Morphing From Top & Side Screen Edges ─
-    body {
-        color: bar_color
-        glass: bar_glass
-        lens: false
-        frost: 100%
-        tint: bar_tint
-        rim: bar_rim
-        shine: pointer
-        refraction: 80%
-        dispersion: 40%
-        shadow: 0, 4, 16, 25%
-
-        // 1. Continuous Top Ceiling Wire: runs along top edge across full display
-        box top_wire {
-            from: 0, -12
-            size: screen.width, 16
-        }
-
-        // 2. Left side ear: curves downwards along the left screen border
-        box left_ear {
-            from: -12, 0
-            size: 16, 56
-            corner: 8
-            blend: 18
-        }
-
-        // 3. Left Notch: touches and sprouts directly from the left screen edge
-        box left_notch {
-            from: -12, -12
-            size: left_w + 12, 50
-            corner: 20
-            blend: 18
-        }
-
-        // 4. Center Notch: floating middle dynamic island
-        box center_notch {
-            at: screen.width / 2, 16
-            size: center_w, 40
-            corner: 16
-            blend: 16
-        }
-
-        // 5. Right side ear: curves downwards along the right screen border
-        box right_ear {
-            from: screen.width - 4, 0
-            size: 16, 56
-            corner: 8
-            blend: 18
-        }
-
-        // 6. Right Notch: touches and sprouts directly from the right screen edge
-        box right_notch {
-            from: screen.width - right_w, -12
-            size: right_w + 12, 50
-            corner: 20
-            blend: 18
-        }
+    // ── one small round button: glyph + hover halo ───────────────
+    component Glyph(g: text, tap: event, tone: color = ink_c, sz: number = 12.5) {
+        size: 24, 24
+        prop hot = 0 ~quick
+        box halo { from: 0, 0; size: 24, 24; corner: 8; color: ink_c; opacity: hot * 14% }
+        text "{g}" { at: 12, 12; anchor: center; size: sz + hot * 1; color: tone; opacity: 85% + hot * 15% }
+        zone box hit { from: 0, 0; size: 24, 24; cursor: pointer }
+        on enter hit { hot: 1 }
+        on leave hit { hot: 0 }
+        on press hit { emit tap }
     }
 
-    // ==============================================================
-    // LEFT NOTCH CONTENTS: Logo + Workspace Pill + Active Window
-    // ==============================================================
-    row left_row {
-        at: 16, 18
-        anchor: left center
-        gap: 8
-        align: center
-
-        // Profile / Menu Orb
+    // ── one dock app: the icon lifts and grows under the pointer ─
+    component DockItem(ic: image, n: number, running: bool = false) {
+        size: 40, 44
+        prop hot = 0 ~quick
         group {
-            size: 24, 24
-            ellipse { at: 12, 12; radius: 11; stroke: 1.2; color: stroke_c; opacity: 60% }
-            text "󰑄" { at: 12, 12; anchor: center; size: 13.5; color: stroke_c; opacity: 90% }
-            zone box logo_hit { from: -2, -2; size: 28, 28; cursor: pointer }
-            on press logo_hit { emit open_apple_menu }
+            pivot: 20, 38
+            scale: 1 + hot * 0.22
+            move: 0, hot * -6
+            image ic { at: 1, 0; size: 38, 38 }
+        }
+        ellipse { at: 20, 42; radius: 1.8; color: dot_color; opacity: if(running, 85%, 0%) }
+        zone box hit { from: 0, 0; size: 40, 44; cursor: pointer }
+        on enter hit { hot: 1 }
+        on leave hit { hot: 0 }
+        on press hit { emit launch(n) }
+    }
+
+    //  Everything that is drawn lives in a component. With `screens: each` a surface's loose
+    //  props are shared by every monitor's copy, so a spring that follows `left_row.width`
+    //  would read 0 (the width of a row only exists in the copy that draws it). A
+    //  component's props are its own, so each monitor sizes its own islands.
+    component Shell() {
+        //  Each island's width: what its row measures, chased by a spring.
+        prop lw = 0 ~calm
+        prop cw = 0 ~calm
+        prop rw = 0 ~calm
+        prop dw = 0 ~calm
+        follow lw = left_row.width + pad * 2
+        follow cw = center_row.width + pad * 2
+        follow rw = right_row.width + pad * 2
+        follow dw = dock_row.width + dock_pad * 2
+
+        // ── the glass: ring + top islands + dock, one silhouette ──
+        body {
+            color: bar_color
+            glass: bar_glass
+            lens: false
+            frost: 100%
+            tint: bar_tint
+            smoke: bar_smoke
+            milk: bar_milk
+            rim: bar_rim
+            shine: pointer
+            refraction: 80%
+            dispersion: 40%
+            shadow: 0, 2, 14, 30%
+
+            //  The ring. The sides and the floor melt into what came before, which is what
+            //  rounds the inner corners.
+            box ceiling { from: -ext, -ext; size: screen.width + ext * 2, ext + ring }
+            box rail_l  { from: -ext, 0; size: ext + ring, screen.height; blend: curve }
+            box rail_r  { from: screen.width - ring, 0; size: ext + ring, screen.height; blend: curve }
+            box floor   { from: -ext, screen.height - ring; size: screen.width + ext * 2, ext + ring; blend: curve }
+
+            //  Top islands.
+            box left_notch   { from: -ext, -14; size: lw + ext, notch_h; corner: 18; blend: fillet }
+            box center_notch { from: screen.width / 2 - cw / 2, -14; size: cw, notch_h; corner: 18; blend: fillet }
+            box right_notch  { from: screen.width - rw, -14; size: rw + ext, notch_h; corner: 18; blend: fillet }
+
+            //  The dock, rising from the floor.
+            box dock_island { from: screen.width / 2 - dw / 2, screen.height - dock_h; size: dw, dock_h + ext; corner: 24; blend: dock_fillet }
         }
 
-        // Workspace Pill Indicator
-        group {
-            size: 44, 20
-            box { from: 0, 0; size: 44, 20; corner: 10; color: pill_bg; opacity: pill_op }
-            text "󰊯" { at: 7, 10; anchor: left center; size: 10; color: stroke_c }
-            text "{focused_ws}" { at: 26, 10; anchor: center; size: 11.5; weight: 700; color: ink_c }
-        }
-
-        // Active Application Title / Window Indicator
-        row {
-            gap: 6
+        // ── left island: menu orb · workspace · window ───────────
+        row left_row {
+            at: pad, cy
+            anchor: left middle
+            gap: 10
             align: center
-            text "󰘔" { size: 11.5; color: ink_sub }
-            text "{win.title}" {
-                size: 11.5
-                weight: 600
-                color: ink_c
-                width: 145
-                lines: 1
+
+            group {
+                size: 24, 24
+                prop hot = 0 ~quick
+                ellipse { at: 12, 12; radius: 11; stroke: 1.2; color: stroke_c; opacity: 55% + hot * 45% }
+                text "󰑄" { at: 12, 12; anchor: center; size: 13.5; color: stroke_c }
+                zone box logo_hit { from: 0, 0; size: 24, 24; cursor: pointer }
+                on enter logo_hit { hot: 1 }
+                on leave logo_hit { hot: 0 }
+                on press logo_hit { emit open_apple_menu }
+            }
+
+            row {
+                gap: 5
+                padding: 4
+                fill: pill_fill
+                corner: 10
+                align: center
+                text "󰊯" { size: 10; color: stroke_c }
+                text "{focused_ws}" { size: 11.5; weight: 700; color: ink_c }
+            }
+
+            row {
+                gap: 6
+                align: center
+                text "󰘔" { size: 11.5; color: ink_sub }
+                text "{win.title}" { size: 11.5; weight: 600; color: ink_c; width: 220; tight: true; lines: 1 }
             }
         }
-    }
 
-    // ==============================================================
-    // CENTER NOTCH CONTENTS: Avatar + Date + Time + Weather + Sound
-    // ==============================================================
-    row center_row {
-        at: screen.width / 2, 18
-        anchor: center
-        gap: 10
-        align: center
+        // ── centre island: clock · weather · sound ───────────────
+        row center_row {
+            at: screen.width / 2, cy
+            anchor: center middle
+            gap: 12
+            align: center
 
-        // Mini Avatar Orb
-        group {
-            size: 22, 22
-            ellipse { at: 11, 11; radius: 10; stroke: 1.2; color: stroke_c; opacity: 70% }
-            text "󰺠" { at: 11, 11; anchor: center; size: 12; color: #a9b1d6 }
-            zone box avatar_hit { from: 0, 0; size: 22, 22; cursor: pointer }
-            on press avatar_hit { emit open_apple_menu }
-        }
-
-        // Date & Time clickable group
-        group {
-            size: 118, 24
-            row {
-                at: 59, 12
-                anchor: center
-                gap: 5
+            row clock {
+                gap: 6
                 align: center
+                cursor: pointer
                 text now.date { size: 11; weight: 600; color: ink_sub }
                 text now.time { size: 12.5; weight: 700; color: ink_c }
             }
-            zone box clock_hit { from: 0, 0; size: 118, 24; cursor: pointer }
-            on press clock_hit { emit open_widgets }
-        }
 
-        // Weather
-        row {
-            gap: 4
-            align: center
-            text weather_icon { size: 12; color: accent_c }
-            text weather_temp { size: 11; weight: 600; color: ink_c }
-        }
-
-        // Mini Audio Indicator
-        group {
-            size: 18, 18
-            text if(sound.muted, "󱄟", "󱕞") {
-                at: 9, 9
-                anchor: center
-                size: 11; color: ink_sub; opacity: 85%
+            row {
+                gap: 4
+                align: center
+                text weather_icon { size: 12; color: accent_c }
+                text weather_temp { size: 11; weight: 600; color: ink_c }
             }
-            zone box vol_hit { from: 0, 0; size: 18, 18; cursor: pointer }
-            on press vol_hit { emit open_control_center }
+
         }
-    }
+        on press clock { emit open_widgets }
+        //  Right button is ours (see the tray): a right click on anything here does nothing
+        //  instead of quitting the shell.
+        on press right clock { }
 
-    // ==============================================================
-    // RIGHT NOTCH CONTENTS: Tray Icons + Battery + Status + CC + Bell
-    // ==============================================================
-    row right_row {
-        at: screen.width - 16, 18
-        anchor: right center
-        gap: 10
-        align: center
-
-        // System Tray
-        row {
-            gap: 6
+        // ── right island: tray · network · battery · control centre · notifications ──
+        row right_row {
+            at: screen.width - pad, cy
+            anchor: right middle
+            gap: 10
             align: center
-            for i in icons {
-                group {
-                    size: 20, 20
-                    image i.icon { at: 1, 1; size: 18, 18 }
-                    zone box tray_hit { from: 0, 0; size: 20, 20; cursor: pointer }
-                    on press tray_hit { emit tray_activate(i.index) }
+
+            row {
+                gap: 6
+                align: center
+                for i in icons {
+                    group {
+                        size: 20, 20
+                        image i.icon { at: 1, 1; size: 18, 18 }
+                        zone box tray_hit { from: 0, 0; size: 20, 20; cursor: pointer }
+                        on press tray_hit { emit tray_activate(i.index) }
+                        on press middle tray_hit { emit tray_secondary(i.index) }
+                        //  Right click: the application shows its own menu. This rule is also what
+                        //  tells pleamar the right button is in use: without any `on press right`
+                        //  in a scene, a right click ANYWHERE on it quits the whole process.
+                        on press right tray_hit { emit tray_context(i.index) }
+                    }
                 }
             }
+
+            text if(net.online, "󰤨", "󰤭") { size: 12.5; color: if(net.online, ink_c, ink_sub); opacity: 85% }
+
+            row {
+                gap: 3
+                align: center
+                text if(bat.charging, "󰂄", "󰁹") { size: 12.5; color: if(bat.charging, mint, ink_c) }
+                text "{bat.percent}" { size: 11; weight: 700; color: accent_c }
+            }
+
+            Glyph("󱒓", open_control_center)
+            Glyph("󰂚", open_widgets)
         }
 
-        // Steam Icon
-        text "󱓓" { size: 13; color: ink_sub; opacity: 75% }
-
-        // Music note
-        text "󰾆" { size: 12; color: #ff757f; opacity: 80% }
-
-        // Network Status
-        text if(net.online, "󰤨", "󰤭") { size: 12.5; color: if(net.online, ink_c, ink_sub); opacity: 85% }
-
-        // Battery Percent Badge
-        row {
-            gap: 3
+        // ── the dock ─────────────────────────────────────────────
+        row dock_row {
+            at: screen.width / 2, screen.height - dock_h / 2 - 1
+            anchor: center middle
+            gap: 10
             align: center
-            text if(bat.charging, "󰂄", "󰁹") { size: 12.5; color: if(bat.charging, mint, ink_c) }
-            text "{bat.percent}" { size: 11; weight: 700; color: accent_c }
-        }
 
-        // Sliders / Control Center Quick Button
-        group {
-            size: 22, 22
-            text "󱒓" { at: 11, 11; anchor: center; size: 12.5; color: ink_c; opacity: 85% }
-            zone box cc_hit { from: 0, 0; size: 22, 22; cursor: pointer }
-            on press cc_hit { emit open_control_center }
-        }
-
-        // Notification Bell Button
-        group {
-            size: 22, 22
-            text "󰂚" { at: 11, 11; anchor: center; size: 12.5; color: ink_c; opacity: 85% }
-            zone box notif_hit { from: 0, 0; size: 22, 22; cursor: pointer }
-            on press notif_hit { emit open_widgets }
+            DockItem(icon_term, 1, true)
+            DockItem(icon_files, 2, true)
+            DockItem(icon_code, 3, true)
+            DockItem(icon_steam, 4)
+            DockItem(icon_obsidian, 5)
+            DockItem(icon_browser, 6, true)
+            DockItem(icon_discord, 7)
+            DockItem(icon_telegram, 8)
         }
     }
+
+    Shell()
 }

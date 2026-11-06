@@ -47,6 +47,9 @@ scene MacAppSwitcher {
     // Outside dismiss
     zone box dismiss { from: 0, 0; size: 700, 160; active: open }
     on press dismiss { open = false }
+    // A scene that never uses the right button is closed by pleamar on any right click
+    // (its prototype emergency exit). This empty rule says the right button is ours: nothing happens.
+    on press right dismiss { }
 
     group {
         move: 40, 20
