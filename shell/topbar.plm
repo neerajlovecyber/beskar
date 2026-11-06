@@ -82,15 +82,15 @@ scene MacTopBar {
             size: screen.width, 16
         }
 
-        // 2. Left Notch: completely envelops left_row
+        // 2. Left Notch: touches and sprouts directly from the left screen edge
         box left_notch {
-            at: 12 + left_w / 2, 16
-            size: left_w, 40
-            corner: 16
-            blend: 16
+            from: -12, -12
+            size: left_w + 12, 50
+            corner: 20
+            blend: 18
         }
 
-        // 3. Center Notch: completely envelops center_row, dead-centered
+        // 3. Center Notch: floating middle dynamic island
         box center_notch {
             at: screen.width / 2, 16
             size: center_w, 40
@@ -98,12 +98,12 @@ scene MacTopBar {
             blend: 16
         }
 
-        // 4. Right Notch: completely envelops all tray icons and status controls
+        // 4. Right Notch: touches and sprouts directly from the right screen edge
         box right_notch {
-            at: screen.width - 12 - right_w / 2, 16
-            size: right_w, 40
-            corner: 16
-            blend: 16
+            from: screen.width - right_w, -12
+            size: right_w + 12, 50
+            corner: 20
+            blend: 18
         }
     }
 
@@ -111,7 +111,7 @@ scene MacTopBar {
     // LEFT NOTCH CONTENTS: Logo + Workspace Pill + Active Window
     // ==============================================================
     row left_row {
-        at: 24, 18
+        at: 16, 18
         anchor: left center
         gap: 8
         align: center
@@ -206,7 +206,7 @@ scene MacTopBar {
     // RIGHT NOTCH CONTENTS: Tray Icons + Battery + Status + CC + Bell
     // ==============================================================
     row right_row {
-        at: screen.width - 24, 18
+        at: screen.width - 16, 18
         anchor: right center
         gap: 10
         align: center
