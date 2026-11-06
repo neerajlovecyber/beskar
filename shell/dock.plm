@@ -3,9 +3,10 @@ import "common/palette.plm"
 
 scene MacDock {
     surface {
-        size: 470, 70
+        size: 550, 114
         anchor: bottom
-        margin: 10
+        margin: 4
+        screens: each
     }
 
     permissions {
@@ -24,19 +25,25 @@ scene MacDock {
     image icon_settings = icon "preferences-system", 44, 44
     image icon_trash    = icon "user-trash", 44, 44
 
+    // ── Safe Background Zone (absorbs right-clicks, declared first) ──
+    zone box dock_bg { from: 40, 16; size: 470, 68 }
+    on press right dock_bg { }
+
     // ── Frosted Glass Capsule Background ──────────────────────────
     body {
         color: #1a1c23
         glass: 92%
         frost: auto
-        shadow: 0, 10, 32, 40%
+        shadow: 0, 6, 18, 35%
         rim: 14%
-        box { from: 0, 0; size: 470, 70; corner: 22 }
+        box { from: 40, 16; size: 470, 68; corner: 22 }
     }
+    // Subtle top specular hairline
+    box { from: 58, 16; size: 434, 1; color: #ffffff; opacity: 18% }
 
     // ── Dock Items ────────────────────────────────────────────────
     row {
-        at: 14, 6
+        at: 54, 22
         gap: 10
         align: center
 
@@ -158,8 +165,4 @@ scene MacDock {
             on press hit7 { emit launch(7) }
         }
     }
-
-    // Dock background zone to absorb right clicks and prevent accidental closing
-    zone box dock_bg { from: 0, 0; size: 470, 70 }
-    on press right dock_bg { }
 }

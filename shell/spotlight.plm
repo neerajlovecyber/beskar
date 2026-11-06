@@ -3,7 +3,7 @@ import "common/palette.plm"
 
 scene MacSpotlight {
     surface {
-        size: 640, 460
+        size: 680, 500
         anchor: center
         level: overlay
         keyboard: exclusive while open
@@ -33,10 +33,12 @@ scene MacSpotlight {
     }
 
     // Click outside to dismiss
-    zone box whole { at: 320, 230; size: 600, 440; active: open }
+    zone box dismiss { from: 0, 0; size: 680, 500; active: open }
+    on press dismiss { open = false }
+    on press right dismiss { }
 
     group {
-        pivot: 320, 40
+        pivot: 340, 40
         scale: scale
         opacity: seen
 
@@ -46,14 +48,14 @@ scene MacSpotlight {
             glass: 94%
             frost: auto
             rim: 12%
-            shadow: 0, 22, 60, 45%
-            box { from: 20, 20; size: 600, tall; corner: 22 }
+            shadow: 0, 14, 28, 35%
+            box { from: 40, 24; size: 600, tall; corner: 22 }
         }
 
         // Spotlight Magnifying Glass & Search Field
-        text "󰍉" { at: 42, 48; anchor: center; size: 19; color: ink; opacity: 60% }
+        text "󰍉" { at: 62, 52; anchor: center; size: 19; color: ink; opacity: 60% }
         input query {
-            at: 64, 38
+            at: 84, 42
             width: 530
             size: 19
             color: ink
@@ -62,11 +64,11 @@ scene MacSpotlight {
         }
 
         // Separator Line
-        box { from: 40, 76; size: 560, 1; color: #ffffff; opacity: 10% }
+        box { from: 60, 80; size: 560, 1; color: #ffffff; opacity: 10% }
 
         // Results List
         column list ~quick {
-            at: 32, 86
+            at: 52, 90
             gap: 2
             for h in hits { Row(h) }
         }

@@ -3,9 +3,9 @@ import "common/palette.plm"
 
 scene MacControlCenter {
     surface {
-        size: 360, 480
+        size: 440, 560
         anchor: top_right
-        margin: 36, 14, 0, 0
+        margin: 32, 4, 0, 0
         level: overlay
     }
 
@@ -52,7 +52,13 @@ scene MacControlCenter {
         gone             { seen: 0 ~quick; scale: 0.96 ~quick }
     }
 
+    // Dismiss click zone for outside
+    zone box dismiss { from: 0, 0; size: 440, 560; active: open }
+    on press dismiss { open = false; page = 0 }
+    on press right dismiss { }
+
     group {
+        move: 40, 16
         pivot: 320, 20
         scale: scale
         opacity: seen
@@ -63,7 +69,7 @@ scene MacControlCenter {
             glass: 94%
             frost: auto
             rim: 14%
-            shadow: 0, 20, 50, 45%
+            shadow: 0, 14, 28, 35%
             box { from: 0, 0; size: 360, 480; corner: 22 }
         }
 

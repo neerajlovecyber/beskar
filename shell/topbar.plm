@@ -10,8 +10,7 @@ scene MacTopBar {
     }
 
     permissions {
-        services: "clock", "audio", "network", "battery", "window"
-        run: "pleamar"
+        services: "clock", "audio", "network", "battery", "window", "say:control_center", "say:spotlight", "say:apple_menu"
     }
 
     service clock as now { time: text = "--:--"; date: text }
@@ -20,7 +19,13 @@ scene MacTopBar {
     service battery as bat { percent: number; charging: bool }
     service window as win { title: text }
 
+    event open_apple_menu ->
     event open_control_center ->
+    event open_spotlight ->
+
+    // ── Safe Background Zone to Catch Right Clicks and Background ──
+    zone box topbar_bg { from: 0, 0; size: screen.width, 30 }
+    on press right topbar_bg { }
 
     // ── Frosted Glass Bar Background ──────────────────────────────
     body {
@@ -38,8 +43,12 @@ scene MacTopBar {
         gap: 16
         align: center
 
-        // Apple Icon
-        text "" { size: 15; weight: 700; color: ink }
+        // Apple Icon with Click Zone
+        group {
+            size: 18, 20
+            text "" { at: 0, 0; size: 15; weight: 700; color: ink }
+            zone box apple_hit { from: -4, -4; size: 26, 28; cursor: pointer }
+        }
 
         // Active App Title or Fallback
         text "Finder" { size: 13; weight: 600; color: ink }
@@ -72,6 +81,13 @@ scene MacTopBar {
         // Volume (Nerd Font icon)
         text if(sound.muted, "󰝟", "󰕾") { size: 14; color: ink; opacity: 85% }
 
+        // Spotlight Search Icon (Clickable)
+        group {
+            size: 16, 16
+            text "󰍉" { at: 0, 0; size: 14; color: ink; opacity: 85% }
+            zone box spot_hit { from: -4, -4; size: 24, 24; cursor: pointer }
+        }
+
         // Control Center Toggle Icon (Clickable)
         group {
             size: 20, 16
@@ -84,5 +100,7 @@ scene MacTopBar {
         text now.time { size: 13; weight: 600; color: ink }
     }
 
+    on press apple_hit { emit open_apple_menu }
+    on press spot_hit { emit open_spotlight }
     on press cc_hit { emit open_control_center }
 }

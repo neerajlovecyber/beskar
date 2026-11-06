@@ -1,0 +1,141 @@
+// macOS Apple Menu Dropdown
+import "common/palette.plm"
+
+scene MacAppleMenu {
+    surface {
+        size: 280, 290
+        anchor: top_left
+        margin: 34, 10, 0, 0
+        level: overlay
+    }
+
+    permissions {
+        run: "gnome-control-center", "systemctl", "loginctl", "nautilus"
+    }
+
+    fact open = false
+
+    event toggle
+    event action_settings ->
+    event action_lock ->
+    event action_restart ->
+    event action_power ->
+    event action_about ->
+
+    prop seen = 0 ~quick
+    prop scale = 0.96 ~quick
+
+    layer panel ~quick {
+        shown while open { seen: 1 ~quick; scale: 1 ~quick }
+        gone             { seen: 0 ~quick; scale: 0.96 ~quick }
+    }
+
+    // Dismiss click zone for outside
+    zone box dismiss { from: 0, 0; size: 280, 290; active: open }
+    on press dismiss { open = false }
+    on press right dismiss { }
+
+    group {
+        move: 25, 12
+        pivot: 20, 10
+        scale: scale
+        opacity: seen
+
+        // Frosted Glass Window Frame
+        body {
+            color: #1a1c22
+            glass: 94%
+            frost: auto
+            rim: 14%
+            shadow: 0, 12, 28, 35%
+            box { from: 0, 0; size: 230, 250; corner: 14 }
+        }
+
+        column {
+            at: 8, 10
+            gap: 2
+
+            // About
+            group {
+                size: 214, 28
+                prop hot1 = 0 ~quick
+                box { from: 0, 0; size: 214, 28; corner: 6; color: blue; opacity: hot1 * 80% }
+                text "About This Mac" { at: 10, 6; size: 13; color: ink }
+                zone box hit_about { from: 0, 0; size: 214, 28; cursor: pointer; active: open }
+                on enter hit_about { hot1: 1 }
+                on leave hit_about { hot1: 0 }
+                on press hit_about { emit action_about; open = false }
+            }
+
+            // Divider
+            box { size: 214, 1; color: #ffffff; opacity: 10% }
+
+            // System Settings
+            group {
+                size: 214, 28
+                prop hot2 = 0 ~quick
+                box { from: 0, 0; size: 214, 28; corner: 6; color: blue; opacity: hot2 * 80% }
+                text "System Settings..." { at: 10, 6; size: 13; color: ink }
+                zone box hit_settings { from: 0, 0; size: 214, 28; cursor: pointer; active: open }
+                on enter hit_settings { hot2: 1 }
+                on leave hit_settings { hot2: 0 }
+                on press hit_settings { emit action_settings; open = false }
+            }
+
+            // App Store / Software
+            group {
+                size: 214, 28
+                prop hot3 = 0 ~quick
+                box { from: 0, 0; size: 214, 28; corner: 6; color: blue; opacity: hot3 * 80% }
+                text "App Store..." { at: 10, 6; size: 13; color: ink }
+                zone box hit_store { from: 0, 0; size: 214, 28; cursor: pointer; active: open }
+                on enter hit_store { hot3: 1 }
+                on leave hit_store { hot3: 0 }
+                on press hit_store { emit action_settings; open = false }
+            }
+
+            // Divider
+            box { size: 214, 1; color: #ffffff; opacity: 10% }
+
+            // Lock Screen
+            group {
+                size: 214, 28
+                prop hot4 = 0 ~quick
+                box { from: 0, 0; size: 214, 28; corner: 6; color: blue; opacity: hot4 * 80% }
+                text "Lock Screen" { at: 10, 6; size: 13; color: ink }
+                text "⌃⌘Q" { at: 170, 7; size: 11; color: ink; opacity: 60% }
+                zone box hit_lock { from: 0, 0; size: 214, 28; cursor: pointer; active: open }
+                on enter hit_lock { hot4: 1 }
+                on leave hit_lock { hot4: 0 }
+                on press hit_lock { emit action_lock; open = false }
+            }
+
+            // Restart
+            group {
+                size: 214, 28
+                prop hot5 = 0 ~quick
+                box { from: 0, 0; size: 214, 28; corner: 6; color: blue; opacity: hot5 * 80% }
+                text "Restart..." { at: 10, 6; size: 13; color: ink }
+                zone box hit_restart { from: 0, 0; size: 214, 28; cursor: pointer; active: open }
+                on enter hit_restart { hot5: 1 }
+                on leave hit_restart { hot5: 0 }
+                on press hit_restart { emit action_restart; open = false }
+            }
+
+            // Shut Down
+            group {
+                size: 214, 28
+                prop hot6 = 0 ~quick
+                box { from: 0, 0; size: 214, 28; corner: 6; color: blue; opacity: hot6 * 80% }
+                text "Shut Down..." { at: 10, 6; size: 13; color: ink }
+                zone box hit_power { from: 0, 0; size: 214, 28; cursor: pointer; active: open }
+                on enter hit_power { hot6: 1 }
+                on leave hit_power { hot6: 0 }
+                on press hit_power { emit action_power; open = false }
+            }
+        }
+    }
+
+    on toggle { toggle open }
+    on key Escape { open = false }
+}
