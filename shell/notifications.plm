@@ -8,13 +8,17 @@
 import "common/palette.plm"
 
 scene MacNotifications {
+    //  `notifications` is what makes this the receiver of the desktop's notifications (the logic asks for
+    //  them); `files` / `files.write` keep the history of dismissed ones across restarts; `say:topbar`
+    //  tells the bell how many are waiting.
     permissions {
-        services: "notifications", "notifications.*", "notification_history"
+        services: "notifications", "notifications.*", "files", "files.write", "say:topbar"
     }
 
-    //  `icon` is the application's own icon (a name or a path, painted by `image`).
-    model notices max 6 { id: number; app: text; title: text; body: text; icon: image 40, 40 }
-    service notifications { list: notices }
+    //  Both are painted by notifications.luau. `icon` is the application's own icon (a name or a path).
+    //  `notices` are the ones waiting; `past` the ones already dealt with, newest first.
+    model notices max 6 { id: number; app: text; title: text; body: text; icon: image 40, 40; age: text }
+    model past max 5 { title: text; body: text; icon: image 28, 28; age: text }
 
     fact open = false
     fact dark_mode = true
@@ -24,6 +28,7 @@ scene MacNotifications {
     event toggle
     event arrived
     event clear_notices ->
+    event clear_past ->
     event dismiss_notice ->
 
     // ── look ─────────────────────────────────────────────────────
@@ -62,7 +67,7 @@ scene MacNotifications {
 
         text n.title { at: 74, 30; anchor: left center; size: 14; weight: 700; color: ink_c; width: 210; lines: 1 }
         text n.body { at: 74, 50; size: 13; color: ink_c; opacity: 85%; width: 252; lines: 2 }
-        text "now" { at: 332, 30; anchor: right center; size: 12; color: ink_sub; opacity: 1 - hot }
+        text n.age { at: 332, 30; anchor: right center; size: 12; color: ink_sub; opacity: 1 - hot }
 
         //  Close: a small round button at the corner, only on hover.
         group {
@@ -80,12 +85,27 @@ scene MacNotifications {
         on press right x_hit { }
     }
 
+    //  One that was dealt with: smaller, quieter.
+    component PastRow(h: record) {
+        size: 352, 52
+        box { from: 0, 0; size: 352, 52; corner: 16; color: card_fill; opacity: card_fill_op * 55% }
+        body {
+            gradient: 0, 0 to 28, 28, #4aa3ff, #5e5ce6
+            box { from: 14, 12; size: 28, 28; corner: 8; opacity: 70% }
+        }
+        text "󰂚" { at: 28, 26; anchor: center; size: 13; color: #ffffff; opacity: 80% }
+        image h.icon { at: 14, 12; size: 28, 28; opacity: 80% }
+        text h.title { at: 54, 20; anchor: left center; size: 12; weight: 600; color: ink_c; opacity: 85%; width: 230; lines: 1 }
+        text h.body { at: 54, 36; anchor: left center; size: 11; color: ink_sub; width: 230; lines: 1 }
+        text h.age { at: 338, 20; anchor: right center; size: 10.5; color: ink_sub }
+    }
+
     // ── the centre ───────────────────────────────────────────────
     prop seen = 0 ~quick
     prop scale = 0.96 ~quick
     //  The centre is as tall as its cards.
     prop ph = 150 ~calm
-    follow ph = if(notices.count < 1, 190, 70 + notices.count * 100 + 8)
+    follow ph = if(notices.count < 1 and past.count < 1, 190, 70 + max(notices.count, if(past.count > 0, 0, 1)) * 100 + if(past.count > 0, 44 + past.count * 58, 0) + 8)
 
     layer centre ~quick {
         shown while open { seen: 1 ~quick; scale: 1 ~quick }
@@ -137,9 +157,25 @@ scene MacNotifications {
                 for n in notices { NoticeCard(n) }
             }
 
+            //  What was dealt with, kept across restarts
+            group {
+                show: past.count > 0
+                move: 0, 62 + notices.count * 100 + 4
+                text "Earlier" { at: 24, 14; anchor: left center; size: 12; weight: 700; color: ink_sub }
+                text "Clear" { at: 356, 14; anchor: right center; size: 11; weight: 600; color: ink_sub }
+                zone box clear_past_hit { from: 300, 4; size: 56, 22; corner: 11; cursor: pointer }
+                on press clear_past_hit { emit clear_past }
+                on press right clear_past_hit { }
+                column {
+                    at: 14, 32
+                    gap: 6
+                    for h in past { PastRow(h) }
+                }
+            }
+
             //  Nothing new
             group {
-                show: notices.count < 1
+                show: notices.count < 1 and past.count < 1
                 ellipse { at: 190, 100; radius: 28; color: item_bg }
                 path { at: 181, 90; color: ink_sub; move 0, 15; line 2.5, 15; line 3, 7; line 5, 2; line 9, 2; line 11, 7; line 11.5, 15; line 14, 15; line 14, 17; line 0, 17; close }
                 ellipse { at: 188, 108; radius: 2.2; color: ink_sub }

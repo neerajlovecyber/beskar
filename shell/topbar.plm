@@ -37,6 +37,7 @@ scene MacTopBar {
     model icons max 8 { icon: image 18, 18 }
 
     fact dark_mode = true
+    fact notif_count = 0       // set by notifications.luau: how many are waiting
     fact skin = 0
 
     //  Reported by topbar.luau
@@ -283,7 +284,13 @@ scene MacTopBar {
             }
 
             Glyph("󰒓", open_control_center)
-            Glyph("󰂚", open_notifications)
+            //  The bell, with a red badge while notifications are waiting.
+            group {
+                size: 24, 24
+                Glyph("󰂚", open_notifications)
+                ellipse { at: 19, 5; radius: 5.5; color: #ff453a; opacity: if(notif_count > 0, 100%, 0%) }
+                text "{notif_count}" { at: 19, 5; anchor: center; size: 7.5; weight: 700; color: #ffffff; opacity: if(notif_count > 0, 100%, 0%) }
+            }
         }
 
         //  A thin strip along the bottom edge brings a hidden dock back.
