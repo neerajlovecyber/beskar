@@ -10,7 +10,7 @@ local wallpapers = {
 }
 
 -- Scenes that follow the shared theme (shell/common/theme.plm) and so have an `accent` fact too.
-local THEMED = { "topbar", "control_center", "notifications", "dashboard", "settings" }
+local THEMED = { "topbar", "control_center", "notifications", "dashboard", "settings", "wallpapers" }
 local PLAIN = { "spotlight", "apple_menu", "osd", "clipboard", "session", "capture" }
 
 local function save_theme(dm_str, skin_str, accent_str)
@@ -65,16 +65,8 @@ on("brightness_set", function(val)
     sys.call("brightness.level", b)
 end)
 
-on("apply_wallpaper", function(idx)
-    local i = tonumber(idx) or 0
-    fact.wall_choice = i
-    local path = wallpapers[i]
-    if path then
-        log("System Settings: Applying wallpaper", path)
-        -- Ensure awww-daemon is up and set the image
-        os.execute("pgrep awww-daemon >/dev/null || (awww-daemon & sleep 0.2)")
-        os.execute(string.format("awww img '%s' 2>/dev/null &", path))
-    end
+on("open_wallpapers", function()
+    pcall(sys.call, "say", "wallpapers", "fact open true")
 end)
 
 on("run_update", function()

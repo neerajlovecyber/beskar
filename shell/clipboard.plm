@@ -10,7 +10,7 @@ scene MacClipboard {
     }
 
     permissions {
-        services: "say:topbar", "say:dock", "say:spotlight", "say:control_center", "say:apple_menu", "say:notifications", "say:dashboard", "say:settings"
+        services: "say:topbar", "say:dock", "say:spotlight", "say:control_center", "say:apple_menu", "say:notifications", "say:dashboard", "say:settings", "say:wallpapers"
         run: "cliphist", "wl-copy", "notify-send", "sh"
     }
 

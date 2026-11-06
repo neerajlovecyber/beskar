@@ -22,7 +22,7 @@ kill_all() {
 
 check_status() {
     echo "macOS / iNiR Shell Status:"
-    for comp in topbar border spotlight control_center apple_menu notifications dashboard osd settings lock session capture appswitcher clipboard; do
+    for comp in topbar border spotlight control_center apple_menu notifications dashboard wallpapers osd settings lock session capture appswitcher clipboard; do
         if pgrep -f "pleamar.*$comp\.plm" >/dev/null 2>&1; then
             echo "  ✔ $comp is RUNNING"
         else
@@ -41,11 +41,11 @@ apply_saved_theme() {
         [ -z "$DM" ] && DM="true"
         [ -z "$SKIN" ] && SKIN="0"
 
-        for comp in topbar border spotlight control_center apple_menu notifications dashboard osd settings session capture appswitcher clipboard; do
+        for comp in topbar border spotlight control_center apple_menu notifications dashboard wallpapers osd settings session capture appswitcher clipboard; do
             "$BIN" --say "$comp" "fact dark_mode $DM" >/dev/null 2>&1 || true
             "$BIN" --say "$comp" "fact skin $SKIN" >/dev/null 2>&1 || true
         done
-        for comp in topbar control_center notifications dashboard settings; do
+        for comp in topbar control_center notifications dashboard settings wallpapers; do
             "$BIN" --say "$comp" "fact accent $ACCENT" >/dev/null 2>&1 || true
         done
     fi
@@ -62,9 +62,13 @@ start_shell() {
         setsid awww-daemon </dev/null >/tmp/awww.log 2>&1 &
         sleep 0.4
     fi
-    WALLPAPER="/home/nsp/Pictures/wallpapers/zzzzz.png"
-    if [ -f "$WALLPAPER" ]; then
-        awww img "$WALLPAPER" >/dev/null 2>&1 || true
+    # Wallpapers that ship with Beskar go where the picker looks for them (never overwriting)
+    mkdir -p "$HOME/.local/share/beskar/wallpapers"
+    cp -n "$DIR"/assets/wallpapers/*.jpg "$HOME/.local/share/beskar/wallpapers/" 2>/dev/null || true
+    # The wallpaper chosen in the picker (Super+W) is put back; none chosen yet leaves what awww shows
+    WALLPAPER=$(cat "$HOME/.config/beskar/wallpaper" 2>/dev/null || true)
+    if [ -n "$WALLPAPER" ] && [ -f "$WALLPAPER" ]; then
+        awww img "$WALLPAPER" --transition-type none >/dev/null 2>&1 || true
     fi
 
     setsid "$BIN" --no-hud --scene "$DIR/shell/topbar.plm" </dev/null >/tmp/pleamar_topbar.log 2>&1 &
@@ -81,6 +85,8 @@ start_shell() {
     PID_WIDGETS=$!
     setsid "$BIN" --no-hud --scene "$DIR/shell/dashboard.plm" </dev/null >/tmp/pleamar_dashboard.log 2>&1 &
     PID_DASH=$!
+    setsid "$BIN" --no-hud --scene "$DIR/shell/wallpapers.plm" </dev/null >/tmp/pleamar_wallpapers.log 2>&1 &
+    PID_WALL=$!
     setsid "$BIN" --no-hud --scene "$DIR/shell/osd.plm" </dev/null >/tmp/pleamar_osd.log 2>&1 &
     PID_OSD=$!
     setsid "$BIN" --no-hud --scene "$DIR/shell/settings.plm" </dev/null >/tmp/pleamar_settings.log 2>&1 &
@@ -96,7 +102,7 @@ start_shell() {
     setsid "$BIN" --no-hud --scene "$DIR/shell/clipboard.plm" </dev/null >/tmp/pleamar_clipboard.log 2>&1 &
     PID_CLIP=$!
 
-    echo "$PID_BAR $PID_BORDER $PID_SPOTLIGHT $PID_CC $PID_APPLE $PID_WIDGETS $PID_DASH $PID_OSD $PID_SETTINGS $PID_LOCK $PID_SESSION $PID_CAPTURE $PID_SWITCHER $PID_CLIP" > "$PID_FILE"
+    echo "$PID_BAR $PID_BORDER $PID_SPOTLIGHT $PID_CC $PID_APPLE $PID_WIDGETS $PID_DASH $PID_WALL $PID_OSD $PID_SETTINGS $PID_LOCK $PID_SESSION $PID_CAPTURE $PID_SWITCHER $PID_CLIP" > "$PID_FILE"
     sleep 0.6
 
     apply_saved_theme
@@ -128,6 +134,7 @@ start_shell() {
     echo "  - $0 apple-menu      (Toggle Apple menu)"
     echo "  - $0 notifications   (Toggle Notification Center)"
     echo "  - $0 dashboard       (Toggle the dashboard under the clock)"
+    echo "  - $0 wallpapers      (Toggle the wallpaper picker, Super+W)"
     echo "  - $0 vol-up          (Increase Volume + Bezel OSD)"
     echo "  - $0 vol-down        (Decrease Volume + Bezel OSD)"
     echo "  - $0 mute            (Toggle Mute + Bezel OSD)"
@@ -185,6 +192,9 @@ case "$1" in
     dashboard)
         "$BIN" --say dashboard "emit toggle"
         ;;
+    wallpapers)
+        "$BIN" --say wallpapers "emit toggle"
+        ;;
     vol-up)
         "$BIN" --say osd "emit volume_up"
         ;;
@@ -206,7 +216,7 @@ case "$1" in
     dark-mode)
         VAL="true"
         [ "$2" = "off" ] && VAL="false"
-        for comp in topbar spotlight control_center apple_menu notifications dashboard osd settings session capture; do
+        for comp in topbar spotlight control_center apple_menu notifications dashboard wallpapers osd settings session capture; do
             "$BIN" --say "$comp" "fact dark_mode $VAL"
         done
         mkdir -p "$(dirname "$CONFIG_FILE")"
@@ -215,7 +225,7 @@ case "$1" in
         ;;
     skin)
         SKIN_VAL="${2:-0}"
-        for comp in topbar spotlight control_center apple_menu notifications dashboard osd settings session capture; do
+        for comp in topbar spotlight control_center apple_menu notifications dashboard wallpapers osd settings session capture; do
             "$BIN" --say "$comp" "fact skin $SKIN_VAL"
         done
         mkdir -p "$(dirname "$CONFIG_FILE")"

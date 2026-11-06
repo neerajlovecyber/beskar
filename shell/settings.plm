@@ -10,7 +10,7 @@ scene MacSettings {
     }
 
     permissions {
-        services: "clock", "audio", "audio.*", "brightness", "brightness.*", "network", "network.*", "bluetooth", "bluetooth.*", "say:topbar", "say:dock", "say:spotlight", "say:control_center", "say:apple_menu", "say:notifications", "say:dashboard", "say:osd", "say:clipboard"
+        services: "clock", "audio", "audio.*", "brightness", "brightness.*", "network", "network.*", "bluetooth", "bluetooth.*", "say:topbar", "say:dock", "say:spotlight", "say:control_center", "say:apple_menu", "say:notifications", "say:dashboard", "say:osd", "say:clipboard", "say:wallpapers"
         run: "awww", "awww-daemon", "gsettings", "systemctl", "loginctl", "kitty", "pacman", "yay", "paru", "sh"
     }
 
@@ -81,6 +81,7 @@ scene MacSettings {
     event volume_set ->
     event brightness_set ->
     event apply_wallpaper ->
+    event open_wallpapers ->
     event run_update ->
     event toggle_wifi ->
     event toggle_bt ->
@@ -562,44 +563,15 @@ scene MacSettings {
             show: tab == 6
             move: 254, 60
 
-            // Current Wallpaper Preview
-            box { from: 0, 0; size: 556, 128; corner: 14; color: card_fill; opacity: card_fill_op }
-            box { from: 0, 0; size: 556, 128; corner: 14; stroke: 1; color: c_border; opacity: c_border_op }
-            text "Current Desktop Background" { at: 18, 16; size: 13; weight: 600; color: ink_c }
-
-            row {
-                at: 18, 42
-                gap: 16; align: center
-                box { from: 0, 0; size: 120, 68; corner: 8; color: #2d3748 }
-                text "󰖐" { at: 60, 34; anchor: center; size: 28; color: accent_c }
-                column {
-                    gap: 4
-                    text pick(wall_choice, "CachyOS Liquid Flow", "Abstract Color Waves", "Topography Contours", "Deep Dimensions", "Lines Minimalist", "Dark Streaks") {
-                        size: 14; weight: 600; color: ink_c
-                    }
-                    text "High Dynamic Range · 5K Resolution · Automatically adapts to theme" { size: 11; color: ink_sub }
-                }
-            }
-
-            // Grid of Wallpaper Options
-            box { from: 0, 140; size: 556, 320; corner: 14; color: card_fill; opacity: card_fill_op }
-            box { from: 0, 140; size: 556, 320; corner: 14; stroke: 1; color: c_border; opacity: c_border_op }
-            text "Wallpapers & Graphics" { at: 18, 156; size: 13; weight: 600; color: ink_c }
-
-            grid {
-                at: 18, 184
-                columns: 3
-                gap: 14
-                width: 520
-                row: 110
-
-                WallTile(0, "Liquid Flow", #2b4c7e)
-                WallTile(1, "Abstract", #8b3a62)
-                WallTile(2, "Topography", #1f3a34)
-                WallTile(3, "Dimensions", #312e81)
-                WallTile(4, "Lines", #374151)
-                WallTile(5, "Dark Streaks", #18181b)
-            }
+            box { from: 0, 0; size: 556, 150; corner: 14; color: card_fill; opacity: card_fill_op }
+            box { from: 0, 0; size: 556, 150; corner: 14; stroke: 1; color: c_border; opacity: c_border_op }
+            text "Desktop Background" { at: 18, 20; anchor: left center; size: 13; weight: 600; color: ink_c }
+            text "Pick from your pictures (~/Pictures/wallpapers), the wallpapers that come with Beskar, and the system's." { at: 18, 46; size: 11.5; color: ink_sub; width: 520; lines: 2 }
+            box { from: 18, 88; size: 190, 40; corner: 12; color: accent_c }
+            text "Choose Wallpaper…" { at: 113, 108; anchor: center; size: 12.5; weight: 600; color: #ffffff }
+            zone box open_walls_hit { from: 18, 88; size: 190, 40; corner: 12; cursor: pointer }
+            text "Shortcut: Super + W" { at: 224, 108; anchor: left center; size: 11.5; color: ink_sub }
+            on press open_walls_hit { emit open_wallpapers }
         }
 
         // ──────────────────────────────────────────────────────────
