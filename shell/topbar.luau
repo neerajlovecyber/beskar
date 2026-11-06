@@ -32,21 +32,49 @@ on("open_cc_bt", open_cc_page(2))
 -- The service's list goes to the scene's `icons` model (it draws the picture). Reading the model
 -- back gives each record with EVERYTHING it carried, `key` included, which is what
 -- tray.activate / tray.secondary / tray.context need.
--- Tray items that stay out of the bar: the shell already has its own network and Bluetooth
--- indicators (and the Control Center), so nm-applet and blueman would only repeat them. Chrome's
--- background icon never goes away while it runs. Add an item's `id` here to hide it too
--- (`id`s: nm-applet, blueman, chrome_status_icon_1, Cachy-Update, …).
-local HIDE = { ["nm-applet"] = true, ["blueman"] = true, ["chrome_status_icon_1"] = true, ["Cachy-Update"] = true }
+-- Every app that has a tray icon shows, except the two that only repeat what the bar already draws itself:
+-- nm-applet (network) and blueman (Bluetooth). To hide more, put the item's id (one per line) in
+-- ~/.config/beskar/tray-hide; to show these two again, put `-nm-applet` / `-blueman` there.
+-- Ids seen on this machine: chrome_status_icon_1, Cachy-Update, nm-applet, blueman, … (`describe` lists them).
+local DEFAULT_HIDE = { ["nm-applet"] = true, ["blueman"] = true }
+local hidden = DEFAULT_HIDE
+local last_tray = {}
 
-sys.watch("tray", function(list)
+local function show_tray()
     local shown = {}
-    for _, it in ipairs(list or {}) do
-        if not HIDE[it.id or ""] and it.status ~= "Passive" then
+    for _, it in ipairs(last_tray) do
+        if not hidden[it.id or ""] and it.status ~= "Passive" then
             shown[#shown + 1] = it
         end
     end
     model.icons = shown
+end
+
+sys.watch("tray", function(list)
+    last_tray = list or {}
+    show_tray()
 end)
+
+local function read_tray_hide()
+    run("sh", { "-c", 'cat "$HOME/.config/beskar/tray-hide" 2>/dev/null' }, function(out)
+        local set = {}
+        for k, v in pairs(DEFAULT_HIDE) do
+            set[k] = v
+        end
+        for line in (out or ""):gmatch("[^\n]+") do
+            local id = line:gsub("^%s+", ""):gsub("%s+$", "")
+            if id:sub(1, 1) == "-" then
+                set[id:sub(2)] = nil          -- show one of the defaults again
+            elseif id ~= "" and id:sub(1, 1) ~= "#" then
+                set[id] = true
+            end
+        end
+        hidden = set
+        show_tray()
+    end)
+end
+read_tray_hide()
+every(10000, read_tray_hide)
 
 local function tray_action(call)
     return function(i)
