@@ -66,7 +66,7 @@ scene MacTopBar {
         }
 
         // Active App Title or Fallback
-        text "Finder" { size: 13; weight: 600; color: ink_c }
+        text win.title { size: 13; weight: 600; color: ink_c; width: 180; lines: 1 }
 
         // Standard Menus
         text "File" { size: 13; color: ink_c; opacity: 75% }
