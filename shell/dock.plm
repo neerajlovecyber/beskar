@@ -65,7 +65,6 @@ scene MacDock {
             blend: 16
         }
     }
-    box { from: 60, 12; size: 440, 1; color: stroke_c; opacity: stroke_op }
 
     // Dock Items
     row {

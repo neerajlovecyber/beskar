@@ -3,21 +3,21 @@ scene ScreenBorder {
     surface {
         size: full, full
         anchor: center
-        level: overlay
+        level: bottom
         screens: each
     }
 
     fact dark_mode = true
     fact skin = 0
 
-    let border_color = if(dark_mode, #b4a8ff, #7f52ff)
-    let border_opacity = if(dark_mode, 28%, 20%)
+    let border_color = if(dark_mode, #ffffff, #000000)
+    let border_opacity = if(dark_mode, 14%, 10%)
 
-    // Subtle 1.5px glowing accent border with rounded display corners
+    // Subtle 1.5px refined glass frame with rounded display corners
     box {
-        from: 4, 4
-        size: screen.width - 8, screen.height - 8
-        corner: 18
+        from: 2, 2
+        size: screen.width - 4, screen.height - 4
+        corner: 14
         stroke: 1.5
         color: border_color
         opacity: border_opacity

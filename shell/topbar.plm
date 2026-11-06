@@ -53,7 +53,7 @@ scene MacTopBar {
     zone box topbar_bg { from: 0, 0; size: screen.width, 44 }
     on press right topbar_bg { }
 
-    // ── 3-Island Background Body with Concave Blends ─────────────
+    // ── Continuous Baseline with 3-Island Drops & Concave S-Curves ─
     body {
         color: bar_color
         glass: bar_glass
@@ -62,47 +62,43 @@ scene MacTopBar {
         dispersion: 0
         refraction: 0
         tint: bar_tint
-        rim: bar_rim
+        rim: 16%
         shadow: 0, 4, 16, 25%
 
-        // 1. Continuous Top Anchor Line (1px along very top edge)
-        box top_wire { from: 0, -10; size: screen.width, 12 }
+        // 1. Continuous Top Bar Baseline (full width, height 24)
+        box top_strip { from: 0, 0; size: screen.width, 24 }
 
-        // 2. Left Island (Workspace & App Launcher)
+        // 2. Left Island (Workspace & App Launcher) dropping down to y=38
         box left_island {
-            from: 10, -6
-            size: 270, 42
-            corner: 18
+            from: 10, 0
+            size: 270, 38
+            corner: 14
             blend: 12
         }
 
-        // 3. Center Notch Island (Clock, Date & Weather)
+        // 3. Center Notch Island (Clock, Date & Weather) dropping down to y=38
         box center_island {
-            from: screen.width / 2 - 120, -6
-            size: 240, 42
-            corner: 18
+            from: screen.width / 2 - 120, 0
+            size: 240, 38
+            corner: 14
             blend: 14
         }
 
-        // 4. Right Island (Status Tray & Control Center)
+        // 4. Right Island (Status Tray & Control Center) dropping down to y=38
         box right_island {
-            from: screen.width - 290, -6
-            size: 280, 42
-            corner: 18
+            from: screen.width - 290, 0
+            size: 280, 38
+            corner: 14
             blend: 12
         }
     }
-
-    // Specular / Neon Accent Outline matching iNiR screenshot
-    box { from: 10, 35; size: 270, 1; color: stroke_c; opacity: stroke_op }
-    box { from: screen.width / 2 - 120, 35; size: 240, 1; color: stroke_c; opacity: stroke_op }
-    box { from: screen.width - 290, 35; size: 280, 1; color: stroke_c; opacity: stroke_op }
 
     // ==============================================================
     // LEFT ISLAND CONTENTS: Profile/Search + Workspace + Active App
     // ==============================================================
     row {
-        at: 20, 9
+        at: 20, 19
+        anchor: left center
         gap: 10
         align: center
 
