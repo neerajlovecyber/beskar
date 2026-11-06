@@ -116,3 +116,6 @@ df -h / --output=size,avail | tail -1 | awk '{print $1 " (" $2 " available)"}'
     text.about_kernel = lines[5] or ""
     text.about_disk = lines[6] or ""
 end)
+
+-- one panel at a time
+require("exclusive")("settings")

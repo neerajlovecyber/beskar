@@ -25,3 +25,6 @@ on("action_about", function()
     pcall(sys.call, "say", "settings", "fact tab 7")
     pcall(sys.call, "say", "settings", "fact open true")
 end)
+
+-- one panel at a time
+require("exclusive")("apple_menu")

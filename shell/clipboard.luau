@@ -52,3 +52,6 @@ on("clear_all", function()
     fact.open = false
     os.execute("notify-send -a 'Clipboard' 'Clipboard Cleared' 'All saved history has been removed' &")
 end)
+
+-- one panel at a time
+require("exclusive")("clipboard")

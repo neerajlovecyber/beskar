@@ -51,7 +51,8 @@ pattern matches the invoking command) and relaunching `bin/pleamar --no-hud --sc
 9. **niri.** The `workspaces` service is Hyprland-only: use `niri msg -j workspaces|windows|outputs`
    and `niri msg -j event-stream`. The 6 px ring is kept clear of windows by `struts` in
    `~/.config/niri/config.kdl`.
-10. **Names.** Component-scoped names are mangled (`hit#Shell7#DockItem36`); `--say` can see them via `describe`.
+10. **One panel at a time.** A panel's logic ends with `require("exclusive")("<scene>")` (`shell/exclusive.luau`), which closes the other panels when it opens. A new panel must be added to `PANELS` there and get `say:<scene>` permissions both ways.
+11. **Names.** Component-scoped names are mangled (`hit#Shell7#DockItem36`); `--say` can see them via `describe`.
 
 ## Working style
 

@@ -134,3 +134,6 @@ end)
 
 -- Ages move on; and the bell has to hear again if the top bar was restarted.
 every(30000, paint)
+
+-- one panel at a time
+require("exclusive")("notifications")

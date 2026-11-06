@@ -96,3 +96,6 @@ end
 
 refresh_weather()
 every(15 * 60 * 1000, refresh_weather)
+
+-- one panel at a time
+require("exclusive")("dashboard")

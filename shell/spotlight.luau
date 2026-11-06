@@ -36,3 +36,6 @@ on("fact:open", function(open)
         filter()
     end
 end)
+
+-- one panel at a time
+require("exclusive")("spotlight")

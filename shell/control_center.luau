@@ -421,3 +421,6 @@ on("app_volume", function(v)
         pcall(sys.call, "audio.app_volume", id, frac)
     end
 end)
+
+-- one panel at a time
+require("exclusive")("control_center")
