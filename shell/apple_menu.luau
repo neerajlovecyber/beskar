@@ -5,15 +5,20 @@ on("action_settings", function()
 end)
 
 on("action_lock", function()
-    run("loginctl", { "lock-session" })
+    log("Apple Menu: Triggering macOS Lock Screen...")
+    pcall(sys.call, "say", "lock", "fact locked true")
 end)
 
 on("action_restart", function()
-    run("systemctl", { "reboot" })
+    log("Apple Menu: Opening Restart Confirmation...")
+    pcall(sys.call, "say", "session", "fact kind 1")
+    pcall(sys.call, "say", "session", "fact open true")
 end)
 
 on("action_power", function()
-    run("systemctl", { "poweroff" })
+    log("Apple Menu: Opening Shut Down Confirmation...")
+    pcall(sys.call, "say", "session", "fact kind 0")
+    pcall(sys.call, "say", "session", "fact open true")
 end)
 
 on("action_about", function()

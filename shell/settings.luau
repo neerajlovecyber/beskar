@@ -74,6 +74,11 @@ on("apply_wallpaper", function(idx)
     end
 end)
 
+on("run_update", function()
+    log("System Settings: Launching system package upgrade...")
+    spawn("kitty -e yay -Syu")
+end)
+
 on("toggle_wifi", function()
     sys.call("network.wifi.toggle")
 end)

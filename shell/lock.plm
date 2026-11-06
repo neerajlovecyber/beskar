@@ -1,0 +1,166 @@
+// macOS Sequoia Native Wayland Lock Screen (ext-session-lock)
+import "common/palette.plm"
+
+scene MacLock {
+    surface {
+        kind: lock
+        size: 640, 480
+        open: locked
+    }
+
+    permissions {
+        services: "clock", "auth", "say:apple_menu", "say:topbar", "say:dock"
+        run: "loginctl", "sh"
+    }
+
+    service clock as now {
+        time: text = "--:--"
+        date: text
+    }
+
+    fact locked = false
+    fact checking = false
+    fact with_exit = true     // Emergency Esc exit for desktop security safety
+
+    text password = ""
+    event toggle_lock
+    event unlock
+    event wrong_password
+
+    prop headshake = 0 ~quick
+    prop glow = 0 ~quick
+
+    // Full screen darkened canvas backdrop (covers whatever display size)
+    box { from: -4000, -4000; size: 8640, 8440; color: #0a0c10 }
+
+    // Ambient radial backdrop glow in center
+    body {
+        gradient: radial 320, 240 radius 300, #181c24, #0a0c10
+        ellipse { at: 320, 240; radius: 300 }
+    }
+
+    // Top: Massive macOS Sequoia Lock Screen Clock
+    text now.time {
+        at: 320, 68
+        anchor: center
+        size: 78
+        weight: 300
+        color: #f5f7f5
+    }
+
+    // Date Line
+    text now.date {
+        at: 320, 126
+        anchor: center
+        size: 14
+        weight: 600
+        color: #8e8e93
+    }
+
+    // Center: User Profile Card (macOS Apple ID Avatar)
+    group {
+        move: 320 + headshake, 230
+        pivot: 0, 0
+
+        // User Avatar Circle with subtle glass rim
+        body {
+            color: #1e222a
+            rim: 15%
+            shadow: 0, 12, 28, 40%
+            ellipse { at: 0, 0; radius: 46 }
+        }
+        text "󰀉" { at: 0, -2; anchor: center; size: 48; color: #007aff }
+
+        // Username
+        text "nsp" {
+            at: 0, 64
+            anchor: center
+            size: 16
+            weight: 600
+            color: #f5f7f5
+        }
+    }
+
+    // Password Capsule Input Box
+    group {
+        move: 320 + headshake, 350
+        pivot: 0, 0
+
+        // Capsule Box
+        body {
+            color: #161820
+            glass: 50%
+            tint: 30%
+            rim: 10%
+            shadow: 0, 8, 20, 30%
+            box { from: -140, -20; size: 280, 40; corner: 20 }
+        }
+        box {
+            from: -140, -20
+            size: 280, 40
+            corner: 20
+            stroke: 1.5
+            color: if(checking, #007aff, if(abs(headshake) > 2, #ff3b30, #ffffff))
+            opacity: if(checking or abs(headshake) > 2, 80%, 15%)
+        }
+
+        // Secret Password Input Field
+        input password {
+            at: -100, -11
+            width: 200
+            size: 14
+            color: #f5f7f5
+            placeholder: "Enter Password"
+            secret: true
+            agent: no
+        }
+
+        // Arrow Submit Button inside pill
+        group {
+            move: 116, 0
+            ellipse { at: 0, 0; radius: 13; color: if(checking, #8e8e93, #007aff); opacity: 85% }
+            text if(checking, "󰑮", "󰅂") { at: 0, 0; anchor: center; size: 13; color: #ffffff }
+            zone box btn_submit { from: -13, -13; size: 26, 26; cursor: pointer }
+            on press btn_submit { emit unlock }
+        }
+    }
+
+    // Status or Prompt Message below
+    text pick(checking, "Touch ID or Enter Password", "Verifying credentials…") {
+        at: 320, 412
+        anchor: center
+        size: 12
+        color: #8e8e93
+    }
+
+    // Emergency test escape prompt (shows while with_exit is true)
+    text "Press Esc to dismiss · safety bypass active" {
+        at: 320, 452
+        anchor: center
+        size: 10.5
+        color: #30d158
+        opacity: 65%
+        show: with_exit
+    }
+
+    on toggle_lock {
+        toggle locked
+    }
+
+    on change locked while locked {
+        focus password
+    }
+
+    on submit password {
+        emit unlock
+    }
+
+    on wrong_password {
+        impulse headshake 18
+    }
+
+    // Safety fallback
+    on key Escape while locked and with_exit {
+        locked = false
+    }
+}

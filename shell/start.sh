@@ -21,7 +21,7 @@ kill_all() {
 
 check_status() {
     echo "macOS Shell Status:"
-    for comp in topbar dock spotlight control_center apple_menu widgets osd settings; do
+    for comp in topbar dock spotlight control_center apple_menu widgets osd settings lock session capture; do
         if pgrep -f "pleamar.*$comp\.plm" >/dev/null 2>&1; then
             echo "  ✔ $comp is RUNNING"
         else
@@ -38,7 +38,7 @@ apply_saved_theme() {
         [ -z "$DM" ] && DM="true"
         [ -z "$SKIN" ] && SKIN="0"
 
-        for comp in topbar dock spotlight control_center apple_menu widgets osd settings; do
+        for comp in topbar dock spotlight control_center apple_menu widgets osd settings session capture; do
             "$BIN" --say "$comp" "fact dark_mode $DM" >/dev/null 2>&1 || true
             "$BIN" --say "$comp" "fact skin $SKIN" >/dev/null 2>&1 || true
         done
@@ -67,8 +67,14 @@ start_shell() {
     PID_OSD=$!
     setsid "$BIN" --no-hud --scene "$DIR/shell/settings.plm" </dev/null >/tmp/pleamar_settings.log 2>&1 &
     PID_SETTINGS=$!
+    setsid "$BIN" --no-hud --scene "$DIR/shell/lock.plm" </dev/null >/tmp/pleamar_lock.log 2>&1 &
+    PID_LOCK=$!
+    setsid "$BIN" --no-hud --scene "$DIR/shell/session.plm" </dev/null >/tmp/pleamar_session.log 2>&1 &
+    PID_SESSION=$!
+    setsid "$BIN" --no-hud --scene "$DIR/shell/capture.plm" </dev/null >/tmp/pleamar_capture.log 2>&1 &
+    PID_CAPTURE=$!
 
-    echo "$PID_BAR $PID_DOCK $PID_SPOTLIGHT $PID_CC $PID_APPLE $PID_WIDGETS $PID_OSD $PID_SETTINGS" > "$PID_FILE"
+    echo "$PID_BAR $PID_DOCK $PID_SPOTLIGHT $PID_CC $PID_APPLE $PID_WIDGETS $PID_OSD $PID_SETTINGS $PID_LOCK $PID_SESSION $PID_CAPTURE" > "$PID_FILE"
     sleep 0.6
 
     apply_saved_theme
@@ -82,9 +88,15 @@ start_shell() {
     echo "  - Widgets & Notifications: PID $PID_WIDGETS"
     echo "  - Bezel OSD (HUD): PID $PID_OSD"
     echo "  - System Settings: PID $PID_SETTINGS"
+    echo "  - Wayland Lock Screen: PID $PID_LOCK"
+    echo "  - Session Shutdown Dialog: PID $PID_SESSION"
+    echo "  - Screen Capture & Record HUD: PID $PID_CAPTURE"
     echo ""
     echo "Commands & Hotkey Triggers:"
     echo "  - $0 settings        (Toggle System Settings)"
+    echo "  - $0 lock            (Lock Screen with ext-session-lock)"
+    echo "  - $0 session [0|1|2] (0=Shutdown, 1=Restart, 2=Logout modal)"
+    echo "  - $0 capture         (Toggle Screen Capture & Record HUD)"
     echo "  - $0 spotlight       (Toggle Spotlight search)"
     echo "  - $0 control-center  (Toggle Control Center)"
     echo "  - $0 apple-menu      (Toggle Apple menu)"
@@ -113,6 +125,17 @@ case "$1" in
         ;;
     settings)
         "$BIN" --say settings "emit toggle"
+        ;;
+    lock)
+        "$BIN" --say lock "fact locked true"
+        ;;
+    session)
+        K_VAL="${2:-0}"
+        "$BIN" --say session "fact kind $K_VAL"
+        "$BIN" --say session "fact open true"
+        ;;
+    capture)
+        "$BIN" --say capture "emit toggle"
         ;;
     spotlight)
         "$BIN" --say spotlight "emit toggle"
@@ -147,7 +170,7 @@ case "$1" in
     dark-mode)
         VAL="true"
         [ "$2" = "off" ] && VAL="false"
-        for comp in topbar dock spotlight control_center apple_menu widgets osd settings; do
+        for comp in topbar dock spotlight control_center apple_menu widgets osd settings session capture; do
             "$BIN" --say "$comp" "fact dark_mode $VAL"
         done
         mkdir -p "$(dirname "$CONFIG_FILE")"
@@ -156,7 +179,7 @@ case "$1" in
         ;;
     skin)
         SKIN_VAL="${2:-0}"
-        for comp in topbar dock spotlight control_center apple_menu widgets osd settings; do
+        for comp in topbar dock spotlight control_center apple_menu widgets osd settings session capture; do
             "$BIN" --say "$comp" "fact skin $SKIN_VAL"
         done
         mkdir -p "$(dirname "$CONFIG_FILE")"

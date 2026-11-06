@@ -1,0 +1,161 @@
+// macOS Screen Capture & Recording HUD (Cmd + Shift + 5)
+import "common/palette.plm"
+
+scene MacCapture {
+    surface {
+        size: 580, 110
+        anchor: bottom
+        margin: 70
+        level: overlay
+        keyboard: on_demand
+    }
+
+    permissions {
+        services: "clock", "say:topbar", "say:osd"
+        run: "grim", "slurp", "wf-recorder", "wl-copy", "magick", "pkill", "notify-send", "sh"
+    }
+
+    fact open = false
+    fact dark_mode = true
+    fact skin = 0
+    fact recording = false
+    fact record_secs = 0
+    fact target_mode = 0    // 0: Entire Screen, 1: Selected Window, 2: Selected Portion
+
+    prop seen = 0 ~quick
+    prop rise = 14 ~lively
+
+    layer hud ~quick {
+        shown while open { seen: 1 ~quick; rise: 0 ~lively }
+        gone             { seen: 0 ~quick; rise: 14 ~quick }
+    }
+
+    let bg_color = if(dark_mode, if(skin == 2, #181a20, if(skin == 1, #161822, #12141a)), if(skin == 2, #f5f6fa, if(skin == 1, #eceef5, #f8f9fd)))
+    let glass_amt = if(skin == 2, 0%, if(skin == 1, 60%, 85%))
+    let tint_amt = if(skin == 2, 0%, if(dark_mode, 40%, 25%))
+    let rim_amt = if(skin == 2, 0%, 14%)
+    let shadow_amt = if(dark_mode, 45%, 20%)
+    let stroke_c = if(dark_mode, #ffffff, #000000)
+    let stroke_op = if(dark_mode, 12%, 8%)
+    let ink_c = if(dark_mode, #f5f7f5, #1d1d1f)
+    let ink_sub = if(dark_mode, #8e8e93, #6e6e73)
+
+    event toggle
+    event capture ->
+    event shot_entire ->
+    event shot_window ->
+    event shot_area ->
+    event toggle_record ->
+
+    group {
+        move: 40, 20 + rise
+        pivot: 250, 35
+        opacity: seen
+
+        // Floating Capsule Frame
+        body {
+            color: bg_color
+            glass: glass_amt
+            frost: 100%
+            dispersion: 0
+            refraction: 0
+            tint: tint_amt
+            rim: rim_amt
+            shadow: 0, 14, 36, shadow_amt
+            box { from: 0, 0; size: 500, 70; corner: 18 }
+        }
+        box { from: 0, 0; size: 500, 70; corner: 18; stroke: 1; color: stroke_c; opacity: stroke_op }
+
+        // Buttons Row
+        row {
+            at: 16, 12
+            gap: 8
+            align: center
+
+            // Close 'X' Button
+            group {
+                size: 28, 46
+                ellipse { at: 14, 23; radius: 11; color: if(dark_mode, #282c35, #e5e7eb) }
+                text "󰅖" { at: 14, 23; anchor: center; size: 12; color: ink_c }
+                zone box btn_x { from: 0, 0; size: 28, 46; cursor: pointer }
+                on press btn_x { open = false }
+            }
+
+            // Separator 1
+            box { from: 0, 8; size: 1, 30; color: stroke_c; opacity: stroke_op }
+
+            // Still Capture: Entire Screen
+            ModeButton(0, "󰍹", "Capture Entire Screen", target_mode == 0)
+            // Still Capture: Selected Window
+            ModeButton(1, "󰖲", "Capture Selected Window", target_mode == 1)
+            // Still Capture: Portion
+            ModeButton(2, "󰩭", "Capture Selected Portion", target_mode == 2)
+
+            // Separator 2
+            box { from: 0, 8; size: 1, 30; color: stroke_c; opacity: stroke_op }
+
+            // Screen Recording Toggle Button
+            group {
+                size: 100, 46
+                box {
+                    from: 0, 4
+                    size: 100, 38
+                    corner: 10
+                    color: if(recording, #ff3b30, if(dark_mode, #282c35, #e5e7eb))
+                }
+                text if(recording, "󰑐 Stop", "󰑈 Record") {
+                    at: 50, 23
+                    anchor: center
+                    size: 12.5
+                    weight: 600
+                    color: if(recording, #ffffff, ink_c)
+                }
+                zone box rec_hit { from: 0, 4; size: 100, 38; cursor: pointer }
+                on press rec_hit { emit toggle_record }
+            }
+
+            // Capture Trigger Button (for Still Images)
+            group {
+                size: 90, 46
+                show: not recording
+                box {
+                    from: 0, 4
+                    size: 90, 38
+                    corner: 10
+                    color: #007aff
+                }
+                text "Capture" {
+                    at: 45, 23
+                    anchor: center
+                    size: 13
+                    weight: 600
+                    color: #ffffff
+                }
+                zone box shot_hit { from: 0, 4; size: 90, 38; cursor: pointer }
+                on press shot_hit { emit capture }
+            }
+        }
+    }
+
+    component ModeButton(idx: number, icon_t: text, desc_t: text, active_mode: bool) {
+        size: 42, 46
+        box {
+            from: 0, 5
+            size: 42, 36
+            corner: 8
+            color: if(active_mode, if(dark_mode, #2c3240, #ebf2ff), #000000)
+            opacity: if(active_mode, 100%, 0%)
+        }
+        text icon_t {
+            at: 21, 23
+            anchor: center
+            size: 18
+            color: if(active_mode, #007aff, ink_c)
+        }
+        zone box mode_hit { from: 0, 5; size: 42, 36; cursor: pointer }
+        on press mode_hit { target_mode = idx }
+    }
+
+    on toggle     { toggle open }
+    on key Escape { open = false }
+}

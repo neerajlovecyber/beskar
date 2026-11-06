@@ -11,7 +11,7 @@ scene MacSettings {
 
     permissions {
         services: "clock", "audio", "audio.*", "brightness", "brightness.*", "network", "network.*", "bluetooth", "bluetooth.*", "say:topbar", "say:dock", "say:spotlight", "say:control_center", "say:apple_menu", "say:widgets", "say:osd"
-        run: "awww", "awww-daemon", "gsettings", "systemctl", "loginctl", "sh"
+        run: "awww", "awww-daemon", "gsettings", "systemctl", "loginctl", "kitty", "pacman", "yay", "paru", "sh"
     }
 
     service audio as sound { volume: number; muted: bool }
@@ -74,6 +74,7 @@ scene MacSettings {
     event volume_set ->
     event brightness_set ->
     event apply_wallpaper ->
+    event run_update ->
     event toggle_wifi ->
     event toggle_bt ->
     event toggle_dnd ->
@@ -170,6 +171,7 @@ scene MacSettings {
             SidebarItem(5, "󰒎", #ff3b30, "Notifications")
             SidebarItem(6, "󰖐", #30b0c7, "Wallpaper")
             SidebarItem(7, "󰋚", #8e8e93, "General")
+            SidebarItem(8, "󰚰", #34c759, "Software Update")
         }
 
         // ==========================================================
@@ -181,7 +183,7 @@ scene MacSettings {
             move: 254, 20
             row {
                 gap: 10; align: center
-                text pick(tab, "Appearance", "Displays", "Sound", "Wi-Fi", "Bluetooth", "Notifications", "Wallpaper", "General") {
+                text pick(tab, "Appearance", "Displays", "Sound", "Wi-Fi", "Bluetooth", "Notifications", "Wallpaper", "General", "Software Update") {
                     size: 20; weight: 700; color: ink_c
                 }
             }
@@ -640,11 +642,71 @@ scene MacSettings {
                     size: 140, 32
                     box { from: 0, 0; size: 140, 32; corner: 8; color: if(dark_mode, #282c35, #e5e7eb) }
                     text "Software Update..." { at: 70, 16; anchor: center; size: 12; weight: 600; color: ink_c }
+                    zone box btn_sw_up { from: 0, 0; size: 140, 32; cursor: pointer }
+                    on press btn_sw_up { tab = 8 }
                 }
                 group {
                     size: 140, 32
                     box { from: 0, 0; size: 140, 32; corner: 8; color: if(dark_mode, #282c35, #e5e7eb) }
                     text "System Report..." { at: 70, 16; anchor: center; size: 12; weight: 600; color: ink_c }
+                }
+            }
+        }
+
+        // ──────────────────────────────────────────────────────────
+        // TAB 8: SOFTWARE UPDATE & SYSTEM PACKAGES
+        // ──────────────────────────────────────────────────────────
+        group tab_8 {
+            show: tab == 8
+            move: 254, 60
+
+            // Header Overview Card
+            box { from: 0, 0; size: 556, 110; corner: 14; color: card_fill; opacity: card_fill_op }
+            box { from: 0, 0; size: 556, 110; corner: 14; stroke: 1; color: c_border; opacity: c_border_op }
+
+            group {
+                move: 20, 18
+                ellipse { at: 24, 24; radius: 24; color: #34c759 }
+                text "󰚰" { at: 24, 24; anchor: center; size: 24; color: #ffffff }
+                column {
+                    at: 60, 6
+                    gap: 3
+                    text "Updates Available" { size: 16; weight: 700; color: ink_c }
+                    text "14 system and application updates are ready to install." { size: 12; color: ink_sub }
+                    text "Last checked: Today at 13:20 · Automatic updates enabled" { size: 11; color: ink_sub }
+                }
+            }
+
+            // Updates List Card
+            box { from: 0, 122; size: 556, 260; corner: 14; color: card_fill; opacity: card_fill_op }
+            box { from: 0, 122; size: 556, 260; corner: 14; stroke: 1; color: c_border; opacity: c_border_op }
+            text "Pending Updates" { at: 18, 138; size: 13; weight: 600; color: ink_c }
+
+            column {
+                at: 18, 162
+                gap: 6
+                UpdateRow("󰈹", "Firefox Web Browser", "159.0 → 159.0.1 (Security and stability patch)")
+                UpdateRow("󰍹", "Hyprland Wayland Compositor", "0.57.0 → 0.57.1 (Renderer improvements)")
+                UpdateRow("󰌌", "HarfBuzz Text Shaping Engine", "15.0.0 → 15.1.0 (Font rendering updates)")
+                UpdateRow("󰉋", "Glycin Image Loader GTK4", "2.2.5 → 2.2.6 (Decoder enhancements)")
+                UpdateRow("󰏘", "Dux Shell Framework", "2.0.0 → 2.1.0 (Performance optimizations)")
+            }
+
+            // Upgrade Action Button
+            row {
+                at: 0, 396
+                gap: 12
+                group {
+                    size: 150, 34
+                    box { from: 0, 0; size: 150, 34; corner: 8; color: #007aff }
+                    text "Update All Now" { at: 75, 17; anchor: center; size: 13; weight: 600; color: #ffffff }
+                    zone box btn_up_now { from: 0, 0; size: 150, 34; cursor: pointer }
+                    on press btn_up_now { emit run_update }
+                }
+                group {
+                    size: 130, 34
+                    box { from: 0, 0; size: 130, 34; corner: 8; color: if(dark_mode, #282c35, #e5e7eb) }
+                    text "Check Again" { at: 65, 17; anchor: center; size: 13; weight: 500; color: ink_c }
                 }
             }
         }
@@ -819,6 +881,21 @@ scene MacSettings {
         text name_t { at: 80, 84; anchor: center; size: 11; weight: if(wall_choice == idx, 600, 400); color: if(wall_choice == idx, accent_c, ink_c) }
 
         on press hit { emit apply_wallpaper(idx) }
+    }
+
+    // Update Row Item
+    component UpdateRow(icon_t: text, name_t: text, desc_t: text) {
+        size: 520, 36
+        row {
+            at: 10, 6
+            gap: 12; align: center
+            text icon_t { size: 18; color: #007aff }
+            column {
+                gap: 2
+                text name_t { size: 12.5; weight: 600; color: ink_c }
+                text desc_t { size: 10.5; color: ink_sub }
+            }
+        }
     }
 
     // Hardware Specification Row

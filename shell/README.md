@@ -28,14 +28,17 @@ An ultra-performant, GPU-accelerated macOS Sequoia/Sonoma desktop shell for Wayl
 
 | Component | File Path | Description |
 | :--- | :--- | :--- |
-| **System Settings** | [`shell/settings.plm`](file:///home/nsp/Documents/p/beskar/beskar/shell/settings.plm) | Dedicated macOS 2-column System Settings app: Appearance, Displays (eDP-1 + HDMI-A-1), Sound, Wi-Fi, Bluetooth, Notifications, Wallpaper picker (awww), and About This Mac specs. |
+| **System Settings** | [`shell/settings.plm`](file:///home/nsp/Documents/p/beskar/beskar/shell/settings.plm) | Dedicated macOS 2-column System Settings app: Appearance, Displays (eDP-1 + HDMI-A-1), Sound, Wi-Fi, Bluetooth, Notifications, Wallpaper picker (awww), Software Update (yay/pacman), and About This Mac specs. |
+| **Lock Screen** | [`shell/lock.plm`](file:///home/nsp/Documents/p/beskar/beskar/shell/lock.plm) | Native Wayland session lock (`ext-session-lock` protocol) with full-screen blur, Apple typography clock, avatar, password verification via PAM, and spring headshake. |
+| **Session Dialog** | [`shell/session.plm`](file:///home/nsp/Documents/p/beskar/beskar/shell/session.plm) | macOS Shutdown/Restart/Logout confirmation dialog with 60-second automatic timer and window reopen toggle. |
+| **Screen Capture & Record HUD** | [`shell/capture.plm`](file:///home/nsp/Documents/p/beskar/beskar/shell/capture.plm) | macOS Cmd+Shift+5 floating HUD with Entire Screen, Selected Window, Selected Area capture (`grim`+`slurp`), and video recording (`wf-recorder`). |
 | **Top Menu Bar** | [`shell/topbar.plm`](file:///home/nsp/Documents/p/beskar/beskar/shell/topbar.plm) | Global 30px bar with Apple icon, dynamic active window title, battery, wifi, volume, Spotlight & Control Center triggers, and clickable clock. |
 | **Dock** | [`shell/dock.plm`](file:///home/nsp/Documents/p/beskar/beskar/shell/dock.plm) | Floating bottom capsule with smooth spring magnification physics, running indicators, and specular rim. |
 | **Control Center** | [`shell/control_center.plm`](file:///home/nsp/Documents/p/beskar/beskar/shell/control_center.plm) | 4-page panel: overview, Wi-Fi picker, Bluetooth picker, Audio outputs selector, and Appearance/Glass look customizer. |
 | **Notification Center & Widgets** | [`shell/widgets.plm`](file:///home/nsp/Documents/p/beskar/beskar/shell/widgets.plm) | Right sliding sidebar featuring Calendar, Weather, Live Activity Monitor (CPU/RAM/Disk), World Clocks, and Notifications stream. |
 | **Bezel OSD (HUD)** | [`shell/osd.plm`](file:///home/nsp/Documents/p/beskar/beskar/shell/osd.plm) | Centered floating bezel HUD for Volume and Brightness adjustments with auto-dismiss timer and spring physics. |
 | **Spotlight Search** | [`shell/spotlight.plm`](file:///home/nsp/Documents/p/beskar/beskar/shell/spotlight.plm) | Centered search bar with live fuzzy filtering of desktop applications, arrow-key navigation, and Enter to launch. |
-| **Apple Menu** | [`shell/apple_menu.plm`](file:///home/nsp/Documents/p/beskar/beskar/shell/apple_menu.plm) | Dropdown providing quick access to About, System Settings, App Store, Screen Lock, Reboot, and Power off. |
+| **Apple Menu** | [`shell/apple_menu.plm`](file:///home/nsp/Documents/p/beskar/beskar/shell/apple_menu.plm) | Dropdown providing quick access to About, System Settings, Screen Lock, Reboot, and Power off. |
 | **Supervisor & CLI** | [`shell/start.sh`](file:///home/nsp/Documents/p/beskar/beskar/shell/start.sh) | Process supervisor, theme persistence, and CLI hotkey runner. |
 
 ---
@@ -61,12 +64,16 @@ You can bind these commands to compositor keybindings:
 
 ```bash
 # Manage Shell Lifecycle
-./shell/start.sh              # Start all 6 shell daemons
+./shell/start.sh              # Start all 11 shell daemons
 ./shell/start.sh restart      # Restart all components
 ./shell/start.sh status       # Check running state of all components
 ./shell/start.sh stop         # Terminate all components
 
 # Interactive Overlays & Hotkeys
+./shell/start.sh settings        # Toggle System Settings (recommend: Super+,)
+./shell/start.sh lock            # Lock Screen via ext-session-lock (recommend: Super+Ctrl+Q)
+./shell/start.sh session [0|1|2] # 0=Shutdown, 1=Restart, 2=Logout modal (recommend: Super+Escape)
+./shell/start.sh capture         # Toggle Screen Capture & Record HUD (recommend: Super+Shift+5)
 ./shell/start.sh spotlight       # Toggle Spotlight search (recommend: Super+Space)
 ./shell/start.sh control-center  # Toggle Control Center (recommend: Super+C)
 ./shell/start.sh widgets         # Toggle Notification Center & Widgets (recommend: Super+N)
