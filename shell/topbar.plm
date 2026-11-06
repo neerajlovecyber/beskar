@@ -3,7 +3,7 @@ import "common/palette.plm"
 
 scene MacTopBar {
     surface {
-        size: full, 56
+        size: full, 68
         anchor: top
         reserve: 42
         screens: each
@@ -60,10 +60,10 @@ scene MacTopBar {
     let right_w = icons.total * 26 + 230
 
     // ── Safe Background Zone ───────────────────────────────────────────
-    zone box topbar_bg { from: 0, 0; size: screen.width, 56 }
+    zone box topbar_bg { from: 0, 0; size: screen.width, 68 }
     on press right topbar_bg { }
 
-    // ── Continuous Liquid Glass Body Morphing From Top Screen Edge ─
+    // ── Continuous Liquid Glass Body Morphing From Top & Side Screen Edges ─
     body {
         color: bar_color
         glass: bar_glass
@@ -82,7 +82,15 @@ scene MacTopBar {
             size: screen.width, 16
         }
 
-        // 2. Left Notch: touches and sprouts directly from the left screen edge
+        // 2. Left side ear: curves downwards along the left screen border
+        box left_ear {
+            from: -12, 0
+            size: 16, 56
+            corner: 8
+            blend: 18
+        }
+
+        // 3. Left Notch: touches and sprouts directly from the left screen edge
         box left_notch {
             from: -12, -12
             size: left_w + 12, 50
@@ -90,7 +98,7 @@ scene MacTopBar {
             blend: 18
         }
 
-        // 3. Center Notch: floating middle dynamic island
+        // 4. Center Notch: floating middle dynamic island
         box center_notch {
             at: screen.width / 2, 16
             size: center_w, 40
@@ -98,7 +106,15 @@ scene MacTopBar {
             blend: 16
         }
 
-        // 4. Right Notch: touches and sprouts directly from the right screen edge
+        // 5. Right side ear: curves downwards along the right screen border
+        box right_ear {
+            from: screen.width - 4, 0
+            size: 16, 56
+            corner: 8
+            blend: 18
+        }
+
+        // 6. Right Notch: touches and sprouts directly from the right screen edge
         box right_notch {
             from: screen.width - right_w, -12
             size: right_w + 12, 50
