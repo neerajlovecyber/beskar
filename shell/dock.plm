@@ -3,9 +3,9 @@ import "common/palette.plm"
 
 scene MacDock {
     surface {
-        size: 550, 114
+        size: 560, 80
         anchor: bottom
-        margin: 4
+        margin: 0
         screens: each
     }
 
@@ -18,12 +18,12 @@ scene MacDock {
     fact skin = 0
 
     let dock_color = if(dark_mode, if(skin == 2, #1e2026, if(skin == 1, #1c1e28, #161820)), if(skin == 2, #f2f3f7, if(skin == 1, #eaecf2, #f8f9fc)))
-    let dock_glass = if(skin == 2, 0%, if(skin == 1, 55%, 85%))
+    let dock_glass = if(skin == 2, 0%, if(skin == 1, 55%, 75%))
     let dock_tint = if(skin == 2, 0%, if(dark_mode, 35%, 20%))
     let dock_rim = if(skin == 2, 0%, 14%)
     let dock_shadow = if(dark_mode, 35%, 15%)
-    let dock_specular = if(dark_mode, #ffffff, #000000)
-    let dock_specular_op = if(dark_mode, 18%, 10%)
+    let stroke_c = if(dark_mode, #b4a8ff, #7f52ff)
+    let stroke_op = if(dark_mode, 25%, 15%)
     let dot_color = if(dark_mode, #f5f7f5, #1d1d1f)
     let div_color = if(dark_mode, #ffffff, #000000)
     let div_op = if(dark_mode, 16%, 12%)
@@ -39,10 +39,10 @@ scene MacDock {
     image icon_trash    = icon "user-trash", 44, 44
 
     // Safe Background Zone (absorbs right-clicks)
-    zone box dock_bg { from: 40, 16; size: 470, 68 }
+    zone box dock_bg { from: 40, 8; size: 480, 72 }
     on press right dock_bg { }
 
-    // Capsule Background
+    // Flared Concave Dock Silhouette (iNiR bottom bar)
     body {
         color: dock_color
         glass: dock_glass
@@ -51,11 +51,21 @@ scene MacDock {
         dispersion: 0
         refraction: 0
         tint: dock_tint
-        shadow: 0, 6, 18, dock_shadow
+        shadow: 0, -4, 20, dock_shadow
         rim: dock_rim
-        box { from: 40, 16; size: 470, 68; corner: 22 }
+
+        // Base bottom anchor strip extending to screen edge
+        box base_strip { from: 0, 74; size: 560, 16 }
+
+        // Protruding Center Dock with smooth blend into the base strip
+        box center_dock {
+            from: 45, 12
+            size: 470, 68
+            corner: 20
+            blend: 16
+        }
     }
-    box { from: 58, 16; size: 434, 1; color: dock_specular; opacity: dock_specular_op }
+    box { from: 60, 12; size: 440, 1; color: stroke_c; opacity: stroke_op }
 
     // Dock Items
     row {
