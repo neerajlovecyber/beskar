@@ -1,90 +1,152 @@
-#  Beskar macOS Shell
+# Beskar
 
-A modern, fluid, GPU-accelerated macOS desktop shell for Wayland compositors (Niri, Hyprland, Sway), powered by the **Pleamar** engine.
+A macOS-style glass desktop shell for the [niri](https://github.com/YaLTeR/niri) Wayland compositor,
+written in [pleamar](https://github.com/k4ditano/pleamar): declarative scenes (`.plm`) drawn on the GPU,
+with small sandboxed Luau scripts (`.luau`) for the logic.
 
-Featuring native hardware frosted glass shaders (`frost: auto`), spring physics animations, and zero-thread freezes.
+It is one thin glass **frame** round the whole screen (a ring, three islands hanging from the top, a dock
+rising from the bottom), plus the panels you open from it: Control Center, notifications, Spotlight,
+clipboard history, wallpapers, Settings and a lock screen. It looks like a Mac, but it is its own thing: nothing
+is named after Apple, and nothing is hard-coded to one machine.
 
----
-
-## 🌟 Key Features
-
-- ** Top Menu Bar (`shell/topbar.plm`)**:
-  - Apple menu (``), active window/app title, standard macOS menus (`File`, `Edit`, `View`, `Window`, `Help`).
-  - Right status bar with battery percentage and charging indicator, Wi-Fi status, volume status, Control Center trigger, date, and clock.
-- **🏝️ Bottom Dock (inside `shell/topbar.plm`, one silhouette with the top bar)**:
-  - Floating frosted glass capsule with rounded corners.
-  - Interactive icon magnification with spring physics (`scale = 1.0 + hot * 0.28`).
-  - Running app indicator dots and launch bindings.
-- **🔍 Spotlight Search (`shell/spotlight.plm`)**:
-  - Centered overlay modal with frosted glass background.
-  - Real-time application search and filter over desktop `.desktop` entries.
-  - Keyboard navigation (`Up`, `Down`, `Enter` to launch, `Escape` to dismiss).
-- **🎛️ Control Center (`shell/control_center.plm`)**:
-  - Frosted glass popover in the top-right corner.
-  - Wi-Fi and Bluetooth connectivity cards.
-  - Focus / Do Not Disturb card.
-  - Real-time Display Brightness and Audio Volume sliders.
-  - Now Playing / Media Player card with MPRIS playback controls.
-- **⚡ Rock-Solid Performance**:
-  - Decoupled spring renderer running directly in WGPU at 120+ FPS.
-  - The rendering engine never hangs or freezes, even during heavy system load.
-  - Sub-200ms cold start and ~80 MB RAM usage.
+> **Status:** a personal project under active development, tested on one machine (CachyOS, niri,
+> two monitors). Expect rough edges. Issues and pull requests are welcome.
 
 ---
 
-## 🚀 Quick Start
+## What's in it
 
-### 1. Launch the Shell
-To start all macOS shell components:
+**The frame** (`shell/topbar.plm`) is a single glass silhouette, so every junction melts into the next:
+
+- **Left island:** menu button, workspace of the monitor it is on, title of the focused window.
+- **Centre island:** date, time and weather. Click it for the dashboard.
+- **Right island:** tray apps, Wi-Fi (with signal), Bluetooth while a device is connected, battery, Control
+  Center, and the notification bell (with an unread count and a Do Not Disturb slash). Each icon does
+  something when clicked.
+- **Dock:** starts with a file manager and a terminal. Running apps appear with a dot; click to focus or launch,
+  right-click to *Keep in Dock* / *Remove from Dock* / *Quit*. It hides while a window is on the monitor and
+  comes back when the pointer reaches the bottom edge.
+- Islands are as wide as their content and morph with springs when it changes.
+
+**Panels** (one open at a time, the others close):
+
+| Panel | Opens with | What it does |
+| :--- | :--- | :--- |
+| **Control Center** | the switches icon, `Super+Shift+C` | Wi-Fi and Bluetooth (join networks with a password, connect, pair, per-app volume), Now Playing with seek, Do Not Disturb, dark mode, brightness and volume sliders, shortcuts |
+| **Notifications** | the bell, `Super+N` | The notification server. Cards with icon, title and body, hover ×, Clear All, a saved history ("Earlier"), a banner that drops from the island |
+| **Dashboard** | click the clock | Date, live weather, CPU / memory / disk, battery, clocks |
+| **Spotlight** | `Super+Space` | Search and launch apps |
+| **Clipboard** | `Super+V` | Clipboard history (cliphist) |
+| **Wallpapers** | `Super+W` | Thumbnails of your wallpapers and the built-in ones; applies with a transition |
+| **Settings** | Control Center → Settings | Appearance (dark mode, glass skin, accent colour), displays, sound, Wi-Fi, Bluetooth, wallpaper, about this PC |
+| **Lock screen** | `start.sh lock` | `ext-session-lock`, password checked by PAM |
+| **Also** | | App switcher, screenshot / screen-recording toolbar, volume and brightness popup, session (shut down / restart / log out) dialog |
+
+**One colour system** (`shell/common/theme.plm`): dark mode, three glass skins and seven accent colours reach every
+scene. The accent can follow your wallpaper.
+
+---
+
+## Requirements
+
+- **niri** (workspaces, windows and outputs are read with `niri msg`)
+- **[pleamar](https://github.com/k4ditano/pleamar)**, built from source: needs a Rust toolchain. `start.sh` builds it
+  into `bin/` the first time if it is missing (expects a checkout at `cloned_repos/pleamar`)
+- **awww** (wallpaper daemon), **ImageMagick** (`magick`), **fd**, **curl**
+- **grim**, **slurp** and **wf-recorder** (screenshots and recording), **wl-clipboard** and **cliphist** (clipboard)
+- A **Nerd Font** (a few status glyphs), and a PipeWire/PulseAudio, NetworkManager and BlueZ desktop for the
+  audio, Wi-Fi and Bluetooth pages
+- Optional: `yay` / `paru` / `pacman` for the software-update page
+
+## Install and run
+
 ```bash
-./shell/start.sh
+git clone https://github.com/neerajlovecyber/beskar
+cd beskar
+git clone https://github.com/k4ditano/pleamar cloned_repos/pleamar   # the runtime
+./shell/start.sh                                                     # builds pleamar if needed, starts everything
 ```
 
-To stop all running components:
-```bash
-./shell/start.sh stop
-```
+`./shell/start.sh stop` stops it; `status` and `restart` do what they say. To start it with your session,
+run `start.sh` from niri's `spawn-at-startup`.
 
----
+### niri configuration
 
-## ⌨️ Compositor Keybindings
+Add the shortcuts (use your own path) and keep windows clear of the 6 px ring:
 
-Add the following shortcuts to your compositor configuration:
-
-### For Hyprland (`~/.config/hypr/hyprland.conf`)
-```ini
-# Toggle Spotlight Search (Super + Space)
-bind = SUPER, SPACE, exec, /path/to/beskar/shell/start.sh spotlight
-
-# Toggle Control Center (Super + C)
-bind = SUPER, C, exec, /path/to/beskar/shell/start.sh control-center
-```
-
-### For Niri (`~/.config/niri/config.kdl`)
 ```kdl
+layout {
+    struts { left 6; right 6; bottom 6; }
+}
+
 binds {
-    Mod+Space { spawn "/path/to/beskar/shell/start.sh" "spotlight"; }
-    Mod+C     { spawn "/path/to/beskar/shell/start.sh" "control-center"; }
+    Mod+Space       { spawn "/path/to/beskar/shell/start.sh" "spotlight"; }
+    Mod+V           { spawn "/path/to/beskar/shell/start.sh" "clipboard"; }
+    Mod+N           { spawn "/path/to/beskar/shell/start.sh" "notifications"; }
+    Mod+W           { spawn "/path/to/beskar/shell/start.sh" "wallpapers"; }
+    Mod+Shift+C     { spawn "/path/to/beskar/shell/start.sh" "control-center"; }
 }
 ```
 
+The other commands: `settings`, `lock`, `session [0|1|2]`, `capture`, `appswitcher`, `dashboard`, `apple-menu`,
+`vol-up|vol-down|mute`, `bright-up|bright-down`, `dark-mode [on|off]`, `skin [0|1|2]`.
+
 ---
 
-## 📁 Project Structure
+## Configuring it
+
+Everything is plain files under your home; nothing is hard-coded.
+
+| File | What it holds |
+| :--- | :--- |
+| `~/.config/pleamar_shell.json` | Dark mode, glass skin, accent (written by Settings, restored by `start.sh`) |
+| `~/.config/beskar/dock` | Pinned dock apps, one desktop id per line (`org.gnome.Nautilus`, `kitty`, …). Delete it for the defaults |
+| `~/.config/beskar/tray-hide` | Tray icons to hide, one id per line. nm-applet and blueman are hidden by default; write `-nm-applet` to show one |
+| `~/.config/beskar/location` | `LAT LON City` for the weather. Without it the place is looked up once from your IP and saved here |
+| `~/.config/beskar/wallpaper` | The wallpaper you picked (restored at login) |
+| `~/Pictures/wallpapers` | Your wallpapers (also `~/Pictures/Wallpapers`, `~/Wallpapers`); files named *screenshot* or *mock* are skipped |
+| `~/.local/share/beskar/wallpapers` | The built-in wallpapers, copied here from `assets/wallpapers/` |
+| `~/.local/share/pleamar/notifications/history.json` | Dismissed notifications ("Earlier") |
+
+---
+
+## How it is built
+
+Each panel is its own pleamar scene, run as its own process by `shell/start.sh`; they talk through
+`say <scene> "fact …"`. A few shared pieces keep them consistent:
+
+| Piece | What it does |
+| :--- | :--- |
+| `shell/common/theme.plm` | The colour tokens and the `dark_mode` / `skin` / `accent` facts, included by every scene |
+| `shell/exclusive.luau` | Opening a panel closes the others |
+| `shell/location.luau` | Where you are, for the weather and clocks |
+| `shell/topbar.plm` + `.luau` | The frame, dock and tray in one scene (one process, drawn on every monitor) |
 
 ```text
 beskar/
-├── bin/
-│   └── pleamar                     # Compiled Pleamar release binary
+├── assets/wallpapers/       built-in wallpapers (from iNiR, see its README)
 ├── shell/
-│   ├── common/
-│   │   └── palette.plm             # Apple HIG color definitions
-│   ├── topbar.plm                  # Frame: ring + top islands + dock (one scene)
-│   ├── topbar.luau                 # Workspace, weather, dock app launcher
-│   ├── spotlight.plm               # Spotlight search scene
-│   ├── spotlight.luau              # App filtering & launch logic
-│   ├── control_center.plm          # Control Center popover scene
-│   ├── control_center.luau         # Sliders & MPRIS control logic
-│   └── start.sh                    # Unified startup & CLI controller
-└── README.md
+│   ├── common/theme.plm     colours
+│   ├── *.plm                one scene per panel
+│   ├── *.luau               each scene's logic
+│   └── start.sh             starts, stops and drives everything
+├── docs/                    pleamar's language notes and recipes
+├── AGENTS.md                the rules and pitfalls learned while building this
+└── bin/                     the pleamar binary (not committed)
 ```
+
+If you want to change something, read [`AGENTS.md`](AGENTS.md) first: it lists the tools
+(`pleamar --check`, `--say … describe`) and the pitfalls (right-click quits a scene unless it has an
+`on press right` rule, props on per-monitor surfaces, the Luau sandbox, …).
+
+---
+
+## Credits
+
+- [pleamar](https://github.com/k4ditano/pleamar) by k4ditano, the runtime and language
+- [Marea](https://github.com/k4ditano/marea-plm), the reference for notifications, wallpapers, Bluetooth and Wi-Fi handling
+- [iNiR](https://github.com/snowarch/iNiR) (GPL-3.0), for the island and frame ideas and the built-in wallpapers;
+  artwork credit belongs to the original artists
+- The macOS design language is the inspiration; Beskar is not affiliated with Apple
+
+There is no licence file for this repository yet.
