@@ -21,7 +21,7 @@ kill_all() {
 
 check_status() {
     echo "macOS Shell Status:"
-    for comp in topbar dock spotlight control_center apple_menu widgets osd settings lock session capture; do
+    for comp in topbar dock spotlight control_center apple_menu widgets osd settings lock session capture appswitcher clipboard; do
         if pgrep -f "pleamar.*$comp\.plm" >/dev/null 2>&1; then
             echo "  ✔ $comp is RUNNING"
         else
@@ -38,7 +38,7 @@ apply_saved_theme() {
         [ -z "$DM" ] && DM="true"
         [ -z "$SKIN" ] && SKIN="0"
 
-        for comp in topbar dock spotlight control_center apple_menu widgets osd settings session capture; do
+        for comp in topbar dock spotlight control_center apple_menu widgets osd settings session capture appswitcher clipboard; do
             "$BIN" --say "$comp" "fact dark_mode $DM" >/dev/null 2>&1 || true
             "$BIN" --say "$comp" "fact skin $SKIN" >/dev/null 2>&1 || true
         done
@@ -73,8 +73,12 @@ start_shell() {
     PID_SESSION=$!
     setsid "$BIN" --no-hud --scene "$DIR/shell/capture.plm" </dev/null >/tmp/pleamar_capture.log 2>&1 &
     PID_CAPTURE=$!
+    setsid "$BIN" --no-hud --scene "$DIR/shell/appswitcher.plm" </dev/null >/tmp/pleamar_switcher.log 2>&1 &
+    PID_SWITCHER=$!
+    setsid "$BIN" --no-hud --scene "$DIR/shell/clipboard.plm" </dev/null >/tmp/pleamar_clipboard.log 2>&1 &
+    PID_CLIP=$!
 
-    echo "$PID_BAR $PID_DOCK $PID_SPOTLIGHT $PID_CC $PID_APPLE $PID_WIDGETS $PID_OSD $PID_SETTINGS $PID_LOCK $PID_SESSION $PID_CAPTURE" > "$PID_FILE"
+    echo "$PID_BAR $PID_DOCK $PID_SPOTLIGHT $PID_CC $PID_APPLE $PID_WIDGETS $PID_OSD $PID_SETTINGS $PID_LOCK $PID_SESSION $PID_CAPTURE $PID_SWITCHER $PID_CLIP" > "$PID_FILE"
     sleep 0.6
 
     apply_saved_theme
@@ -91,8 +95,12 @@ start_shell() {
     echo "  - Wayland Lock Screen: PID $PID_LOCK"
     echo "  - Session Shutdown Dialog: PID $PID_SESSION"
     echo "  - Screen Capture & Record HUD: PID $PID_CAPTURE"
+    echo "  - App Switcher (Cmd+Tab): PID $PID_SWITCHER"
+    echo "  - Clipboard Manager (Super+V): PID $PID_CLIP"
     echo ""
     echo "Commands & Hotkey Triggers:"
+    echo "  - $0 appswitcher     (Toggle Cmd+Tab Application Switcher)"
+    echo "  - $0 clipboard       (Toggle Clipboard History Manager)"
     echo "  - $0 settings        (Toggle System Settings)"
     echo "  - $0 lock            (Lock Screen with ext-session-lock)"
     echo "  - $0 session [0|1|2] (0=Shutdown, 1=Restart, 2=Logout modal)"
@@ -122,6 +130,12 @@ case "$1" in
         ;;
     restart)
         start_shell
+        ;;
+    appswitcher)
+        "$BIN" --say appswitcher "emit toggle"
+        ;;
+    clipboard)
+        "$BIN" --say clipboard "emit toggle"
         ;;
     settings)
         "$BIN" --say settings "emit toggle"

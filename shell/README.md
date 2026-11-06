@@ -28,6 +28,8 @@ An ultra-performant, GPU-accelerated macOS Sequoia/Sonoma desktop shell for Wayl
 
 | Component | File Path | Description |
 | :--- | :--- | :--- |
+| **App Switcher** | [`shell/appswitcher.plm`](file:///home/nsp/Documents/p/beskar/beskar/shell/appswitcher.plm) | macOS Cmd+Tab application switcher HUD showing running windows from niri/Wayland with active selection capsule and focus switching. |
+| **Clipboard History** | [`shell/clipboard.plm`](file:///home/nsp/Documents/p/beskar/beskar/shell/clipboard.plm) | macOS Super+V Clipboard Manager with live cliphist history, 1-click restore/paste, and Clear All action. |
 | **System Settings** | [`shell/settings.plm`](file:///home/nsp/Documents/p/beskar/beskar/shell/settings.plm) | Dedicated macOS 2-column System Settings app: Appearance, Displays (eDP-1 + HDMI-A-1), Sound, Wi-Fi, Bluetooth, Notifications, Wallpaper picker (awww), Software Update (yay/pacman), and About This Mac specs. |
 | **Lock Screen** | [`shell/lock.plm`](file:///home/nsp/Documents/p/beskar/beskar/shell/lock.plm) | Native Wayland session lock (`ext-session-lock` protocol) with full-screen blur, Apple typography clock, avatar, password verification via PAM, and spring headshake. |
 | **Session Dialog** | [`shell/session.plm`](file:///home/nsp/Documents/p/beskar/beskar/shell/session.plm) | macOS Shutdown/Restart/Logout confirmation dialog with 60-second automatic timer and window reopen toggle. |

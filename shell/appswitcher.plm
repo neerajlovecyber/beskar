@@ -1,0 +1,133 @@
+// macOS App Switcher (Cmd + Tab HUD)
+import "common/palette.plm"
+
+scene MacAppSwitcher {
+    surface {
+        size: 700, 160
+        anchor: center
+        level: overlay
+        keyboard: exclusive while open
+    }
+
+    permissions {
+        services: "apps", "window", "say:topbar", "say:dock"
+        run: "niri", "hyprctl", "sh"
+    }
+
+    fact open = false
+    fact dark_mode = true
+    fact skin = 0
+    fact sel = 0
+
+    model wins max 7 { id: number; title: text; app_id: text; icon: image 48, 48 }
+
+    prop seen = 0 ~quick
+    prop scale = 0.95 ~lively
+
+    layer switcher ~quick {
+        shown while open { seen: 1 ~quick; scale: 1 ~lively }
+        gone             { seen: 0 ~quick; scale: 0.95 ~quick }
+    }
+
+    let bg_color = if(dark_mode, if(skin == 2, #181a20, if(skin == 1, #161822, #12141a)), if(skin == 2, #f5f6fa, if(skin == 1, #eceef5, #f8f9fd)))
+    let glass_amt = if(skin == 2, 0%, if(skin == 1, 60%, 85%))
+    let tint_amt = if(skin == 2, 0%, if(dark_mode, 40%, 25%))
+    let rim_amt = if(skin == 2, 0%, 14%)
+    let shadow_amt = if(dark_mode, 45%, 20%)
+    let stroke_c = if(dark_mode, #ffffff, #000000)
+    let stroke_op = if(dark_mode, 12%, 8%)
+    let ink_c = if(dark_mode, #f5f7f5, #1d1d1f)
+    let ink_sub = if(dark_mode, #8e8e93, #6e6e73)
+
+    event toggle
+    event next_app ->
+    event prev_app ->
+    event switch_to ->
+
+    // Outside dismiss
+    zone box dismiss { from: 0, 0; size: 700, 160; active: open }
+    on press dismiss { open = false }
+
+    group {
+        move: 40, 20
+        pivot: 310, 60
+        scale: scale
+        opacity: seen
+
+        // Floating Capsule
+        body {
+            color: bg_color
+            glass: glass_amt
+            frost: 100%
+            dispersion: 0
+            refraction: 0
+            tint: tint_amt
+            rim: rim_amt
+            shadow: 0, 16, 44, shadow_amt
+            box { from: 0, 0; size: 620, 120; corner: 24 }
+        }
+        box { from: 0, 0; size: 620, 120; corner: 24; stroke: 1; color: stroke_c; opacity: stroke_op }
+
+        // Selected Window Title Banner (macOS style below/above icons)
+        text "Application Switcher" {
+            at: 310, 18
+            anchor: center
+            size: 11
+            weight: 600
+            color: ink_sub
+        }
+
+        // Horizontal Icons Strip
+        row app_strip {
+            at: 310, 66
+            gap: 12
+            anchor: center
+            align: center
+
+            for w in wins {
+                AppTile(w)
+            }
+        }
+    }
+
+    component AppTile(w: record) {
+        size: 72, 72
+        prop on = 0 ~quick
+        follow on = if(sel == w.index, 1, 0)
+
+        // Blue highlight capsule
+        box hit {
+            from: 0, 0
+            size: 72, 72
+            corner: 14
+            color: #007aff
+            opacity: on * 28%
+            cursor: pointer
+        }
+        box {
+            from: 0, 0
+            size: 72, 72
+            corner: 14
+            stroke: 1.5
+            color: #007aff
+            opacity: on * 90%
+        }
+
+        // App Icon or Fallback
+        group {
+            move: 36, 32
+            image w.icon { at: -24, -24; size: 48, 48 }
+            // Running indicator dot
+            ellipse { at: 0, 30; radius: 2.5; color: ink_c; opacity: 75% }
+        }
+
+        on press hit { emit switch_to(w.index) }
+    }
+
+    on toggle     { toggle open }
+    on key Tab    { emit next_app }
+    on key Left   { emit prev_app }
+    on key Right  { emit next_app }
+    on key Return { emit switch_to(sel) }
+    on key Escape { open = false }
+}

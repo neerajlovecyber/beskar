@@ -1,0 +1,145 @@
+// macOS Clipboard History Manager (Super + V)
+import "common/palette.plm"
+
+scene MacClipboard {
+    surface {
+        size: 560, 480
+        anchor: center
+        level: overlay
+        keyboard: exclusive while open
+    }
+
+    permissions {
+        services: "say:topbar", "say:dock"
+        run: "cliphist", "wl-copy", "notify-send", "sh"
+    }
+
+    fact open = false
+    fact dark_mode = true
+    fact skin = 0
+    fact sel = 0
+
+    model clips max 8 { id: number; preview: text; full: text }
+
+    prop seen = 0 ~quick
+    prop scale = 0.96 ~lively
+
+    layer panel ~quick {
+        shown while open { seen: 1 ~quick; scale: 1 ~lively }
+        gone             { seen: 0 ~quick; scale: 0.96 ~quick }
+    }
+
+    let bg_color = if(dark_mode, if(skin == 2, #181a20, if(skin == 1, #161822, #12141a)), if(skin == 2, #f5f6fa, if(skin == 1, #eceef5, #f8f9fd)))
+    let glass_amt = if(skin == 2, 0%, if(skin == 1, 60%, 85%))
+    let tint_amt = if(skin == 2, 0%, if(dark_mode, 40%, 25%))
+    let rim_amt = if(skin == 2, 0%, 14%)
+    let shadow_amt = if(dark_mode, 45%, 20%)
+    let stroke_c = if(dark_mode, #ffffff, #000000)
+    let stroke_op = if(dark_mode, 12%, 8%)
+    let ink_c = if(dark_mode, #f5f7f5, #1d1d1f)
+    let ink_sub = if(dark_mode, #8e8e93, #6e6e73)
+
+    event toggle
+    event copy_clip ->
+    event delete_clip ->
+    event clear_all ->
+
+    // Scrim outside click dismiss
+    zone box dismiss { from: 0, 0; size: 560, 480; active: open }
+    on press dismiss { open = false }
+
+    group {
+        move: 30, 20
+        pivot: 250, 220
+        scale: scale
+        opacity: seen
+
+        // Floating Frame
+        body {
+            color: bg_color
+            glass: glass_amt
+            frost: 100%
+            dispersion: 0
+            refraction: 0
+            tint: tint_amt
+            rim: rim_amt
+            shadow: 0, 16, 44, shadow_amt
+            box { from: 0, 0; size: 500, 440; corner: 20 }
+        }
+        box { from: 0, 0; size: 500, 440; corner: 20; stroke: 1; color: stroke_c; opacity: stroke_op }
+
+        // Header Title & Action Buttons
+        row {
+            at: 20, 18
+            gap: 12
+            align: center
+
+            text "󰅌" { size: 16; color: #007aff }
+            text "Clipboard History" { size: 15; weight: 700; color: ink_c; width: 330 }
+
+            group {
+                size: 70, 24
+                box { from: 0, 0; size: 70, 24; corner: 6; color: if(dark_mode, #282c35, #e5e7eb) }
+                text "Clear All" { at: 35, 12; anchor: center; size: 11; weight: 500; color: ink_sub }
+                zone box btn_clear { from: 0, 0; size: 70, 24; cursor: pointer }
+                on press btn_clear { emit clear_all }
+            }
+        }
+
+        // Separator
+        box { from: 20, 48; size: 460, 1; color: stroke_c; opacity: stroke_op }
+
+        // Clips List
+        column clip_list {
+            at: 16, 56
+            gap: 4
+            for c in clips {
+                ClipRow(c)
+            }
+        }
+    }
+
+    component ClipRow(c: record) {
+        size: 468, 42
+        prop on = 0 ~quick
+        follow on = if(sel == c.index, 1, 0)
+
+        // Pill background
+        box hit {
+            from: 0, 0
+            size: 468, 42
+            corner: 10
+            color: #007aff
+            opacity: on * 22%
+            cursor: pointer
+        }
+
+        // Active blue indicator bar
+        box { from: 0, 11; size: 3, 20; corner: 1.5; color: #007aff; opacity: on }
+
+        // Clip text preview
+        row {
+            at: 14, 12
+            gap: 10
+            align: center
+
+            text "󰈙" { size: 14; color: if(on > 0.5, #007aff, ink_sub) }
+            text c.preview {
+                size: 13
+                weight: if(on > 0.5, 600, 400)
+                color: ink_c
+                width: 410
+                lines: 1
+            }
+        }
+
+        on enter hit { sel = c.index }
+        on press hit { emit copy_clip(c.index) }
+    }
+
+    on toggle     { toggle open }
+    on key Down   { sel = min(sel + 1, max(clips.count - 1, 0)) }
+    on key Up     { sel = max(sel - 1, 0) }
+    on key Return { emit copy_clip(sel) }
+    on key Escape { open = false }
+}
