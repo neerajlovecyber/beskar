@@ -21,7 +21,7 @@ kill_all() {
 
 check_status() {
     echo "macOS Shell Status:"
-    for comp in topbar dock spotlight control_center apple_menu; do
+    for comp in topbar dock spotlight control_center apple_menu widgets; do
         if pgrep -f "pleamar.*$comp\.plm" >/dev/null 2>&1; then
             echo "  ✔ $comp is RUNNING"
         else
@@ -38,7 +38,7 @@ apply_saved_theme() {
         [ -z "$DM" ] && DM="true"
         [ -z "$SKIN" ] && SKIN="0"
 
-        for comp in topbar dock spotlight control_center apple_menu; do
+        for comp in topbar dock spotlight control_center apple_menu widgets; do
             "$BIN" --say "$comp" "fact dark_mode $DM" >/dev/null 2>&1 || true
             "$BIN" --say "$comp" "fact skin $SKIN" >/dev/null 2>&1 || true
         done
@@ -61,8 +61,10 @@ start_shell() {
     PID_CC=$!
     setsid "$BIN" --no-hud --scene "$DIR/shell/apple_menu.plm" </dev/null >/tmp/pleamar_apple.log 2>&1 &
     PID_APPLE=$!
+    setsid "$BIN" --no-hud --scene "$DIR/shell/widgets.plm" </dev/null >/tmp/pleamar_widgets.log 2>&1 &
+    PID_WIDGETS=$!
 
-    echo "$PID_BAR $PID_DOCK $PID_SPOTLIGHT $PID_CC $PID_APPLE" > "$PID_FILE"
+    echo "$PID_BAR $PID_DOCK $PID_SPOTLIGHT $PID_CC $PID_APPLE $PID_WIDGETS" > "$PID_FILE"
     sleep 0.6
 
     apply_saved_theme
@@ -73,11 +75,13 @@ start_shell() {
     echo "  - Spotlight Search: PID $PID_SPOTLIGHT"
     echo "  - Control Center: PID $PID_CC"
     echo "  - Apple Menu: PID $PID_APPLE"
+    echo "  - Widgets & Notifications: PID $PID_WIDGETS"
     echo ""
     echo "Commands & Hotkey Triggers:"
     echo "  - $0 spotlight       (Toggle Spotlight search)"
     echo "  - $0 control-center  (Toggle Control Center)"
     echo "  - $0 apple-menu      (Toggle Apple menu)"
+    echo "  - $0 widgets         (Toggle Notification Center & Widgets)"
     echo "  - $0 dark-mode [on|off]"
     echo "  - $0 skin [0|1|2]    (0=Liquid Glass, 1=Light Acrylic, 2=Classic Solid)"
     echo "  - $0 status          (Check shell status)"
@@ -104,10 +108,13 @@ case "$1" in
     apple-menu)
         "$BIN" --say apple_menu "emit toggle"
         ;;
+    widgets)
+        "$BIN" --say widgets "emit toggle"
+        ;;
     dark-mode)
         VAL="true"
         [ "$2" = "off" ] && VAL="false"
-        for comp in topbar dock spotlight control_center apple_menu; do
+        for comp in topbar dock spotlight control_center apple_menu widgets; do
             "$BIN" --say "$comp" "fact dark_mode $VAL"
         done
         mkdir -p "$(dirname "$CONFIG_FILE")"
@@ -116,7 +123,7 @@ case "$1" in
         ;;
     skin)
         SKIN_VAL="${2:-0}"
-        for comp in topbar dock spotlight control_center apple_menu; do
+        for comp in topbar dock spotlight control_center apple_menu widgets; do
             "$BIN" --say "$comp" "fact skin $SKIN_VAL"
         done
         mkdir -p "$(dirname "$CONFIG_FILE")"

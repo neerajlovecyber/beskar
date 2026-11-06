@@ -10,3 +10,7 @@ end)
 on("open_spotlight", function()
     pcall(sys.call, "say", "spotlight", "emit toggle")
 end)
+
+on("open_widgets", function()
+    pcall(sys.call, "say", "widgets", "emit toggle")
+end)

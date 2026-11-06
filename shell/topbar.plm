@@ -10,7 +10,7 @@ scene MacTopBar {
     }
 
     permissions {
-        services: "clock", "audio", "network", "battery", "window", "say:control_center", "say:spotlight", "say:apple_menu"
+        services: "clock", "audio", "network", "battery", "window", "say:control_center", "say:spotlight", "say:apple_menu", "say:widgets"
     }
 
     service clock as now { time: text = "--:--"; date: text }
@@ -33,6 +33,7 @@ scene MacTopBar {
     event open_apple_menu ->
     event open_control_center ->
     event open_spotlight ->
+    event open_widgets ->
 
     // ── Safe Background Zone to Catch Right Clicks and Background ──
     zone box topbar_bg { from: 0, 0; size: screen.width, 30 }
@@ -109,12 +110,19 @@ scene MacTopBar {
             zone box cc_hit { from: -4, -4; size: 28, 24; cursor: pointer }
         }
 
-        // Date & Time
-        text now.date { size: 12.5; color: ink_c; opacity: 75% }
-        text now.time { size: 13; weight: 600; color: ink_c }
+        // Date & Time (Clickable for Notification Center & Widgets)
+        group {
+            row {
+                gap: 8; align: center
+                text now.date { size: 12.5; color: ink_c; opacity: 75% }
+                text now.time { size: 13; weight: 600; color: ink_c }
+            }
+            zone box clock_hit { from: -4, -4; size: 140, 24; cursor: pointer }
+        }
     }
 
     on press apple_hit { emit open_apple_menu }
     on press spot_hit { emit open_spotlight }
     on press cc_hit { emit open_control_center }
+    on press clock_hit { emit open_widgets }
 }
