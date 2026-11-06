@@ -13,6 +13,7 @@
 import "common/palette.plm"
 
 scene MacTopBar {
+    include "common/theme.plm"
     surface {
         size: full, full
         anchor: top
@@ -36,11 +37,9 @@ scene MacTopBar {
     //  not also be a `service tray` here: the tray has one listener, and two would fight over it.
     model icons max 8 { icon: image 18, 18 }
 
-    fact dark_mode = true
     fact bt_connected = false   // set by control_center.luau: a Bluetooth device is connected
     fact dnd = false            // Do Not Disturb, from the Control Center
     fact notif_count = 0       // set by notifications.luau: how many are waiting
-    fact skin = 0
 
     //  Reported by topbar.luau
     fact run_1 = 0
@@ -79,11 +78,9 @@ scene MacTopBar {
     let bar_smoke = if(dark_mode, 75%, 0%)
     let bar_milk  = if(dark_mode, 0%, 70%)
     let stroke_c  = if(dark_mode, #b4a8ff, #7f52ff)
-    let ink_c     = if(dark_mode, #f5f7f5, #1d1d1f)
-    let ink_sub   = if(dark_mode, #9a9ea7, #6e6e73)
-    let accent_c  = #e8a048
+    let hint_c    = #e8a048   // the little numbers (percentage); a deliberate warm note
+    let dot_color = ink_c
     let pill_fill = if(dark_mode, #2a2c35, #dcdde6)
-    let dot_color = if(dark_mode, #f5f7f5, #1d1d1f)
 
     // ── geometry ─────────────────────────────────────────────────
     let ring        = 6       // thickness of the border that goes all the way round
@@ -157,9 +154,9 @@ scene MacTopBar {
         box { from: 0, 0; size: 54, 24; corner: 8; color: ink_c; opacity: hot * 14% }
         box { from: 6, 6.5; size: 24, 11; corner: 3.2; stroke: 1.3; color: ink_c; opacity: 80% }
         box { from: 31, 10; size: 2, 4; corner: 1; color: ink_c; opacity: 80% }
-        box { from: 8, 8.5; size: max(2, 20 * clamp(bat.percent / 100, 0, 1)), 7; corner: 1.6; color: if(bat.charging, mint, if(bat.percent <= 20, #ff453a, ink_c)) }
+        box { from: 8, 8.5; size: max(2, 20 * clamp(bat.percent / 100, 0, 1)), 7; corner: 1.6; color: if(bat.charging, ok_c, if(bat.percent <= 20, danger_c, ink_c)) }
         path { at: 16.5, 7; color: if(bat.charging, #0c1410, ink_c); opacity: if(bat.charging, 100%, 0%); move 2.5, 0; line 0, 5.5; line 2.4, 5.5; line 1.5, 10; line 5, 4; line 2.6, 4; close }
-        text "{bat.percent}" { at: 36, 12; anchor: left center; size: 11; weight: 700; color: accent_c }
+        text "{bat.percent}" { at: 36, 12; anchor: left center; size: 11; weight: 700; color: hint_c }
         zone box hit { from: 0, 0; size: 54, 24; corner: 8; cursor: pointer }
         on enter hit { hot: 1 }
         on leave hit { hot: 0 }
@@ -191,7 +188,7 @@ scene MacTopBar {
         path { at: 5, 4; color: ink_c; move 0, 13; line 2, 13; line 2.5, 6.5; line 4.5, 2.5; line 9.5, 2.5; line 11.5, 6.5; line 12, 13; line 14, 13; line 14, 15; line 0, 15; close }
         ellipse { at: 12, 19.2; radius: 1.7; color: ink_c }
         line { from: 5, 5; to: 19, 19; width: 1.8; color: ink_c; opacity: if(dnd, 100%, 0%) }
-        ellipse { at: 19, 5; radius: 5.5; color: #ff453a; opacity: if(notif_count > 0, 100%, 0%) }
+        ellipse { at: 19, 5; radius: 5.5; color: danger_c; opacity: if(notif_count > 0, 100%, 0%) }
         text "{notif_count}" { at: 19, 5; anchor: center; size: 7.5; weight: 700; color: #ffffff; opacity: if(notif_count > 0, 100%, 0%) }
         zone box hit { from: 0, 0; size: 24, 24; corner: 8; cursor: pointer }
         on enter hit { hot: 1 }
@@ -325,7 +322,7 @@ scene MacTopBar {
             row {
                 gap: 4
                 align: center
-                text weather_icon { size: 12; color: accent_c }
+                text weather_icon { size: 12; color: hint_c }
                 text weather_temp { size: 11; weight: 600; color: ink_c }
             }
 

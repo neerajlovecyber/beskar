@@ -52,7 +52,8 @@ pattern matches the invoking command) and relaunching `bin/pleamar --no-hud --sc
    and `niri msg -j event-stream`. The 6 px ring is kept clear of windows by `struts` in
    `~/.config/niri/config.kdl`.
 10. **One panel at a time.** A panel's logic ends with `require("exclusive")("<scene>")` (`shell/exclusive.luau`), which closes the other panels when it opens. A new panel must be added to `PANELS` there and get `say:<scene>` permissions both ways.
-11. **Names.** Component-scoped names are mangled (`hit#Shell7#DockItem36`); `--say` can see them via `describe`.
+11. **Colours come from `shell/common/theme.plm`.** It is a `part`: put `include "common/theme.plm"` as the first line of a scene and use its tokens (`accent_c`, `ok_c`, `danger_c`, `focus_c`, `ink_c`, `ink_sub`, `card_fill`, `item_solid`, `bg_color`, …) instead of hex values. It declares the `dark_mode`, `skin` and `accent` facts; Settings broadcasts them to every scene and saves them to `~/.config/pleamar_shell.json`. Scenes not yet migrated: spotlight, clipboard, apple_menu, osd, session, capture, appswitcher, lock, settings (settings only defines `accent_c` itself).
+12. **Names.** Component-scoped names are mangled (`hit#Shell7#DockItem36`); `--say` can see them via `describe`.
 
 ## Working style
 

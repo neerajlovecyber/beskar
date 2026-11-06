@@ -8,6 +8,7 @@
 import "common/palette.plm"
 
 scene MacNotifications {
+    include "common/theme.plm"
     //  `notifications` is what makes this the receiver of the desktop's notifications (the logic asks for
     //  them); `files` / `files.write` keep the history of dismissed ones across restarts; `say:topbar`
     //  tells the bell how many are waiting.
@@ -21,8 +22,6 @@ scene MacNotifications {
     model past max 5 { title: text; body: text; icon: image 28, 28; age: text }
 
     fact open = false
-    fact dark_mode = true
-    fact skin = 0
     fact last_n = 0
     fact dnd = false            // Do Not Disturb: no banners (they still land in the centre)
 
@@ -33,18 +32,6 @@ scene MacNotifications {
     event dismiss_notice ->
 
     // ── look ─────────────────────────────────────────────────────
-    let bg_color = if(dark_mode, if(skin == 2, #1e2026, if(skin == 1, #1c1e28, #161820)), if(skin == 2, #f2f3f7, if(skin == 1, #eaecf2, #f8f9fc)))
-    let glass_amt = if(skin == 2, 0%, if(skin == 1, 55%, 85%))
-    let tint_amt = if(skin == 2, 0%, if(dark_mode, 40%, 25%))
-    let rim_amt = if(skin == 2, 0%, 14%)
-    let shadow_amt = if(dark_mode, 35%, 15%)
-    let card_fill = if(dark_mode, #2a2d38, #ffffff)
-    let card_fill_op = if(dark_mode, 82%, 90%)
-    let card_stroke = if(dark_mode, #ffffff, #000000)
-    let card_stroke_op = if(dark_mode, 7%, 8%)
-    let ink_c = if(dark_mode, #f5f7f5, #1d1d1f)
-    let ink_sub = if(dark_mode, #9a9ea7, #6e6e73)
-    let item_bg = if(dark_mode, #3a3d49, #e2e4ea)
 
     //  One notification, after the macOS design: a large rounded card, the app's icon in a squircle on
     //  the left, a bold title, up to two lines of body and the time on the right. The round × shows on
@@ -60,7 +47,7 @@ scene MacNotifications {
 
         //  The icon: a blue squircle with a bell, and the application's own icon over it when it has one.
         body {
-            gradient: 0, 0 to 44, 44, #4aa3ff, #5e5ce6
+            gradient: 0, 0 to 44, 44, accent_c, focus_c
             box { from: 16, 24; size: 44, 44; corner: 12 }
         }
         text "󰂚" { at: 38, 46; anchor: center; size: 20; color: #ffffff }
@@ -73,7 +60,7 @@ scene MacNotifications {
         //  Close: a small round button at the corner, only on hover.
         group {
             opacity: hot
-            ellipse { at: 322, 28; radius: 11; color: item_bg }
+            ellipse { at: 322, 28; radius: 11; color: item_solid }
             line { from: 318, 24; to: 326, 32; width: 1.6; color: ink_c }
             line { from: 326, 24; to: 318, 32; width: 1.6; color: ink_c }
         }
@@ -91,7 +78,7 @@ scene MacNotifications {
         size: 352, 52
         box { from: 0, 0; size: 352, 52; corner: 16; color: card_fill; opacity: card_fill_op * 55% }
         body {
-            gradient: 0, 0 to 28, 28, #4aa3ff, #5e5ce6
+            gradient: 0, 0 to 28, 28, accent_c, focus_c
             box { from: 14, 12; size: 28, 28; corner: 8; opacity: 70% }
         }
         text "󰂚" { at: 28, 26; anchor: center; size: 13; color: #ffffff; opacity: 80% }
@@ -145,7 +132,7 @@ scene MacNotifications {
             //  Clear all
             group {
                 show: notices.count > 0
-                box { from: 280, 18; size: 76, 28; corner: 14; color: item_bg }
+                box { from: 280, 18; size: 76, 28; corner: 14; color: item_solid }
                 text "Clear All" { at: 318, 32; anchor: center; size: 10.5; weight: 600; color: ink_c }
                 zone box clear_hit { from: 280, 18; size: 76, 28; corner: 14; cursor: pointer }
                 on press clear_hit { emit clear_notices }
@@ -177,7 +164,7 @@ scene MacNotifications {
             //  Nothing new
             group {
                 show: notices.count < 1 and past.count < 1
-                ellipse { at: 190, 100; radius: 28; color: item_bg }
+                ellipse { at: 190, 100; radius: 28; color: item_solid }
                 path { at: 181, 90; color: ink_sub; move 0, 15; line 2.5, 15; line 3, 7; line 5, 2; line 9, 2; line 11, 7; line 11.5, 15; line 14, 15; line 14, 17; line 0, 17; close }
                 ellipse { at: 188, 108; radius: 2.2; color: ink_sub }
                 text "No Notifications" { at: 190, 148; anchor: center; size: 13; weight: 600; color: ink_c }

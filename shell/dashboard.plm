@@ -2,6 +2,7 @@
 import "common/palette.plm"
 
 scene MacDashboard {
+    include "common/theme.plm"
     surface {
         size: 380, 560
         anchor: top
@@ -18,8 +19,6 @@ scene MacDashboard {
     service clock as now { time: text = "--:--"; date: text }
 
     fact open = false
-    fact dark_mode = true
-    fact skin = 0
     fact cpu_pct = 18
     fact mem_pct = 44
     fact disk_pct = 52
@@ -33,19 +32,7 @@ scene MacDashboard {
     text cal_dow = "Friday"
     text cal_event = "No Upcoming Events"
 
-    let bg_color = if(dark_mode, if(skin == 2, #1e2026, if(skin == 1, #1c1e28, #161820)), if(skin == 2, #f2f3f7, if(skin == 1, #eaecf2, #f8f9fc)))
-    let glass_amt = if(skin == 2, 0%, if(skin == 1, 55%, 85%))
-    let tint_amt = if(skin == 2, 0%, if(dark_mode, 40%, 25%))
-    let rim_amt = if(skin == 2, 0%, 14%)
-    let shadow_amt = if(dark_mode, 35%, 15%)
-    let card_fill = if(dark_mode, #232630, #ffffff)
-    let card_fill_op = if(dark_mode, 78%, 88%)
-    let card_stroke = if(dark_mode, #ffffff, #000000)
-    let card_stroke_op = if(dark_mode, 6%, 8%)
-    let ink_c = if(dark_mode, #f5f7f5, #1d1d1f)
-    let ink_sub = if(dark_mode, #8e8e93, #6e6e73)
-    let item_bg = if(dark_mode, #343740, #e2e4ea)
-    let bar_track = if(dark_mode, #343740, #e2e4ea)
+    let bar_track = item_solid
 
     event toggle
     event refresh_stats ->
@@ -89,7 +76,7 @@ scene MacDashboard {
             at: 16, 16
             gap: 8
             align: center
-            text "󰃭" { size: 16; color: #007aff }
+            text "󰃭" { size: 16; color: accent_c }
             text "Today" { size: 15; weight: 600; color: ink_c }
         }
 
@@ -133,14 +120,14 @@ scene MacDashboard {
             box { from: 0, 0; size: 320, 116; corner: 16; stroke: 1; color: card_stroke; opacity: card_stroke_op }
 
             // Header
-            text "󰍹" { at: 16, 16; size: 14; color: #007aff }
+            text "󰍹" { at: 16, 16; size: 14; color: accent_c }
             text "Activity & Resources" { at: 36, 16; size: 12; weight: 600; color: ink_c }
 
             // CPU Metric
             text "CPU" { at: 16, 38; size: 11; weight: 600; color: ink_c }
-            text "{cpu_pct}%" { at: 304, 45; anchor: right center; size: 11; weight: 600; color: #007aff }
+            text "{cpu_pct}%" { at: 304, 45; anchor: right center; size: 11; weight: 600; color: accent_c }
             box { from: 16, 52; size: 288, 6; corner: 3; color: bar_track }
-            box { from: 16, 52; size: max(288 * (cpu_pct / 100), 8), 6; corner: 3; color: #007aff }
+            box { from: 16, 52; size: max(288 * (cpu_pct / 100), 8), 6; corner: 3; color: accent_c }
 
             // Memory Metric
             text "Memory" { at: 16, 64; size: 11; weight: 600; color: ink_c }
@@ -165,7 +152,7 @@ scene MacDashboard {
             //  the cell
             box { from: 16, 20; size: 34, 17; corner: 5; stroke: 1.8; color: ink_c }
             box { from: 51, 25; size: 3, 6; corner: 1.5; color: ink_c }
-            box { from: 19, 23; size: max(3, 28 * clamp(bat.percent / 100, 0, 1)), 11; corner: 2.5; color: if(bat.charging, mint, if(bat.percent <= 20, #ff453a, ink_c)) }
+            box { from: 19, 23; size: max(3, 28 * clamp(bat.percent / 100, 0, 1)), 11; corner: 2.5; color: if(bat.charging, mint, if(bat.percent <= 20, danger_c, ink_c)) }
             text "Battery" { at: 70, 22; anchor: left center; size: 12; weight: 600; color: ink_c }
             text if(bat.charging, "Charging", "On battery") { at: 70, 40; anchor: left center; size: 10.5; color: ink_sub }
             text "{bat.percent}%" { at: 304, 32; anchor: right center; size: 22; weight: 700; color: ink_c }

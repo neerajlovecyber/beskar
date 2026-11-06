@@ -36,12 +36,17 @@ apply_saved_theme() {
         DM=$(grep -o '"dark_mode": *[a-z]*' "$CONFIG_FILE" | awk '{print $2}' || true)
         SKIN=$(grep -o '"skin": *[0-9]*' "$CONFIG_FILE" | awk '{print $2}' || true)
         
+        ACCENT=$(grep -o '"accent": *[0-9]*' "$CONFIG_FILE" | awk '{print $2}' || true)
+        [ -z "$ACCENT" ] && ACCENT="0"
         [ -z "$DM" ] && DM="true"
         [ -z "$SKIN" ] && SKIN="0"
 
         for comp in topbar border spotlight control_center apple_menu notifications dashboard osd settings session capture appswitcher clipboard; do
             "$BIN" --say "$comp" "fact dark_mode $DM" >/dev/null 2>&1 || true
             "$BIN" --say "$comp" "fact skin $SKIN" >/dev/null 2>&1 || true
+        done
+        for comp in topbar control_center notifications dashboard settings; do
+            "$BIN" --say "$comp" "fact accent $ACCENT" >/dev/null 2>&1 || true
         done
     fi
 }

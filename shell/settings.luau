@@ -9,32 +9,34 @@ local wallpapers = {
     [5] = "/usr/share/wallpapers/cachyos-wallpapers/DarkStreaks.png",
 }
 
+-- Scenes that follow the shared theme (shell/common/theme.plm) and so have an `accent` fact too.
+local THEMED = { "topbar", "control_center", "notifications", "dashboard", "settings" }
+local PLAIN = { "spotlight", "apple_menu", "osd", "clipboard", "session", "capture" }
+
+local function save_theme(dm_str, skin_str, accent_str)
+    -- ~/.config/pleamar_shell.json is read by start.sh to restore the look after a restart.
+    local json_text = string.format('{"dark_mode": %s, "skin": %s, "accent": %s}', dm_str, skin_str, accent_str)
+    pcall(run, "sh", { "-c", "mkdir -p \"$HOME/.config\" && printf '%s\\n' '" .. json_text .. "' > \"$HOME/.config/pleamar_shell.json\"" }, nil, { output = false })
+end
+
 local function broadcast_theme()
     local dm = (fact.dark_mode == true or fact.dark_mode == 1)
     local dm_str = tostring(dm)
     local skin_str = tostring(fact.skin or 0)
-    
-    local scenes = {"topbar", "dock", "spotlight", "control_center", "apple_menu", "notifications", "dashboard", "osd", "settings"}
-    for _, s in ipairs(scenes) do
+    local accent_str = tostring(fact.accent or 0)
+
+    for _, s in ipairs(THEMED) do
+        pcall(sys.call, "say", s, "fact dark_mode " .. dm_str)
+        pcall(sys.call, "say", s, "fact skin " .. skin_str)
+        pcall(sys.call, "say", s, "fact accent " .. accent_str)
+    end
+    for _, s in ipairs(PLAIN) do
         pcall(sys.call, "say", s, "fact dark_mode " .. dm_str)
         pcall(sys.call, "say", s, "fact skin " .. skin_str)
     end
-
-    -- Save to config file for persistence across restarts
-    pcall(function()
-        local home = os.getenv("HOME") or "/home/nsp"
-        local f = io.open(home .. "/.config/pleamar_shell.json", "w")
-        if f then
-            f:write(string.format('{"dark_mode": %s, "skin": %s}\n', dm_str, skin_str))
-            f:close()
-        end
-    end)
-
-    -- Synchronize system color scheme
-    pcall(function()
-        local scheme = dm and "prefer-dark" or "prefer-light"
-        os.execute("gsettings set org.gnome.desktop.interface color-scheme " .. scheme .. " 2>/dev/null &")
-    end)
+    save_theme(dm_str, skin_str, accent_str)
+    -- GTK / libadwaita apps follow too
+    pcall(run, "gsettings", { "set", "org.gnome.desktop.interface", "color-scheme", dm and "prefer-dark" or "prefer-light" }, nil, { output = false })
 end
 
 on("toggle_dark", function()
@@ -50,6 +52,7 @@ end)
 
 on("choose_accent", function(val)
     fact.accent = tonumber(val) or 0
+    broadcast_theme()
 end)
 
 on("volume_set", function(val)

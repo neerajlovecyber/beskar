@@ -1,31 +1,10 @@
 -- Control Center companion logic
 
+-- The theme is owned by Settings: it tells every scene (accent and skin too), saves the look to disk and
+-- tells GTK apps. Here we only ask it, with the value we want.
 local function broadcast_theme()
     local dm = (fact.dark_mode == true or fact.dark_mode == 1)
-    local dm_str = tostring(dm)
-    local skin_str = tostring(fact.skin or 0)
-    
-    local scenes = {"topbar", "dock", "spotlight", "apple_menu", "notifications", "dashboard", "osd", "settings"}
-    for _, s in ipairs(scenes) do
-        pcall(sys.call, "say", s, "fact dark_mode " .. dm_str)
-        pcall(sys.call, "say", s, "fact skin " .. skin_str)
-    end
-
-    -- Save to config file for persistence across restarts
-    pcall(function()
-        local home = os.getenv("HOME") or "/home/nsp"
-        local f = io.open(home .. "/.config/pleamar_shell.json", "w")
-        if f then
-            f:write(string.format('{"dark_mode": %s, "skin": %s}\n', dm_str, skin_str))
-            f:close()
-        end
-    end)
-
-    -- Synchronize system color scheme
-    pcall(function()
-        local scheme = dm and "prefer-dark" or "prefer-light"
-        os.execute("gsettings set org.gnome.desktop.interface color-scheme " .. scheme .. " 2>/dev/null &")
-    end)
+    pcall(sys.call, "say", "settings", "emit set_dark_mode " .. (dm and "1" or "0"))
 end
 
 on("toggle_dark", function()
