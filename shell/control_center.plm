@@ -106,6 +106,8 @@ scene MacControlCenter {
     event bt_scan ->
     event open_settings ->
     event toggle_dnd ->
+    event open_sound
+    event open_nothing
     event sc_search ->
     event sc_clip ->
     event sc_shot ->
@@ -149,6 +151,39 @@ scene MacControlCenter {
             arc { at: 14, 20; radius: 2 + a * 3.6; span: 110deg; width: 1.8; color: tone; opacity: 20% + 80% * if(level > (a - 1) * 0.25, 1, 0) }
         }
         ellipse { at: 14, 21; radius: 1.8; color: tone }
+    }
+
+    //  One slider card: the same for Display and Sound, only the icon (kind 0 sun, 1 speaker) and
+    //  what it controls differ. The fill never gets narrower than the icon.
+    component LevelSlider(title: text, level: number, pct: text, kind: number, set: event, more: event) {
+        size: 328, 54
+        box { from: 0, 0; size: 328, 54; corner: 16; color: card_fill; opacity: card_fill_op }
+        box { from: 0, 0; size: 328, 54; corner: 16; stroke: 1; color: card_stroke; opacity: card_stroke_op }
+        text title { at: 14, 14; anchor: left center; size: 11; weight: 600; color: ink_sub }
+        text pct { at: 314, 14; anchor: right center; size: 10.5; color: ink_sub }
+        zone box more_hit { from: 230, 2; size: 96, 24; corner: 10; cursor: pointer; active: kind == 1 }
+        group {
+            move: 14, 25
+            size: 300, 20
+            box { from: 0, 0; size: 300, 20; corner: 10; color: slider_bg; opacity: slider_bg_op }
+            box { from: 0, 0; size: max(22, 300 * clamp(level, 0, 1)), 20; corner: 10; color: slider_bar; opacity: slider_bar_op }
+            //  sun
+            group {
+                show: kind == 0
+                ellipse { at: 12, 10; radius: 3.4; color: slider_icon }
+                repeat k in 0..8 { line { from: 12 + 5.6 * cos(k * 45), 10 + 5.6 * sin(k * 45); to: 12 + 7.6 * cos(k * 45), 10 + 7.6 * sin(k * 45); width: 1.4; color: slider_icon } }
+            }
+            //  speaker
+            group {
+                show: kind == 1
+                path { at: 5, 4; color: slider_icon; move 0, 4; line 4, 4; line 9, 0; line 9, 12; line 4, 8; line 0, 8; close }
+                arc { at: 15.5, 10; radius: 4.2; span: 110deg; rotate: -55deg; width: 1.6; color: slider_icon }
+            }
+            zone box hit { from: 0, 0; size: 300, 20; cursor: pointer }
+            on press hit { emit set(clamp(local.x / 300, 0.02, 1)) }
+            on drag hit { emit set(clamp(local.x / 300, 0.02, 1)) }
+        }
+        on press more_hit { emit more }
     }
 
     layer panel ~quick {
@@ -324,47 +359,9 @@ scene MacControlCenter {
             column {
                 at: 16, 232
                 gap: 10
-
-                // Display Brightness Card
-                group {
-                    size: 328, 54
-                    box { from: 0, 0; size: 328, 54; corner: 16; color: card_fill; opacity: card_fill_op }
-                    box { from: 0, 0; size: 328, 54; corner: 16; stroke: 1; color: card_stroke; opacity: card_stroke_op }
-                    text "Display" { at: 14, 14; anchor: left center; size: 11; weight: 600; color: ink_sub }
-                    text "{display.level * 100, 0}%" { at: 314, 14; anchor: right center; size: 10.5; color: ink_sub }
-                    group {
-                        move: 14, 25
-                        size: 300, 20
-                        box { from: 0, 0; size: 300, 20; corner: 10; color: slider_bg; opacity: slider_bg_op }
-                        box { from: 0, 0; size: 300 * max(display.level, 0.12), 20; corner: 10; color: slider_bar; opacity: slider_bar_op }
-                        ellipse { at: 14, 10; radius: 3.3; color: slider_icon }
-                        repeat k in 0..8 { line { from: 14 + 5.6 * cos(k * 45), 10 + 5.6 * sin(k * 45); to: 14 + 7.4 * cos(k * 45), 10 + 7.4 * sin(k * 45); width: 1.3; color: slider_icon } }
-                        zone box br_hit { from: 0, 0; size: 300, 20; cursor: pointer }
-                    }
-                }
-
-                // Sound Volume Card
-                group {
-                    size: 328, 54
-                    box { from: 0, 0; size: 328, 54; corner: 16; color: card_fill; opacity: card_fill_op }
-                    box { from: 0, 0; size: 328, 54; corner: 16; stroke: 1; color: card_stroke; opacity: card_stroke_op }
-                    text "Sound" { at: 14, 14; anchor: left center; size: 11; weight: 600; color: ink_sub }
-                    text "{sound.volume * 100, 0}%" { at: 294, 14; anchor: right center; size: 10.5; color: ink_sub }
-                    text "󰅂" { at: 312, 14; anchor: center; size: 12; color: ink_sub }
-                    zone box snd_chevron_hit { at: 310, 14; size: 28, 22; corner: 10; cursor: pointer }
-
-                    group {
-                        move: 14, 25
-                        size: 300, 20
-                        box { from: 0, 0; size: 300, 20; corner: 10; color: slider_bg; opacity: slider_bg_op }
-                        box { from: 0, 0; size: 300 * sound.volume, 20; corner: 10; color: slider_bar; opacity: slider_bar_op }
-                        path { at: 7, 4; color: slider_icon; move 0, 4; line 4, 4; line 9, 0; line 9, 12; line 4, 8; line 0, 8; close }
-                        arc { at: 17, 10; radius: 4.2; span: 110deg; rotate: -55deg; width: 1.5; color: slider_icon }
-                        zone box vol_hit { from: 0, 0; size: 300, 20; cursor: pointer }
-                    }
-                }
+                LevelSlider("Display", display.level, "{display.level * 100, 0}%", 0, brightness_set, open_nothing)
+                LevelSlider("Sound", sound.volume, "{sound.volume * 100, 0}% ›", 1, volume_set, open_sound)
             }
-
 
             // ── four round shortcuts ──
             group {
@@ -648,11 +645,8 @@ scene MacControlCenter {
     }
 
     // Sliders & Media Actions
-    on press br_hit   { emit brightness_set(clamp(local.x / 300, 0.1, 1)) }
-    on drag br_hit    { emit brightness_set(clamp(local.x / 300, 0.1, 1)) }
-    on press vol_hit  { emit volume_set(clamp(local.x / 300, 0, 1)) }
-    on drag vol_hit   { emit volume_set(clamp(local.x / 300, 0, 1)) }
     on press play_hit { emit play_pause }
+    on open_sound { page = 3 }
     on press prev_hit { emit previous }
     on press next_hit { emit next }
     on press seek_hit { emit seek(clamp(local.x / 130, 0, 1)) }
@@ -678,7 +672,6 @@ scene MacControlCenter {
     on press bt_back_hit      { page = 0 }
     on press bt_icon_hit      { emit toggle_bt }
 
-    on press snd_chevron_hit  { page = 3 }
     on press snd_back_hit     { page = 0 }
 
     // Theme Actions

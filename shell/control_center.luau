@@ -49,7 +49,7 @@ on("volume_set", function(val)
 end)
 
 on("brightness_set", function(val)
-    sys.call("brightness.level", val)
+    sys.call("brightness.level", math.max(0.1, tonumber(val) or 1))
 end)
 
 
