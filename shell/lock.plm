@@ -90,6 +90,7 @@ scene MacLock {
         body {
             color: #161820
             glass: 50%
+            lens: false
             tint: 30%
             rim: 10%
             shadow: 0, 8, 20, 30%

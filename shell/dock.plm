@@ -46,6 +46,7 @@ scene MacDock {
     body {
         color: dock_color
         glass: dock_glass
+        lens: false
         frost: 100%
         dispersion: 0
         refraction: 0

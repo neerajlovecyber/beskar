@@ -57,6 +57,7 @@ scene MacOsd {
         body {
             color: bg_color
             glass: glass_amt
+            lens: false
             frost: 100%
             dispersion: 0
             refraction: 0

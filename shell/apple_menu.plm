@@ -58,6 +58,7 @@ scene MacAppleMenu {
         body {
             color: menu_color
             glass: menu_glass
+            lens: false
             frost: 100%
             dispersion: 0
             refraction: 0

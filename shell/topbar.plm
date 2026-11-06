@@ -47,6 +47,7 @@ scene MacTopBar {
     body {
         color: bar_color
         glass: bar_glass
+        lens: false
         frost: 100%
         dispersion: 0
         refraction: 0

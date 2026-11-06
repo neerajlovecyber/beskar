@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # macOS Shell Launcher for Wayland Compositors (Pleamar Engine)
 set -e
+export PLEAMAR_NO_LENS=1
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BIN="$DIR/bin/pleamar"
 PID_FILE="/tmp/pleamar_macos_shell.pids"

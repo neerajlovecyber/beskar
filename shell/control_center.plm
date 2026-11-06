@@ -3,7 +3,7 @@ import "common/palette.plm"
 
 scene MacControlCenter {
     surface {
-        size: 440, 560
+        size: 440, 520
         anchor: top_right
         margin: 32, 4, 0, 0
         level: overlay
@@ -32,20 +32,23 @@ scene MacControlCenter {
     fact dark_mode = true
     fact skin = 0
 
-    let bg_color = if(dark_mode, if(skin == 2, #1e2026, if(skin == 1, #1c1e28, #161820)), if(skin == 2, #f2f3f7, if(skin == 1, #eaecf2, #f8f9fc)))
-    let glass_amt = if(skin == 2, 0%, if(skin == 1, 55%, 85%))
-    let tint_amt = if(skin == 2, 0%, if(dark_mode, 40%, 25%))
-    let rim_amt = if(skin == 2, 0%, 14%)
+    let bg_color = if(dark_mode, if(skin == 2, #1e2026, if(skin == 1, #181a20, #14161d)), if(skin == 2, #f2f3f7, if(skin == 1, #f0f2f6, #f8f9fc)))
+    let glass_amt = if(skin == 2, 0%, if(skin == 1, 45%, 70%))
+    let tint_amt = if(skin == 2, 0%, if(dark_mode, 35%, 20%))
+    let rim_amt = if(skin == 2, 0%, 12%)
     let shadow_amt = if(dark_mode, 35%, 15%)
-    let card_fill = if(dark_mode, #232630, #ffffff)
-    let card_fill_op = if(dark_mode, 78%, 88%)
+    let card_fill = if(skin == 2, if(dark_mode, #242732, #f0f2f7), if(dark_mode, #ffffff, #ffffff))
+    let card_fill_op = if(skin == 2, 100%, if(dark_mode, 10%, 65%))
     let card_stroke = if(dark_mode, #ffffff, #000000)
-    let card_stroke_op = if(dark_mode, 6%, 8%)
+    let card_stroke_op = if(skin == 2, if(dark_mode, 12%, 8%), if(dark_mode, 8%, 6%))
     let ink_c = if(dark_mode, #f5f7f5, #1d1d1f)
-    let ink_sub = if(dark_mode, #8e8e93, #6e6e73)
-    let item_bg = if(dark_mode, #343740, #e2e4ea)
-    let slider_bg = if(dark_mode, #343740, #dcdfe6)
+    let ink_sub = if(dark_mode, #9a9ea7, #6e6e73)
+    let item_bg = if(skin == 2, if(dark_mode, #343740, #e2e4ea), if(dark_mode, #ffffff, #000000))
+    let item_bg_op = if(skin == 2, 100%, if(dark_mode, 14%, 8%))
+    let slider_bg = if(dark_mode, #000000, #000000)
+    let slider_bg_op = if(dark_mode, 25%, 8%)
     let slider_bar = if(dark_mode, #ffffff, #007aff)
+    let slider_bar_op = if(dark_mode, 92%, 92%)
     let slider_icon = if(dark_mode, #16181d, #ffffff)
 
     event toggle
@@ -71,7 +74,7 @@ scene MacControlCenter {
     }
 
     // Dismiss click zone for outside
-    zone box dismiss { from: 0, 0; size: 440, 560; active: open }
+    zone box dismiss { from: 0, 0; size: 440, 520; active: open }
     on press dismiss { open = false; page = 0 }
     on press right dismiss { }
 
@@ -85,13 +88,14 @@ scene MacControlCenter {
         body {
             color: bg_color
             glass: glass_amt
+            lens: false
             frost: 100%
             dispersion: 0
             refraction: 0
             tint: tint_amt
             rim: rim_amt
-            shadow: 0, 14, 28, shadow_amt
-            box { from: 0, 0; size: 360, 480; corner: 22 }
+            shadow: 0, 14, 30, shadow_amt
+            box { from: 0, 0; size: 360, 448; corner: 22 }
         }
 
         // ==========================================================
@@ -115,7 +119,7 @@ scene MacControlCenter {
                     group {
                         size: 34, 34
                         move: 12, 14
-                        ellipse { at: 17, 17; radius: 17; color: if(net.online, #007aff, item_bg) }
+                        ellipse { at: 17, 17; radius: 17; color: if(net.online, #007aff, item_bg); opacity: if(net.online, 100%, item_bg_op) }
                         text "󰤨" { at: 17, 17; anchor: center; size: 15; color: if(net.online, #ffffff, ink_c) }
                         zone box wifi_icon_hit { from: 0, 0; size: 34, 34; cursor: pointer }
                     }
@@ -128,7 +132,7 @@ scene MacControlCenter {
                     group {
                         size: 34, 34
                         move: 12, 72
-                        ellipse { at: 17, 17; radius: 17; color: if(bt.powered, #007aff, item_bg) }
+                        ellipse { at: 17, 17; radius: 17; color: if(bt.powered, #007aff, item_bg); opacity: if(bt.powered, 100%, item_bg_op) }
                         text "󰂯" { at: 17, 17; anchor: center; size: 15; color: if(bt.powered, #ffffff, ink_c) }
                         zone box bt_icon_hit { from: 0, 0; size: 34, 34; cursor: pointer }
                     }
@@ -147,8 +151,8 @@ scene MacControlCenter {
                         size: 158, 61
                         box { from: 0, 0; size: 158, 61; corner: 16; color: card_fill; opacity: card_fill_op }
                         box { from: 0, 0; size: 158, 61; corner: 16; stroke: 1; color: card_stroke; opacity: card_stroke_op }
-                        ellipse { at: 24, 30; radius: 15; color: item_bg }
-                        text "󰒎" { at: 24, 30; anchor: center; size: 15; color: ink_c }
+                        ellipse { at: 24, 30; radius: 15; color: item_bg; opacity: item_bg_op }
+                        text "󱂎" { at: 24, 30; anchor: center; size: 15; color: ink_c }
                         text "Focus" { at: 48, 30; anchor: left center; size: 12.5; weight: 600; color: ink_c }
                     }
 
@@ -157,7 +161,7 @@ scene MacControlCenter {
                         size: 158, 61
                         box { from: 0, 0; size: 158, 61; corner: 16; color: card_fill; opacity: card_fill_op }
                         box { from: 0, 0; size: 158, 61; corner: 16; stroke: 1; color: card_stroke; opacity: card_stroke_op }
-                        ellipse { at: 24, 30; radius: 15; color: if(dark_mode, #007aff, item_bg) }
+                        ellipse { at: 24, 30; radius: 15; color: if(dark_mode, #007aff, item_bg); opacity: if(dark_mode, 100%, item_bg_op) }
                         text if(dark_mode, "󰔎", "󰖨") { at: 24, 30; anchor: center; size: 15; color: if(dark_mode, #ffffff, ink_c) }
                         text "Dark Mode" { at: 48, 22; anchor: left center; size: 12.5; weight: 600; color: ink_c }
                         text if(dark_mode, "On", "Off") { at: 48, 38; anchor: left center; size: 10.5; color: ink_sub }
@@ -173,94 +177,96 @@ scene MacControlCenter {
 
                 // Display Brightness Card
                 group {
-                    size: 328, 52
-                    box { from: 0, 0; size: 328, 52; corner: 16; color: card_fill; opacity: card_fill_op }
-                    box { from: 0, 0; size: 328, 52; corner: 16; stroke: 1; color: card_stroke; opacity: card_stroke_op }
-                    text "Display" { at: 14, 15; anchor: left center; size: 11; weight: 600; color: ink_c; opacity: 75% }
+                    size: 328, 54
+                    box { from: 0, 0; size: 328, 54; corner: 16; color: card_fill; opacity: card_fill_op }
+                    box { from: 0, 0; size: 328, 54; corner: 16; stroke: 1; color: card_stroke; opacity: card_stroke_op }
+                    text "Display" { at: 14, 14; anchor: left center; size: 11; weight: 600; color: ink_sub }
+                    text "{display.level * 100, 0}%" { at: 314, 14; anchor: right center; size: 10.5; color: ink_sub }
                     group {
                         move: 14, 25
-                        size: 300, 18
-                        box { from: 0, 0; size: 300, 18; corner: 9; color: slider_bg }
-                        box { from: 0, 0; size: 300 * max(display.level, 0.15), 18; corner: 9; color: slider_bar }
-                        text "󰃠" { at: 13, 9; anchor: center; size: 11.5; color: slider_icon }
-                        zone box br_hit { from: 0, 0; size: 300, 18; cursor: pointer }
+                        size: 300, 20
+                        box { from: 0, 0; size: 300, 20; corner: 10; color: slider_bg; opacity: slider_bg_op }
+                        box { from: 0, 0; size: 300 * max(display.level, 0.12), 20; corner: 10; color: slider_bar; opacity: slider_bar_op }
+                        text "󰃠" { at: 14, 10; anchor: center; size: 12; color: slider_icon }
+                        zone box br_hit { from: 0, 0; size: 300, 20; cursor: pointer }
                     }
                 }
 
                 // Sound Volume Card
                 group {
-                    size: 328, 52
-                    box { from: 0, 0; size: 328, 52; corner: 16; color: card_fill; opacity: card_fill_op }
-                    box { from: 0, 0; size: 328, 52; corner: 16; stroke: 1; color: card_stroke; opacity: card_stroke_op }
-                    text "Sound" { at: 14, 15; anchor: left center; size: 11; weight: 600; color: ink_c; opacity: 75% }
-                    text "󰅂" { at: 310, 15; anchor: center; size: 14; color: ink_sub }
-                    zone box snd_chevron_hit { at: 310, 15; size: 24, 20; corner: 10; cursor: pointer }
+                    size: 328, 54
+                    box { from: 0, 0; size: 328, 54; corner: 16; color: card_fill; opacity: card_fill_op }
+                    box { from: 0, 0; size: 328, 54; corner: 16; stroke: 1; color: card_stroke; opacity: card_stroke_op }
+                    text "Sound" { at: 14, 14; anchor: left center; size: 11; weight: 600; color: ink_sub }
+                    text "{sound.volume * 100, 0}%" { at: 294, 14; anchor: right center; size: 10.5; color: ink_sub }
+                    text "󰅂" { at: 312, 14; anchor: center; size: 12; color: ink_sub }
+                    zone box snd_chevron_hit { at: 310, 14; size: 28, 22; corner: 10; cursor: pointer }
 
                     group {
                         move: 14, 25
-                        size: 300, 18
-                        box { from: 0, 0; size: 300, 18; corner: 9; color: slider_bg }
-                        box { from: 0, 0; size: 300 * sound.volume, 18; corner: 9; color: slider_bar }
-                        text "󰕾" { at: 13, 9; anchor: center; size: 11.5; color: slider_icon }
-                        zone box vol_hit { from: 0, 0; size: 300, 18; cursor: pointer }
+                        size: 300, 20
+                        box { from: 0, 0; size: 300, 20; corner: 10; color: slider_bg; opacity: slider_bg_op }
+                        box { from: 0, 0; size: 300 * sound.volume, 20; corner: 10; color: slider_bar; opacity: slider_bar_op }
+                        text "󱕾" { at: 14, 10; anchor: center; size: 12; color: slider_icon }
+                        zone box vol_hit { from: 0, 0; size: 300, 20; cursor: pointer }
                     }
                 }
             }
 
             // Now Playing / Media Card
             group {
-                move: 16, 284
-                size: 328, 98
-                box { from: 0, 0; size: 328, 98; corner: 16; color: card_fill; opacity: card_fill_op }
-                box { from: 0, 0; size: 328, 98; corner: 16; stroke: 1; color: card_stroke; opacity: card_stroke_op }
+                move: 16, 286
+                size: 328, 90
+                box { from: 0, 0; size: 328, 90; corner: 16; color: card_fill; opacity: card_fill_op }
+                box { from: 0, 0; size: 328, 90; corner: 16; stroke: 1; color: card_stroke; opacity: card_stroke_op }
 
-                box { from: 14, 12; size: 44, 44; corner: 8; color: #007aff; opacity: 25% }
-                text "󰎆" { at: 36, 34; anchor: center; size: 20; color: #007aff }
+                box { from: 14, 12; size: 40, 40; corner: 10; color: #007aff; opacity: 20% }
+                text "󰾆" { at: 34, 32; anchor: center; size: 20; color: #007aff }
 
                 text song.title {
-                    at: 68, 24
+                    at: 66, 22
                     anchor: left center
-                    size: 13
+                    size: 12.5
                     weight: 600
                     color: ink_c
                     width: 240
                     lines: 1
                 }
                 text song.artist {
-                    at: 68, 42
+                    at: 66, 38
                     anchor: left center
-                    size: 11
+                    size: 10.5
                     color: ink_sub
                     width: 240
                     lines: 1
                 }
 
                 row {
-                    at: 164, 76
+                    at: 164, 68
                     anchor: center
-                    gap: 30
+                    gap: 32
                     align: center
 
-                    text "󰒮" { size: 16; color: ink_c; opacity: 70% }
+                    text "󱲮" { size: 16; color: ink_c; opacity: 70% }
                     group {
                         size: 26, 26
-                        ellipse { at: 13, 13; radius: 13; color: item_bg }
-                        text if(song.playing, "󰏤", "󰐊") { at: 13, 13; anchor: center; size: 13; color: ink_c }
+                        ellipse { at: 13, 13; radius: 13; color: item_bg; opacity: item_bg_op }
+                        text if(song.playing, "󰿤", "󱐊") { at: 13, 13; anchor: center; size: 13; color: ink_c }
                         zone box play_hit { from: 0, 0; size: 26, 26; cursor: pointer }
                     }
-                    text "󰒭" { size: 16; color: ink_c; opacity: 70% }
+                    text "󱲭" { size: 16; color: ink_c; opacity: 70% }
                 }
             }
 
             // Appearance & Glass Tile
             group {
-                move: 16, 392
+                move: 16, 386
                 size: 328, 44
                 box { from: 0, 0; size: 328, 44; corner: 14; color: card_fill; opacity: card_fill_op }
                 box { from: 0, 0; size: 328, 44; corner: 14; stroke: 1; color: card_stroke; opacity: card_stroke_op }
 
                 ellipse { at: 24, 22; radius: 14; color: #007aff; opacity: 20% }
-                text "󰏘" { at: 24, 22; anchor: center; size: 14; color: #007aff }
+                text "󰟘" { at: 24, 22; anchor: center; size: 14; color: #007aff }
 
                 text "Appearance & Glass" { at: 48, 16; anchor: left center; size: 12; weight: 600; color: ink_c }
                 text "Liquid Glass" { at: 48, 29; anchor: left center; size: 10.5; color: ink_sub; show: skin == 0 }

@@ -57,6 +57,7 @@ scene MacSpotlight {
         body {
             color: spot_color
             glass: spot_glass
+            lens: false
             frost: 100%
             dispersion: 0
             refraction: 0
