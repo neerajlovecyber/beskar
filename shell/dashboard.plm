@@ -1,22 +1,20 @@
-// macOS Notification Center & Widgets Sidebar
+// Dashboard: drops from the centre island (click the clock). Date, weather, system load, clocks.
 import "common/palette.plm"
 
-scene MacWidgets {
+scene MacDashboard {
     surface {
-        size: 380, 720
-        anchor: top_right
-        margin: 0, 12, 0, 0
+        size: 380, 470
+        anchor: top
+        margin: 0, 0, 0, 0
         level: overlay
     }
 
     permissions {
-        services: "clock", "notifications", "notifications.*", "notification_history"
+        services: "clock"
         run: "sh", "curl"
     }
 
     service clock as now { time: text = "--:--"; date: text }
-    model notices max 6 { id: number; app: text; title: text; body: text }
-    service notifications { list: notices }
 
     fact open = false
     fact dark_mode = true
@@ -49,8 +47,6 @@ scene MacWidgets {
     let bar_track = if(dark_mode, #343740, #e2e4ea)
 
     event toggle
-    event clear_notices ->
-    event dismiss_notice ->
     event refresh_stats ->
 
     prop seen = 0 ~quick
@@ -61,13 +57,13 @@ scene MacWidgets {
         gone             { seen: 0 ~quick; scale: 0.96 ~quick }
     }
 
-    zone box dismiss { from: 0, 0; size: 380, 720; active: open }
+    zone box dismiss { from: 0, 0; size: 380, 470; active: open }
     on press dismiss { open = false }
     on press right dismiss { }
 
     group {
         move: 16, 8
-        pivot: 340, 20
+        pivot: 174, 0
         scale: scale
         opacity: seen
 
@@ -83,7 +79,7 @@ scene MacWidgets {
             tint: tint_amt
             rim: rim_amt
             shadow: 0, 14, 28, shadow_amt
-            box { from: 0, 0; size: 348, 690; corner: 22 }
+            box { from: 0, 0; size: 348, 420; corner: 22 }
         }
 
         // ── Top Header ────────────────────────────────────────────
@@ -91,8 +87,8 @@ scene MacWidgets {
             at: 16, 16
             gap: 8
             align: center
-            text "󰒎" { size: 16; color: #007aff }
-            text "Widgets" { size: 15; weight: 600; color: ink_c }
+            text "󰃭" { size: 16; color: #007aff }
+            text "Today" { size: 15; weight: 600; color: ink_c }
         }
 
         // ── Row 1: Calendar & Weather 2x Side-by-Side Widgets ─────
@@ -140,19 +136,19 @@ scene MacWidgets {
 
             // CPU Metric
             text "CPU" { at: 16, 38; size: 11; weight: 600; color: ink_c }
-            text "{cpu_pct}%" { at: 304, 38; anchor: right center; size: 11; weight: 600; color: #007aff }
+            text "{cpu_pct}%" { at: 304, 45; anchor: right center; size: 11; weight: 600; color: #007aff }
             box { from: 16, 52; size: 288, 6; corner: 3; color: bar_track }
             box { from: 16, 52; size: max(288 * (cpu_pct / 100), 8), 6; corner: 3; color: #007aff }
 
             // Memory Metric
             text "Memory" { at: 16, 64; size: 11; weight: 600; color: ink_c }
-            text "{mem_pct}%" { at: 304, 64; anchor: right center; size: 11; weight: 600; color: mint }
+            text "{mem_pct}%" { at: 304, 71; anchor: right center; size: 11; weight: 600; color: mint }
             box { from: 16, 78; size: 288, 6; corner: 3; color: bar_track }
             box { from: 16, 78; size: max(288 * (mem_pct / 100), 8), 6; corner: 3; color: mint }
 
             // Disk Metric
             text "Storage Disk" { at: 16, 90; size: 11; weight: 600; color: ink_c }
-            text "{disk_pct}%" { at: 304, 90; anchor: right center; size: 11; weight: 600; color: purple }
+            text "{disk_pct}%" { at: 304, 97; anchor: right center; size: 11; weight: 600; color: purple }
             box { from: 16, 104; size: 288, 6; corner: 3; color: bar_track }
             box { from: 16, 104; size: max(288 * (disk_pct / 100), 8), 6; corner: 3; color: purple }
         }
@@ -187,55 +183,6 @@ scene MacWidgets {
                     text "UTC / London" { size: 11; color: ink_sub }
                     text "GMT" { size: 16; weight: 600; color: ink_c }
                     text "-5.5 hrs" { size: 10.5; color: ink_sub }
-                }
-            }
-        }
-
-        // ── Section 4: Notifications Stream ───────────────────────
-        group {
-            move: 14, 416
-            size: 320, 260
-
-            row {
-                at: 4, 0
-                gap: 160
-                align: center
-                text "NOTIFICATIONS" { size: 11; weight: 600; color: ink_sub }
-                text "Clear All" { size: 11; weight: 600; color: #007aff; show: notices.count > 0 }
-            }
-            zone box clear_hit { at: 290, 6; size: 50, 20; cursor: pointer; show: notices.count > 0 }
-            on press clear_hit { emit clear_notices }
-
-            // Empty State
-            group {
-                show: notices.count < 1
-                ellipse { at: 160, 90; radius: 24; color: item_bg }
-                text "󰂚" { at: 160, 90; anchor: center; size: 24; color: ink_sub }
-                text "No New Notifications" { at: 160, 126; anchor: center; size: 13; weight: 600; color: ink_c }
-                text "Notifications will appear here as they arrive" { at: 160, 144; anchor: center; size: 11; color: ink_sub; width: 260 }
-            }
-
-            // Notification Cards List
-            column {
-                at: 0, 24
-                gap: 8
-                show: notices.count > 0
-
-                for n in notices {
-                    group {
-                        size: 320, 64
-                        box { from: 0, 0; size: 320, 64; corner: 14; color: card_fill; opacity: card_fill_op }
-                        box { from: 0, 0; size: 320, 64; corner: 14; stroke: 1; color: card_stroke; opacity: card_stroke_op }
-
-                        // App badge
-                        text "󰂚" { at: 14, 18; size: 14; color: #007aff }
-                        text n.app { at: 34, 18; size: 11.5; weight: 600; color: ink_c; width: 200; lines: 1 }
-                        text n.title { at: 14, 34; size: 12.5; weight: 600; color: ink_c; width: 290; lines: 1 }
-                        text n.body { at: 14, 49; size: 11; color: ink_sub; width: 270; lines: 1 }
-                        text "×" { at: 304, 16; anchor: center; size: 15; color: ink_sub }
-                        zone box dismiss_hit { at: 304, 16; size: 22, 22; corner: 11; cursor: pointer }
-                        on press dismiss_hit { emit dismiss_notice(n.id) }
-                    }
                 }
             }
         }

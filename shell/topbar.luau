@@ -15,7 +15,8 @@ end
 on("open_apple_menu", toggle("apple_menu"))
 on("open_control_center", toggle("control_center"))
 on("open_spotlight", toggle("spotlight"))
-on("open_widgets", toggle("widgets"))
+on("open_notifications", toggle("notifications"))
+on("open_dashboard", toggle("dashboard"))
 
 -- ── tray ─────────────────────────────────────────────────────────
 -- The service's list goes to the scene's `icons` model (it draws the picture). Reading the model

@@ -14,7 +14,7 @@ local function broadcast_theme()
     local dm_str = tostring(dm)
     local skin_str = tostring(fact.skin or 0)
     
-    local scenes = {"topbar", "dock", "spotlight", "control_center", "apple_menu", "widgets", "osd", "settings"}
+    local scenes = {"topbar", "dock", "spotlight", "control_center", "apple_menu", "notifications", "dashboard", "osd", "settings"}
     for _, s in ipairs(scenes) do
         pcall(sys.call, "say", s, "fact dark_mode " .. dm_str)
         pcall(sys.call, "say", s, "fact skin " .. skin_str)

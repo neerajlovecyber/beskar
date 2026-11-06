@@ -50,16 +50,6 @@ on("refresh_stats", function()
     update_stats()
 end)
 
-on("clear_notices", function()
-    pcall(sys.call, "notifications.clear")
-end)
-
-on("dismiss_notice", function(id)
-    if id then
-        pcall(sys.call, "notifications.dismiss", id)
-    end
-end)
-
 -- ── weather (same place as the top bar) ──────────────────────────
 local LAT, LON = 28.61, 77.20
 local function icon_for(code)

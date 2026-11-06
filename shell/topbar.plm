@@ -23,7 +23,7 @@ scene MacTopBar {
     //  What topbar.luau may touch. `run` is only what it needs: niri for the workspace, curl for
     //  the weather, and the dock's apps. Undeclared is nothing.
     permissions {
-        services: "clock", "network", "battery", "window", "tray", "tray.*", "say:control_center", "say:spotlight", "say:apple_menu", "say:widgets"
+        services: "clock", "network", "battery", "window", "tray", "tray.*", "say:control_center", "say:spotlight", "say:apple_menu", "say:notifications", "say:dashboard"
         run: "niri msg", "curl", "kitty", "alacritty", "foot", "nautilus", "thunar", "dolphin", "code", "zed", "steam", "obsidian", "firefox", "chromium", "discord", "vesktop", "telegram-desktop"
     }
 
@@ -56,7 +56,8 @@ scene MacTopBar {
     event open_apple_menu ->
     event open_control_center ->
     event open_spotlight ->
-    event open_widgets ->
+    event open_notifications ->
+    event open_dashboard ->
     event tray_activate ->
     event tray_secondary ->
     event tray_context ->
@@ -243,7 +244,7 @@ scene MacTopBar {
             }
 
         }
-        on press clock { emit open_widgets }
+        on press clock { emit open_dashboard }
         //  Right button is ours (see the tray): a right click on anything here does nothing
         //  instead of quitting the shell.
         on press right clock { }
@@ -283,7 +284,7 @@ scene MacTopBar {
             }
 
             Glyph("󰒓", open_control_center)
-            Glyph("󰂚", open_widgets)
+            Glyph("󰂚", open_notifications)
         }
 
         //  A thin strip along the bottom edge brings a hidden dock back.

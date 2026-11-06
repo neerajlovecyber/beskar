@@ -22,7 +22,7 @@ kill_all() {
 
 check_status() {
     echo "macOS / iNiR Shell Status:"
-    for comp in topbar border spotlight control_center apple_menu widgets osd settings lock session capture appswitcher clipboard; do
+    for comp in topbar border spotlight control_center apple_menu notifications dashboard osd settings lock session capture appswitcher clipboard; do
         if pgrep -f "pleamar.*$comp\.plm" >/dev/null 2>&1; then
             echo "  ✔ $comp is RUNNING"
         else
@@ -39,7 +39,7 @@ apply_saved_theme() {
         [ -z "$DM" ] && DM="true"
         [ -z "$SKIN" ] && SKIN="0"
 
-        for comp in topbar border spotlight control_center apple_menu widgets osd settings session capture appswitcher clipboard; do
+        for comp in topbar border spotlight control_center apple_menu notifications dashboard osd settings session capture appswitcher clipboard; do
             "$BIN" --say "$comp" "fact dark_mode $DM" >/dev/null 2>&1 || true
             "$BIN" --say "$comp" "fact skin $SKIN" >/dev/null 2>&1 || true
         done
@@ -72,8 +72,10 @@ start_shell() {
     PID_CC=$!
     setsid "$BIN" --no-hud --scene "$DIR/shell/apple_menu.plm" </dev/null >/tmp/pleamar_apple.log 2>&1 &
     PID_APPLE=$!
-    setsid "$BIN" --no-hud --scene "$DIR/shell/widgets.plm" </dev/null >/tmp/pleamar_widgets.log 2>&1 &
+    setsid "$BIN" --no-hud --scene "$DIR/shell/notifications.plm" </dev/null >/tmp/pleamar_notifications.log 2>&1 &
     PID_WIDGETS=$!
+    setsid "$BIN" --no-hud --scene "$DIR/shell/dashboard.plm" </dev/null >/tmp/pleamar_dashboard.log 2>&1 &
+    PID_DASH=$!
     setsid "$BIN" --no-hud --scene "$DIR/shell/osd.plm" </dev/null >/tmp/pleamar_osd.log 2>&1 &
     PID_OSD=$!
     setsid "$BIN" --no-hud --scene "$DIR/shell/settings.plm" </dev/null >/tmp/pleamar_settings.log 2>&1 &
@@ -89,7 +91,7 @@ start_shell() {
     setsid "$BIN" --no-hud --scene "$DIR/shell/clipboard.plm" </dev/null >/tmp/pleamar_clipboard.log 2>&1 &
     PID_CLIP=$!
 
-    echo "$PID_BAR $PID_BORDER $PID_SPOTLIGHT $PID_CC $PID_APPLE $PID_WIDGETS $PID_OSD $PID_SETTINGS $PID_LOCK $PID_SESSION $PID_CAPTURE $PID_SWITCHER $PID_CLIP" > "$PID_FILE"
+    echo "$PID_BAR $PID_BORDER $PID_SPOTLIGHT $PID_CC $PID_APPLE $PID_WIDGETS $PID_DASH $PID_OSD $PID_SETTINGS $PID_LOCK $PID_SESSION $PID_CAPTURE $PID_SWITCHER $PID_CLIP" > "$PID_FILE"
     sleep 0.6
 
     apply_saved_theme
@@ -119,7 +121,8 @@ start_shell() {
     echo "  - $0 spotlight       (Toggle Spotlight search)"
     echo "  - $0 control-center  (Toggle Control Center)"
     echo "  - $0 apple-menu      (Toggle Apple menu)"
-    echo "  - $0 widgets         (Toggle Notification Center & Widgets)"
+    echo "  - $0 notifications   (Toggle Notification Center)"
+    echo "  - $0 dashboard       (Toggle the dashboard under the clock)"
     echo "  - $0 vol-up          (Increase Volume + Bezel OSD)"
     echo "  - $0 vol-down        (Decrease Volume + Bezel OSD)"
     echo "  - $0 mute            (Toggle Mute + Bezel OSD)"
@@ -171,8 +174,11 @@ case "$1" in
     apple-menu)
         "$BIN" --say apple_menu "emit toggle"
         ;;
-    widgets)
-        "$BIN" --say widgets "emit toggle"
+    notifications|widgets)
+        "$BIN" --say notifications "emit toggle"
+        ;;
+    dashboard)
+        "$BIN" --say dashboard "emit toggle"
         ;;
     vol-up)
         "$BIN" --say osd "emit volume_up"
@@ -195,7 +201,7 @@ case "$1" in
     dark-mode)
         VAL="true"
         [ "$2" = "off" ] && VAL="false"
-        for comp in topbar spotlight control_center apple_menu widgets osd settings session capture; do
+        for comp in topbar spotlight control_center apple_menu notifications dashboard osd settings session capture; do
             "$BIN" --say "$comp" "fact dark_mode $VAL"
         done
         mkdir -p "$(dirname "$CONFIG_FILE")"
@@ -204,7 +210,7 @@ case "$1" in
         ;;
     skin)
         SKIN_VAL="${2:-0}"
-        for comp in topbar spotlight control_center apple_menu widgets osd settings session capture; do
+        for comp in topbar spotlight control_center apple_menu notifications dashboard osd settings session capture; do
             "$BIN" --say "$comp" "fact skin $SKIN_VAL"
         done
         mkdir -p "$(dirname "$CONFIG_FILE")"

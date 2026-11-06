@@ -36,7 +36,8 @@ An ultra-performant, GPU-accelerated macOS Sequoia/Sonoma desktop shell for Wayl
 | **Screen Capture & Record HUD** | [`shell/capture.plm`](file:///home/nsp/Documents/p/beskar/beskar/shell/capture.plm) | macOS Cmd+Shift+5 floating HUD with Entire Screen, Selected Window, Selected Area capture (`grim`+`slurp`), and video recording (`wf-recorder`). |
 | **Frame (top bar + dock)** | [`shell/topbar.plm`](file:///home/nsp/Documents/p/beskar/beskar/shell/topbar.plm) | One full-screen glass silhouette: a thin ring round all four edges with curved inner corners, three content-sized islands hanging from the top, and the dock rising from the bottom. Islands are as wide as their content and morph with springs. Logic (workspace, weather, app launch) in `topbar.luau`. |
 | **Control Center** | [`shell/control_center.plm`](file:///home/nsp/Documents/p/beskar/beskar/shell/control_center.plm) | 4-page panel: overview, Wi-Fi picker, Bluetooth picker, Audio outputs selector, and Appearance/Glass look customizer. |
-| **Notification Center & Widgets** | [`shell/widgets.plm`](file:///home/nsp/Documents/p/beskar/beskar/shell/widgets.plm) | Right sliding sidebar featuring Calendar, Weather, Live Activity Monitor (CPU/RAM/Disk), World Clocks, and Notifications stream. |
+| **Notification Center** | [`shell/notifications.plm`](file:///home/nsp/Documents/p/beskar/beskar/shell/notifications.plm) | The notification server. The bell opens a centre of macOS-style cards (icon, bold title, two lines of body, hover ×, Clear All); a new notification also drops a banner from the right island. |
+| **Dashboard** | [`shell/dashboard.plm`](file:///home/nsp/Documents/p/beskar/beskar/shell/dashboard.plm) | Drops from the centre island when you click the clock: date, live weather, CPU / memory / disk, world clocks. |
 | **Bezel OSD (HUD)** | [`shell/osd.plm`](file:///home/nsp/Documents/p/beskar/beskar/shell/osd.plm) | Centered floating bezel HUD for Volume and Brightness adjustments with auto-dismiss timer and spring physics. |
 | **Spotlight Search** | [`shell/spotlight.plm`](file:///home/nsp/Documents/p/beskar/beskar/shell/spotlight.plm) | Centered search bar with live fuzzy filtering of desktop applications, arrow-key navigation, and Enter to launch. |
 | **Apple Menu** | [`shell/apple_menu.plm`](file:///home/nsp/Documents/p/beskar/beskar/shell/apple_menu.plm) | Dropdown providing quick access to About, System Settings, Screen Lock, Reboot, and Power off. |
@@ -77,7 +78,7 @@ You can bind these commands to compositor keybindings:
 ./shell/start.sh capture         # Toggle Screen Capture & Record HUD (recommend: Super+Shift+5)
 ./shell/start.sh spotlight       # Toggle Spotlight search (recommend: Super+Space)
 ./shell/start.sh control-center  # Toggle Control Center (recommend: Super+C)
-./shell/start.sh widgets         # Toggle Notification Center & Widgets (recommend: Super+N)
+./shell/start.sh notifications         # Toggle Notification Center & Widgets (recommend: Super+N)
 ./shell/start.sh apple-menu      # Toggle Apple Menu (recommend: Super+A)
 ./shell/start.sh vol-up          # Increase Volume + popup Bezel OSD (XF86AudioRaiseVolume)
 ./shell/start.sh vol-down        # Decrease Volume + popup Bezel OSD (XF86AudioLowerVolume)

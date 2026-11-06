@@ -1,0 +1,205 @@
+// Notification centre + banners. This scene IS the notification server (org.freedesktop.Notifications).
+//
+//   · the bell in the top bar opens a centre under the right island: one card per notification
+//   · a new notification also drops a banner from the right island for a few seconds
+//
+// Cards follow the macOS notification look: a rounded icon on the left, the app name small above a bold
+// title and two lines of body, and a round × in the corner that appears on hover.
+import "common/palette.plm"
+
+scene MacNotifications {
+    permissions {
+        services: "notifications", "notifications.*", "notification_history"
+    }
+
+    //  `icon` is the application's own icon (a name or a path, painted by `image`).
+    model notices max 6 { id: number; app: text; title: text; body: text; icon: image 40, 40 }
+    service notifications { list: notices }
+
+    fact open = false
+    fact dark_mode = true
+    fact skin = 0
+    fact last_n = 0
+
+    event toggle
+    event arrived
+    event clear_notices ->
+    event dismiss_notice ->
+
+    // ── look ─────────────────────────────────────────────────────
+    let bg_color = if(dark_mode, if(skin == 2, #1e2026, if(skin == 1, #1c1e28, #161820)), if(skin == 2, #f2f3f7, if(skin == 1, #eaecf2, #f8f9fc)))
+    let glass_amt = if(skin == 2, 0%, if(skin == 1, 55%, 85%))
+    let tint_amt = if(skin == 2, 0%, if(dark_mode, 40%, 25%))
+    let rim_amt = if(skin == 2, 0%, 14%)
+    let shadow_amt = if(dark_mode, 35%, 15%)
+    let card_fill = if(dark_mode, #2a2d38, #ffffff)
+    let card_fill_op = if(dark_mode, 82%, 90%)
+    let card_stroke = if(dark_mode, #ffffff, #000000)
+    let card_stroke_op = if(dark_mode, 7%, 8%)
+    let ink_c = if(dark_mode, #f5f7f5, #1d1d1f)
+    let ink_sub = if(dark_mode, #9a9ea7, #6e6e73)
+    let item_bg = if(dark_mode, #3a3d49, #e2e4ea)
+
+    //  One notification, after the macOS design: a large rounded card, the app's icon in a squircle on
+    //  the left, a bold title, up to two lines of body and the time on the right. The round × shows on
+    //  hover. `flat` leaves out the card itself (the banner already is a glass).
+    component NoticeCard(n: record, flat: bool = false) {
+        size: 352, 92
+        prop hot = 0 ~quick
+        group {
+            show: not flat
+            box { from: 0, 0; size: 352, 92; corner: 26; color: card_fill; opacity: card_fill_op }
+            box { from: 0, 0; size: 352, 92; corner: 26; stroke: 1; color: card_stroke; opacity: card_stroke_op }
+        }
+
+        //  The icon: a blue squircle with a bell, and the application's own icon over it when it has one.
+        body {
+            gradient: 0, 0 to 44, 44, #4aa3ff, #5e5ce6
+            box { from: 16, 24; size: 44, 44; corner: 12 }
+        }
+        text "󰂚" { at: 38, 46; anchor: center; size: 20; color: #ffffff }
+        image n.icon { at: 16, 24; size: 44, 44 }
+
+        text n.title { at: 74, 30; anchor: left center; size: 14; weight: 700; color: ink_c; width: 210; lines: 1 }
+        text n.body { at: 74, 50; size: 13; color: ink_c; opacity: 85%; width: 252; lines: 2 }
+        text "now" { at: 332, 30; anchor: right center; size: 12; color: ink_sub; opacity: 1 - hot }
+
+        //  Close: a small round button at the corner, only on hover.
+        group {
+            opacity: hot
+            ellipse { at: 322, 28; radius: 11; color: item_bg }
+            line { from: 318, 24; to: 326, 32; width: 1.6; color: ink_c }
+            line { from: 326, 24; to: 318, 32; width: 1.6; color: ink_c }
+        }
+        zone box card_hit { from: 0, 0; size: 352, 92; corner: 26 }
+        zone box x_hit { at: 322, 28; size: 26, 26; corner: 13; cursor: pointer; active: hot > 0.5 }
+        on enter card_hit { hot: 1 }
+        on leave card_hit { hot: 0 }
+        on press x_hit { emit dismiss_notice(n.id) }
+        on press right card_hit { }
+        on press right x_hit { }
+    }
+
+    // ── the centre ───────────────────────────────────────────────
+    prop seen = 0 ~quick
+    prop scale = 0.96 ~quick
+    //  The centre is as tall as its cards.
+    prop ph = 150 ~calm
+    follow ph = if(notices.count < 1, 190, 70 + notices.count * 100 + 8)
+
+    layer centre ~quick {
+        shown while open { seen: 1 ~quick; scale: 1 ~quick }
+        gone             { seen: 0 ~quick; scale: 0.96 ~quick }
+    }
+
+    surface panel {
+        size: 412, 800
+        anchor: top_right
+        margin: 0, 12, 0, 0
+        level: overlay
+
+        zone box dismiss { from: 0, 0; size: 412, 800; active: open }
+        on press dismiss { open = false }
+        on press right dismiss { }
+
+        group {
+            move: 16, 8
+            pivot: 360, 0
+            scale: scale
+            opacity: seen
+
+            body {
+                color: bg_color
+                glass: glass_amt
+                lens: false
+                frost: 100%
+                dispersion: 35%
+                refraction: 75%
+                tint: tint_amt
+                rim: rim_amt
+                shadow: 0, 14, 28, shadow_amt
+                box { from: 0, 0; size: 380, ph; corner: 30 }
+            }
+
+            text "Notifications" { at: 24, 32; anchor: left center; size: 17; weight: 700; color: ink_c }
+            //  Clear all
+            group {
+                show: notices.count > 0
+                box { from: 280, 18; size: 76, 28; corner: 14; color: item_bg }
+                text "Clear All" { at: 318, 32; anchor: center; size: 10.5; weight: 600; color: ink_c }
+                zone box clear_hit { from: 280, 18; size: 76, 28; corner: 14; cursor: pointer }
+                on press clear_hit { emit clear_notices }
+                on press right clear_hit { }
+            }
+
+            column {
+                at: 14, 62
+                gap: 8
+                for n in notices { NoticeCard(n) }
+            }
+
+            //  Nothing new
+            group {
+                show: notices.count < 1
+                ellipse { at: 190, 100; radius: 28; color: item_bg }
+                path { at: 181, 90; color: ink_sub; move 0, 15; line 2.5, 15; line 3, 7; line 5, 2; line 9, 2; line 11, 7; line 11.5, 15; line 14, 15; line 14, 17; line 0, 17; close }
+                ellipse { at: 188, 108; radius: 2.2; color: ink_sub }
+                text "No Notifications" { at: 190, 148; anchor: center; size: 13; weight: 600; color: ink_c }
+            }
+        }
+
+        on press right dismiss { }
+    }
+
+    // ── the banner: a new notification drops from the island ─────
+    prop tin = 0 ~quick
+
+    layer banner ~quick {
+        live for 5500ms after arrived { tin: 1 ~quick }
+        gone                          { tin: 0 ~quick }
+    }
+
+    //  New ones arrive when the count goes up.
+    on change notices.count while notices.count > last_n { emit arrived }
+    on change notices.count { last_n = notices.count }
+
+    surface toast {
+        size: 412, 150
+        anchor: top_right
+        margin: 0, 12, 0, 0
+        level: overlay
+        open: tin > 0.02 and not open
+
+        group {
+            move: 16, 8 + (1 - tin) * -26
+            pivot: 360, 0
+            scale: 0.94 + tin * 0.06
+            opacity: tin
+
+            body {
+                color: bg_color
+                glass: glass_amt
+                lens: false
+                frost: 100%
+                tint: tint_amt
+                rim: rim_amt
+                shadow: 0, 14, 28, shadow_amt
+                box { from: 0, 0; size: 380, 104; corner: 30 }
+            }
+            for n in notices {
+                group {
+                    show: n.index == 0
+                    move: 14, 6
+                    NoticeCard(n, true)
+                }
+            }
+            zone box toast_hit { from: 0, 0; size: 380, 104; corner: 30; cursor: pointer }
+            on press toast_hit { open = true }
+            on press right toast_hit { }
+        }
+    }
+
+    on toggle     { toggle open }
+    on key Escape { open = false }
+    on blur       { open = false }
+}
