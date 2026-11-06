@@ -1,7 +1,10 @@
 # Target Build Outputs
 /target/
 Cargo.lock
+/bin/
 
-# Upstream Reference Banks (Ignore entire directory and nested repositories)
+# Upstream Reference & Cloned Repositories
 /references/
 /references/*
+/cloned_repos/
+/cloned_repos/*

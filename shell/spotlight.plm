@@ -1,0 +1,114 @@
+// macOS Spotlight Search for Wayland Compositors
+import "common/palette.plm"
+
+scene MacSpotlight {
+    surface {
+        size: 640, 460
+        anchor: center
+        level: overlay
+        keyboard: exclusive while open
+    }
+
+    permissions {
+        services: "apps", "apps.launch"
+    }
+
+    // ── Boundary & State ──────────────────────────────────────────
+    fact open  = false
+    model hits max 7 { name: text; icon: image 26, 26 }
+    fact sel   = 0
+    text query = ""
+    event toggle
+    event launch ->
+
+    // ── Animation Springs ─────────────────────────────────────────
+    prop seen  = 0 ~quick
+    prop scale = 0.95 ~lively
+    prop tall  = 76 ~quick
+    follow tall = 76 + list.height
+
+    layer panel ~quick {
+        shown while open { seen: 1 ~quick; scale: 1 ~lively }
+        gone             { seen: 0 ~quick; scale: 0.95 ~quick }
+    }
+
+    // Click outside to dismiss
+    zone box whole { at: 320, 230; size: 600, 440; active: open }
+
+    group {
+        pivot: 320, 40
+        scale: scale
+        opacity: seen
+
+        // Frosted Glass Window Frame
+        body {
+            color: #1c1d22
+            glass: 94%
+            frost: auto
+            rim: 12%
+            shadow: 0, 22, 60, 45%
+            box { from: 20, 20; size: 600, tall; corner: 22 }
+        }
+
+        // Spotlight Magnifying Glass & Search Field
+        text "􀊫" { at: 42, 48; anchor: center; size: 19; color: ink; opacity: 60% }
+        input query {
+            at: 64, 38
+            width: 530
+            size: 19
+            color: ink
+            placeholder: "Spotlight Search"
+            selection: #007aff
+        }
+
+        // Separator Line
+        box { from: 40, 76; size: 560, 1; color: #ffffff; opacity: 10% }
+
+        // Results List
+        column list ~quick {
+            at: 32, 86
+            gap: 2
+            for h in hits { Row(h) }
+        }
+    }
+
+    component Row(h: record) {
+        size: 576, 42
+        prop on = 0 ~quick
+        follow on = if(sel == h.index, 1, 0)
+
+        box hit {
+            from: 0, 0
+            size: 576, 42
+            corner: 12
+            color: #007aff
+            opacity: on * 22%
+            cursor: pointer
+        }
+
+        // Blue selection pill bar on left
+        box { from: 0, 11; size: 3, 20; corner: 1.5; color: #007aff; opacity: on }
+
+        image h.icon { at: 16, 8; size: 26, 26 }
+        text h.name {
+            at: 54, 21
+            anchor: left center
+            size: 15
+            width: 500
+            lines: 1
+            color: ink
+            opacity: 65% + on * 35%
+        }
+
+        on enter hit { sel = h.index }
+        on press hit { emit launch(h.index) }
+    }
+
+    // ── Keybindings & Events ──────────────────────────────────────
+    on toggle          { toggle open; focus query }
+    on key Escape      { open = false }
+    on blur            { open = false }
+    on key Down        { sel = min(sel + 1, max(hits.count - 1, 0)) }
+    on key Up          { sel = max(sel - 1, 0) }
+    on submit query    { emit launch(sel) }
+}

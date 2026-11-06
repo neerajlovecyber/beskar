@@ -1,0 +1,161 @@
+// macOS Bottom Dock for Wayland Compositors
+import "common/palette.plm"
+
+scene MacDock {
+    surface {
+        size: 470, 70
+        anchor: bottom
+        margin: 10
+    }
+
+    permissions {
+        run: "nautilus", "thunar", "dolphin", "firefox", "chromium", "kitty", "alacritty", "foot", "code", "zed", "gnome-control-center"
+    }
+
+    // ── Events to Companion Logic ─────────────────────────────────
+    event launch ->
+
+    // ── App Icons Declarations ────────────────────────────────────
+    image icon_files    = icon "system-file-manager", 44, 44
+    image icon_browser  = icon "firefox", 44, 44
+    image icon_terminal = icon "utilities-terminal", 44, 44
+    image icon_editor   = icon "code", 44, 44
+    image icon_music    = icon "org.gnome.Music", 44, 44
+    image icon_settings = icon "preferences-system", 44, 44
+    image icon_trash    = icon "user-trash", 44, 44
+
+    // ── Frosted Glass Capsule Background ──────────────────────────
+    body {
+        color: #1a1c23
+        glass: 92%
+        frost: auto
+        shadow: 0, 10, 32, 40%
+        rim: 14%
+        box { from: 0, 0; size: 470, 70; corner: 22 }
+    }
+
+    // ── Dock Items ────────────────────────────────────────────────
+    row {
+        at: 14, 6
+        gap: 10
+        align: center
+
+        // 1. Files / Finder
+        group {
+            size: 50, 56
+            prop hot1 = 0 ~quick
+            prop scale1 = 1.0 ~quick
+            follow scale1 = 1.0 + hot1 * 0.28
+            group {
+                pivot: 25, 25; scale: scale1
+                image icon_files { at: 3, 2; size: 44, 44 }
+            }
+            ellipse { at: 25, 52; radius: 2; color: ink; opacity: 75% }
+            zone box hit1 { from: 0, 0; size: 50, 56; cursor: pointer }
+            on enter hit1 { hot1: 1 }
+            on leave hit1 { hot1: 0 }
+            on press hit1 { emit launch(1) }
+        }
+
+        // 2. Browser
+        group {
+            size: 50, 56
+            prop hot2 = 0 ~quick
+            prop scale2 = 1.0 ~quick
+            follow scale2 = 1.0 + hot2 * 0.28
+            group {
+                pivot: 25, 25; scale: scale2
+                image icon_browser { at: 3, 2; size: 44, 44 }
+            }
+            ellipse { at: 25, 52; radius: 2; color: ink; opacity: 75% }
+            zone box hit2 { from: 0, 0; size: 50, 56; cursor: pointer }
+            on enter hit2 { hot2: 1 }
+            on leave hit2 { hot2: 0 }
+            on press hit2 { emit launch(2) }
+        }
+
+        // 3. Terminal
+        group {
+            size: 50, 56
+            prop hot3 = 0 ~quick
+            prop scale3 = 1.0 ~quick
+            follow scale3 = 1.0 + hot3 * 0.28
+            group {
+                pivot: 25, 25; scale: scale3
+                image icon_terminal { at: 3, 2; size: 44, 44 }
+            }
+            ellipse { at: 25, 52; radius: 2; color: ink; opacity: 75% }
+            zone box hit3 { from: 0, 0; size: 50, 56; cursor: pointer }
+            on enter hit3 { hot3: 1 }
+            on leave hit3 { hot3: 0 }
+            on press hit3 { emit launch(3) }
+        }
+
+        // 4. Code Editor
+        group {
+            size: 50, 56
+            prop hot4 = 0 ~quick
+            prop scale4 = 1.0 ~quick
+            follow scale4 = 1.0 + hot4 * 0.28
+            group {
+                pivot: 25, 25; scale: scale4
+                image icon_editor { at: 3, 2; size: 44, 44 }
+            }
+            zone box hit4 { from: 0, 0; size: 50, 56; cursor: pointer }
+            on enter hit4 { hot4: 1 }
+            on leave hit4 { hot4: 0 }
+            on press hit4 { emit launch(4) }
+        }
+
+        // 5. Music
+        group {
+            size: 50, 56
+            prop hot5 = 0 ~quick
+            prop scale5 = 1.0 ~quick
+            follow scale5 = 1.0 + hot5 * 0.28
+            group {
+                pivot: 25, 25; scale: scale5
+                image icon_music { at: 3, 2; size: 44, 44 }
+            }
+            zone box hit5 { from: 0, 0; size: 50, 56; cursor: pointer }
+            on enter hit5 { hot5: 1 }
+            on leave hit5 { hot5: 0 }
+            on press hit5 { emit launch(5) }
+        }
+
+        // 6. System Settings
+        group {
+            size: 50, 56
+            prop hot6 = 0 ~quick
+            prop scale6 = 1.0 ~quick
+            follow scale6 = 1.0 + hot6 * 0.28
+            group {
+                pivot: 25, 25; scale: scale6
+                image icon_settings { at: 3, 2; size: 44, 44 }
+            }
+            zone box hit6 { from: 0, 0; size: 50, 56; cursor: pointer }
+            on enter hit6 { hot6: 1 }
+            on leave hit6 { hot6: 0 }
+            on press hit6 { emit launch(6) }
+        }
+
+        // Dock Divider
+        box { size: 1, 38; color: #ffffff; opacity: 16% }
+
+        // 7. Trash
+        group {
+            size: 50, 56
+            prop hot7 = 0 ~quick
+            prop scale7 = 1.0 ~quick
+            follow scale7 = 1.0 + hot7 * 0.28
+            group {
+                pivot: 25, 25; scale: scale7
+                image icon_trash { at: 3, 2; size: 44, 44 }
+            }
+            zone box hit7 { from: 0, 0; size: 50, 56; cursor: pointer }
+            on enter hit7 { hot7: 1 }
+            on leave hit7 { hot7: 0 }
+            on press hit7 { emit launch(7) }
+        }
+    }
+}

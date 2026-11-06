@@ -1,0 +1,231 @@
+// macOS Control Center for Wayland Compositors
+import "common/palette.plm"
+
+scene MacControlCenter {
+    surface {
+        size: 340, 420
+        anchor: top_right
+        margin: 36, 14, 0, 0
+        level: overlay
+    }
+
+    permissions {
+        services: "audio", "audio.*", "brightness", "brightness.*", "media", "media.*", "network", "bluetooth"
+    }
+
+    service audio as sound { volume: number; muted: bool }
+    service brightness as display { present: bool; level: number }
+    service network as net { online: bool; name: text }
+    service bluetooth as bt { powered: bool }
+    service media as song { playing: bool; title: text; artist: text }
+
+    // ── Open / Close State ────────────────────────────────────────
+    fact open = true
+    event toggle
+    event volume_set ->
+    event brightness_set ->
+    event play_pause ->
+
+    prop seen = 1 ~quick
+    prop scale = 1 ~quick
+
+    layer panel ~quick {
+        shown while open { seen: 1 ~quick; scale: 1 ~quick }
+        gone             { seen: 0 ~quick; scale: 0.96 ~quick }
+    }
+
+    group {
+        pivot: 300, 20
+        scale: scale
+        opacity: seen
+
+        // ── Frosted Glass Window Frame ────────────────────────────
+        body {
+            color: #1a1c22
+            glass: 94%
+            frost: auto
+            rim: 14%
+            shadow: 0, 20, 50, 45%
+            box { from: 0, 0; size: 340, 420; corner: 22 }
+        }
+
+        // ── Top Row: Connectivity & Focus Cards ───────────────────
+        row {
+            at: 14, 14
+            gap: 12
+
+            // Connectivity Card (Wi-Fi & Bluetooth)
+            group {
+                size: 150, 130
+                body {
+                    color: #24262d
+                    glass: 80%
+                    rim: 8%
+                    box { from: 0, 0; size: 150, 130; corner: 16 }
+                }
+
+                // Wi-Fi Button
+                group {
+                    size: 36, 36
+                    move: 12, 14
+                    ellipse { at: 18, 18; radius: 18; color: if(net.online, #007aff, #343740) }
+                    text "􀙇" { at: 18, 18; anchor: center; size: 15; color: ink }
+                }
+                text "Wi-Fi" { at: 56, 24; anchor: left center; size: 12.5; weight: 600; color: ink }
+                text if(net.online, net.name, "Off") { at: 56, 38; anchor: left center; size: 10.5; color: ink; opacity: 60%; width: 85; lines: 1 }
+
+                // Bluetooth Button
+                group {
+                    size: 36, 36
+                    move: 12, 70
+                    ellipse { at: 18, 18; radius: 18; color: if(bt.powered, #007aff, #343740) }
+                    text "􀊫" { at: 18, 18; anchor: center; size: 15; color: ink }
+                }
+                text "Bluetooth" { at: 56, 80; anchor: left center; size: 12.5; weight: 600; color: ink }
+                text if(bt.powered, "On", "Off") { at: 56, 94; anchor: left center; size: 10.5; color: ink; opacity: 60% }
+            }
+
+            // Focus & Controls Right Card
+            column {
+                gap: 12
+
+                // Do Not Disturb
+                group {
+                    size: 150, 59
+                    body {
+                        color: #24262d
+                        glass: 80%
+                        rim: 8%
+                        box { from: 0, 0; size: 150, 59; corner: 16 }
+                    }
+                    ellipse { at: 24, 29; radius: 15; color: #343740 }
+                    text "􀆹" { at: 24, 29; anchor: center; size: 14; color: ink }
+                    text "Focus" { at: 48, 29; anchor: left center; size: 12.5; weight: 600; color: ink }
+                }
+
+                // AirDrop / Hotspot
+                group {
+                    size: 150, 59
+                    body {
+                        color: #24262d
+                        glass: 80%
+                        rim: 8%
+                        box { from: 0, 0; size: 150, 59; corner: 16 }
+                    }
+                    ellipse { at: 24, 29; radius: 15; color: #343740 }
+                    text "􀈟" { at: 24, 29; anchor: center; size: 14; color: ink }
+                    text "AirDrop" { at: 48, 29; anchor: left center; size: 12.5; weight: 600; color: ink }
+                }
+            }
+        }
+
+        // ── Sliders Section ───────────────────────────────────────
+        column {
+            at: 14, 156
+            gap: 12
+
+            // Display Brightness Card
+            group {
+                size: 312, 54
+                body {
+                    color: #24262d
+                    glass: 80%
+                    rim: 8%
+                    box { from: 0, 0; size: 312, 54; corner: 16 }
+                }
+                text "Display" { at: 14, 16; anchor: left center; size: 11; weight: 600; color: ink; opacity: 70% }
+                group {
+                    move: 14, 26
+                    size: 284, 18
+                    box { from: 0, 0; size: 284, 18; corner: 9; color: #343740 }
+                    box { from: 0, 0; size: 284 * max(display.level, 0.2), 18; corner: 9; color: #ffffff }
+                    text "􀆮" { at: 12, 9; anchor: center; size: 11; color: #16181d }
+                    zone box br_hit { from: 0, 0; size: 284, 18; cursor: pointer }
+                }
+            }
+
+            // Sound Volume Card
+            group {
+                size: 312, 54
+                body {
+                    color: #24262d
+                    glass: 80%
+                    rim: 8%
+                    box { from: 0, 0; size: 312, 54; corner: 16 }
+                }
+                text "Sound" { at: 14, 16; anchor: left center; size: 11; weight: 600; color: ink; opacity: 70% }
+                group {
+                    move: 14, 26
+                    size: 284, 18
+                    box { from: 0, 0; size: 284, 18; corner: 9; color: #343740 }
+                    box { from: 0, 0; size: 284 * sound.volume, 18; corner: 9; color: #ffffff }
+                    text "􀊠" { at: 12, 9; anchor: center; size: 11; color: #16181d }
+                    zone box vol_hit { from: 0, 0; size: 284, 18; cursor: pointer }
+                }
+            }
+        }
+
+        // ── Bottom: Now Playing / Media Card ──────────────────────
+        group {
+            move: 14, 290
+            size: 312, 114
+            body {
+                color: #24262d
+                glass: 80%
+                rim: 8%
+                box { from: 0, 0; size: 312, 114; corner: 16 }
+            }
+
+            // Album Artwork Box
+            box { from: 14, 14; size: 52, 52; corner: 8; color: #007aff; opacity: 30% }
+            text "􀑪" { at: 40, 40; anchor: center; size: 22; color: #007aff }
+
+            // Title & Artist
+            text song.title {
+                at: 78, 30
+                anchor: left center
+                size: 13.5
+                weight: 600
+                color: ink
+                width: 210
+                lines: 1
+            }
+            text song.artist {
+                at: 78, 48
+                anchor: left center
+                size: 11.5
+                color: ink
+                opacity: 60%
+                width: 210
+                lines: 1
+            }
+
+            // Playback Controls Row
+            row {
+                at: 156, 88
+                anchor: center
+                gap: 28
+                align: center
+
+                text "􀊌" { size: 16; color: ink; opacity: 70% }
+                group {
+                    size: 28, 28
+                    ellipse { at: 14, 14; radius: 14; color: ink; opacity: 15% }
+                    text if(song.playing, "􀊆", "􀊄") { at: 14, 14; anchor: center; size: 14; color: ink }
+                    zone box play_hit { from: 0, 0; size: 28, 28; cursor: pointer }
+                }
+                text "􀊎" { size: 16; color: ink; opacity: 70% }
+            }
+        }
+    }
+
+    on press br_hit   { emit brightness_set(clamp(local.x / 284, 0.1, 1)) }
+    on drag br_hit    { emit brightness_set(clamp(local.x / 284, 0.1, 1)) }
+    on press vol_hit  { emit volume_set(clamp(local.x / 284, 0, 1)) }
+    on drag vol_hit   { emit volume_set(clamp(local.x / 284, 0, 1)) }
+    on press play_hit { emit play_pause }
+
+    on toggle     { toggle open }
+    on key Escape { open = false }
+    on blur       { open = false }
+}
