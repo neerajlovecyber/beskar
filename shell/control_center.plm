@@ -65,9 +65,12 @@ scene MacControlCenter {
 
         // ── Frosted Glass Main Window Frame ───────────────────────
         body {
-            color: #1a1c22
-            glass: 94%
-            frost: auto
+            color: #161820
+            glass: 85%
+            frost: 100%
+            dispersion: 0
+            refraction: 0
+            tint: 40%
             rim: 14%
             shadow: 0, 14, 28, 35%
             box { from: 0, 0; size: 360, 480; corner: 22 }
@@ -87,12 +90,8 @@ scene MacControlCenter {
                 // Connectivity 2x2 Card
                 group {
                     size: 158, 134
-                    body {
-                        color: #24262d
-                        glass: 80%
-                        rim: 8%
-                        box { from: 0, 0; size: 158, 134; corner: 16 }
-                    }
+                    box { from: 0, 0; size: 158, 134; corner: 16; color: #232630; opacity: 78% }
+                    box { from: 0, 0; size: 158, 134; corner: 16; stroke: 1; color: #ffffff; opacity: 6% }
 
                     // Wi-Fi Row
                     group {
@@ -128,26 +127,18 @@ scene MacControlCenter {
                     // Do Not Disturb Card
                     group {
                         size: 158, 61
-                        body {
-                            color: #24262d
-                            glass: 80%
-                            rim: 8%
-                            box { from: 0, 0; size: 158, 61; corner: 16 }
-                        }
+                        box { from: 0, 0; size: 158, 61; corner: 16; color: #232630; opacity: 78% }
+                        box { from: 0, 0; size: 158, 61; corner: 16; stroke: 1; color: #ffffff; opacity: 6% }
                         ellipse { at: 24, 30; radius: 15; color: #343740 }
-                        text "󰔎" { at: 24, 30; anchor: center; size: 15; color: ink }
+                        text "󱄎" { at: 24, 30; anchor: center; size: 15; color: ink }
                         text "Focus" { at: 48, 30; anchor: left center; size: 12.5; weight: 600; color: ink }
                     }
 
                     // AirDrop / Hotspot Card
                     group {
                         size: 158, 61
-                        body {
-                            color: #24262d
-                            glass: 80%
-                            rim: 8%
-                            box { from: 0, 0; size: 158, 61; corner: 16 }
-                        }
+                        box { from: 0, 0; size: 158, 61; corner: 16; color: #232630; opacity: 78% }
+                        box { from: 0, 0; size: 158, 61; corner: 16; stroke: 1; color: #ffffff; opacity: 6% }
                         ellipse { at: 24, 30; radius: 15; color: #343740 }
                         text "󰀝" { at: 24, 30; anchor: center; size: 15; color: ink }
                         text "AirDrop" { at: 48, 30; anchor: left center; size: 12.5; weight: 600; color: ink }
@@ -163,12 +154,8 @@ scene MacControlCenter {
                 // Display Brightness Card
                 group {
                     size: 328, 56
-                    body {
-                        color: #24262d
-                        glass: 80%
-                        rim: 8%
-                        box { from: 0, 0; size: 328, 56; corner: 16 }
-                    }
+                    box { from: 0, 0; size: 328, 56; corner: 16; color: #232630; opacity: 78% }
+                    box { from: 0, 0; size: 328, 56; corner: 16; stroke: 1; color: #ffffff; opacity: 6% }
                     text "Display" { at: 14, 16; anchor: left center; size: 11; weight: 600; color: ink; opacity: 70% }
                     group {
                         move: 14, 27
@@ -183,12 +170,8 @@ scene MacControlCenter {
                 // Sound Volume Card (With Chevron to audio outputs)
                 group {
                     size: 328, 56
-                    body {
-                        color: #24262d
-                        glass: 80%
-                        rim: 8%
-                        box { from: 0, 0; size: 328, 56; corner: 16 }
-                    }
+                    box { from: 0, 0; size: 328, 56; corner: 16; color: #232630; opacity: 78% }
+                    box { from: 0, 0; size: 328, 56; corner: 16; stroke: 1; color: #ffffff; opacity: 6% }
                     text "Sound" { at: 14, 16; anchor: left center; size: 11; weight: 600; color: ink; opacity: 70% }
                     text "󰅂" { at: 310, 16; anchor: center; size: 14; color: ink; opacity: 40% }
                     zone box snd_chevron_hit { at: 310, 16; size: 24, 20; corner: 10; cursor: pointer }
@@ -208,12 +191,8 @@ scene MacControlCenter {
             group {
                 move: 16, 302
                 size: 328, 120
-                body {
-                    color: #24262d
-                    glass: 80%
-                    rim: 8%
-                    box { from: 0, 0; size: 328, 120; corner: 16 }
-                }
+                box { from: 0, 0; size: 328, 120; corner: 16; color: #232630; opacity: 78% }
+                box { from: 0, 0; size: 328, 120; corner: 16; stroke: 1; color: #ffffff; opacity: 6% }
 
                 box { from: 14, 14; size: 54, 54; corner: 8; color: #007aff; opacity: 25% }
                 text "󰎆" { at: 41, 41; anchor: center; size: 24; color: #007aff }

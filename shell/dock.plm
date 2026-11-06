@@ -31,9 +31,12 @@ scene MacDock {
 
     // ── Frosted Glass Capsule Background ──────────────────────────
     body {
-        color: #1a1c23
-        glass: 92%
-        frost: auto
+        color: #161820
+        glass: 85%
+        frost: 100%
+        dispersion: 0
+        refraction: 0
+        tint: 35%
         shadow: 0, 6, 18, 35%
         rim: 14%
         box { from: 40, 16; size: 470, 68; corner: 22 }

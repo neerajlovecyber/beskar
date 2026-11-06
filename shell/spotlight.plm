@@ -44,9 +44,12 @@ scene MacSpotlight {
 
         // Frosted Glass Window Frame
         body {
-            color: #1c1d22
-            glass: 94%
-            frost: auto
+            color: #161820
+            glass: 85%
+            frost: 100%
+            dispersion: 0
+            refraction: 0
+            tint: 40%
             rim: 12%
             shadow: 0, 14, 28, 35%
             box { from: 40, 24; size: 600, tall; corner: 22 }

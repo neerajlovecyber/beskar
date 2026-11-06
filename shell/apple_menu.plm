@@ -43,9 +43,12 @@ scene MacAppleMenu {
 
         // Frosted Glass Window Frame
         body {
-            color: #1a1c22
-            glass: 94%
-            frost: auto
+            color: #161820
+            glass: 85%
+            frost: 100%
+            dispersion: 0
+            refraction: 0
+            tint: 40%
             rim: 14%
             shadow: 0, 12, 28, 35%
             box { from: 0, 0; size: 230, 250; corner: 14 }

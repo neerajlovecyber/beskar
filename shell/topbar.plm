@@ -29,9 +29,12 @@ scene MacTopBar {
 
     // ── Frosted Glass Bar Background ──────────────────────────────
     body {
-        color: #16181d
-        glass: 90%
-        frost: auto
+        color: #14161c
+        glass: 85%
+        frost: 100%
+        dispersion: 0
+        refraction: 0
+        tint: 40%
         shadow: 0, 2, 8, 20%
         box { from: 0, 0; size: screen.width, 30 }
     }
