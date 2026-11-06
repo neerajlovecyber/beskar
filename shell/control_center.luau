@@ -256,6 +256,7 @@ local KINDS = {
 local last_connected = nil
 local bt_state, shown = {}, {}
 local busy_address, busy_word, busy_ticks = nil, "", 0
+local failed_address, failed_until = nil, 0     -- the last one that did not answer, shown for a while
 
 local function paint_bt()
     local mine, near = {}, {}
@@ -281,6 +282,8 @@ local function paint_bt()
         local state, status
         if d.address == busy_address then
             state, status = 2, busy_word
+        elseif d.address == failed_address and os.time() < failed_until and not d.connected then
+            state, status = 0, "Not reachable"
         elseif d.connected then
             state, status = 1, "Connected"
         elseif d.paired then
@@ -343,9 +346,14 @@ end)
 
 -- A device that never answers must not stay "working" forever.
 every(2000, function()
+    if failed_address and os.time() >= failed_until then
+        failed_address = nil
+        paint_bt()
+    end
     if busy_address then
         busy_ticks = busy_ticks + 1
-        if busy_ticks > 10 then
+        if busy_ticks > 5 then
+            failed_address, failed_until = busy_address, os.time() + 10
             busy_address = nil
             paint_bt()
         end
