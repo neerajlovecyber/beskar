@@ -66,6 +66,8 @@ scene MacSettings {
     event toggle_dark ->
     event choose_skin ->
     event choose_accent ->
+    event toggle_accent_auto ->
+    event auto_accent ->
     event volume_set ->
     event brightness_set ->
     event apply_wallpaper ->
@@ -275,20 +277,17 @@ scene MacSettings {
                 AccentCircle(6, #8e8e93)
             }
 
-            // 4. Desktop & Dock Preferences Card
-            box { from: 0, 400; size: 556, 96; corner: 14; color: card_fill; opacity: card_fill_op }
-            box { from: 0, 400; size: 556, 96; corner: 14; stroke: 1; color: c_border; opacity: c_border_op }
-            row {
-                at: 18, 416
-                text "Automatically hide and show the Dock" { size: 12.5; color: ink_c; width: 440 }
-                SwitchToggle(false)
+            // 4. Accent follows the wallpaper
+            box { from: 0, 400; size: 556, 60; corner: 14; color: card_fill; opacity: card_fill_op }
+            box { from: 0, 400; size: 556, 60; corner: 14; stroke: 1; color: c_border; opacity: c_border_op }
+            text "Match accent colour to the wallpaper" { at: 18, 422; anchor: left center; size: 12.5; color: ink_c; width: 440 }
+            text "Picks the closest accent every time you change the wallpaper" { at: 18, 440; anchor: left center; size: 10.5; color: ink_sub; width: 440 }
+            group {
+                move: 494, 418
+                SwitchToggle(accent_auto)
+                zone box accent_auto_hit { from: 0, 0; size: 44, 24; corner: 12; cursor: pointer }
             }
-            box { from: 18, 448; size: 520, 1; color: c_border; opacity: c_border_op }
-            row {
-                at: 18, 464
-                text "Allow wallpaper tinting in windows" { size: 12.5; color: ink_c; width: 440 }
-                SwitchToggle(true)
-            }
+            on press accent_auto_hit { emit toggle_accent_auto }
         }
 
         // ──────────────────────────────────────────────────────────

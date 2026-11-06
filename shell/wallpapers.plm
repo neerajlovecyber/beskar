@@ -32,6 +32,7 @@ scene MacWallpapers {
     event wall_pick ->
     event wall_scroll ->
     event wall_tab_set ->
+    event accent_now ->
 
     prop seen = 0 ~quick
     prop scale = 0.96 ~quick

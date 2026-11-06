@@ -167,6 +167,58 @@ local function scan()
     end)
 end
 
+-- ── the accent that goes with a picture ─────────────────────────
+-- Take the most colourful of the picture's main colours and map its hue to the nearest of Beskar's
+-- accents (0 blue · 1 purple · 2 pink · 3 red · 4 orange · 5 green · 6 graphite for greys).
+local function accent_index(r, g, b)
+    r, g, b = r / 255, g / 255, b / 255
+    local mx, mn = math.max(r, g, b), math.min(r, g, b)
+    local d = mx - mn
+    local s = mx == 0 and 0 or d / mx
+    if s < 0.18 or d == 0 then
+        return 6, s, mx
+    end
+    local h
+    if mx == r then h = ((g - b) / d) % 6 elseif mx == g then h = (b - r) / d + 2 else h = (r - g) / d + 4 end
+    h = h * 60
+    local idx
+    if h < 15 or h >= 345 then idx = 3
+    elseif h < 70 then idx = 4
+    elseif h < 170 then idx = 5
+    elseif h < 255 then idx = 0
+    elseif h < 300 then idx = 1
+    else idx = 2 end
+    return idx, s, mx
+end
+
+local function accent_from(path)
+    run("magick", { path, "-resize", "120x120", "-colors", "8", "-format", "%c", "histogram:info:-" }, function(out, code)
+        if code ~= 0 or not out then
+            return
+        end
+        local best, best_score = 6, -1
+        for line in out:gmatch("[^\n]+") do
+            local count, hex = line:match("(%d+):.-#(%x%x%x%x%x%x)")
+            if count then
+                local r, g, b = tonumber(hex:sub(1, 2), 16), tonumber(hex:sub(3, 4), 16), tonumber(hex:sub(5, 6), 16)
+                local idx, sat, val = accent_index(r, g, b)
+                local lively = (val > 0.28 and val < 0.97) and 1 or 0.25
+                local score = tonumber(count) * sat * sat * lively
+                if score > best_score then
+                    best, best_score = idx, score
+                end
+            end
+        end
+        pcall(sys.call, "say", "settings", "emit auto_accent " .. best)
+    end)
+end
+
+on("accent_now", function()
+    if current then
+        accent_from(current)
+    end
+end)
+
 -- ── buttons ──────────────────────────────────────────────────────
 on("wall_tab_set", function(n)
     fact.wall_tab = tonumber(n) or 0
@@ -201,6 +253,9 @@ mkdir -p "$HOME/.config/beskar" && printf '%s\n' "$1" > "$HOME/.config/beskar/wa
             log("wallpaper · awww failed for", w.path)
         end
     end)
+    if fact.accent_auto == true then
+        accent_from(w.path)
+    end
 end)
 
 -- Opening the picker looks again (a new picture in the folder shows up) and lands on the one in use.

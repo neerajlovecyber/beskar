@@ -14,9 +14,9 @@ local THEMED = { "topbar", "control_center", "notifications", "dashboard", "sett
                 "spotlight", "apple_menu", "osd", "clipboard", "session", "capture", "appswitcher", "lock" }
 local PLAIN = {}
 
-local function save_theme(dm_str, skin_str, accent_str)
+local function save_theme(dm_str, skin_str, accent_str, auto_str)
     -- ~/.config/pleamar_shell.json is read by start.sh to restore the look after a restart.
-    local json_text = string.format('{"dark_mode": %s, "skin": %s, "accent": %s}', dm_str, skin_str, accent_str)
+    local json_text = string.format('{"dark_mode": %s, "skin": %s, "accent": %s, "accent_auto": %s}', dm_str, skin_str, accent_str, auto_str)
     pcall(run, "sh", { "-c", "mkdir -p \"$HOME/.config\" && printf '%s\\n' '" .. json_text .. "' > \"$HOME/.config/pleamar_shell.json\"" }, nil, { output = false })
 end
 
@@ -25,17 +25,19 @@ local function broadcast_theme()
     local dm_str = tostring(dm)
     local skin_str = tostring(fact.skin or 0)
     local accent_str = tostring(fact.accent or 0)
+    local auto_str = tostring(fact.accent_auto == true)
 
     for _, s in ipairs(THEMED) do
         pcall(sys.call, "say", s, "fact dark_mode " .. dm_str)
         pcall(sys.call, "say", s, "fact skin " .. skin_str)
         pcall(sys.call, "say", s, "fact accent " .. accent_str)
+        pcall(sys.call, "say", s, "fact accent_auto " .. auto_str)
     end
     for _, s in ipairs(PLAIN) do
         pcall(sys.call, "say", s, "fact dark_mode " .. dm_str)
         pcall(sys.call, "say", s, "fact skin " .. skin_str)
     end
-    save_theme(dm_str, skin_str, accent_str)
+    save_theme(dm_str, skin_str, accent_str, auto_str)
     -- GTK / libadwaita apps follow too
     pcall(run, "gsettings", { "set", "org.gnome.desktop.interface", "color-scheme", dm and "prefer-dark" or "prefer-light" }, nil, { output = false })
 end
@@ -51,9 +53,27 @@ on("choose_skin", function(val)
     broadcast_theme()
 end)
 
+-- Picked by hand: that ends "match the wallpaper".
 on("choose_accent", function(val)
     fact.accent = tonumber(val) or 0
+    fact.accent_auto = false
     broadcast_theme()
+end)
+
+-- Picked by wallpapers.luau from the wallpaper (only while "match the wallpaper" is on).
+on("auto_accent", function(val)
+    if fact.accent_auto == true then
+        fact.accent = tonumber(val) or 0
+        broadcast_theme()
+    end
+end)
+
+on("toggle_accent_auto", function()
+    fact.accent_auto = not (fact.accent_auto == true)
+    broadcast_theme()
+    if fact.accent_auto then
+        pcall(sys.call, "say", "wallpapers", "emit accent_now")
+    end
 end)
 
 on("volume_set", function(val)
