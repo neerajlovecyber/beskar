@@ -66,7 +66,6 @@ scene MacLock {
         body {
             color: #1e222a
             rim: 15%
-            shadow: 0, 12, 28, 40%
             ellipse { at: 0, 0; radius: 46 }
         }
         text "󰀉" { at: 0, -2; anchor: center; size: 48; color: #007aff }
@@ -93,7 +92,6 @@ scene MacLock {
             lens: false
             tint: 30%
             rim: 10%
-            shadow: 0, 8, 20, 30%
             box { from: -140, -20; size: 280, 40; corner: 20 }
         }
         box {

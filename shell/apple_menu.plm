@@ -65,7 +65,6 @@ scene MacAppleMenu {
             shine: pointer
             tint: menu_tint
             rim: menu_rim
-            shadow: 0, 12, 28, menu_shadow
             box { from: 0, 0; size: 230, 250; corner: 14 }
         }
 

@@ -78,7 +78,6 @@ scene MacDashboard {
             shine: pointer
             tint: tint_amt
             rim: rim_amt
-            shadow: 0, 14, 28, shadow_amt
             box { from: 0, 0; size: 348, 420; corner: 22 }
         }
 

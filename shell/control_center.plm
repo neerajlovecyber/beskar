@@ -169,7 +169,6 @@ scene MacControlCenter {
             shine: pointer
             tint: tint_amt
             rim: rim_amt
-            shadow: 0, 14, 30, shadow_amt
             // The card tucks right under the right island (the bar's strip is 42 px) and grows
             // out of it: it scales from its top-right corner, so it reads as the island opening.
             box { from: 0, 0; size: 360, ch; corner: 22 }

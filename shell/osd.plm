@@ -63,7 +63,6 @@ scene MacOsd {
             refraction: 0
             tint: tint_amt
             rim: rim_amt
-            shadow: 0, 16, 32, shadow_amt
             box { from: 0, 0; size: 200, 200; corner: 26 }
         }
 

@@ -117,7 +117,6 @@ scene MacNotifications {
                 refraction: 75%
                 tint: tint_amt
                 rim: rim_amt
-                shadow: 0, 14, 28, shadow_amt
                 box { from: 0, 0; size: 380, ph; corner: 30 }
             }
 
@@ -183,7 +182,6 @@ scene MacNotifications {
                 frost: 100%
                 tint: tint_amt
                 rim: rim_amt
-                shadow: 0, 14, 28, shadow_amt
                 box { from: 0, 0; size: 380, 104; corner: 30 }
             }
             for n in notices {

@@ -167,7 +167,6 @@ scene MacTopBar {
             rim: bar_rim
             refraction: 80%
             dispersion: 40%
-            shadow: 0, 2, 14, 30%
 
             //  The ring. The sides and the floor melt into what came before, which is what
             //  rounds the inner corners.

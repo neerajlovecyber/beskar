@@ -107,7 +107,6 @@ scene MacSettings {
             refraction: 0
             tint: tint_amt
             rim: rim_amt
-            shadow: 0, 18, 48, shadow_amt
             box { from: 0, 0; size: 840, 580; corner: 20 }
         }
         box { from: 0, 0; size: 840, 580; corner: 20; stroke: 1; color: stroke_c; opacity: stroke_op }

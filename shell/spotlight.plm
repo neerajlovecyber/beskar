@@ -64,7 +64,6 @@ scene MacSpotlight {
             shine: pointer
             tint: spot_tint
             rim: spot_rim
-            shadow: 0, 14, 28, spot_shadow
             box { from: 40, 24; size: 600, tall; corner: 22 }
         }
 
