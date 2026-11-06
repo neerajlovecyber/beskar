@@ -31,14 +31,14 @@ case "$1" in
         sleep 0.2
 
         echo "Starting macOS Shell components with Pleamar..."
-        # Launch each scene
-        "$BIN" --scene "$DIR/shell/topbar.plm" &
+        # Launch each scene with --no-hud to disable the debug frame graph
+        "$BIN" --no-hud --scene "$DIR/shell/topbar.plm" &
         PID_BAR=$!
-        "$BIN" --scene "$DIR/shell/dock.plm" &
+        "$BIN" --no-hud --scene "$DIR/shell/dock.plm" &
         PID_DOCK=$!
-        "$BIN" --scene "$DIR/shell/spotlight.plm" &
+        "$BIN" --no-hud --scene "$DIR/shell/spotlight.plm" &
         PID_SPOTLIGHT=$!
-        "$BIN" --scene "$DIR/shell/control_center.plm" &
+        "$BIN" --no-hud --scene "$DIR/shell/control_center.plm" &
         PID_CC=$!
 
         echo "macOS Shell running! (PIDs: $PID_BAR, $PID_DOCK, $PID_SPOTLIGHT, $PID_CC)"
