@@ -1,13 +1,12 @@
--- iNiR Floating Dock Companion Logic
+-- macOS / iNiR Dock Companion Logic
 local apps = {
-    [1] = "kitty",
-    [2] = "nautilus",
-    [3] = "code",
-    [4] = "steam",
-    [5] = "obsidian",
-    [6] = "firefox",
-    [7] = "discord",
-    [8] = "telegram-desktop"
+    [1] = "nautilus",
+    [2] = "firefox",
+    [3] = "kitty",
+    [4] = "code",
+    [5] = "flatpak run org.gnome.Music",
+    [6] = "gnome-control-center",
+    [7] = "nautilus trash://"
 }
 
 on("launch", function(index)

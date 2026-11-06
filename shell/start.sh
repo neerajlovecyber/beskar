@@ -52,6 +52,16 @@ start_shell() {
 
     echo "Starting macOS / iNiR Shell components (Pleamar daemon mode)..."
 
+    # Ensure wallpaper daemon is running and wallpaper is displayed
+    if ! pgrep -x awww-daemon >/dev/null 2>&1; then
+        setsid awww-daemon </dev/null >/tmp/awww.log 2>&1 &
+        sleep 0.4
+    fi
+    WALLPAPER="/home/nsp/Pictures/wallpapers/zzzzz.png"
+    if [ -f "$WALLPAPER" ]; then
+        awww img "$WALLPAPER" >/dev/null 2>&1 || true
+    fi
+
     setsid "$BIN" --no-hud --scene "$DIR/shell/topbar.plm" </dev/null >/tmp/pleamar_topbar.log 2>&1 &
     PID_BAR=$!
     setsid "$BIN" --no-hud --scene "$DIR/shell/dock.plm" </dev/null >/tmp/pleamar_dock.log 2>&1 &
