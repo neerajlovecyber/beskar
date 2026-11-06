@@ -7,6 +7,7 @@ scene MacControlCenter {
         anchor: top_right
         margin: 0, 4, 0, 0
         level: overlay
+        keyboard: exclusive while asking
     }
 
     permissions {
@@ -19,6 +20,9 @@ scene MacControlCenter {
     //  3 keyboard · 4 phone · 5 computer · 6 gamepad · 7 speaker. state: 0 paired · 1 connected · 2 working · 3 new.
     model bt_rows max 8 { name: text; status: text; kind: number; state: number; battery: number = -1 }
     model outs max 6 { id: number; name: text; default: bool }
+    //  Painted by control_center.luau. Wi-Fi rows: signal 0..1.  App volumes: one row per stream playing.
+    model wifi_rows max 6 { name: text; signal: number; secure: bool; known: bool; active: bool; joining: bool }
+    model app_rows max 4 { name: text; volume: number; muted: bool }
 
     // ── System Services & Lists ───────────────────────────────────
     service audio as sound { volume: number; muted: bool; outputs: outs }
@@ -28,6 +32,16 @@ scene MacControlCenter {
     // ── Navigation & Theme Facts ──────────────────────────────────
     // Navigation: 0 = Main, 1 = Wi-Fi, 2 = Bluetooth, 3 = Sound
     fact page = 0
+
+    //  Wi-Fi, from control_center.luau. state: 0 off · 1 not connected · 2 connected · 3 cable · 4 joining
+    fact wifi_state = 1
+    fact wifi_signal = 0
+    fact asking = false          // the password sheet is open
+    text wifi_title = ""
+    text wifi_status = ""
+    text ask_name = ""
+    text ask_error = ""
+    text wifi_pw = ""
 
     //  Reported by control_center.luau: Bluetooth, and what is playing
     fact bt_on = false
@@ -77,6 +91,12 @@ scene MacControlCenter {
     event brightness_set ->
     event play_pause ->
     event pick_network ->
+    event wifi_power ->
+    event wifi_disconnect ->
+    event wifi_rescan ->
+    event wifi_join ->
+    event wifi_cancel ->
+    event app_volume ->
     event bt_action ->
     event bt_power ->
     event bt_scan ->
@@ -89,10 +109,38 @@ scene MacControlCenter {
     event toggle_bt ->
 
     prop seen = 0 ~quick
+    //  Closing the password sheet hands the keyboard back, which is a `blur`: this stays above zero
+    //  for a moment after it so that blur does not close the whole panel.
+    prop askhold = 0 ~calm
+    follow askhold = if(asking, 1, 0)
     //  The card is shorter on the overview than on the pickers, and grows when one opens.
     prop ch = 430 ~calm
-    follow ch = if(page == 0, 430, 448)
+    follow ch = if(page == 0, 430,
+                if(page == 1, if(asking, 240, max(230, 176 + wifi_rows.count * 40)),
+                if(page == 2, max(200, 78 + bt_rows.count * 52),
+                max(190, 100 + outs.count * 40 + app_rows.count * 56 + if(app_rows.count > 0, 12, 40)))))
     prop scale = 0.9 ~quick
+
+    //  A small button with a word.
+    component Pill(label: text, press: event, w: number = 96, strong: bool = false, warn: bool = false) {
+        size: w, 28
+        prop glow = 0 ~quick
+        box { from: 0, 0; size: w, 28; corner: 9; color: if(strong, #007aff, if(warn, #ff453a, item_bg)); opacity: if(strong, 100%, if(warn, 20%, item_bg_op)) + glow * 12% }
+        text label { at: w / 2, 14; anchor: center; size: 11; weight: 600; color: if(strong, #ffffff, if(warn, #ff6961, ink_c)) }
+        zone box hit { from: 0, 0; size: w, 28; corner: 9; cursor: pointer }
+        on enter hit { glow: 1 }
+        on leave hit { glow: 0 }
+        on press hit { emit press }
+    }
+
+    //  Four arcs that fill with the strength, 0..1
+    component Bars(level: number, tone: color = ink_c) {
+        size: 28, 24
+        repeat a in 1..5 {
+            arc { at: 14, 20; radius: 2 + a * 3.6; span: 110deg; width: 1.8; color: tone; opacity: 20% + 80% * if(level > (a - 1) * 0.25, 1, 0) }
+        }
+        ellipse { at: 14, 21; radius: 1.8; color: tone }
+    }
 
     layer panel ~quick {
         shown while open { seen: 1 ~quick; scale: 1 ~quick }
@@ -302,7 +350,7 @@ scene MacControlCenter {
         }
 
         // ==========================================================
-        // PAGE 1: WI-FI NETWORK PICKER SUB-PAGE
+        // PAGE 1: WI-FI
         // ==========================================================
         group {
             show: page == 1
@@ -318,30 +366,108 @@ scene MacControlCenter {
                 }
                 zone box wifi_back_hit { from: 0, 0; size: 100, 32; cursor: pointer }
             }
+            //  Radio switch
+            box { from: 306, 25; size: 38, 22; corner: 11; color: if(wifi_state != 0, #34c759, item_bg); opacity: if(wifi_state != 0, 100%, item_bg_op) }
+            ellipse { at: if(wifi_state != 0, 335, 316), 36; radius: 9; color: #ffffff }
+            zone box wifi_switch_hit { from: 306, 25; size: 38, 22; corner: 11; cursor: pointer }
 
-            column {
-                at: 16, 62
-                gap: 6
-                for n in nets {
-                    group {
-                        size: 328, 38
-                        box { from: 0, 0; size: 328, 38; corner: 10; color: card_fill; opacity: if(n.active, 95%, card_fill_op) }
-                        box { from: 0, 0; size: 328, 38; corner: 10; stroke: 1; color: card_stroke; opacity: card_stroke_op }
-                        text "󰤨" { at: 20, 19; anchor: center; size: 14; color: if(n.active, #007aff, ink_c) }
-                        text n.ssid { at: 42, 19; anchor: left center; size: 13; weight: if(n.active, 600, 400); color: ink_c; width: 220; lines: 1 }
-                        text if(n.secure, "󰌾", "") { at: 290, 19; anchor: center; size: 12; color: ink_sub }
-                        text if(n.active, "✓", "") { at: 312, 19; anchor: center; size: 14; color: #007aff }
-                        zone box net_row_hit { from: 0, 0; size: 328, 38; cursor: pointer }
-                        on press net_row_hit { emit pick_network(n.index) }
-                    }
+            // ── the connection in use, or why there is none ──
+            group {
+                show: not asking
+                move: 16, 62
+                box { from: 0, 0; size: 328, 64; corner: 14; color: card_fill; opacity: card_fill_op }
+                box { from: 0, 0; size: 328, 64; corner: 14; color: #007aff; opacity: if(wifi_state == 2 or wifi_state == 3, 18%, 0%) }
+                box { from: 0, 0; size: 328, 64; corner: 14; stroke: 1; color: card_stroke; opacity: card_stroke_op }
+                group {
+                    move: 12, 20
+                    opacity: if(wifi_state == 0, 35%, 100%)
+                    Bars(if(wifi_state >= 2, wifi_signal, 0), if(wifi_state >= 2, #007aff, ink_c))
+                }
+                text wifi_title { at: 52, 24; anchor: left center; size: 13.5; weight: 600; color: ink_c; width: 150; lines: 1 }
+                text wifi_status { at: 52, 42; anchor: left center; size: 10.5; color: ink_sub; width: 150; lines: 1 }
+                row {
+                    at: 316, 32
+                    anchor: right middle
+                    show: wifi_state == 2
+                    Pill("Disconnect", wifi_disconnect, 92, false, true)
+                }
+                row {
+                    at: 316, 32
+                    anchor: right middle
+                    show: wifi_state == 0
+                    Pill("Turn On", wifi_power, 84, true)
+                }
+                row {
+                    at: 316, 32
+                    anchor: right middle
+                    show: wifi_state == 4
+                    Pill("Cancel", wifi_disconnect, 76)
                 }
             }
-            text "Searching for networks…" {
-                at: 180, 200
-                anchor: center
-                size: 13
-                color: ink_sub
-                show: nets.count < 1
+
+            // ── networks in range ──
+            group {
+                show: wifi_state != 0 and not asking
+                text "NEARBY" { at: 20, 144; anchor: left center; size: 9.5; weight: 700; color: ink_sub }
+                text "Look again" { at: 344, 144; anchor: right center; size: 10.5; color: ink_sub }
+                zone box wifi_rescan_hit { from: 270, 134; size: 74, 20; corner: 10; cursor: pointer }
+                column {
+                    at: 16, 158
+                    gap: 4
+                    for n in wifi_rows {
+                        group {
+                            size: 328, 36
+                            box { from: 0, 0; size: 328, 36; corner: 10; color: card_fill; opacity: card_fill_op }
+                            box { from: 0, 0; size: 328, 36; corner: 10; color: #007aff; opacity: if(n.active, 22%, 0%) }
+                            box { from: 0, 0; size: 328, 36; corner: 10; stroke: 1; color: card_stroke; opacity: card_stroke_op }
+                            group {
+                                move: 10, 6
+                                Bars(n.signal, if(n.active, #007aff, ink_c))
+                            }
+                            text n.name { at: 46, 18; anchor: left center; size: 12.5; weight: if(n.active, 600, 400); color: ink_c; width: 190; lines: 1 }
+                            text "Joining…" { at: 300, 18; anchor: right center; size: 10.5; color: ink_sub; show: n.joining }
+                            text "Connected" { at: 300, 18; anchor: right center; size: 10.5; color: mint; show: n.active and not n.joining }
+                            text "Saved" { at: 300, 18; anchor: right center; size: 10.5; color: ink_sub; show: n.known and not n.active and not n.joining }
+                            group {
+                                show: n.secure and not n.known and not n.active
+                                box { from: 310, 20; size: 9, 7; corner: 2; color: ink_sub }
+                                arc { at: 314.5, 20; radius: 3; span: 180deg; width: 1.4; color: ink_sub }
+                            }
+                            zone box wifi_row_hit { from: 0, 0; size: 328, 36; corner: 10; cursor: pointer }
+                            on press wifi_row_hit { emit pick_network(n.index) }
+                        }
+                    }
+                }
+                text "Looking for networks…" { at: 180, 230; anchor: center; size: 12; color: ink_sub; show: wifi_rows.count < 1 }
+            }
+            text "Turn Wi-Fi on to see the networks around you." { at: 180, 200; anchor: center; size: 12; color: ink_sub; show: wifi_state == 0 and not asking }
+
+            // ── its password, asked for in the list's place ──
+            group {
+                show: asking
+                move: 16, 62
+                box { from: 0, 0; size: 328, 150; corner: 14; color: card_fill; opacity: card_fill_op }
+                box { from: 0, 0; size: 328, 150; corner: 14; stroke: 1; color: card_stroke; opacity: card_stroke_op }
+                text "Join" { at: 164, 24; anchor: center; size: 10.5; color: ink_sub }
+                text ask_name { at: 164, 44; anchor: center; size: 15; weight: 600; color: ink_c; width: 290; lines: 1; tight: true }
+                box { from: 18, 66; size: 292, 34; corner: 9; color: slider_bg; opacity: slider_bg_op }
+                input wifi_pw {
+                    at: 30, 74
+                    width: 270
+                    size: 13
+                    color: ink_c
+                    secret: true
+                    placeholder: "Password"
+                    selection: #007aff
+                }
+                text ask_error { at: 164, 114; anchor: center; size: 10.5; color: #ff6961 }
+                row {
+                    at: 164, 132
+                    anchor: center middle
+                    gap: 10
+                    Pill("Cancel", wifi_cancel, 90)
+                    Pill("Join", wifi_join, 90, true)
+                }
             }
         }
 
@@ -376,7 +502,8 @@ scene MacControlCenter {
                 for g in bt_rows {
                     group {
                         size: 328, 46
-                        box { from: 0, 0; size: 328, 46; corner: 12; color: card_fill; opacity: if(g.state == 1, 95%, card_fill_op) }
+                        box { from: 0, 0; size: 328, 46; corner: 12; color: card_fill; opacity: card_fill_op }
+                        box { from: 0, 0; size: 328, 46; corner: 12; color: #007aff; opacity: if(g.state == 1, 22%, 0%) }
                         box { from: 0, 0; size: 328, 46; corner: 12; stroke: 1; color: card_stroke; opacity: card_stroke_op }
                         ellipse { at: 24, 23; radius: 15; color: if(g.state == 1, #007aff, item_bg); opacity: if(g.state == 1, 100%, item_bg_op) }
                         text pick(g.kind, "󰂯", "󰋋", "󰍽", "󰌌", "󰏲", "󰟀", "󰊴", "󰓃") { at: 24, 23; anchor: center; size: 14; color: if(g.state == 1, #ffffff, ink_c) }
@@ -400,7 +527,7 @@ scene MacControlCenter {
         }
 
         // ==========================================================
-        // PAGE 3: SOUND OUTPUT SELECTOR SUB-PAGE
+        // PAGE 3: SOUND  (output, then each app's own volume)
         // ==========================================================
         group {
             show: page == 3
@@ -412,26 +539,57 @@ scene MacControlCenter {
                     gap: 8
                     align: center
                     text "󰅁" { size: 18; color: ink_c; opacity: 70% }
-                    text "Sound Output" { size: 16; weight: 600; color: ink_c }
+                    text "Sound" { size: 16; weight: 600; color: ink_c }
                 }
                 zone box snd_back_hit { from: 0, 0; size: 150, 32; cursor: pointer }
             }
 
-            column {
-                at: 16, 62
-                gap: 6
+            text "OUTPUT" { at: 20, 62; anchor: left center; size: 9.5; weight: 700; color: ink_sub }
+            column outs_list {
+                at: 16, 74
+                gap: 4
                 for o in outs {
                     group {
-                        size: 328, 38
-                        box { from: 0, 0; size: 328, 38; corner: 10; color: card_fill; opacity: if(o.default, 95%, card_fill_op) }
-                        box { from: 0, 0; size: 328, 38; corner: 10; stroke: 1; color: card_stroke; opacity: card_stroke_op }
-                        text "󰕾" { at: 20, 19; anchor: center; size: 14; color: if(o.default, #007aff, ink_c) }
-                        text o.name { at: 42, 19; anchor: left center; size: 12.5; weight: if(o.default, 600, 400); color: ink_c; width: 250; lines: 1 }
-                        text if(o.default, "✓", "") { at: 310, 19; anchor: center; size: 14; color: #007aff }
-                        zone box out_row_hit { from: 0, 0; size: 328, 38; cursor: pointer }
+                        size: 328, 36
+                        box { from: 0, 0; size: 328, 36; corner: 10; color: card_fill; opacity: card_fill_op }
+                        box { from: 0, 0; size: 328, 36; corner: 10; color: #007aff; opacity: if(o.default, 22%, 0%) }
+                        box { from: 0, 0; size: 328, 36; corner: 10; stroke: 1; color: card_stroke; opacity: card_stroke_op }
+                        ellipse { at: 22, 18; radius: 12; color: if(o.default, #007aff, item_bg); opacity: if(o.default, 100%, item_bg_op) }
+                        path { at: 16.5, 12.5; color: if(o.default, #ffffff, ink_c); move 0, 3.5; line 3, 3.5; line 7, 0; line 7, 11; line 3, 7.5; line 0, 7.5; close }
+                        text o.name { at: 44, 18; anchor: left center; size: 12.5; weight: if(o.default, 600, 400); color: ink_c; width: 250; lines: 1 }
+                        text if(o.default, "✓", "") { at: 310, 18; anchor: center; size: 14; color: #007aff }
+                        zone box out_row_hit { from: 0, 0; size: 328, 36; corner: 10; cursor: pointer }
                         on press out_row_hit { emit pick_output(o.id) }
                     }
                 }
+            }
+
+            //  Below the outputs: what is making sound, each with its own slider.
+            group {
+                move: 0, 74 + outs_list.height + 12
+                text "APPS" { at: 20, 0; anchor: left center; size: 9.5; weight: 700; color: ink_sub; show: app_rows.count > 0 }
+                column {
+                    at: 16, 12
+                    gap: 6
+                    for a in app_rows {
+                        group {
+                            size: 328, 50
+                            box { from: 0, 0; size: 328, 50; corner: 12; color: card_fill; opacity: card_fill_op }
+                            box { from: 0, 0; size: 328, 50; corner: 12; stroke: 1; color: card_stroke; opacity: card_stroke_op }
+                            text a.name { at: 14, 14; anchor: left center; size: 11.5; weight: 600; color: ink_c; width: 220; lines: 1 }
+                            text "{a.volume * 100, 0}%" { at: 314, 14; anchor: right center; size: 10.5; color: ink_sub }
+                            group {
+                                move: 14, 28
+                                box { from: 0, 0; size: 300, 14; corner: 7; color: slider_bg; opacity: slider_bg_op }
+                                box { from: 0, 0; size: max(14, 300 * a.volume), 14; corner: 7; color: slider_bar; opacity: if(a.muted, 35%, slider_bar_op) }
+                                zone box app_vol_hit { from: 0, 0; size: 300, 14; cursor: pointer }
+                                on press app_vol_hit { emit app_volume(a.index + clamp(local.x / 300, 0, 0.999)) }
+                                on drag app_vol_hit { emit app_volume(a.index + clamp(local.x / 300, 0, 0.999)) }
+                            }
+                        }
+                    }
+                }
+                text "Nothing is playing right now" { at: 180, 40; anchor: center; size: 11.5; color: ink_sub; show: app_rows.count < 1 }
             }
         }
     }
@@ -453,6 +611,10 @@ scene MacControlCenter {
     on press wifi_chevron_hit { page = 1 }
     on press wifi_back_hit    { page = 0 }
     on press wifi_icon_hit    { emit toggle_wifi }
+    on press wifi_switch_hit  { emit toggle_wifi }
+    on press wifi_rescan_hit  { emit wifi_rescan }
+    on submit wifi_pw         { emit wifi_join }
+    on change asking          { focus wifi_pw }
 
     on press bt_chevron_hit   { page = 2 }
     on press bt_back_hit      { page = 0 }
@@ -467,5 +629,5 @@ scene MacControlCenter {
     // Window Lifecycle
     on toggle     { toggle open; page = 0 }
     on key Escape { open = false; page = 0 }
-    on blur       { open = false; page = 0 }
+    on blur while askhold < 0.2 { open = false; page = 0 }
 }

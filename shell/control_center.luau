@@ -55,14 +55,6 @@ end)
 
 
 
-on("pick_network", function(idx)
-    log("Control Center: Picked network index", idx)
-    local net = model.nets and model.nets[idx + 1]
-    if net and net.ssid then
-        log("Control Center: Connecting to SSID", net.ssid)
-        sys.call("network.connect", net.ssid)
-    end
-end)
 
 
 on("pick_output", function(id)
@@ -71,14 +63,135 @@ on("pick_output", function(id)
 end)
 
 
--- ── Wi-Fi radio ──────────────────────────────────────────────────
-local wifi_radio = true
+-- ── Wi-Fi ────────────────────────────────────────────────────────
+-- Rows are built here (active one first, then strongest) so they can say "Joining…". A secured
+-- network that was never used asks for its password on a sheet; a known one just joins.
+local net_state, shown_nets = {}, {}
+local joining, joining_since = nil, 0
+
+local function quality(p)
+    if p >= 75 then return "Excellent" elseif p >= 50 then return "Good" elseif p >= 25 then return "Fair" end
+    return "Weak"
+end
+
+local function paint_wifi()
+    local list = {}
+    for _, n in ipairs(net_state.networks or {}) do
+        list[#list + 1] = n
+    end
+    table.sort(list, function(a, b)
+        if (a.active == true) ~= (b.active == true) then return a.active == true end
+        return (a.strength or 0) > (b.strength or 0)
+    end)
+    shown_nets = {}
+    local rows = {}
+    local current
+    for _, n in ipairs(list) do
+        if n.active then current = n end
+        if #rows < 6 then
+            shown_nets[#rows + 1] = n
+            rows[#rows + 1] = {
+                name = n.ssid, signal = n.strength or 0, secure = n.secure == true,
+                known = n.known == true, active = n.active == true, joining = joining ~= nil and n.ssid == joining,
+            }
+        end
+    end
+    model.wifi_rows = rows
+    if joining and current and current.ssid == joining then joining = nil end
+
+    local wired = net_state.kind == "wired" and net_state.online
+    local state, title, status = 1, "Not connected", "Choose a network below"
+    if joining then
+        state, title, status = 4, joining, "Joining…"
+    elseif wired then
+        state, title, status = 3, "Wired", net_state.name or "Connected by cable"
+    elseif net_state.wifi == false then
+        state, title, status = 0, "Wi-Fi is off", "The radio is resting"
+    elseif current or (net_state.online and net_state.kind == "wifi") then
+        local p = math.floor((current and (current.strength or 0) * 100) or (net_state.strength or 0) + 0.5)
+        state = 2
+        title = (current and current.ssid) or net_state.name or ""
+        status = string.format("%s · %d%%", quality(p), p)
+        fact.wifi_signal = p / 100
+    elseif net_state.error and net_state.error ~= "none" and net_state.error ~= "" then
+        status = "Could not join (" .. tostring(net_state.error) .. ")"
+    end
+    fact.wifi_state = state
+    text.wifi_title = title
+    text.wifi_status = status
+end
+
 sys.watch("network", function(n)
-    wifi_radio = not n or n.wifi ~= false
+    net_state = n or {}
+    paint_wifi()
 end)
+
+-- A network that never answers must not stay "joining" forever.
+every(3000, function()
+    if joining and os.time() - joining_since > 25 then
+        joining = nil
+        paint_wifi()
+    end
+end)
+
+local function join(ssid, password)
+    joining, joining_since = ssid, os.time()
+    local ok, err = pcall(sys.call, "network.connect", ssid, password)
+    if not ok then
+        log("wi-fi ·", err)
+        joining = nil
+    end
+    paint_wifi()
+end
+
+local ask_index
+local function stop_asking()
+    fact.asking = false
+    text.wifi_pw = ""
+    text.ask_error = ""
+    ask_index = nil
+end
+
+on("pick_network", function(i)
+    local n = shown_nets[(i or 0) + 1]
+    if not n or n.active or joining then
+        return
+    end
+    if n.secure and not n.known then
+        ask_index = (i or 0) + 1
+        text.ask_name = n.ssid
+        text.wifi_pw = ""
+        text.ask_error = ""
+        fact.asking = true
+    else
+        join(n.ssid)
+    end
+end)
+
+on("wifi_join", function()
+    local n = ask_index and shown_nets[ask_index]
+    local pw = text.wifi_pw or ""
+    if not n then
+        return
+    end
+    if pw == "" then
+        text.ask_error = "Type the password first"
+        return
+    end
+    stop_asking()
+    join(n.ssid, pw)
+end)
+on("wifi_cancel", stop_asking)
+on("wifi_disconnect", function()
+    joining = nil
+    pcall(sys.call, "network.disconnect")
+    paint_wifi()
+end)
+on("wifi_power", function() pcall(sys.call, "network.wifi", true) end)
 on("toggle_wifi", function()
-    pcall(sys.call, "network.wifi", not wifi_radio)
+    pcall(sys.call, "network.wifi", net_state.wifi == false)
 end)
+on("wifi_rescan", function() pcall(sys.call, "network.scan") end)
 
 -- ── Settings shortcut ────────────────────────────────────────────
 on("open_settings", function()
@@ -251,7 +364,39 @@ end)
 
 -- Stop listening for new devices when the panel closes.
 on("fact:open", function(v)
+    if not v then
+        stop_asking()
+    end
     if not v and bt_state.discovering then
         pcall(sys.call, "bluetooth.scan", false)
+    end
+end)
+
+
+-- ── Sound: each app's own volume ─────────────────────────────────
+local app_ids = {}
+sys.watch("audio", function(a)
+    local rows = {}
+    app_ids = {}
+    for _, app in ipairs((a and a.apps) or {}) do
+        if #rows < 4 then
+            app_ids[#rows + 1] = app.id
+            local label = app.name or app.binary or "App"
+            if (app.title or "") ~= "" and app.title ~= label then
+                label = label .. " · " .. app.title
+            end
+            rows[#rows + 1] = { name = label, volume = app.volume or 0, muted = app.muted == true }
+        end
+    end
+    model.app_rows = rows
+end)
+
+on("app_volume", function(v)
+    v = tonumber(v) or 0
+    local idx = math.floor(v)
+    local frac = math.min(1, (v - idx) / 0.999)
+    local id = app_ids[idx + 1]
+    if id then
+        pcall(sys.call, "audio.app_volume", id, frac)
     end
 end)
