@@ -21,10 +21,10 @@ case "$1" in
         echo "Pleamar shell stopped."
         ;;
     spotlight)
-        "$BIN" --say MacSpotlight "emit toggle"
+        "$BIN" --say spotlight "emit toggle"
         ;;
     control-center)
-        "$BIN" --say MacControlCenter "emit toggle"
+        "$BIN" --say control_center "emit toggle"
         ;;
     *)
         kill_all

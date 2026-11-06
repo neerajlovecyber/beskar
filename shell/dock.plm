@@ -158,4 +158,8 @@ scene MacDock {
             on press hit7 { emit launch(7) }
         }
     }
+
+    // Dock background zone to absorb right clicks and prevent accidental closing
+    zone box dock_bg { from: 0, 0; size: 470, 70 }
+    on press right dock_bg { }
 }
