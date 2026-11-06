@@ -3,17 +3,18 @@ import "common/palette.plm"
 
 scene MacDashboard {
     surface {
-        size: 380, 470
+        size: 380, 560
         anchor: top
         margin: 0, 0, 0, 0
         level: overlay
     }
 
     permissions {
-        services: "clock", "say:spotlight", "say:clipboard", "say:control_center", "say:apple_menu", "say:notifications", "say:settings"
+        services: "clock", "battery", "say:spotlight", "say:clipboard", "say:control_center", "say:apple_menu", "say:notifications", "say:settings"
         run: "sh", "curl"
     }
 
+    service battery as bat { present: bool; percent: number; charging: bool }
     service clock as now { time: text = "--:--"; date: text }
 
     fact open = false
@@ -50,6 +51,8 @@ scene MacDashboard {
     event refresh_stats ->
 
     prop seen = 0 ~quick
+    prop ph = 420 ~calm
+    follow ph = if(bat.present, 496, 420)
     prop scale = 0.96 ~quick
 
     layer panel ~quick {
@@ -57,7 +60,7 @@ scene MacDashboard {
         gone             { seen: 0 ~quick; scale: 0.96 ~quick }
     }
 
-    zone box dismiss { from: 0, 0; size: 380, 470; active: open }
+    zone box dismiss { from: 0, 0; size: 380, 560; active: open }
     on press dismiss { open = false }
     on press right dismiss { }
 
@@ -78,7 +81,7 @@ scene MacDashboard {
             shine: pointer
             tint: tint_amt
             rim: rim_amt
-            box { from: 0, 0; size: 348, 420; corner: 22 }
+            box { from: 0, 0; size: 348, ph; corner: 22 }
         }
 
         // ── Top Header ────────────────────────────────────────────
@@ -152,9 +155,25 @@ scene MacDashboard {
             box { from: 16, 104; size: max(288 * (disk_pct / 100), 8), 6; corner: 3; color: purple }
         }
 
+        // ── Battery (laptops) ─────────────────────────────────────
+        group {
+            show: bat.present
+            move: 14, 320
+            size: 320, 64
+            box { from: 0, 0; size: 320, 64; corner: 16; color: card_fill; opacity: card_fill_op }
+            box { from: 0, 0; size: 320, 64; corner: 16; stroke: 1; color: card_stroke; opacity: card_stroke_op }
+            //  the cell
+            box { from: 16, 20; size: 34, 17; corner: 5; stroke: 1.8; color: ink_c }
+            box { from: 51, 25; size: 3, 6; corner: 1.5; color: ink_c }
+            box { from: 19, 23; size: max(3, 28 * clamp(bat.percent / 100, 0, 1)), 11; corner: 2.5; color: if(bat.charging, mint, if(bat.percent <= 20, #ff453a, ink_c)) }
+            text "Battery" { at: 70, 22; anchor: left center; size: 12; weight: 600; color: ink_c }
+            text if(bat.charging, "Charging", "On battery") { at: 70, 40; anchor: left center; size: 10.5; color: ink_sub }
+            text "{bat.percent}%" { at: 304, 32; anchor: right center; size: 22; weight: 700; color: ink_c }
+        }
+
         // ── Row 3: World Clock Widget ─────────────────────────────
         group {
-            move: 14, 320
+            move: 14, if(bat.present, 396, 320)
             size: 320, 84
             box { from: 0, 0; size: 320, 84; corner: 16; color: card_fill; opacity: card_fill_op }
             box { from: 0, 0; size: 320, 84; corner: 16; stroke: 1; color: card_stroke; opacity: card_stroke_op }

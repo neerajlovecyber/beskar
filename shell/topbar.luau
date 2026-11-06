@@ -18,6 +18,16 @@ on("open_spotlight", toggle("spotlight"))
 on("open_notifications", toggle("notifications"))
 on("open_dashboard", toggle("dashboard"))
 
+-- Open the Control Center straight on a page (1 Wi-Fi, 2 Bluetooth).
+local function open_cc_page(n)
+    return function()
+        pcall(sys.call, "say", "control_center", "fact page " .. n)
+        pcall(sys.call, "say", "control_center", "fact open true")
+    end
+end
+on("open_cc_wifi", open_cc_page(1))
+on("open_cc_bt", open_cc_page(2))
+
 -- ── tray ─────────────────────────────────────────────────────────
 -- The service's list goes to the scene's `icons` model (it draws the picture). Reading the model
 -- back gives each record with EVERYTHING it carried, `key` included, which is what
@@ -26,7 +36,7 @@ on("open_dashboard", toggle("dashboard"))
 -- indicators (and the Control Center), so nm-applet and blueman would only repeat them. Chrome's
 -- background icon never goes away while it runs. Add an item's `id` here to hide it too
 -- (`id`s: nm-applet, blueman, chrome_status_icon_1, Cachy-Update, …).
-local HIDE = { ["nm-applet"] = true, ["blueman"] = true, ["chrome_status_icon_1"] = true }
+local HIDE = { ["nm-applet"] = true, ["blueman"] = true, ["chrome_status_icon_1"] = true, ["Cachy-Update"] = true }
 
 sys.watch("tray", function(list)
     local shown = {}

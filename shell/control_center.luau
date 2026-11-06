@@ -274,6 +274,7 @@ local KINDS = {
     ["input-mouse"] = 2, ["input-keyboard"] = 3, ["phone"] = 4,
     ["computer"] = 5, ["input-gaming"] = 6, ["audio-card"] = 7, ["audio-speakers"] = 7,
 }
+local last_connected = nil
 local bt_state, shown = {}, {}
 local busy_address, busy_word, busy_ticks = nil, "", 0
 
@@ -325,6 +326,14 @@ local function paint_bt()
     fact.bt_present = present
     fact.bt_on = present and bt_state.powered == true
     fact.bt_scanning = bt_state.discovering == true
+    local any_connected = false
+    for _, d in ipairs(bt_state.devices or {}) do
+        if d.connected then any_connected = true end
+    end
+    if any_connected ~= last_connected then
+        last_connected = any_connected
+        pcall(sys.call, "say", "topbar", "fact bt_connected " .. tostring(any_connected))
+    end
     local first = mine[1]
     text.bt_sub = (first and first.connected) and first.name
         or ((present and bt_state.powered) and "On" or "Off")
@@ -344,6 +353,13 @@ sys.watch("bluetooth", function(state)
         end
     end
     paint_bt()
+end)
+
+-- The top bar may have been restarted: tell it again now and then.
+every(15000, function()
+    if last_connected ~= nil then
+        pcall(sys.call, "say", "topbar", "fact bt_connected " .. tostring(last_connected))
+    end
 end)
 
 -- A device that never answers must not stay "working" forever.
