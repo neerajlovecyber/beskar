@@ -1,4 +1,4 @@
--- macOS System Settings Companion Logic (Pleamar Engine)
+-- System Settings companion logic (Pleamar engine)
 
 local wallpapers = {
     [0] = "/usr/share/wallpapers/cachyos-wallpapers/Liquid.png",
@@ -89,4 +89,30 @@ end)
 
 on("toggle_dnd", function()
     fact.dnd = not fact.dnd
+end)
+
+
+-- ── About This PC: read the machine, once ────────────────────────
+run("sh", { "-c", [=[
+. /etc/os-release 2>/dev/null
+echo "${PRETTY_NAME:-Linux}"
+grep -m1 'model name' /proc/cpuinfo | cut -d: -f2 | sed 's/^ *//' | sed "s/\$/ ($(nproc) threads)/"
+(lspci 2>/dev/null | grep -E 'VGA|3D|Display' | sed -E 's/^[^ ]+ [^:]+: *//; s/ \(rev.*//; s/.*\[([^]]*)\].*/\1/' | cut -c1-40 | paste -sd'+' | sed 's/+/ + /g') || true
+awk '/MemTotal/ {printf "%.1f GB\n", $2/1048576}' /proc/meminfo
+uname -r
+df -h / --output=size,avail | tail -1 | awk '{print $1 " (" $2 " available)"}'
+]=] }, function(out, code)
+    if code ~= 0 or not out then
+        return
+    end
+    local lines = {}
+    for l in string.gmatch(out, "([^\n]*)\n?") do
+        lines[#lines + 1] = l
+    end
+    text.about_os = lines[1] ~= "" and lines[1] or "Linux"
+    text.about_cpu = lines[2] or ""
+    text.about_gpu = (lines[3] and lines[3] ~= "") and lines[3] or "—"
+    text.about_mem = lines[4] or ""
+    text.about_kernel = lines[5] or ""
+    text.about_disk = lines[6] or ""
 end)

@@ -5,7 +5,7 @@ scene MacWidgets {
     surface {
         size: 380, 720
         anchor: top_right
-        margin: 34, 12, 0, 0
+        margin: 0, 12, 0, 0
         level: overlay
     }
 
@@ -26,7 +26,7 @@ scene MacWidgets {
     fact disk_pct = 52
     text weather_temp = "24°C"
     text weather_cond = "Partly Cloudy"
-    text weather_city = "Cupertino"
+    text weather_city = "New Delhi"
     text cal_month = "NOVEMBER"
     text cal_day = "6"
     text cal_dow = "Friday"
@@ -63,7 +63,7 @@ scene MacWidgets {
     on press right dismiss { }
 
     group {
-        move: 16, 12
+        move: 16, 8
         pivot: 340, 20
         scale: scale
         opacity: seen
@@ -174,16 +174,16 @@ scene MacWidgets {
 
                 column {
                     gap: 3
-                    text "Cupertino" { size: 11; color: ink_sub }
-                    text "PST" { size: 16; weight: 600; color: ink_c }
-                    text "-12.5 hrs" { size: 10.5; color: ink_sub }
+                    text "New Delhi" { size: 11; color: ink_sub }
+                    text "IST" { size: 16; weight: 600; color: ink_c }
+                    text "Same time" { size: 10.5; color: ink_sub }
                 }
 
                 column {
                     gap: 3
                     text "UTC / London" { size: 11; color: ink_sub }
                     text "GMT" { size: 16; weight: 600; color: ink_c }
-                    text "-4.5 hrs" { size: 10.5; color: ink_sub }
+                    text "-5.5 hrs" { size: 10.5; color: ink_sub }
                 }
             }
         }

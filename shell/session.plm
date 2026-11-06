@@ -79,7 +79,7 @@ scene MacSession {
         }
 
         // Title text
-        text pick(kind, "Are you sure you want to shut down your Mac?", "Are you sure you want to restart your computer?", "Are you sure you want to log out?") {
+        text pick(kind, "Are you sure you want to shut down your computer?", "Are you sure you want to restart your computer?", "Are you sure you want to log out?") {
             at: 220, 102
             anchor: center
             size: 15
@@ -90,7 +90,7 @@ scene MacSession {
         }
 
         // Subtitle with live countdown
-        text pick(kind, "Your Mac will shut down automatically in {countdown} seconds.", "Your computer will restart automatically in {countdown} seconds.", "You will be logged out automatically in {countdown} seconds.") {
+        text pick(kind, "Your computer will shut down automatically in {countdown} seconds.", "Your computer will restart automatically in {countdown} seconds.", "You will be logged out automatically in {countdown} seconds.") {
             at: 220, 128
             anchor: center
             size: 12

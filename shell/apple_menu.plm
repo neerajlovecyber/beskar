@@ -5,7 +5,7 @@ scene MacAppleMenu {
     surface {
         size: 280, 290
         anchor: top_left
-        margin: 34, 10, 0, 0
+        margin: 0, 10, 0, 0
         level: overlay
     }
 
@@ -49,7 +49,7 @@ scene MacAppleMenu {
     on press right dismiss { }
 
     group {
-        move: 25, 12
+        move: 25, 8
         pivot: 20, 10
         scale: scale
         opacity: seen
@@ -78,7 +78,7 @@ scene MacAppleMenu {
                 size: 214, 28
                 prop hot1 = 0 ~quick
                 box { from: 0, 0; size: 214, 28; corner: 6; color: blue; opacity: hot1 * 80% }
-                text "About This Mac" { at: 10, 6; size: 13; color: if(hot1 > 0.5, #ffffff, ink_c) }
+                text "About This PC" { at: 10, 6; size: 13; color: if(hot1 > 0.5, #ffffff, ink_c) }
                 zone box hit_about { from: 0, 0; size: 214, 28; cursor: pointer; active: open }
                 on enter hit_about { hot1: 1 }
                 on leave hit_about { hot1: 0 }
@@ -105,7 +105,7 @@ scene MacAppleMenu {
                 size: 214, 28
                 prop hot3 = 0 ~quick
                 box { from: 0, 0; size: 214, 28; corner: 6; color: blue; opacity: hot3 * 80% }
-                text "App Store..." { at: 10, 6; size: 13; color: if(hot3 > 0.5, #ffffff, ink_c) }
+                text "Software Updates..." { at: 10, 6; size: 13; color: if(hot3 > 0.5, #ffffff, ink_c) }
                 zone box hit_store { from: 0, 0; size: 214, 28; cursor: pointer; active: open }
                 on enter hit_store { hot3: 1 }
                 on leave hit_store { hot3: 0 }
@@ -121,7 +121,7 @@ scene MacAppleMenu {
                 prop hot4 = 0 ~quick
                 box { from: 0, 0; size: 214, 28; corner: 6; color: blue; opacity: hot4 * 80% }
                 text "Lock Screen" { at: 10, 6; size: 13; color: if(hot4 > 0.5, #ffffff, ink_c) }
-                text "⌃⌘Q" { at: 170, 7; size: 11; color: if(hot4 > 0.5, #ffffff, ink_sub) }
+                text "Super+L" { at: 170, 7; size: 11; color: if(hot4 > 0.5, #ffffff, ink_sub) }
                 zone box hit_lock { from: 0, 0; size: 214, 28; cursor: pointer; active: open }
                 on enter hit_lock { hot4: 1 }
                 on leave hit_lock { hot4: 0 }

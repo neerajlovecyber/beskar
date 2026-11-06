@@ -26,7 +26,7 @@ scene MacControlCenter {
     service media as song { playing: bool; title: text; artist: text }
 
     // ── Navigation & Theme Facts ──────────────────────────────────
-    // Navigation: 0 = Main, 1 = Wi-Fi, 2 = Bluetooth, 3 = Sound, 4 = Appearance
+    // Navigation: 0 = Main, 1 = Wi-Fi, 2 = Bluetooth, 3 = Sound
     fact page = 0
     fact open = false
     fact dark_mode = true
@@ -66,6 +66,9 @@ scene MacControlCenter {
     event toggle_bt ->
 
     prop seen = 0 ~quick
+    //  The card is shorter on the overview than on the pickers, and grows when one opens.
+    prop ch = 386 ~calm
+    follow ch = if(page == 0, 386, 448)
     prop scale = 0.9 ~quick
 
     layer panel ~quick {
@@ -79,7 +82,7 @@ scene MacControlCenter {
     on press right dismiss { }
 
     group {
-        move: 40, -4
+        move: 40, 8
         pivot: 340, 0
         scale: scale
         opacity: seen
@@ -98,7 +101,7 @@ scene MacControlCenter {
             shadow: 0, 14, 30, shadow_amt
             // The card tucks right under the right island (the bar's strip is 42 px) and grows
             // out of it: it scales from its top-right corner, so it reads as the island opening.
-            box { from: 0, 0; size: 360, 448; corner: 22 }
+            box { from: 0, 0; size: 360, ch; corner: 22 }
         }
 
         // ==========================================================
@@ -226,7 +229,7 @@ scene MacControlCenter {
                 box { from: 14, 12; size: 40, 40; corner: 10; color: #007aff; opacity: 20% }
                 text "󰾆" { at: 34, 32; anchor: center; size: 20; color: #007aff }
 
-                text song.title {
+                text if(song.playing, song.title, "Not Playing") {
                     at: 66, 22
                     anchor: left center
                     size: 12.5
@@ -236,6 +239,7 @@ scene MacControlCenter {
                     lines: 1
                 }
                 text song.artist {
+                    show: song.playing
                     at: 66, 38
                     anchor: left center
                     size: 10.5
@@ -259,25 +263,6 @@ scene MacControlCenter {
                     }
                     text "󱲭" { size: 16; color: ink_c; opacity: 70% }
                 }
-            }
-
-            // Appearance & Glass Tile
-            group {
-                move: 16, 386
-                size: 328, 44
-                box { from: 0, 0; size: 328, 44; corner: 14; color: card_fill; opacity: card_fill_op }
-                box { from: 0, 0; size: 328, 44; corner: 14; stroke: 1; color: card_stroke; opacity: card_stroke_op }
-
-                ellipse { at: 24, 22; radius: 14; color: #007aff; opacity: 20% }
-                text "󰟘" { at: 24, 22; anchor: center; size: 14; color: #007aff }
-
-                text "Appearance & Glass" { at: 48, 16; anchor: left center; size: 12; weight: 600; color: ink_c }
-                text "Liquid Glass" { at: 48, 29; anchor: left center; size: 10.5; color: ink_sub; show: skin == 0 }
-                text "Light Acrylic" { at: 48, 29; anchor: left center; size: 10.5; color: ink_sub; show: skin == 1 }
-                text "Classic Solid" { at: 48, 29; anchor: left center; size: 10.5; color: ink_sub; show: skin == 2 }
-
-                text "󰅂" { at: 310, 22; anchor: center; size: 14; color: ink_sub }
-                zone box appear_tile_hit { from: 0, 0; size: 328, 44; corner: 14; cursor: pointer }
             }
         }
 
@@ -404,119 +389,6 @@ scene MacControlCenter {
                 }
             }
         }
-
-        // ==========================================================
-        // PAGE 4: APPEARANCE & GLASS CUSTOMIZER SUB-PAGE
-        // ==========================================================
-        group {
-            show: page == 4
-
-            group {
-                move: 16, 20
-                size: 160, 32
-                row {
-                    gap: 8
-                    align: center
-                    text "󰅁" { size: 18; color: ink_c; opacity: 70% }
-                    text "Appearance" { size: 16; weight: 600; color: ink_c }
-                }
-                zone box appear_back_hit { from: 0, 0; size: 160, 32; cursor: pointer }
-            }
-
-            text "THEME MODE" { at: 18, 62; size: 10.5; weight: 600; color: ink_sub }
-
-            // Theme Mode Selector: Dark vs Light Cards
-            row {
-                at: 16, 76
-                gap: 12
-
-                // Dark Mode Card
-                group {
-                    size: 158, 68
-                    box { from: 0, 0; size: 158, 68; corner: 14; color: #1e2026 }
-                    box { from: 0, 0; size: 158, 68; corner: 14; stroke: if(dark_mode, 2, 1); color: if(dark_mode, #007aff, card_stroke); opacity: if(dark_mode, 100%, 15%) }
-
-                    ellipse { at: 24, 34; radius: 15; color: #2e323e }
-                    text "󰔎" { at: 24, 34; anchor: center; size: 16; color: #ffffff }
-                    text "Dark" { at: 48, 26; anchor: left center; size: 13; weight: 600; color: #ffffff }
-                    text "Mode" { at: 48, 42; anchor: left center; size: 10.5; color: #8e8e93 }
-                    text if(dark_mode, "✓", "") { at: 138, 34; anchor: center; size: 15; weight: 700; color: #007aff }
-
-                    zone box opt_dark_hit { from: 0, 0; size: 158, 68; corner: 14; cursor: pointer }
-                }
-
-                // Light Mode Card
-                group {
-                    size: 158, 68
-                    box { from: 0, 0; size: 158, 68; corner: 14; color: #f4f5f8 }
-                    box { from: 0, 0; size: 158, 68; corner: 14; stroke: if(dark_mode == false, 2, 1); color: if(dark_mode == false, #007aff, card_stroke); opacity: if(dark_mode == false, 100%, 15%) }
-
-                    ellipse { at: 24, 34; radius: 15; color: #e2e4ea }
-                    text "󰖨" { at: 24, 34; anchor: center; size: 16; color: #1d1d1f }
-                    text "Light" { at: 48, 26; anchor: left center; size: 13; weight: 600; color: #1d1d1f }
-                    text "Mode" { at: 48, 42; anchor: left center; size: 10.5; color: #6e6e73 }
-                    text if(dark_mode == false, "✓", "") { at: 138, 34; anchor: center; size: 15; weight: 700; color: #007aff }
-
-                    zone box opt_light_hit { from: 0, 0; size: 158, 68; corner: 14; cursor: pointer }
-                }
-            }
-
-            text "BACKGROUND & GLASS STYLE" { at: 18, 160; size: 10.5; weight: 600; color: ink_sub }
-
-            // 3 Glass Modes
-            column {
-                at: 16, 174
-                gap: 8
-
-                // Skin 0: Liquid Glass
-                group {
-                    size: 328, 52
-                    box { from: 0, 0; size: 328, 52; corner: 12; color: card_fill; opacity: card_fill_op }
-                    box { from: 0, 0; size: 328, 52; corner: 12; stroke: if(skin == 0, 2, 1); color: if(skin == 0, #007aff, card_stroke); opacity: if(skin == 0, 100%, card_stroke_op) }
-
-                    ellipse { at: 24, 26; radius: 14; color: #007aff; opacity: 20% }
-                    text "󰹩" { at: 24, 26; anchor: center; size: 14; color: #007aff }
-
-                    text "Liquid Glass" { at: 48, 18; anchor: left center; size: 13; weight: 600; color: ink_c }
-                    text "Frosted blur with specular rim highlights" { at: 48, 34; anchor: left center; size: 10.5; color: ink_sub }
-
-                    text if(skin == 0, "✓", "") { at: 308, 26; anchor: center; size: 16; weight: 700; color: #007aff }
-                    zone box skin0_hit { from: 0, 0; size: 328, 52; corner: 12; cursor: pointer }
-                }
-
-                // Skin 1: Light Acrylic
-                group {
-                    size: 328, 52
-                    box { from: 0, 0; size: 328, 52; corner: 12; color: card_fill; opacity: card_fill_op }
-                    box { from: 0, 0; size: 328, 52; corner: 12; stroke: if(skin == 1, 2, 1); color: if(skin == 1, #007aff, card_stroke); opacity: if(skin == 1, 100%, card_stroke_op) }
-
-                    ellipse { at: 24, 26; radius: 14; color: #007aff; opacity: 20% }
-                    text "󰝤" { at: 24, 26; anchor: center; size: 14; color: #007aff }
-
-                    text "Light Acrylic" { at: 48, 18; anchor: left center; size: 13; weight: 600; color: ink_c }
-                    text "Soft translucency with higher tint opacity" { at: 48, 34; anchor: left center; size: 10.5; color: ink_sub }
-
-                    text if(skin == 1, "✓", "") { at: 308, 26; anchor: center; size: 16; weight: 700; color: #007aff }
-                    zone box skin1_hit { from: 0, 0; size: 328, 52; corner: 12; cursor: pointer }
-                }
-
-                // Skin 2: Classic Solid
-                group {
-                    size: 328, 52
-                    box { from: 0, 0; size: 328, 52; corner: 12; color: card_fill; opacity: card_fill_op }
-                    box { from: 0, 0; size: 328, 52; corner: 12; stroke: if(skin == 2, 2, 1); color: if(skin == 2, #007aff, card_stroke); opacity: if(skin == 2, 100%, card_stroke_op) }
-
-                    ellipse { at: 24, 26; radius: 14; color: #007aff; opacity: 20% }
-                    text "󰍹" { at: 24, 26; anchor: center; size: 14; color: #007aff }
-
-                    text "Classic Solid" { at: 48, 18; anchor: left center; size: 13; weight: 600; color: ink_c }
-                    text "High contrast opaque HIG cards (fastest)" { at: 48, 34; anchor: left center; size: 10.5; color: ink_sub }
-
-                    text if(skin == 2, "✓", "") { at: 308, 26; anchor: center; size: 16; weight: 700; color: #007aff }
-                    zone box skin2_hit { from: 0, 0; size: 328, 52; corner: 12; cursor: pointer }
-                }
-            }
-        }
     }
 
     // Sliders & Media Actions
@@ -538,16 +410,8 @@ scene MacControlCenter {
     on press snd_chevron_hit  { page = 3 }
     on press snd_back_hit     { page = 0 }
 
-    on press appear_tile_hit  { page = 4 }
-    on press appear_back_hit  { page = 0 }
-
     // Theme Actions
     on press dm_tile_hit   { emit toggle_dark }
-    on press opt_dark_hit  { emit set_dark_mode(true) }
-    on press opt_light_hit { emit set_dark_mode(false) }
-    on press skin0_hit     { emit choose_skin(0) }
-    on press skin1_hit     { emit choose_skin(1) }
-    on press skin2_hit     { emit choose_skin(2) }
 
     // Window Lifecycle
     on toggle     { toggle open; page = 0 }
