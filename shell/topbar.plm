@@ -1,4 +1,4 @@
-// iNiR / iRiS 3-Island Top Bar with True Continuous Morphing Fillets
+// iNiR / iRiS Morphing Glass Top Bar (Dynamic Content-Driven Dimensions)
 import "common/palette.plm"
 
 scene MacTopBar {
@@ -31,7 +31,7 @@ scene MacTopBar {
     text weather_temp = "16°"
     text weather_icon = "󰖐"
 
-    let bar_color = if(dark_mode, if(skin == 2, #181a20, if(skin == 1, #161820, #14161c)), if(skin == 2, #f2f3f7, if(skin == 1, #eaecf2, #f6f7fb)))
+    let bar_color = if(dark_mode, if(skin == 2, #181a20, if(skin == 1, #161820, #14161d)), if(skin == 2, #f2f3f7, if(skin == 1, #eaecf2, #f6f7fb)))
     let bar_glass = if(skin == 2, 0%, if(skin == 1, 55%, 75%))
     let bar_tint = if(skin == 2, 0%, if(dark_mode, 40%, 25%))
     let bar_rim = if(skin == 2, 0%, 14%)
@@ -49,16 +49,12 @@ scene MacTopBar {
     event open_widgets ->
     event tray_activate ->
 
-    // Precise island dimensions
-    let left_w = 260
-    let center_w = 250
-    let right_w = 270
-
     // ── Safe Background Zone ──────────────────────────────────────
     zone box topbar_bg { from: 0, 0; size: screen.width, 48 }
     on press right topbar_bg { }
 
-    // ── Unified Liquid Glass Body with Smooth Morphing Fillets ────
+    // ── Continuous Liquid Glass Body Morphing From Top Screen Edge ─
+    // NO manual sizes: all 3 notch shapes dynamically hug their layout contents
     body {
         color: bar_color
         glass: bar_glass
@@ -68,53 +64,44 @@ scene MacTopBar {
         rim: bar_rim
         shadow: 0, 4, 16, 25%
 
-        // 1. Continuous Top Wire: runs along top edge across full width
+        // 1. Continuous Top Wire across the entire screen ceiling
         box top_wire {
             from: 0, -10
             size: screen.width, 14
         }
 
-        // 2. Left Island: Workspace & Active App
-        box left_island {
-            from: 20, -4
-            size: left_w, 42
-            corner: 16
+        // 2. Left Notch: hugs left_row exactly with 12px horizontal padding
+        box left_notch {
+            at: 24 + left_row.width / 2, 14
+            size: left_row.width + 24, 38
+            corner: 14
             blend: 12
         }
 
-        // 3. Center Notch Island: Clock, Date, Weather & Sound
-        box center_island {
-            at: screen.width / 2, 17
-            size: center_w, 42
+        // 3. Center Notch: hugs center_row exactly with 14px horizontal padding
+        box center_notch {
+            at: screen.width / 2, 14
+            size: center_row.width + 28, 38
             corner: 16
             blend: 14
         }
 
-        // 4. Right Island: Tray, Battery & Control Center
-        box right_island {
-            from: screen.width - right_w - 20, -4
-            size: right_w, 42
-            corner: 16
+        // 4. Right Notch: hugs right_row exactly with 12px horizontal padding
+        box right_notch {
+            at: screen.width - 24 - right_row.width / 2, 14
+            size: right_row.width + 24, 38
+            corner: 14
             blend: 12
         }
     }
 
-    // Top Perimeter Wire Highlight
-    line {
-        from: 0, 4
-        to: screen.width, 4
-        width: 1.0
-        color: stroke_c
-        opacity: stroke_op
-    }
-
     // ==============================================================
-    // LEFT ISLAND CONTENTS: Logo + Workspace Pill + Active App Title
+    // LEFT NOTCH CONTENTS: Logo + Workspace Pill + Active Window
     // ==============================================================
     row left_row {
-        at: 32, 17
+        at: 24, 16
         anchor: left center
-        gap: 10
+        gap: 8
         align: center
 
         // Profile / Menu Orb
@@ -128,34 +115,34 @@ scene MacTopBar {
 
         // Workspace Pill Indicator
         group {
-            size: 46, 20
-            box { from: 0, 0; size: 46, 20; corner: 10; color: pill_bg; opacity: pill_op }
-            text "󰮯" { at: 8, 10; anchor: left center; size: 10; color: stroke_c }
-            text "{focused_ws}" { at: 28, 10; anchor: center; size: 11.5; weight: 700; color: ink_c }
+            size: 44, 20
+            box { from: 0, 0; size: 44, 20; corner: 10; color: pill_bg; opacity: pill_op }
+            text "󰮯" { at: 7, 10; anchor: left center; size: 10; color: stroke_c }
+            text "{focused_ws}" { at: 26, 10; anchor: center; size: 11.5; weight: 700; color: ink_c }
         }
 
         // Active Application Title / Window Indicator
         row {
             gap: 6
             align: center
-            text "󰘔" { size: 12; color: ink_sub }
+            text "󰘔" { size: 11.5; color: ink_sub }
             text "{win.title}" {
                 size: 11.5
                 weight: 600
                 color: ink_c
-                width: 135
+                width: 130
                 lines: 1
             }
         }
     }
 
     // ==============================================================
-    // CENTER ISLAND CONTENTS: Avatar + Date + Time + Weather + Sound
+    // CENTER NOTCH CONTENTS: Avatar + Date + Time + Weather + Sound
     // ==============================================================
     row center_row {
-        at: screen.width / 2, 17
+        at: screen.width / 2, 16
         anchor: center
-        gap: 10
+        gap: 9
         align: center
 
         // Mini Avatar Orb
@@ -167,25 +154,25 @@ scene MacTopBar {
             on press avatar_hit { emit open_apple_menu }
         }
 
-        // Date ("Fri 06 Nov") & Time ("15:40")
+        // Date & Time
         group {
-            size: 110, 22
-            row {
+            size: date_time_row.width, 22
+            row date_time_row {
                 at: 0, 2
                 gap: 5
                 align: center
                 text now.date { size: 11; weight: 600; color: ink_sub }
                 text now.time { size: 12.5; weight: 700; color: ink_c }
             }
-            zone box clock_hit { from: 0, 0; size: 110, 22; cursor: pointer }
+            zone box clock_hit { from: 0, 0; size: date_time_row.width, 22; cursor: pointer }
             on press clock_hit { emit open_widgets }
         }
 
-        // Weather Pill (Condition Icon + Temperature)
+        // Weather
         row {
             gap: 4
             align: center
-            text weather_icon { size: 12.5; color: accent_c }
+            text weather_icon { size: 12; color: accent_c }
             text weather_temp { size: 11; weight: 600; color: ink_c }
         }
 
@@ -195,9 +182,7 @@ scene MacTopBar {
             text if(sound.muted, "󰝟", "󰕾") {
                 at: 9, 9
                 anchor: center
-                size: 11.5
-                color: ink_sub
-                opacity: 85%
+                size: 11; color: ink_sub; opacity: 85%
             }
             zone box vol_hit { from: 0, 0; size: 18, 18; cursor: pointer }
             on press vol_hit { emit open_control_center }
@@ -205,12 +190,12 @@ scene MacTopBar {
     }
 
     // ==============================================================
-    // RIGHT ISLAND CONTENTS: Tray Icons + Battery + Status + CC + Bell
+    // RIGHT NOTCH CONTENTS: Tray Icons + Battery + Status + CC + Bell
     // ==============================================================
     row right_row {
-        at: screen.width - 32, 17
+        at: screen.width - 24, 16
         anchor: right center
-        gap: 12
+        gap: 10
         align: center
 
         // System Tray
@@ -228,26 +213,26 @@ scene MacTopBar {
         }
 
         // Steam Icon
-        text "󰓓" { size: 13.5; color: ink_sub; opacity: 75% }
+        text "󰓓" { size: 13; color: ink_sub; opacity: 75% }
 
         // Music note
-        text "󰎆" { size: 12.5; color: #ff757f; opacity: 80% }
+        text "󰎆" { size: 12; color: #ff757f; opacity: 80% }
 
         // Network Status
-        text if(net.online, "󰤨", "󰤭") { size: 13; color: if(net.online, ink_c, ink_sub); opacity: 85% }
+        text if(net.online, "󰤨", "󰤭") { size: 12.5; color: if(net.online, ink_c, ink_sub); opacity: 85% }
 
         // Battery Percent Badge
         row {
             gap: 3
             align: center
-            text if(bat.charging, "󰂄", "󰁹") { size: 13; color: if(bat.charging, mint, ink_c) }
+            text if(bat.charging, "󰂄", "󰁹") { size: 12.5; color: if(bat.charging, mint, ink_c) }
             text "{bat.percent}" { size: 11; weight: 700; color: accent_c }
         }
 
         // Sliders / Control Center Quick Button
         group {
             size: 22, 22
-            text "󰒓" { at: 11, 11; anchor: center; size: 13; color: ink_c; opacity: 85% }
+            text "󰒓" { at: 11, 11; anchor: center; size: 12.5; color: ink_c; opacity: 85% }
             zone box cc_hit { from: 0, 0; size: 22, 22; cursor: pointer }
             on press cc_hit { emit open_control_center }
         }
@@ -255,7 +240,7 @@ scene MacTopBar {
         // Notification Bell Button
         group {
             size: 22, 22
-            text "󰂚" { at: 11, 11; anchor: center; size: 13; color: ink_c; opacity: 85% }
+            text "󰂚" { at: 11, 11; anchor: center; size: 12.5; color: ink_c; opacity: 85% }
             zone box notif_hit { from: 0, 0; size: 22, 22; cursor: pointer }
             on press notif_hit { emit open_widgets }
         }

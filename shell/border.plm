@@ -1,25 +1,7 @@
-// iNiR / iRiS Full-Screen Perimeter Glass Frame
-import "common/palette.plm"
-
+// Neutralized Screen Border
 scene ScreenBorder {
     surface {
-        size: full, full
-        anchor: top_left
-        level: bottom
-        screens: each
-    }
-
-    fact dark_mode = true
-    let stroke_c = if(dark_mode, #b4a8ff, #7f52ff)
-    let stroke_op = if(dark_mode, 25%, 15%)
-
-    // Seamless outer screen perimeter stroke with rounded display corners
-    box screen_frame {
-        from: 6, 6
-        size: screen.width - 12, screen.height - 12
-        corner: 16
-        stroke: 1.2
-        color: stroke_c
-        opacity: stroke_op
+        size: 0, 0
+        open: false
     }
 }

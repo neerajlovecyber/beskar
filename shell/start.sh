@@ -66,8 +66,8 @@ start_shell() {
     PID_BAR=$!
     setsid "$BIN" --no-hud --scene "$DIR/shell/dock.plm" </dev/null >/tmp/pleamar_dock.log 2>&1 &
     PID_DOCK=$!
-    setsid "$BIN" --no-hud --scene "$DIR/shell/border.plm" </dev/null >/tmp/pleamar_border.log 2>&1 &
-    PID_BORDER=$!
+    # Border neutralized - window borders handled natively by compositor
+    PID_BORDER=""
     setsid "$BIN" --no-hud --scene "$DIR/shell/spotlight.plm" </dev/null >/tmp/pleamar_spotlight.log 2>&1 &
     PID_SPOTLIGHT=$!
     setsid "$BIN" --no-hud --scene "$DIR/shell/control_center.plm" </dev/null >/tmp/pleamar_cc.log 2>&1 &
