@@ -21,7 +21,7 @@ kill_all() {
 
 check_status() {
     echo "macOS Shell Status:"
-    for comp in topbar dock spotlight control_center apple_menu widgets; do
+    for comp in topbar dock spotlight control_center apple_menu widgets osd; do
         if pgrep -f "pleamar.*$comp\.plm" >/dev/null 2>&1; then
             echo "  ✔ $comp is RUNNING"
         else
@@ -38,7 +38,7 @@ apply_saved_theme() {
         [ -z "$DM" ] && DM="true"
         [ -z "$SKIN" ] && SKIN="0"
 
-        for comp in topbar dock spotlight control_center apple_menu widgets; do
+        for comp in topbar dock spotlight control_center apple_menu widgets osd; do
             "$BIN" --say "$comp" "fact dark_mode $DM" >/dev/null 2>&1 || true
             "$BIN" --say "$comp" "fact skin $SKIN" >/dev/null 2>&1 || true
         done
@@ -63,8 +63,10 @@ start_shell() {
     PID_APPLE=$!
     setsid "$BIN" --no-hud --scene "$DIR/shell/widgets.plm" </dev/null >/tmp/pleamar_widgets.log 2>&1 &
     PID_WIDGETS=$!
+    setsid "$BIN" --no-hud --scene "$DIR/shell/osd.plm" </dev/null >/tmp/pleamar_osd.log 2>&1 &
+    PID_OSD=$!
 
-    echo "$PID_BAR $PID_DOCK $PID_SPOTLIGHT $PID_CC $PID_APPLE $PID_WIDGETS" > "$PID_FILE"
+    echo "$PID_BAR $PID_DOCK $PID_SPOTLIGHT $PID_CC $PID_APPLE $PID_WIDGETS $PID_OSD" > "$PID_FILE"
     sleep 0.6
 
     apply_saved_theme
@@ -76,12 +78,18 @@ start_shell() {
     echo "  - Control Center: PID $PID_CC"
     echo "  - Apple Menu: PID $PID_APPLE"
     echo "  - Widgets & Notifications: PID $PID_WIDGETS"
+    echo "  - Bezel OSD (HUD): PID $PID_OSD"
     echo ""
     echo "Commands & Hotkey Triggers:"
     echo "  - $0 spotlight       (Toggle Spotlight search)"
     echo "  - $0 control-center  (Toggle Control Center)"
     echo "  - $0 apple-menu      (Toggle Apple menu)"
     echo "  - $0 widgets         (Toggle Notification Center & Widgets)"
+    echo "  - $0 vol-up          (Increase Volume + Bezel OSD)"
+    echo "  - $0 vol-down        (Decrease Volume + Bezel OSD)"
+    echo "  - $0 mute            (Toggle Mute + Bezel OSD)"
+    echo "  - $0 bright-up       (Increase Brightness + Bezel OSD)"
+    echo "  - $0 bright-down     (Decrease Brightness + Bezel OSD)"
     echo "  - $0 dark-mode [on|off]"
     echo "  - $0 skin [0|1|2]    (0=Liquid Glass, 1=Light Acrylic, 2=Classic Solid)"
     echo "  - $0 status          (Check shell status)"
@@ -111,10 +119,28 @@ case "$1" in
     widgets)
         "$BIN" --say widgets "emit toggle"
         ;;
+    vol-up)
+        "$BIN" --say osd "emit volume_up"
+        ;;
+    vol-down)
+        "$BIN" --say osd "emit volume_down"
+        ;;
+    mute)
+        "$BIN" --say osd "emit volume_mute"
+        ;;
+    bright-up)
+        "$BIN" --say osd "emit brightness_up"
+        ;;
+    bright-down)
+        "$BIN" --say osd "emit brightness_down"
+        ;;
+    osd)
+        "$BIN" --say osd "emit popup"
+        ;;
     dark-mode)
         VAL="true"
         [ "$2" = "off" ] && VAL="false"
-        for comp in topbar dock spotlight control_center apple_menu widgets; do
+        for comp in topbar dock spotlight control_center apple_menu widgets osd; do
             "$BIN" --say "$comp" "fact dark_mode $VAL"
         done
         mkdir -p "$(dirname "$CONFIG_FILE")"
@@ -123,7 +149,7 @@ case "$1" in
         ;;
     skin)
         SKIN_VAL="${2:-0}"
-        for comp in topbar dock spotlight control_center apple_menu widgets; do
+        for comp in topbar dock spotlight control_center apple_menu widgets osd; do
             "$BIN" --say "$comp" "fact skin $SKIN_VAL"
         done
         mkdir -p "$(dirname "$CONFIG_FILE")"
