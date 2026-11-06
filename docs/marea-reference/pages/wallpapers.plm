@@ -1,0 +1,45 @@
+// Marea's scene, in pieces: the wallpapers. marea.plm includes it.
+part Wallpapers {
+    // ── the wallpapers ───────────────────────────────────
+    //  Small, three by three; the one on now has its ring. The wheel
+    //  goes on. Hovered, one lifts a little and says its name.
+    component WallCard(w: record, pick: event) {
+        size: 144, 104
+        prop lift = 0 ~lively
+        prop arrive = 0 ~360ms
+        follow arrive = if(page == walls, 1, 0)
+        zone box touch { from: 0, 0; size: 144, 81; corner: 10; cursor: pointer; active: page == walls and paging > 0.9 }
+        group {
+            opacity: arrive
+            move: 0, (1 - arrive) * (12 + w.index * 5) - lift * 3
+            pivot: 72, 40
+            scale: 1 + 0.04 * lift
+            body {
+                color: #1a2a26
+                shadow: 0, 4 + 6 * lift, 10 + 10 * lift, 30% + 20% * lift
+                box { from: 0, 0; size: 144, 81; corner: 10 }
+            }
+            group {
+                clip box { from: 0, 0; size: 144, 81; corner: 10 }
+                ellipse { at: 72, 95; radius: 70; color: mint; opacity: 8%; show: not w.ready }
+                image w.thumb { at: 0, 0; size: 144, 81; show: w.ready }
+            }
+            box { from: 0, 0; size: 144, 81; corner: 10; stroke: 2; color: mint; opacity: if(w.current, 1, 0) }
+            box { from: 0, 0; size: 144, 81; corner: 10; stroke: 1.2; color: ink; opacity: lift * 45% * if(w.current, 0, 1) }
+            text w.name { at: 72, 95; anchor: center; size: 10.5; width: 140; lines: 1; color: mix(#8b8f95, ink, max(lift, if(w.current, 1, 0))) }
+        }
+        on enter touch { lift: 1 }
+        on leave touch { lift: 0 }
+        on press touch { emit pick(w.index) }
+    }
+    group {
+        show: page == walls
+        grid {
+            at: card.x - 228, card.top + 100; columns: 3; gap: 12; width: 456; row: 104
+            for w in walls { WallCard(w, pick: wall_pick) }
+        }
+        zone box walls_area { from: card.x - 228, card.top + 100; size: 456, 340; active: page == walls and paging > 0.9; label: "Wallpapers"; role: list }
+    }
+    on scroll walls_area { emit walls_scroll(wheel) }
+
+}

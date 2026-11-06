@@ -1,0 +1,164 @@
+// Marea's scene, in pieces: the session, and its confirmation. marea.plm includes it.
+part Session {
+    // ── the session ──────────────────────────────────────
+    //  Two separate intentions, as the sheet asks: **taking a break**
+    //  —lock and suspend, which are done just like that— and **finishing**
+    //  —log out, reboot and power off—, which open a separate
+    //  confirmation. Hovering only ANTICIPATES: it shows on her face what
+    //  it would do, and does nothing.
+    group {
+        show: page == session and question < 0.99
+        opacity: 1 - question
+        move: -22 * question, 0
+        repeat b in 0..2 {
+            let bx = card.x - 117 + b * 234
+            prop pause.$b = 0 ~140ms
+            box { at: bx, card.top + 150; size: 222, 70; corner: 14
+                  color: mix(#202021, #1e2a25, pause.$b) }
+            box { at: bx, card.top + 150; size: 222, 70; corner: 14; stroke: 1; color: mint; opacity: pause.$b }
+            zone box pause_zone.$b { at: bx, card.top + 150; size: 222, 70; corner: 14; cursor: pointer
+                                active: page == session and confirming == none and paging > 0.9 }
+            on enter pause_zone.$b { pause.$b: 1 }
+            on leave pause_zone.$b { pause.$b: 0 }
+        }
+        //  The lock's padlock: the body and its shackle.
+        box { at: card.x - 161, card.top + 152; size: 15, 12; corner: 3; color: ink }
+        arc { at: card.x - 161, card.top + 142; radius: 5; span: 180deg; width: 1.8; color: ink }
+        text "Lock" { at: card.x - 141, card.top + 142; anchor: left center; size: 13; color: ink }
+        text "Protect the session" { at: card.x - 141, card.top + 160; anchor: left center; size: 11; color: #8b8f95 }
+        //  And the suspend moon, the same as the Haven's.
+        ellipse { at: card.x + 75, card.top + 150; radius: 8.6; color: ink }
+        ellipse { at: card.x + 79.5, card.top + 145.5; radius: 7.4; color: mix(#202021, #1e2a25, pause.1) }
+        text "Suspend" { at: card.x + 93, card.top + 142; anchor: left center; size: 13; color: ink }
+        text "Go into standby" { at: card.x + 93, card.top + 160; anchor: left center; size: 11; color: #8b8f95 }
+
+        line { from: card.x - 228, card.top + 200; to: card.x + 228, card.top + 200; width: 1; color: ink; opacity: 12% }
+        text "When you're done" { at: card.x - 228, card.top + 220; anchor: left center; size: 11; weight: 600; color: #8b8f95 }
+
+        //  The three that cannot be undone. Each one with its arrow, and the
+        //  power-off one in coral: the colour marks what does not come back.
+        repeat f in 0..3 {
+            let fy = card.top + 252 + f * 46
+            prop finish.$f = 0 ~140ms
+            box { at: card.x, fy; size: 456, 42; corner: 11; color: #202021; opacity: finish.$f * 80% }
+            path { at: card.x + 212, fy - 5; color: mix(#8b8f95, ink, finish.$f); stroke: 1.6
+                   move 0, 0; line 5, 5; line 0, 10 }
+            zone box finish_zone.$f { at: card.x, fy; size: 456, 42; corner: 11; cursor: pointer
+                                active: page == session and confirming == none and paging > 0.9 }
+            on enter finish_zone.$f { finish.$f: 1 }
+            on leave finish_zone.$f { finish.$f: 0 }
+        }
+        //  Log out: a door and the arrow going out.
+        box { at: card.x - 208, card.top + 252; size: 11, 15; corner: 2; stroke: 1.6; color: ink }
+        path { at: card.x - 198, card.top + 247; color: ink; stroke: 1.6; move 0, 0; line 5, 5; line 0, 10 }
+        text "Log out" { at: card.x - 184, card.top + 252; anchor: left center; size: 12.5; color: ink }
+        //  Reboot: the arrow that goes all the way round.
+        arc { at: card.x - 208, card.top + 298; radius: 7; span: 280deg; width: 1.7; rotate: 20deg; color: ink }
+        path { at: card.x - 204, card.top + 289; color: ink; stroke: 1.6; move 0, 0; line 4, 3; line 0, 6 }
+        text "Restart" { at: card.x - 184, card.top + 298; anchor: left center; size: 12.5; color: ink }
+        //  Power off: the power symbol, and in coral.
+        arc { at: card.x - 208, card.top + 344; radius: 7; span: 280deg; width: 1.7; rotate: 180deg; color: #e0655a }
+        box { at: card.x - 208, card.top + 336; size: 1.7, 7; corner: 0.9; color: #e0655a }
+        text "Power off" { at: card.x - 184, card.top + 344; anchor: left center; size: 12.5; color: #e0655a }
+
+        text "Esc to go back" { at: card.x, card.top + 400; anchor: center; size: 11; color: #8b8f95; opacity: 70% }
+    }
+
+    // ── and the confirmation, which is something else ────
+    //  «Back receives the initial focus; the chosen action needs a new,
+    //  deliberate activation.» That is why it is not one more step of the
+    //  same page: it is a question, with its title, what is going to
+    //  happen and two buttons that do not look alike.
+    group {
+        show: page == session and question > 0.01
+        opacity: question
+        move: 26 * (1 - question), 0
+        text "Log out?" { at: card.x - 228, card.top + 146; anchor: left center; size: 19; weight: 500; color: ink; show: confirming == logout }
+        text "Restart the computer?" { at: card.x - 228, card.top + 146; anchor: left center; size: 19; weight: 500; color: ink; show: confirming == reboot }
+        text "Shut down the computer?" { at: card.x - 228, card.top + 146; anchor: left center; size: 19; weight: 500; color: ink; show: confirming == poweroff }
+        text "Applications will be closed." { at: card.x - 228, card.top + 186; anchor: left center; size: 12; color: #8b8f95 }
+        text "Save your changes before continuing." { at: card.x - 228, card.top + 208; anchor: left center; size: 12; color: #8b8f95 }
+
+        prop back.glow = 0 ~140ms
+        prop do_it.glow = 0 ~140ms
+        box { at: card.x - 128, card.top + 264; size: 200, 44; corner: 11; color: mix(mix(#1b1b1c, #232425, back.glow), ink, glassiness); opacity: mix(1, veil + back.glow * veil.glow, glassiness) }
+        box { at: card.x - 128, card.top + 264; size: 200, 44; corner: 11; stroke: 1.4; color: mint }
+        text "Back" { at: card.x - 128, card.top + 264; anchor: center; size: 13; color: ink }
+        box { at: card.x + 118, card.top + 264; size: 220, 44; corner: 11; color: mix(#e0655a, #f0796a, do_it.glow) }
+        text "Log out" { at: card.x + 118, card.top + 264; anchor: center; size: 13; weight: 600; color: #200705; show: confirming == logout }
+        text "Restart" { at: card.x + 118, card.top + 264; anchor: center; size: 13; weight: 600; color: #200705; show: confirming == reboot }
+        text "Shut down" { at: card.x + 118, card.top + 264; anchor: center; size: 13; weight: 600; color: #200705; show: confirming == poweroff }
+        zone box back { at: card.x - 128, card.top + 264; size: 200, 44; corner: 11; cursor: pointer
+                          active: page == session and confirming != none and paging > 0.9 }
+        zone box do_it { at: card.x + 118, card.top + 264; size: 220, 44; corner: 11; cursor: pointer
+                         active: page == session and confirming != none and paging > 0.9 and armed }
+        on enter back { back.glow: 1 }
+        on leave back { back.glow: 0 }
+        on enter do_it { do_it.glow: 1 }
+        on leave do_it { do_it.glow: 0 }
+        text "Esc to go back" { at: card.x, card.top + 320; anchor: center; size: 11; color: #8b8f95; opacity: 70% }
+    }
+
+    //  Pointing is not doing. Hovering only tells what it would do: the
+    //  padlock, the eyelids, the door, the turn or the power symbol. And on
+    //  leaving, her face comes back.
+    //  On jumping from one to another, `enter` and `leave` fall in the same
+    //  frame, and the second one erased what the first had just set. The
+    //  guards read the previous frame, so looking at the value is not
+    //  enough: what sorts it out is **declaring the one that clears first**.
+    on leave pause_zone.0 while confirming == none and hint == lock { hint = none }
+    on leave pause_zone.1 while confirming == none and hint == sleep { hint = none }
+    on leave finish_zone.0 while confirming == none and hint == logout { hint = none }
+    on leave finish_zone.1 while confirming == none and hint == reboot { hint = none }
+    on leave finish_zone.2 while confirming == none and hint == poweroff { hint = none }
+    on enter pause_zone.0 { hint = lock }
+    on enter pause_zone.1 { hint = sleep }
+    on enter finish_zone.0 { hint = logout }
+    on enter finish_zone.1 { hint = reboot }
+    on enter finish_zone.2 { hint = poweroff }
+    //  And from there to her face. One fact drives five springs, and the
+    //  five switch off by themselves on changing place: there is no need to
+    //  say in each rule what the other four stop being worth.
+    on change hint {
+        padlock: if(hint == lock, 1, 0)
+        lids: if(hint == sleep, 1, 0)
+        door: if(hint == logout, 1, 0)
+        turn: if(hint == reboot, 1, 0)
+        power: if(hint == poweroff, 1, 0)
+    }
+    //  «A single turn»: one whole turn every time you point at it, and none
+    //  while you stay there.
+    on change hint == reboot while hint == reboot { twirl: twirl + 1 }
+
+    //  Lock and suspend are asked for and that is it: there is nothing to
+    //  confirm in something that is undone with the password or with a
+    //  key. The other three open the question.
+    on press pause_zone.0 { open = false; page = none; emit lock }
+    on press pause_zone.1 { emit session(2); open = false; page = none }
+    on press finish_zone.0 { confirming = logout }
+    on press finish_zone.1 { confirming = reboot }
+    on press finish_zone.2 { confirming = poweroff }
+    on press back { confirming = none }
+    //  And the real one, only once. `armed` is what stops the row's double
+    //  click from landing on the button right below it: the sheet asks for
+    //  «a new, deliberate activation», and a second click that came from
+    //  the previous one is not that.
+    on press do_it { emit session(if(confirming == logout, 3, 0) + if(confirming == reboot, 4, 0) + if(confirming == poweroff, 5, 0))
+                     powerdown: 1 }
+    //  «If the system rejects or inhibits the action, get normal eyes
+    //  back.» There is no way to ask it, but there is a way to notice we are
+    //  still here: after four seconds, if nothing has happened, she comes
+    //  back.
+    on still powerdown for 4s while powerdown > 0.5 { powerdown: 0; confirming = none }
+    follow question = if(confirming == none, 0, 1)
+    on still confirming for 320ms while confirming != none { armed = true }
+    on change confirming { armed = false }
+    //  Changing page disarms whatever there was: «do not leave a
+    //  confirmation armed when the option changes».
+    on change page while page != session { confirming = none; hint = none }
+    on change confirming while confirming == logout { hint = logout }
+    on change confirming while confirming == reboot { hint = reboot }
+    on change confirming while confirming == poweroff { hint = poweroff }
+    on change confirming while confirming == none { hint = none }
+
+}

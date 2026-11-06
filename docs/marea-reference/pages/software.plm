@@ -1,0 +1,239 @@
+// Marea's scene, in pieces: software. marea.plm includes it.
+part Software {
+    // ── software ─────────────────────────────────────────
+    //  Two tabs: what is waiting to be updated, and the catalogue.
+    //  Over both, whatever is going on: the password asked for at the
+    //  bottom, the package manager at work, and how it went.
+    let sw.x0 = card.x - 228
+    let sw.t0 = card.top + 104
+    let sw.busy = sw.state == working or sw.state == finished or sw.state == failed
+    let sw.list = sw.tab == updates and not sw.busy and sw.count > 0 and (sw.state == ready or sw.state == unlocking or sw.looking)
+    prop sw.tab1.glow = 0 ~140ms
+    prop sw.tab2.glow = 0 ~140ms
+    prop sw.check.glow = 0 ~140ms
+    prop sw.go.glow = 0 ~140ms
+    prop sw.all.glow = 0 ~140ms
+    group {
+        show: page == software
+        //  The tabs.
+        box { from: sw.x0, sw.t0; size: 124, 28; corner: 14; color: mix(mix(#1f2021, #262829, sw.tab1.glow), #1a2a24, sw.tab == updates) }
+        text pick(sw.count > 0, "Updates", "Updates · {sw.count, 0}") { at: sw.x0 + 62, sw.t0 + 14; anchor: center; size: 12; weight: 500; color: mix(#8b8f95, mint, sw.tab == updates) }
+        box { from: sw.x0 + 130, sw.t0; size: 124, 28; corner: 14; color: mix(mix(#1f2021, #262829, sw.tab2.glow), #1a2a24, sw.tab == catalogue) }
+        text "Install" { at: sw.x0 + 192, sw.t0 + 14; anchor: center; size: 12; weight: 500; color: mix(#8b8f95, mint, sw.tab == catalogue) }
+        zone box sw_tab1 { from: sw.x0, sw.t0; size: 124, 28; corner: 14; cursor: pointer; active: page == software and paging > 0.9 and not sw.busy }
+        zone box sw_tab2 { from: sw.x0 + 130, sw.t0; size: 124, 28; corner: 14; cursor: pointer; active: page == software and paging > 0.9 and not sw.busy }
+        //  «Check again», top right, with a ring that turns while it looks.
+        group {
+            show: sw.tab == updates and not sw.busy
+            text "Check again" { at: card.x + 150, card.top + 45; anchor: right center; size: 11.5; weight: 600; color: mix(#8b8f95, mint, sw.check.glow) }
+            arc { at: card.x + 60, card.top + 45; radius: 6; span: 270deg; width: 1.6; rotate: sw.t * 360deg; color: mint
+                  show: sw.state == scanning or sw.looking }
+            zone box sw_check_btn { at: card.x + 110, card.top + 45; size: 96, 30; corner: 15; cursor: pointer; active: page == software and paging > 0.9 and sw.tab == updates and not sw.busy and sw.state != scanning }
+        }
+
+        // ── updates ──
+        group {
+            show: sw.tab == updates and not sw.busy
+            text sw.summary { at: sw.x0 + 4, sw.t0 + 48; anchor: left center; size: 11.5; color: ink; width: 330; lines: 1; show: sw.count > 0 }
+            text sw.when { at: sw.x0 + 452, sw.t0 + 48; anchor: right center; size: 10.5; color: #8b8f95; width: 120; lines: 1; show: sw.count > 0 }
+            //  Arch's news since the last update, in amber: read it first.
+            group {
+                show: sw.news > 0 and sw.count > 0
+                box { from: sw.x0, sw.t0 + 62; size: 456, 46; corner: 12; color: #24211a }
+                box { from: sw.x0, sw.t0 + 62; size: 456, 46; corner: 12; stroke: 1; color: amber; opacity: 45% }
+                ellipse { at: sw.x0 + 16, sw.t0 + 85; radius: 4; color: amber }
+                text "Arch news · {sw.news.date}" { at: sw.x0 + 30, sw.t0 + 76; anchor: left center; size: 9.5; weight: 700; color: amber; width: 250; lines: 1 }
+                text sw.news.title { at: sw.x0 + 30, sw.t0 + 94; anchor: left center; size: 12; weight: 500; color: ink; width: 300; lines: 1 }
+                text "Read" { at: sw.x0 + 392, sw.t0 + 85; anchor: center; size: 11.5; weight: 600; color: mint }
+                text "Seen" { at: sw.x0 + 434, sw.t0 + 85; anchor: center; size: 11.5; color: #8b8f95 }
+                zone box sw_news_btn { at: sw.x0 + 392, sw.t0 + 85; size: 44, 30; corner: 15; cursor: pointer; active: page == software and paging > 0.9 and sw.news > 0 and sw.list }
+                zone box sw_seen_btn { at: sw.x0 + 434, sw.t0 + 85; size: 40, 30; corner: 15; cursor: pointer; active: page == software and paging > 0.9 and sw.news > 0 and sw.list }
+            }
+            //  The list: each one ticked, or left out of this update.
+            let sw.lt = sw.t0 + 62 + if(sw.news > 0, 54, 0)
+            zone box sw_area { from: sw.x0, sw.lt; size: 456, 234; active: page == software and paging > 0.9 and sw.list }
+            //  (While the password is asked for, the rows stop above it.)
+            group {
+                clip box { from: sw.x0, sw.lt; size: 456, if(sw.state == unlocking, card.top + 398 - sw.lt, 236) }
+                column sw_list {
+                    at: sw.x0, sw.lt
+                    gap: 4
+                    show: sw.count > 0
+                    for r in sw.rows { SwRow(r) }
+                }
+            }
+            //  The bottom: all or none, how many more below, and «Update».
+            group {
+                show: sw.count > 0 and sw.state != unlocking
+                text pick(sw.ticked > 0, "Tick all", "Untick all") { at: sw.x0 + 4, card.top + 474; anchor: left center; size: 11.5; color: mix(#8b8f95, ink, sw.all.glow) }
+                zone box sw_all_btn { at: sw.x0 + 40, card.top + 474; size: 90, 30; corner: 15; cursor: pointer; active: page == software and paging > 0.9 and sw.list and sw.state == ready }
+                text "{sw.more, 0} more below" { at: card.x - 10, card.top + 474; anchor: center; size: 10.5; color: #8b8f95; show: sw.more > 0 }
+                box { from: card.x + 78, card.top + 458; size: 150, 32; corner: 10; color: mix(#2a2b2c, mint, sw.ticked > 0 and sw.state == ready); opacity: 85% + 15% * sw.go.glow }
+                text pick(sw.ticked == sw.count, "Update {sw.ticked, 0}", "Update all") { at: card.x + 153, card.top + 474; anchor: center; size: 12; weight: 600; color: mix(#8b8f95, #0c0f12, sw.ticked > 0 and sw.state == ready) }
+                zone box sw_go_btn { from: card.x + 78, card.top + 458; size: 150, 32; corner: 10; cursor: pointer; active: page == software and paging > 0.9 and sw.list and sw.state == ready and sw.ticked > 0 }
+            }
+            //  Nothing to show yet, nothing to do, or no answer.
+            group {
+                show: sw.count < 1 or sw.state == broken
+                let cy0 = card.top + 290
+                group {
+                    show: (sw.state == scanning or sw.state == idle) and sw.count < 1
+                    arc { at: card.x, cy0 - 20; radius: 14; span: 270deg; width: 2; rotate: sw.t * 360deg; color: mint }
+                    text "Looking for updates…" { at: card.x, cy0 + 18; anchor: center; size: 12; color: #8b8f95 }
+                }
+                group {
+                    show: sw.state == ready and sw.count < 1
+                    ellipse { at: card.x, cy0 - 20; radius: 20; color: #1a2a24 }
+                    path { at: card.x - 8, cy0 - 22; color: mint; stroke: 2.2
+                           move 0, 2; line 5, 7; line 15, -3 }
+                    text "Everything is up to date" { at: card.x, cy0 + 22; anchor: center; size: 14; weight: 500; color: ink }
+                    text sw.when { at: card.x, cy0 + 44; anchor: center; size: 11; color: #8b8f95 }
+                }
+                group {
+                    show: sw.state == broken
+                    ellipse { at: card.x, cy0 - 20; radius: 20; color: #2a1c1a }
+                    text "!" { at: card.x, cy0 - 20; anchor: center; size: 18; weight: 700; color: #ef7a66 }
+                    text "Could not ask for updates" { at: card.x, cy0 + 22; anchor: center; size: 14; weight: 500; color: ink }
+                    text sw.error { at: card.x, cy0 + 46; anchor: center; size: 11; color: #8b8f95; width: 420; lines: 2; align: center }
+                }
+            }
+        }
+
+        // ── the catalogue ──
+        group {
+            show: sw.tab == catalogue and not sw.busy
+            box { from: sw.x0, sw.t0 + 40; size: 456, 36; corner: 10; color: #141415 }
+            //  A magnifying glass, like her eyes when she looks.
+            ellipse { at: sw.x0 + 18, sw.t0 + 56; radius: 5.5; stroke: 1.6; color: #8b8f95 }
+            line { from: sw.x0 + 22, sw.t0 + 60; to: sw.x0 + 26, sw.t0 + 64; width: 1.8; color: #8b8f95 }
+            input sw.query { at: sw.x0 + 36, sw.t0 + 58; width: 380; size: 13; color: ink; placeholder: "Look for a program to install"; selection: #2f5f52 }
+            arc { at: sw.x0 + 438, sw.t0 + 58; radius: 6; span: 270deg; width: 1.6; rotate: sw.t * 360deg; color: mint; show: sw.searching }
+            column sw_found_list {
+                at: sw.x0, sw.t0 + 86
+                gap: 4
+                for f in sw.found { CatRow(f) }
+            }
+            text "From the repositories and the AUR: write the name of a program, or what it does" { at: card.x, card.top + 290; anchor: center; size: 11.5; color: #8b8f95; width: 380; lines: 2; align: center
+                                             show: sw.found.count < 1 and not sw.searching and not sw.typed }
+            text "Nothing by that name" { at: card.x, card.top + 290; anchor: center; size: 11.5; color: #8b8f95
+                                             show: sw.found.count < 1 and not sw.searching and sw.typed }
+        }
+
+        // ── the password, asked for at the bottom ──
+        group {
+            show: sw.state == unlocking
+            opacity: clamp(sw.in * 1.4, 0, 1)
+            move: sin(sw.shake * 40) * sw.shake * 0.6, (1 - sw.in) * 8
+            let software.ay = card.top + 404
+            box { from: sw.x0, software.ay; size: 456, 86; corner: 12; color: #1d1f20 }
+            box { from: sw.x0, software.ay; size: 456, 86; corner: 12; stroke: 1.2; color: mint; opacity: 35% }
+            text sw.asking { at: sw.x0 + 16, software.ay + 18; anchor: left center; size: 11.5; color: #8b8f95; width: 420; lines: 1 }
+            box { from: sw.x0 + 16, software.ay + 32; size: 320, 32; corner: 9; color: #141415 }
+            input sw.pw { at: sw.x0 + 26, software.ay + 48; width: 300; size: 13; color: ink; placeholder: "Your password"; secret: true; selection: #2f5f52 }
+            box { from: sw.x0 + 346, software.ay + 32; size: 94, 32; corner: 9; color: mint; opacity: if(sw.verifying, 50%, 85% + 15% * sw.go.glow) }
+            text pick(sw.verifying, "Go", "…") { at: sw.x0 + 393, software.ay + 48; anchor: center; size: 12; weight: 600; color: #0c0f12 }
+            text "Esc, not now" { at: sw.x0 + 16, software.ay + 76; anchor: left center; size: 9.5; color: #8b8f95 }
+            zone box sw_auth_btn { from: sw.x0 + 346, software.ay + 32; size: 94, 32; corner: 9; cursor: pointer; active: page == software and sw.state == unlocking and not sw.verifying }
+        }
+
+        // ── at work ──
+        group {
+            show: sw.state == working
+            text sw.stage { at: sw.x0 + 4, sw.t0 + 70; anchor: left center; size: 16; weight: 500; color: ink; width: 330; lines: 1 }
+            text "{sw.bar * 100, 0}%" { at: sw.x0 + 452, sw.t0 + 70; anchor: right center; size: 12; weight: 600; color: mint }
+            text sw.item { at: sw.x0 + 4, sw.t0 + 96; anchor: left center; size: 12; color: #8b8f95; width: 440; lines: 1 }
+            //  The bar, and a glint that runs along what is done.
+            box { from: sw.x0, sw.t0 + 118; size: 456, 8; corner: 4; color: #2a2b2c }
+            box { from: sw.x0, sw.t0 + 118; size: max(8, 456 * sw.bar), 8; corner: 4; color: mint }
+            group {
+                clip box { from: sw.x0, sw.t0 + 118; size: max(8, 456 * sw.bar), 8; corner: 4 }
+                box { at: sw.x0 + fract(sw.t * 0.6) * (456 * sw.bar + 60) - 30, sw.t0 + 122; size: 40, 8; color: #ffffff; opacity: 22% }
+            }
+            //  Its last lines, as it writes them.
+            box { from: sw.x0, sw.t0 + 142; size: 456, 92; corner: 10; color: #141415 }
+            text sw.line { at: sw.x0 + 12, sw.t0 + 154; anchor: left top; size: 10.5; family: "monospace"; color: #8b8f95; width: 432; lines: 4 }
+            text "Leave it be until it ends: it is changing the system" { at: sw.x0 + 4, card.top + 474; anchor: left center; size: 10.5; color: #8b8f95; width: 300; lines: 1 }
+            group {
+                show: sw.can_stop
+                box { from: card.x + 128, card.top + 458; size: 100, 32; corner: 10; stroke: 1.2; color: #ef7a66; opacity: if(sw.stopping, 40%, 80%) }
+                text pick(sw.stopping, "Stop", "Stopping…") { at: card.x + 178, card.top + 474; anchor: center; size: 12; weight: 600; color: #ef7a66 }
+                zone box sw_stop_btn { from: card.x + 128, card.top + 458; size: 100, 32; corner: 10; cursor: pointer; active: page == software and sw.state == working and sw.can_stop and not sw.stopping }
+            }
+        }
+
+        // ── how it went ──
+        group {
+            show: sw.state == finished
+            ellipse { at: sw.x0 + 22, sw.t0 + 70; radius: 18; color: #1a2a24 }
+            path { at: sw.x0 + 15, sw.t0 + 68; color: mint; stroke: 2.2
+                   move 0, 2; line 5, 7; line 15, -3 }
+            text sw.result { at: sw.x0 + 52, sw.t0 + 70; anchor: left center; size: 15; weight: 500; color: ink; width: 396; lines: 1 }
+            //  To restart, if something that only starts at boot changed.
+            group {
+                show: sw.reboot
+                box { from: sw.x0, sw.t0 + 106; size: 456, 50; corner: 12; color: #24211a }
+                text "Restart to use what was updated" { at: sw.x0 + 16, sw.t0 + 123; anchor: left center; size: 12; weight: 500; color: ink; width: 320; lines: 1 }
+                text "The kernel or the drivers: they only start at boot" { at: sw.x0 + 16, sw.t0 + 140; anchor: left center; size: 10.5; color: #8b8f95; width: 320; lines: 1 }
+                box { from: sw.x0 + 350, sw.t0 + 115; size: 94, 32; corner: 9; color: amber; opacity: 85% }
+                text "Restart" { at: sw.x0 + 397, sw.t0 + 131; anchor: center; size: 12; weight: 600; color: #0c0f12 }
+                zone box sw_restart_btn { from: sw.x0 + 350, sw.t0 + 115; size: 94, 32; corner: 9; cursor: pointer; active: page == software and sw.state == finished and sw.reboot }
+            }
+            //  And the settings files a package left beside yours.
+            group {
+                show: sw.pacnew > 0
+                let py = sw.t0 + 106 + if(sw.reboot, 58, 0)
+                box { from: sw.x0, py; size: 456, 50; corner: 12; color: #1f2021 }
+                text "{sw.pacnew, 0} settings files to review" { at: sw.x0 + 16, py + 17; anchor: left center; size: 12; weight: 500; color: ink; width: 320; lines: 1; show: sw.pacnew > 1 }
+                text "A settings file to review" { at: sw.x0 + 16, py + 17; anchor: left center; size: 12; weight: 500; color: ink; width: 320; lines: 1; show: sw.pacnew < 2 }
+                text "A package brought a new version of a file you had changed (.pacnew)" { at: sw.x0 + 16, py + 34; anchor: left center; size: 10.5; color: #8b8f95; width: 320; lines: 1 }
+                text "Review" { at: sw.x0 + 397, py + 25; anchor: center; size: 12; weight: 600; color: mint }
+                zone box sw_review_btn { at: sw.x0 + 397, py + 25; size: 94, 32; corner: 9; cursor: pointer; active: page == software and sw.state == finished and sw.pacnew > 0 }
+            }
+        }
+        group {
+            show: sw.state == failed
+            ellipse { at: sw.x0 + 22, sw.t0 + 70; radius: 18; color: #2a1c1a }
+            text "!" { at: sw.x0 + 22, sw.t0 + 70; anchor: center; size: 18; weight: 700; color: #ef7a66 }
+            text sw.result { at: sw.x0 + 52, sw.t0 + 70; anchor: left center; size: 15; weight: 500; color: ink; width: 396; lines: 1 }
+            box { from: sw.x0, sw.t0 + 104; size: 456, 96; corner: 12; color: #141415 }
+            text sw.error { at: sw.x0 + 14, sw.t0 + 116; anchor: left top; size: 10.5; family: "monospace"; color: #b9bcc0; width: 428; lines: 5 }
+            text "It may want an answer of yours: in a terminal you can give it" { at: sw.x0 + 4, sw.t0 + 220; anchor: left center; size: 11; color: #8b8f95; width: 448; lines: 1 }
+            box { from: card.x - 18, card.top + 458; size: 146, 32; corner: 10; stroke: 1.2; color: mint; opacity: 80% }
+            text "Open a terminal" { at: card.x + 55, card.top + 474; anchor: center; size: 12; weight: 600; color: mint }
+            zone box sw_term_btn { from: card.x - 18, card.top + 458; size: 146, 32; corner: 10; cursor: pointer; active: page == software and sw.state == failed }
+        }
+        group {
+            show: sw.state == finished or sw.state == failed
+            box { from: card.x + 138, card.top + 458; size: 90, 32; corner: 10; color: mix(#2a2b2c, mint, sw.state == finished) }
+            text pick(sw.state == finished, "Back", "Done") { at: card.x + 183, card.top + 474; anchor: center; size: 12; weight: 600; color: mix(ink, #0c0f12, sw.state == finished) }
+            zone box sw_back_btn { from: card.x + 138, card.top + 458; size: 90, 32; corner: 10; cursor: pointer; active: page == software and (sw.state == finished or sw.state == failed) }
+        }
+    }
+    on enter sw_tab1 { sw.tab1.glow: 1 }
+    on leave sw_tab1 { sw.tab1.glow: 0 }
+    on enter sw_tab2 { sw.tab2.glow: 1 }
+    on leave sw_tab2 { sw.tab2.glow: 0 }
+    on press sw_tab1 { sw.tab = updates }
+    on press sw_tab2 { sw.tab = catalogue }
+    on enter sw_check_btn { sw.check.glow: 1 }
+    on leave sw_check_btn { sw.check.glow: 0 }
+    on press sw_check_btn { emit sw_check }
+    on press sw_news_btn { emit sw_news }
+    on press sw_seen_btn { emit sw_skip_news }
+    on scroll sw_area { emit sw_scroll(wheel) }
+    on enter sw_all_btn { sw.all.glow: 1 }
+    on leave sw_all_btn { sw.all.glow: 0 }
+    on press sw_all_btn { emit sw_all }
+    on enter sw_go_btn { sw.go.glow: 1 }
+    on leave sw_go_btn { sw.go.glow: 0 }
+    on press sw_go_btn { emit sw_go }
+    on press sw_auth_btn { emit sw_auth }
+    on submit sw.pw { emit sw_auth }
+    on key Escape while page == software and sw.state == unlocking { emit sw_forget }
+    on press sw_stop_btn { emit sw_stop }
+    on press sw_back_btn { emit sw_back }
+    on press sw_term_btn { emit sw_terminal }
+    on press sw_review_btn { emit sw_review }
+    on press sw_restart_btn { page = session; confirming = reboot }
+
+}

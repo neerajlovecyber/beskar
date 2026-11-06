@@ -1,0 +1,39 @@
+// Marea's scene, in pieces: the menu of a tray icon. marea.plm includes it.
+part TrayMenu {
+    // ── the menu of a tray icon ──────────────────────────
+    //  It is a page like the others, and that is why it holds what a
+    //  dropdown does not: a Telegram or Steam menu is fifteen rows with
+    //  submenus. The list scrolls with the wheel if it does not fit, and a
+    //  submenu is entered —the first row goes back—, which is what lets
+    //  everything happen in the same place without opening boxes beside it.
+    component MenuOption(r: record, pick: event) {
+        size: 456, 32 - r.separator * 22
+        prop glow = 0 ~140ms
+        box touch { from: 0, 0; size: 456, 32 - r.separator * 22; corner: 9; color: #262728; opacity: glow
+                   cursor: pointer; active: r.enabled and not r.separator and page == systray and paging > 0.9 }
+        box { from: 8, 4; size: 440, 1; color: ink; opacity: r.separator * 12% }
+        text r.label { at: 14, 16; anchor: left center; size: 12.5; width: 390; lines: 1; color: ink
+                       opacity: (1 - r.separator) * (0.45 + r.enabled * 0.55) }
+        //  Checkbox: filled if it is ticked, the ring if it is a checkbox and
+        //  is not ticked.
+        ellipse { at: 436, 16; radius: 3.5; color: mint; opacity: r.checked > 0.5 }
+        ellipse { at: 436, 16; radius: 3.5; stroke: 1.2; color: ink; opacity: if(r.checked > -0.5, 0.5, 0) }
+        path { at: 433, 11; color: ink; stroke: 1.6; opacity: if(r.children > 0, 0.6, 0)
+               move 0, 0; line 5, 5; line 0, 10 }
+        on enter touch { glow: 1 }
+        on leave touch { glow: 0 }
+        on press touch { emit pick(r.index) }
+    }
+    column option_list ~quick {
+        at: card.x - 228, card.top + 112
+        view: 456, 286
+        show: page == systray
+        for r in options { MenuOption(r, pick: systray_pick) }
+    }
+    text "Asking it for its menu…" { at: card.x, card.top + 200; anchor: center; size: 11.5; color: #8b8f95
+                                    show: page == systray and options.count < 1 }
+    //  The scene opens the page, on the spot; the logic fills it. If it
+    //  turns out there is no menu to read, it is the logic that closes it.
+    on systray_menu { page = systray }
+
+}

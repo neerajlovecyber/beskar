@@ -1,0 +1,208 @@
+// Marea's scene, in pieces: Deriva's library. marea.plm includes it.
+part Deriva {
+    // ── Deriva's library ─────────────────────────────────
+    //  What she keeps: a search at the top, her folders as chips
+    //  below it, the trash at their end, and six cards. Each card
+    //  has its cover —the page's picture, the image itself, the
+    //  words of a note, or one drawn in its site's colour—, its
+    //  title, where it came from and when. Pressed, it opens (a note
+    //  is copied); carried out, it goes wherever it is let go.
+    //  Hovered, its star, its folders and the trash.
+
+    //  One of a card's buttons: 0 the star, 1 the folders, 2 the
+    //  trash, 3 back from the trash. `seen` is how much the card is
+    //  hovered, so they come with it.
+    component DriftButton(d: record, what: number, x: number, seen: number) {
+        size: 24, 24
+        prop glow = 0 ~140ms
+        let lit = what == 0 and d.fav
+        zone ellipse touch { at: x, 15; radius: 12; cursor: pointer; active: page == drift and paging > 0.9 and drift.moving < 0 and seen > 0.5 }
+        group {
+            opacity: max(seen, if(lit, 1, 0))
+            ellipse { at: x, 15; radius: 11.5; color: mix(#121314, #2a2c2e, glow); opacity: 88% }
+            //  The star: hollow, or full and amber.
+            path { at: x, 15; color: if(lit, amber, ink); stroke: if(lit, 0, 1.3); show: what == 0
+                   move 0, -5.2; line 1.47, -1.62; line 5.33, -1.33; line 2.38, 1.17; line 3.29, 4.93; line 0, 2.9
+                   line -3.29, 4.93; line -2.38, 1.17; line -5.33, -1.33; line -1.47, -1.62; close }
+            //  A folder.
+            path { at: x, 15; color: ink; stroke: 1.3; show: what == 1
+                   move -5, -3.6; line -1.6, -3.6; line -0.4, -2.2; line 5, -2.2; line 5, 4; line -5, 4; close }
+            //  The trash: lid, handle, can.
+            group {
+                show: what == 2
+                line { from: x - 5, 11.2; to: x + 5, 11.2; width: 1.3; color: ink }
+                line { from: x - 1.6, 9.6; to: x + 1.6, 9.6; width: 1.3; color: ink }
+                path { at: x, 15; color: ink; stroke: 1.3
+                       move -3.7, -3.2; line -3, 5; line 3, 5; line 3.7, -3.2 }
+            }
+            //  Back: a turn with its arrowhead.
+            group {
+                show: what == 3
+                arc { at: x, 15.6; radius: 4.6; span: 270deg; width: 1.4; color: mint; rotate: -45deg }
+                path { at: x, 15; color: mint
+                       move -6.6, -2.4; line -2.6, -2.6; line -4.8, 1; close }
+            }
+        }
+        on enter touch { glow: 1 }
+        on leave touch { glow: 0 }
+        on release touch while what == 0 { emit drift_fav(d.index) }
+        on release touch while what == 1 { emit drift_move(d.index) }
+        on release touch while what == 2 or what == 3 { emit drift_bin(d.index) }
+    }
+
+    //  A folder in a card's list of where to move it.
+    component DriftPlace(s: record) {
+        size: 128, 20
+        prop glow = 0 ~120ms
+        zone box touch { from: 0, 0; size: 128, 20; corner: 6; cursor: pointer; active: page == drift and drift.moving >= 0 }
+        box { from: 0, 0; size: 128, 20; corner: 6; color: #2a2c2e; opacity: glow }
+        ellipse { at: 9, 10; radius: 3.5; color: rgb(s.cr, s.cg, s.cb); show: s.dot }
+        ellipse { at: 9, 10; radius: 3.5; stroke: 1; color: #8b8f95; show: not s.dot }
+        text s.name { at: 20, 10; anchor: left center; size: 11; width: 92; lines: 1; color: if(s.here, ink, #c4c7cb) }
+        path { at: 119, 10; color: mint; stroke: 1.5; show: s.here
+               move -3.5, 0; line -1, 2.6; line 3.5, -2.6 }
+        on enter touch { glow: 1 }
+        on leave touch { glow: 0 }
+        on release touch { emit drift_to(s.index) }
+    }
+
+    component DriftCard(d: record) {
+        size: 144, 150
+        prop glow = 0 ~140ms
+        prop arrive = 0 ~320ms
+        follow arrive = if(page == drift, 1, 0)
+        let moving = drift.moving == d.index
+        prop flip = 0 ~200ms
+        follow flip = if(moving, 1, 0)
+        zone box touch { from: 0, 0; size: 144, 150; corner: 12; cursor: pointer; active: page == drift and paging > 0.9 and drift.moving < 0; carries: "{d.link}" }
+        group {
+            opacity: arrive * (1 - flip)
+            move: 0, (1 - arrive) * (10 + d.index * 5)
+            box { from: 0, 0; size: 144, 150; corner: 12; color: mix(#1f2021, #262829, glow) }
+            group {
+                //  The clip goes past the cover so that only its top
+                //  corners are round: the cover meets the title straight.
+                clip box { from: 0, 0; size: 144, 110; corner: 12 }
+                //  No picture: its site's colour, a light from the top
+                //  corner and its letter; a note shows its words.
+                box { from: 0, 0; size: 144, 84; color: rgb(d.cr, d.cg, d.cb); show: not d.has_thumb }
+                ellipse { at: 128, -6; radius: 62; color: #ffffff; opacity: 7%; show: not d.has_thumb }
+                ellipse { at: 10, 118; radius: 70; color: #000000; opacity: 16%; show: not d.has_thumb }
+                text d.glyph { at: 72, 42; anchor: center; size: 28; weight: 700; color: #ffffff; opacity: 82%; show: not d.has_thumb and not d.note }
+                text d.excerpt { at: 11, 10; anchor: left top; width: 122; lines: 4; size: 10; line_height: 1.35; color: #f3e6cf; opacity: 88%; show: d.note }
+                image d.thumb { at: 0, 0; size: 144, 84; show: d.has_thumb }
+                box { from: 0, 84; size: 144, 26; color: mix(#1f2021, #262829, glow) }
+                box { from: 0, 0; size: 144, 84; color: #000000; opacity: glow * 22% }
+            }
+            text d.title { at: 10, 91; anchor: left top; width: 124; lines: 2; size: 11.5; line_height: 1.25; weight: 500; color: ink }
+            ellipse { at: 14, 137; radius: 3.5; color: rgb(d.sr, d.sg, d.sb); show: d.in_space }
+            text d.source { at: if(d.in_space, 23, 10), 137; anchor: left center; size: 10; weight: 600; width: if(d.in_space, 56, 66); lines: 1; color: mint; opacity: 85% }
+            text d.date { at: 134, 137; anchor: right center; size: 9.5; width: 50; lines: 1; color: #8b8f95 }
+            box { from: 0, 0; size: 144, 150; corner: 12; stroke: 1.2; color: mint; opacity: glow * 40% }
+        }
+        //  Its buttons, top right: in the trash only «back».
+        group {
+            opacity: arrive * (1 - flip)
+            show: not drift.trash
+            DriftButton(d, 2, 66, glow)
+            DriftButton(d, 1, 94, glow)
+            DriftButton(d, 0, 122, glow)
+        }
+        group {
+            opacity: arrive * (1 - flip)
+            show: drift.trash
+            DriftButton(d, 3, 122, glow)
+        }
+        //  Choosing its folder: the card turns into the list, and
+        //  leaving it closes it, chosen or not.
+        zone box whole { from: 0, 0; size: 144, 150; active: moving }
+        group {
+            show: flip > 0.01
+            opacity: flip
+            box { from: 0, 0; size: 144, 150; corner: 12; color: #1c1d1e }
+            box { from: 0, 0; size: 144, 150; corner: 12; stroke: 1.2; color: mint; opacity: 40% }
+            text "Move to" { at: 12, 16; anchor: left center; size: 10.5; weight: 600; color: #8b8f95 }
+            column {
+                at: 8, 30; gap: 2
+                for s in drift_spaces { DriftPlace(s) }
+            }
+        }
+        on enter touch { glow: 1 }
+        on leave touch { glow: 0 }
+        on release touch { emit drift_pick(d.index) }
+        on leave whole while moving { drift.moving = -1 }
+    }
+
+    //  A chip: what is being looked at. Folders carry their colour.
+    component DriftChip(c: record) {
+        measure label
+        size: label.width + if(c.dot, 33, 22), 26
+        let w = label.width + if(c.dot, 33, 22)
+        prop glow = 0 ~140ms
+        zone box touch { from: 0, 0; size: w, 26; corner: 13; cursor: pointer; active: page == drift and paging > 0.9 }
+        box { from: 0, 0; size: w, 26; corner: 13; color: if(c.chosen, #24372f, mix(#1a1b1c, #242627, glow)) }
+        box { from: 0, 0; size: w, 26; corner: 13; stroke: 1; color: mint; opacity: if(c.chosen, 45%, 0) }
+        ellipse { at: 14, 13; radius: 3.5; color: rgb(c.cr, c.cg, c.cb); show: c.dot }
+        text c.label { at: if(c.dot, 23, 11), 13; anchor: left center; size: 11; weight: 500; color: if(c.chosen, ink, #c4c7cb); measure: label }
+        on enter touch { glow: 1 }
+        on leave touch { glow: 0 }
+        on release touch { emit drift_chip(c.index) }
+    }
+
+    group {
+        show: page == drift
+        let dx0 = card.x - 228
+        let dy0 = card.top + 96
+        group {
+            show: not drift.missing
+            box { from: dx0, dy0; size: 456, 36; corner: 12; color: #141415 }
+            arc { at: dx0 + 18, dy0 + 17; radius: 6; span: 360deg; width: 1.8; color: ink; opacity: 60% }
+            line { from: dx0 + 22.5, dy0 + 21.5; to: dx0 + 27, dy0 + 26; width: 2; color: ink; opacity: 60% }
+            input drift_q { at: dx0 + 36, dy0 + 18; width: 400; size: 13; color: ink; placeholder: "Search what she keeps, or #tag"; selection: #2f5f52 }
+            //  The chips, dimmed while searching: a search looks
+            //  everywhere.
+            row {
+                at: dx0, dy0 + 46; gap: 6; view: 396, 26
+                opacity: if(drift.searching, 45%, 1)
+                for c in drift_chips { DriftChip(c) }
+            }
+            //  And the trash, at their end, with how much is in it.
+            group {
+                show: drift.trashed > 0 or drift.trash
+                box { from: dx0 + 404, dy0 + 46; size: 52, 26; corner: 13; color: if(drift.trash, #3a2a26, mix(#1a1b1c, #242627, bin.glow)) }
+                box { from: dx0 + 404, dy0 + 46; size: 52, 26; corner: 13; stroke: 1; color: #ef7a66; opacity: if(drift.trash, 50%, 0) }
+                line { from: dx0 + 413, dy0 + 54.5; to: dx0 + 423, dy0 + 54.5; width: 1.3; color: if(drift.trash, #ef7a66, #c4c7cb) }
+                path { at: dx0 + 418, dy0 + 59; color: if(drift.trash, #ef7a66, #c4c7cb); stroke: 1.3
+                       move -3.6, -3.2; line -3, 5; line 3, 5; line 3.6, -3.2 }
+                text "{drift.trashed, 0}" { at: dx0 + 430, dy0 + 59; anchor: left center; size: 11; weight: 500; color: if(drift.trash, #ef7a66, #c4c7cb) }
+            }
+            //  The wheel's zone goes under the cards, not over them: the
+            //  wheel reaches any zone underneath, a press only the
+            //  topmost, and on top it took every card's click.
+            zone box drift_area { from: dx0, dy0 + 84; size: 456, 312; active: page == drift and paging > 0.9 and not drift.missing; label: "Drift"; role: list }
+            grid {
+                at: dx0, dy0 + 84; columns: 3; gap: 12; width: 456; row: 150
+                for d in drift { DriftCard(d) }
+            }
+            //  Where in the list the six are, when there are more.
+            box { from: dx0 + 462, dy0 + 84 + 312 * drift.bar / max(ceil(drift.found / 3), 1); size: 3, 312 * min(1, 2 / max(ceil(drift.found / 3), 1))
+                  corner: 1.5; color: ink; opacity: if(drift.found > 6, 28%, 0) }
+        }
+        zone box bin_chip { from: dx0 + 404, dy0 + 46; size: 52, 26; corner: 13; cursor: pointer; active: page == drift and paging > 0.9 and (drift.trashed > 0 or drift.trash) }
+        //  Nothing to show: said, and why.
+        group {
+            show: not drift.missing and drift.found < 1
+            text drift.empty { at: card.x, dy0 + 200; anchor: center; size: 12; width: 400; lines: 2; align: center; color: #8b8f95 }
+        }
+        group {
+            show: drift.missing
+            text "Deriva needs its library, deriva-worker." { at: card.x, card.y + 20; anchor: center; size: 12.5; weight: 500; color: ink }
+            text "She builds it herself when she starts, if Rust (cargo) is installed." { at: card.x, card.y + 42; anchor: center; size: 11.5; color: #8b8f95 }
+        }
+    }
+    on enter bin_chip { bin.glow: 1 }
+    on leave bin_chip { bin.glow: 0 }
+    on release bin_chip { emit drift_bin_view }
+    on scroll drift_area { emit drift_scroll(wheel) }
+
+}

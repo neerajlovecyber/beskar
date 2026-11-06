@@ -1,0 +1,579 @@
+// Marea's scene, in pieces: the settings. marea.plm includes it.
+part Settings {
+    // ── the settings ─────────────────────────────────────
+    //  A front page of tiles, one per subject, each with its drawing and
+    //  what it is set to right now; pressing one opens its own page, and
+    //  the arrow of the card's header comes back. The pages are
+    //  pleamar's `pages`, the tiles its `grid` of `Tile`s, and the
+    //  switches and choices its own pieces: what is left here is what
+    //  is Marea's.
+    on press back_arrow while page == settings and section != menu { section = menu }
+    event to_home
+    event to_look
+    event to_language
+    event to_lock
+    event to_notices
+    event to_wardrobe
+    event flip_follow
+    event flip_room
+    event flip_safety
+    on to_home { section = home }
+    on to_look { section = look }
+    on to_language { section = language }
+    on to_lock { section = lock }
+    on to_notices { section = notices }
+    event to_talk
+    on to_talk { section = talk }
+    event to_memory
+    on to_memory { section = memory }
+    event to_rec
+    on to_rec { section = recpage }
+    event to_tasks
+    on to_tasks { section = tasks }
+    event to_keys
+    on to_keys { section = keys }
+    on to_wardrobe { emit customize; page = wardrobe }
+    on flip_follow { toggle following }
+    on flip_room { toggle taking_room }
+    on flip_safety { toggle with_exit }
+    let st.faint = mix(#8b8f95, faint, glassiness)
+    group {
+        show: page == settings
+        pages section {
+            page menu "Settings" {
+                grid {
+                    at: card.x - 228, card.top + 98; columns: 2; gap: 10; width: 456; row: 72
+                    Tile("Where she lives", pick(if(following, 0, home + 1), "Follows you", screen.0.name, screen.1.name), to_home, cell.w, h: 72) {
+                        group { size: 30, 26
+                            box { at: 15, 10; size: 26, 17; corner: 3; stroke: 1.8; color: ink }
+                            line { from: 9, 23; to: 21, 23; width: 1.8; color: ink }
+                            ellipse { at: 15, 10; radius: 4.5; color: mint }
+                        }
+                    }
+                    Tile("Her look", pick(skin, "Liquid", "Light liquid", "Classic"), to_look, cell.w, h: 72) {
+                        group { size: 32, 32
+                            body {
+                                color: coal
+                                rim: 14%
+                                glass: if(skin == classic, 0, 1)
+                                lens: skin == lens
+                                ellipse { at: 16, 16; radius: 15 }
+                            }
+                            box { at: 12, 16; size: 3, 7; corner: 1.5; color: ink }
+                            box { at: 20, 16; size: 3, 7; corner: 1.5; color: ink }
+                        }
+                    }
+                    Tile("Language", pick(language, "System", "English", "Español"), to_language, cell.w, h: 72) {
+                        text "Aa" { size: 17; weight: 700; color: ink }
+                    }
+                    Tile("The lock", pick(with_exit, "Password only", "Safety net on"), to_lock, cell.w, h: 72) {
+                        group { size: 20, 24
+                            arc { at: 10, 8; radius: 6; span: 180deg; width: 2; color: ink }
+                            line { from: 4, 8; to: 4, 12; width: 2; color: ink }
+                            line { from: 16, 8; to: 16, 12; width: 2; color: ink }
+                            box { at: 10, 17; size: 18, 13; corner: 3; color: mix(ink, mint, with_exit) }
+                        }
+                    }
+                    Tile("Notices", pick(if(dnd, 3, min(muted.count, 2)), "All of them arrive", "One app muted", "Some apps muted", "Do not disturb"), to_notices, cell.w, h: 72) {
+                        group { size: 24, 26
+                            path { at: 12, 13; color: ink
+                                   move -9, 6; line -7, 3; line -7, -3; curve 0, -11 via -7, -11; curve 7, -3 via 7, -11; line 7, 3; line 9, 6; close }
+                            ellipse { at: 12, 22; radius: 2.6; color: ink }
+                            ellipse { at: 19, 5; radius: 3.2; color: mix(mint, lilac, dnd) }
+                        }
+                    }
+                    Tile("Wardrobe and wallpaper", "Pieces and the background", to_wardrobe, cell.w, h: 72) {
+                        group { size: 30, 22
+                            box { at: 15, 11; size: 28, 20; corner: 4; stroke: 1.6; color: ink }
+                            path { at: 3, 19; color: ink; move 0, 0; line 8, -9; line 13, -3; line 17, -7; line 24, 0; close }
+                            ellipse { at: 22, 6; radius: 2.4; color: mint }
+                        }
+                    }
+                    Tile("Talking with her", pick(if(not chat.signed_in, 0, if(chat.free, 2, 1)), "Not signed in", "Asks before each step", "Uses the computer"), to_talk, cell.w, h: 72) {
+                        group { size: 30, 26
+                            box { at: 15, 11; size: 26, 18; corner: 7; stroke: 1.8; color: ink }
+                            path { at: 7, 18; color: ink; move 0, 0; line 6, 0; line 0, 7; close }
+                            ellipse { at: 11, 11; radius: 1.8; color: mint }
+                            ellipse { at: 15, 11; radius: 1.8; color: mint }
+                            ellipse { at: 19, 11; radius: 1.8; color: mint }
+                        }
+                    }
+                    Tile("Recording", pick(rec_stay, "She goes to a corner", "She stays, with a red eye"), to_rec, cell.w, h: 72) {
+                        group { size: 30, 26
+                            ellipse { at: 15, 13; radius: 11; stroke: 1.8; color: ink }
+                            ellipse { at: 15, 13; radius: 5; color: #e0655a }
+                        }
+                    }
+                    Tile("What she remembers", mem.summary, to_memory, cell.w, h: 72) {
+                        group { size: 28, 26
+                            ellipse { at: 14, 13; radius: 11; stroke: 1.8; color: ink }
+                            ellipse { at: 10, 11; radius: 2.6; color: mint }
+                            ellipse { at: 17, 9; radius: 1.8; color: mint; opacity: 70% }
+                            ellipse { at: 16, 17; radius: 2.2; color: mint; opacity: 85% }
+                        }
+                    }
+                }
+            }
+
+            // ── where she lives ──
+            //  The two monitors drawn as two pools, to scale, with their
+            //  names, and her swimming in the one she is in; pressing a pool
+            //  sends her there. «Follow me» sets her to go wherever the focus is.
+            page home "Where she lives" {
+                text "Choose her monitor, or let her follow you." { at: card.x - 228, card.top + 122; anchor: left center; size: 12; color: st.faint }
+                repeat m in 0..2 {
+                    let px = card.x - 114 + m * 228
+                    let py = card.top + 222
+                    let is_home.$m = if(not following and home == m, 1, 0)
+                    text screen.$m.name { at: px, py - 76; anchor: center; size: 12; weight: 600; color: mix(st.faint, ink, is_home.$m) }
+                    box { at: px, py; size: 208, 118; corner: 12; color: mix(mix(#1b1f22, #202528, pool_zone.$m.hover), #1a2a25, is_home.$m) }
+                    box { at: px, py; size: 208, 118; corner: 12; stroke: 1.4; color: mint; opacity: is_home.$m * 85% + pool_zone.$m.hover * 25% }
+                    group {
+                        clip inset 0 box { at: px, py; size: 208, 118; corner: 12 }
+                        box { at: px, py + 46; size: 208, 44; color: mix(#1f3a34, #24524a, is_home.$m); opacity: 55% }
+                    }
+                    group {
+                        opacity: if(m == 0, if(hosts.0, 1, 0), if(hosts.1, 1, 0))
+                        body {
+                            color: coal
+                            rim: 14%
+                            ellipse { at: px + 3 * sway, py + 26 + 1.5 * sway; radius: 12 }
+                        }
+                        box { at: px - 4 + 3 * sway, py + 26 + 1.5 * sway; size: 3, 6; corner: 1.5; color: ink }
+                        box { at: px + 4 + 3 * sway, py + 26 + 1.5 * sway; size: 3, 6; corner: 1.5; color: ink }
+                    }
+                    text "Her home" { at: px, py + 76; anchor: center; size: 10.5; weight: 600; color: mint; opacity: is_home.$m }
+                    zone box pool_zone.$m { at: px, py; size: 208, 118; corner: 12; cursor: pointer }
+                    on press pool_zone.$m { home = m; following = false }
+                }
+                box { at: card.x, card.top + 360; size: 456, 64; corner: 16; color: mix(#202021, #1a2a25, following) }
+                box { at: card.x, card.top + 360; size: 456, 64; corner: 16; stroke: 1.2; color: mint; opacity: following * 70% }
+                text "Follow me" { at: card.x - 206, card.top + 350; anchor: left center; size: 13; weight: 600; color: ink }
+                text "She goes to the monitor where you are working" { at: card.x - 206, card.top + 369; anchor: left center; size: 11; color: st.faint }
+                column { at: card.x + 174, card.top + 348
+                    Switch(following, flip_follow)
+                }
+                //  And whether windows go under her or leave her the strip at the top.
+                box { at: card.x, card.top + 436; size: 456, 64; corner: 16; color: mix(#202021, #1a2a25, taking_room) }
+                box { at: card.x, card.top + 436; size: 456, 64; corner: 16; stroke: 1.2; color: mint; opacity: taking_room * 70% }
+                text "Her own strip" { at: card.x - 206, card.top + 426; anchor: left center; size: 13; weight: 600; color: ink }
+                text "Windows leave her the top, instead of going under her" { at: card.x - 206, card.top + 445; anchor: left center; size: 11; color: st.faint }
+                column { at: card.x + 174, card.top + 424
+                    Switch(taking_room, flip_room)
+                }
+            }
+
+            // ── her look ──
+            //  Three swatches, and in each one she herself painted that way:
+            //  not a photo of how it would be, but really her.
+            page look "Her look" {
+                text "Made of glass like Apple's, or the usual one." { at: card.x - 228, card.top + 122; anchor: left center; size: 12; color: st.faint }
+                repeat t in 0..3 {
+                    let fx = card.x - 152 + t * 152
+                    let fy = card.top + 250
+                    let chosen.$t = if(t == 0, skin == lens, if(t == 1, skin == liquid, skin == classic))
+                    box { at: fx, fy; size: 140, 180; corner: 18; color: mix(#25282b, #2c3033, swatch.$t.hover) }
+                    box { at: fx, fy; size: 140, 180; corner: 18; stroke: 1.5; color: mint; opacity: chosen.$t * 85% + swatch.$t.hover * 20% }
+                    body {
+                        color: coal
+                        rim: 14%
+                        glass: if(t < 2, 1, 0)
+                        lens: t == 0
+                        ellipse { at: fx + 3 * sway, fy - 26 + 1.5 * sway; radius: 32 }
+                    }
+                    box { at: fx - 7 + 3 * sway, fy - 26 + 1.5 * sway; size: 5, 11; corner: 2.5; color: ink }
+                    box { at: fx + 7 + 3 * sway, fy - 26 + 1.5 * sway; size: 5, 11; corner: 2.5; color: ink }
+                    text pick(t, "Liquid", "Light liquid", "Classic") { at: fx, fy + 38; anchor: center; size: 13; weight: 600; color: ink }
+                    text pick(t, "Bends what's behind", "Blurs it", "Opaque, no glass") { at: fx, fy + 58; anchor: center; size: 10.5; color: st.faint }
+                    ellipse { at: fx, fy + 76; radius: 4; color: mint; opacity: chosen.$t }
+                    zone box swatch.$t { at: fx, fy; size: 140, 180; corner: 18; cursor: pointer }
+                }
+                on press swatch.0 { skin = lens }
+                on press swatch.1 { skin = liquid }
+                on press swatch.2 { skin = classic }
+                text "Liquid reads the screen behind her to bend it: it costs a little more." { at: card.x, card.top + 372; anchor: center; size: 11; width: 440; lines: 1; color: st.faint; opacity: 85% }
+            }
+
+            // ── the language ──
+            //  Three rows, each name written in its own language.
+            page language "Language" {
+                text "The language she speaks in." { at: card.x - 228, card.top + 122; anchor: left center; size: 12; color: st.faint }
+                repeat l in 0..3 {
+                    let ly = card.top + 178 + l * 74
+                    let lang.on.$l = if(l == 0, language == system, if(l == 1, language == english, language == spanish))
+                    box { at: card.x, ly; size: 456, 64; corner: 16; color: mix(mix(#25282b, #2c3033, lang_zone.$l.hover), #1a2a25, lang.on.$l) }
+                    box { at: card.x, ly; size: 456, 64; corner: 16; stroke: 1.3; color: mint; opacity: lang.on.$l * 80% + lang_zone.$l.hover * 20% }
+                    ellipse { at: card.x - 196, ly; radius: 20; color: ink; opacity: 8% }
+                    text pick(l, "Aa", "EN", "ES") { at: card.x - 196, ly; anchor: center; size: 13; weight: 700; color: ink }
+                    text pick(l, "System", "English", "Español") { at: card.x - 164, ly - 9; anchor: left center; size: 13.5; weight: 600; color: ink }
+                    text pick(l, "The one your session speaks", "Always in English", "Siempre en español") { at: card.x - 164, ly + 10; anchor: left center; size: 11; color: st.faint }
+                    ellipse { at: card.x + 200, ly; radius: 9; stroke: 1.6; color: mix(st.faint, mint, lang.on.$l) }
+                    ellipse { at: card.x + 200, ly; radius: 5 * lang.on.$l; color: mint }
+                    zone box lang_zone.$l { at: card.x, ly; size: 456, 64; corner: 16; cursor: pointer }
+                }
+                on press lang_zone.0 { language = system }
+                on press lang_zone.1 { language = english }
+                on press lang_zone.2 { language = spanish }
+            }
+
+            // ── the lock ──
+            //  A big padlock, open while the safety net is on, and what that
+            //  means said plainly, with its switch.
+            page lock "The lock" {
+                prop safety.pos = 0 ~200ms
+                follow safety.pos = if(with_exit, 1, 0)
+                arc { at: card.x, card.top + 172 - 6 * safety.pos; radius: 18; span: 180deg; width: 5; color: ink }
+                line { from: card.x - 18, card.top + 172 - 6 * safety.pos; to: card.x - 18, card.top + 186 - 6 * safety.pos; width: 5; color: ink }
+                line { from: card.x + 18, card.top + 172; to: card.x + 18, card.top + 186; width: 5; color: ink; opacity: 1 - safety.pos }
+                box { at: card.x, card.top + 206; size: 54, 40; corner: 9; color: mix(ink, mint, safety.pos) }
+                ellipse { at: card.x, card.top + 202; radius: 4.5; color: coal }
+                box { at: card.x, card.top + 211; size: 3.5, 9; corner: 1.5; color: coal }
+                text "Her lock screen opens with your password." { at: card.x, card.top + 256; anchor: center; size: 12.5; weight: 500; color: ink }
+                text "While you try it out, a safety net: Esc also opens it, and it opens by itself after a minute." { at: card.x, card.top + 284; anchor: center; size: 11; width: 400; lines: 2; align: center; color: st.faint }
+                box { at: card.x, card.top + 360; size: 456, 64; corner: 16; color: mix(#202021, #1a2a25, safety.pos) }
+                box { at: card.x, card.top + 360; size: 456, 64; corner: 16; stroke: 1.2; color: mint; opacity: safety.pos * 70% }
+                text "Safety net" { at: card.x - 206, card.top + 350; anchor: left center; size: 13; weight: 600; color: ink }
+                text "Remove it once you trust your password. It lasts until a restart" { at: card.x - 206, card.top + 369; anchor: left center; size: 11; width: 370; lines: 1; color: st.faint }
+                column { at: card.x + 174, card.top + 348
+                    Switch(with_exit, flip_safety)
+                }
+            }
+
+            // ── the notices ──
+            //  Whether they come in with a card or quietly, straight to
+            //  their drop; how long «later» keeps one away; and the apps
+            //  muted from a notice's bell, each with its way back.
+            page notices "Notices" {
+                text "Quiet ones still arrive: they go to their drop, without a card." { at: card.x - 228, card.top + 116; anchor: left center; size: 12; color: st.faint }
+                box { at: card.x, card.top + 164; size: 456, 60; corner: 16; color: mix(#202021, #1f1d2a, dnd) }
+                box { at: card.x, card.top + 164; size: 456, 60; corner: 16; stroke: 1.2; color: lilac; opacity: dnd * 70% }
+                text "Do not disturb" { at: card.x - 206, card.top + 155; anchor: left center; size: 13; weight: 600; color: ink }
+                text "Only the urgent ones get through" { at: card.x - 206, card.top + 173; anchor: left center; size: 11; color: st.faint }
+                column { at: card.x + 174, card.top + 152
+                    Switch(dnd, flip_dnd, accent: lilac)
+                }
+                box { at: card.x, card.top + 232; size: 456, 60; corner: 16; color: mix(#202021, #1a2a25, quiet_rec) }
+                box { at: card.x, card.top + 232; size: 456, 60; corner: 16; stroke: 1.2; color: mint; opacity: quiet_rec * 70% }
+                text "Quiet while recording or sharing" { at: card.x - 206, card.top + 223; anchor: left center; size: 13; weight: 600; color: ink }
+                text "None of them ends up in your video or your call. Locked, always quiet" { at: card.x - 206, card.top + 241; anchor: left center; size: 11; width: 360; lines: 1; color: st.faint }
+                column { at: card.x + 174, card.top + 220
+                    Switch(quiet_rec, flip_quiet_rec)
+                }
+                //  How long «later» is: three drops to choose from.
+                text "LATER BRINGS IT BACK IN" { at: card.x - 228, card.top + 288; anchor: left center; size: 9.5; weight: 700; color: #8b8f95 }
+                repeat k in 0..3 {
+                    let settings.lx = card.x - 228 + 76 + k * 152
+                    prop later_pick.glow.$k = 0 ~140ms
+                    box { at: settings.lx, card.top + 318; size: 144, 34; corner: 17; color: mix(mix(#202021, #262728, later_pick.glow.$k), #1a2a25, snooze_k == k) }
+                    box { at: settings.lx, card.top + 318; size: 144, 34; corner: 17; stroke: 1.2; color: mint; opacity: if(snooze_k == k, 70%, 0) }
+                    text pick(k, "15 minutes", "An hour", "Three hours") { at: settings.lx, card.top + 318; anchor: center; size: 12; weight: 500; color: mix(#a9adb3, ink, snooze_k == k) }
+                    zone box later_pick.$k { at: settings.lx, card.top + 318; size: 144, 34; corner: 17; cursor: pointer }
+                    on enter later_pick.$k { later_pick.glow.$k: 1 }
+                    on leave later_pick.$k { later_pick.glow.$k: 0 }
+                    on press later_pick.$k { snooze_k = k }
+                }
+                //  The muted apps: a pill each, and its cross unmutes it.
+                text "MUTED APPS" { at: card.x - 228, card.top + 362; anchor: left center; size: 9.5; weight: 700; color: #8b8f95 }
+                component MutedPill(m: record, drop: event) {
+                    size: 144, 34
+                    prop glow = 0 ~140ms
+                    //  The grid lays out every record there could be: the empty ones are not drawn.
+                    group {
+                        show: m.index < muted.count
+                        box { from: 0, 0; size: 144, 34; corner: 17; color: mix(#202021, #2a2222, glow) }
+                        text m.app { at: 14, 17; anchor: left center; size: 11.5; weight: 500; width: 100; lines: 1; color: ink }
+                        line { from: 122, 12; to: 132, 22; width: 1.5; color: mix(#8b8f95, #ef7a66, glow) }
+                        line { from: 132, 12; to: 122, 22; width: 1.5; color: mix(#8b8f95, #ef7a66, glow) }
+                        zone box touch { from: 0, 0; size: 144, 34; corner: 17; cursor: pointer }
+                    }
+                    on enter touch { glow: 1 }
+                    on leave touch { glow: 0 }
+                    on press touch { emit drop(m.index) }
+                }
+                grid {
+                    at: card.x - 228, card.top + 378; columns: 3; gap: 12; width: 456; row: 42
+                    for m in muted { MutedPill(m, drop: unmute) }
+                }
+                text "None. The bell on a notice mutes its app." { at: card.x - 228, card.top + 394; anchor: left center; size: 11.5; color: st.faint; show: muted.count < 1 }
+            }
+
+            // ── talking with her ──
+            //  Her account, whether she may use the computer without a
+            //  card for each step, and which of the account's models
+            //  (only the ones that can see a picture: she looks at windows).
+            page talk "Talking with her" {
+                text "She talks with you, and can use your desktop with hands of her own." { at: card.x - 228, card.top + 116; anchor: left center; size: 12; color: st.faint }
+                //  The account.
+                box { at: card.x, card.top + 164; size: 456, 60; corner: 16; color: #202021 }
+                text "Her account" { at: card.x - 206, card.top + 155; anchor: left center; size: 13; weight: 600; color: ink }
+                text pick(if(chat.signing, 0, if(chat.signed_in, 1, 2)), "Finish signing in, in your browser", chat.account, "Not signed in: she cannot talk yet") { at: card.x - 206, card.top + 173; anchor: left center; size: 11; width: 280; lines: 1; color: if(chat.signed_in, mint, st.faint) }
+                prop login.glow = 0 ~140ms
+                box { at: card.x + 160, card.top + 164; size: 112, 32; corner: 16; color: mix(mix(#2a2d30, #33383b, login.glow), #3d6b5c, if(chat.signed_in or chat.signing, 0, 1)) }
+                text pick(if(chat.signing, 0, if(chat.signed_in, 1, 2)), "Cancel", "Sign in again", "Sign in") { at: card.x + 160, card.top + 164; anchor: center; size: 12; weight: 600; color: ink }
+                zone box login_btn { at: card.x + 160, card.top + 164; size: 112, 32; corner: 16; cursor: pointer }
+                on enter login_btn { login.glow: 1 }
+                on leave login_btn { login.glow: 0 }
+                on press login_btn while chat.signing { emit chat_login_cancel }
+                on press login_btn while not chat.signing { emit chat_login }
+                //  Free hands.
+                box { at: card.x, card.top + 236; size: 456, 64; corner: 16; color: mix(#202021, #2a2519, chat.free) }
+                box { at: card.x, card.top + 236; size: 456, 64; corner: 16; stroke: 1.2; color: amber; opacity: chat.free * 70% }
+                text "Let her use the computer" { at: card.x - 206, card.top + 226; anchor: left center; size: 13; weight: 600; color: ink }
+                text "Without asking anything: she does it all, sending or buying too" { at: card.x - 206, card.top + 245; anchor: left center; size: 11; width: 350; lines: 1; color: st.faint }
+                column { at: card.x + 174, card.top + 224
+                    Switch(chat.free, flip_chat_free, accent: amber)
+                }
+                //  Her model.
+                text "HER MODEL" { at: card.x - 228, card.top + 300; anchor: left center; size: 9.5; weight: 700; color: #8b8f95 }
+                component ModelPill(m: record, choose: event) {
+                    size: 146, 34
+                    prop glow = 0 ~140ms
+                    let on = m.on
+                    //  The grid lays out every record there could be: the empty ones are not drawn.
+                    group {
+                        show: m.index < chat.models.count
+                        box { from: 0, 0; size: 146, 34; corner: 17; color: mix(mix(#202021, #262728, glow), #1a2a25, on) }
+                        box { from: 0, 0; size: 146, 34; corner: 17; stroke: 1.2; color: mint; opacity: if(on, 70%, 0) }
+                        text m.name { at: 73, 17; anchor: center; size: 11.5; weight: 500; width: 130; lines: 1; align: center; color: mix(#a9adb3, ink, on) }
+                        zone box touch { from: 0, 0; size: 146, 34; corner: 17; cursor: pointer }
+                    }
+                    on enter touch { glow: 1 }
+                    on leave touch { glow: 0 }
+                    on press touch { emit choose(m.index) }
+                }
+                grid {
+                    at: card.x - 228, card.top + 316; columns: 3; gap: 9; width: 456; row: 42
+                    for m in chat.models { ModelPill(m, choose: chat_pick) }
+                }
+                text "Her models appear once she is signed in." { at: card.x - 228, card.top + 332; anchor: left center; size: 11.5; color: st.faint; show: chat.models.count < 1 }
+                //  Her tasks, one row away.
+                prop tasks.glow = 0 ~140ms
+                box { at: card.x, card.top + 470; size: 456, 40; corner: 14; color: mix(#202021, #262728, tasks.glow) }
+                text "Her tasks" { at: card.x - 206, card.top + 470; anchor: left center; size: 13; weight: 600; color: ink }
+                text tasks.summary { at: card.x + 190, card.top + 470; anchor: right center; size: 11; color: st.faint; width: 200; lines: 1; align: right }
+                line { from: card.x + 200, card.top + 465; to: card.x + 205, card.top + 470; width: 1.6; color: st.faint }
+                line { from: card.x + 205, card.top + 470; to: card.x + 200, card.top + 475; width: 1.6; color: st.faint }
+                zone box tasks_row { at: card.x, card.top + 470; size: 456, 40; corner: 14; cursor: pointer }
+                on enter tasks_row { tasks.glow: 1 }
+                on leave tasks_row { tasks.glow: 0 }
+                on press tasks_row { emit to_tasks }
+            }
+
+            // ── her tasks ──
+            //  What she does on her own at a time, each with when, what,
+            //  how it went last time, a switch, «now» and a cross. They
+            //  are made talking to her: «every day at 8:00, …».
+            page tasks "Her tasks" {
+                text "She does these on her own at their time. Ask her in the chat: «every day at 8:00, …»." { at: card.x - 228, card.top + 116; anchor: left center; size: 12; color: st.faint; width: 456; lines: 1 }
+                component TaskRow(r: record, flip: event, now: event, drop: event) {
+                    size: 456, 66
+                    prop glow = 0 ~140ms
+                    prop now.glow = 0 ~140ms
+                    box { from: 0, 0; size: 456, 66; corner: 14; color: mix(#202021, #262728, glow) }
+                    group {
+                        opacity: if(r.on > 0.5, 100%, 45%)
+                        text r.when { at: 16, 22; anchor: left center; size: 15; weight: 700; color: ink }
+                        text r.days { at: 16, 44; anchor: left center; size: 10; width: 70; lines: 1; color: st.faint }
+                        text r.what { at: 96, 22; anchor: left center; size: 11.5; width: 250; lines: 1; color: ink }
+                        ellipse { at: 100, 44; radius: 3; color: pick(r.state, #8b8f95, mint, #ef7a66, amber) }
+                        text r.last { at: 110, 44; anchor: left center; size: 10; width: 236; lines: 1; color: st.faint }
+                    }
+                    //  On or off.
+                    box { from: 358, 23; size: 32, 20; corner: 10; color: mix(#2a2d30, #3d6b5c, r.on) }
+                    ellipse { at: 368 + 12 * r.on, 33; radius: 7; color: ink }
+                    zone box flip_zone { from: 354, 19; size: 40, 28; corner: 10; cursor: pointer }
+                    //  Now.
+                    path { at: 404, 26; color: mix(#8b8f95, mint, now.glow); move 0, 0; line 9, 7; line 0, 14; close }
+                    zone box now_zone { from: 398, 19; size: 22, 28; corner: 8; cursor: pointer }
+                    line { from: 428, 28; to: 438, 38; width: 1.5; color: mix(#8b8f95, #ef7a66, glow) }
+                    line { from: 438, 28; to: 428, 38; width: 1.5; color: mix(#8b8f95, #ef7a66, glow) }
+                    zone box drop_zone { from: 422, 19; size: 24, 28; corner: 8; cursor: pointer }
+                    on press flip_zone { emit flip(r.index) }
+                    on enter now_zone { now.glow: 1 }
+                    on leave now_zone { now.glow: 0 }
+                    on press now_zone { emit now(r.index) }
+                    on enter drop_zone { glow: 1 }
+                    on leave drop_zone { glow: 0 }
+                    on press drop_zone { emit drop(r.index) }
+                }
+                column tasks_list ~quick {
+                    at: card.x - 228, card.top + 136
+                    view: 456, 300
+                    gap: 6
+                    for r in tasks.rows { TaskRow(r, flip: task_flip, now: task_now, drop: task_drop) }
+                }
+                text "None yet." { at: card.x - 228, card.top + 152; anchor: left center; size: 11.5; color: st.faint; show: tasks.rows.count < 1 }
+                //  The passwords she may type for them, one row away.
+                prop keys.glow = 0 ~140ms
+                box { at: card.x, card.top + 470; size: 456, 40; corner: 14; color: mix(#202021, #262728, keys.glow) }
+                text "Passwords for her tasks" { at: card.x - 206, card.top + 470; anchor: left center; size: 13; weight: 600; color: ink }
+                text "{keys.rows.count}" { at: card.x + 190, card.top + 470; anchor: right center; size: 11; color: st.faint }
+                line { from: card.x + 200, card.top + 465; to: card.x + 205, card.top + 470; width: 1.6; color: st.faint }
+                line { from: card.x + 205, card.top + 470; to: card.x + 200, card.top + 475; width: 1.6; color: st.faint }
+                zone box keys_row { at: card.x, card.top + 470; size: 456, 40; corner: 14; cursor: pointer }
+                on enter keys_row { keys.glow: 1 }
+                on leave keys_row { keys.glow: 0 }
+                on press keys_row { emit to_keys }
+            }
+
+            // ── what you built with her ──
+            //  Every creation of «Build something»: open it again to keep
+            //  improving it, share it (a file to give anyone), or delete it.
+            page creations "What you built" {
+                text "Made with her in «Build something». Open one again to keep improving it." { at: card.x - 228, card.top + 116; anchor: left center; size: 12; color: st.faint; width: 456; lines: 1 }
+                component CreationRow(r: record, edit: event, share: event, gone: event) {
+                    size: 456, 58
+                    prop glow = 0 ~140ms
+                    prop edit.glow = 0 ~140ms
+                    prop share.glow = 0 ~140ms
+                    prop gone.glow = 0 ~140ms
+                    box { from: 0, 0; size: 456, 58; corner: 14; color: mix(#202021, #262728, glow) }
+                    ellipse { at: 18, 29; radius: 4; color: mix(#8b8f95, mint, r.kept) }
+                    text r.name { at: 32, 21; anchor: left center; size: 13.5; weight: 700; color: ink; width: 230; lines: 1 }
+                    text r.what { at: 32, 40; anchor: left center; size: 10.5; color: st.faint; width: 230; lines: 1 }
+                    box { at: 312, 29; size: 58, 28; corner: 9; color: mix(#2a2b2c, #3d6b5c, edit.glow) }
+                    text "Open" { at: 312, 29; anchor: center; size: 11; weight: 600; color: ink }
+                    box { at: 376, 29; size: 58, 28; corner: 9; color: mix(#2a2b2c, #3a4a5c, share.glow) }
+                    text "Share" { at: 376, 29; anchor: center; size: 11; weight: 600; color: ink }
+                    box { at: 432, 29; size: 36, 28; corner: 9; color: mix(#2a2b2c, #6b3a32, max(gone.glow, r.sure)) }
+                    text "×" { at: 432, 28; anchor: center; size: 15; weight: 700; color: mix(ink, #ef7a66, r.sure) }
+                    zone box edit_zone { at: 312, 29; size: 58, 28; corner: 9; cursor: pointer }
+                    zone box share_zone { at: 376, 29; size: 58, 28; corner: 9; cursor: pointer }
+                    zone box gone_zone { at: 432, 29; size: 36, 28; corner: 9; cursor: pointer; label: "Delete it (press twice)" }
+                    on enter edit_zone { edit.glow: 1; glow: 1 }
+                    on leave edit_zone { edit.glow: 0; glow: 0 }
+                    on enter share_zone { share.glow: 1; glow: 1 }
+                    on leave share_zone { share.glow: 0; glow: 0 }
+                    on enter gone_zone { gone.glow: 1 }
+                    on leave gone_zone { gone.glow: 0 }
+                    on press edit_zone { emit edit(r.index) }
+                    on press share_zone { emit share(r.index) }
+                    on press gone_zone { emit gone(r.index) }
+                }
+                column creations_list ~quick {
+                    at: card.x - 228, card.top + 136
+                    view: 456, 300
+                    gap: 6
+                    for r in build.list { CreationRow(r, edit: build_edit, share: build_share, gone: build_remove) }
+                }
+                text "Nothing yet: «Build something», in her finder." { at: card.x - 228, card.top + 152; anchor: left center; size: 11.5; color: st.faint; show: build.list.count < 1 }
+                text build.shared { at: card.x - 228, card.top + 462; anchor: left center; size: 10.5; color: mint; width: 456; lines: 2 }
+            }
+
+            // ── the passwords for her tasks ──
+            //  For a page the browser has no saved password for. Each
+            //  by a name she knows; the password itself goes to your
+            //  keyring and she never sees it: Marea types it for her.
+            page keys "Passwords for her tasks" {
+                text "When the browser has none saved, she asks for one by its name and Marea types it: she never sees it. Kept in your system keyring." { at: card.x - 228, card.top + 120; anchor: left center; size: 12; color: st.faint; width: 456; lines: 2 }
+                component KeyRow(r: record, drop: event) {
+                    size: 456, 40
+                    prop glow = 0 ~140ms
+                    box { from: 0, 0; size: 456, 40; corner: 12; color: mix(#202021, #262728, glow) }
+                    ellipse { at: 18, 20; radius: 3.5; color: amber }
+                    text r.name { at: 32, 20; anchor: left center; size: 12; width: 330; lines: 1; color: ink }
+                    text "••••••••" { at: 400, 20; anchor: right center; size: 11; color: st.faint }
+                    line { from: 427, 15; to: 437, 25; width: 1.5; color: mix(#8b8f95, #ef7a66, glow) }
+                    line { from: 437, 15; to: 427, 25; width: 1.5; color: mix(#8b8f95, #ef7a66, glow) }
+                    zone box drop_zone { from: 416, 5; size: 32, 30; corner: 10; cursor: pointer }
+                    on enter drop_zone { glow: 1 }
+                    on leave drop_zone { glow: 0 }
+                    on press drop_zone { emit drop(r.index) }
+                }
+                column keys_list ~quick {
+                    at: card.x - 228, card.top + 152
+                    view: 456, 220
+                    gap: 6
+                    for r in keys.rows { KeyRow(r, drop: keys_drop) }
+                }
+                text "None yet." { at: card.x - 228, card.top + 168; anchor: left center; size: 11.5; color: st.faint; show: keys.rows.count < 1 }
+                //  A new one: its name, the password, Keep.
+                box { at: card.x - 118, card.top + 410; size: 220, 38; corner: 12; color: #141415 }
+                input keys.name { at: card.x - 218, card.top + 401; width: 196; size: 13; color: ink; placeholder: "Its name: bank"; selection: #2f5f52 }
+                box { at: card.x + 82, card.top + 410; size: 152, 38; corner: 12; color: #141415 }
+                input keys.value { at: card.x + 14, card.top + 401; width: 134; size: 13; color: ink; placeholder: "Password"; secret: true; selection: #2f5f52 }
+                prop keep.glow = 0 ~140ms
+                box { at: card.x + 196, card.top + 410; size: 64, 38; corner: 12; color: mix(#3d6b5c, #4a8270, keep.glow) }
+                text "Keep" { at: card.x + 196, card.top + 410; anchor: center; size: 11.5; weight: 600; color: ink }
+                zone box keep_btn { at: card.x + 196, card.top + 410; size: 64, 38; corner: 12; cursor: pointer }
+                on enter keep_btn { keep.glow: 1 }
+                on leave keep_btn { keep.glow: 0 }
+                on press keep_btn { emit keys_keep }
+                on submit keys.value { emit keys_keep }
+                text keys.status { at: card.x - 228, card.top + 446; anchor: left center; size: 11; color: st.faint; width: 456; lines: 1 }
+            }
+
+            // ── what she remembers ──
+            //  Her memory, all of it in sight: what she knows about you
+            //  (a drop) and her notes on how to do things (a page, with
+            //  when they apply), newest first, each forgotten with its
+            //  cross; and the conversations she can look back on, deleted
+            //  all at once, pressing twice.
+            page memory "What she remembers" {
+                text "She keeps it herself as you talk. Forget whatever you like." { at: card.x - 228, card.top + 116; anchor: left center; size: 12; color: st.faint }
+                component MemoryRow(r: record, drop: event) {
+                    size: 456, 44
+                    prop glow = 0 ~140ms
+                    box { from: 0, 0; size: 456, 44; corner: 12; color: mix(#202021, #262728, glow) }
+                    ellipse { at: 18, 22; radius: 4; color: mint; show: r.kind == 1 }
+                    group {
+                        show: r.kind == 2
+                        box { at: 18, 22; size: 10, 13; corner: 2; stroke: 1.4; color: lilac }
+                        line { from: 15.5, 20; to: 20.5, 20; width: 1.2; color: lilac }
+                        line { from: 15.5, 24; to: 20.5, 24; width: 1.2; color: lilac }
+                    }
+                    text r.text { at: 36, if(r.kind == 2, 15, 22); anchor: left center; size: 11.5; width: 370; lines: 1; color: ink }
+                    text r.detail { at: 36, 31; anchor: left center; size: 10; width: 370; lines: 1; color: st.faint; show: r.kind == 2 }
+                    line { from: 427, 17; to: 437, 27; width: 1.5; color: mix(#8b8f95, #ef7a66, glow) }
+                    line { from: 437, 17; to: 427, 27; width: 1.5; color: mix(#8b8f95, #ef7a66, glow) }
+                    zone box touch { from: 416, 7; size: 32, 30; corner: 10; cursor: pointer }
+                    on enter touch { glow: 1 }
+                    on leave touch { glow: 0 }
+                    on press touch { emit drop(r.index) }
+                }
+                column mem_list ~quick {
+                    at: card.x - 228, card.top + 136
+                    view: 456, 250
+                    gap: 6
+                    for r in mem.items { MemoryRow(r, drop: mem_forget) }
+                }
+                text "Nothing yet: she keeps things as you talk." { at: card.x - 228, card.top + 152; anchor: left center; size: 11.5; color: st.faint; show: mem.items.count < 1 }
+                //  The conversations before this one.
+                box { at: card.x, card.top + 428; size: 456, 52; corner: 16; color: #202021 }
+                text "Past conversations" { at: card.x - 206, card.top + 420; anchor: left center; size: 13; weight: 600; color: ink }
+                text mem.talks { at: card.x - 206, card.top + 438; anchor: left center; size: 11; width: 260; lines: 1; color: st.faint }
+                prop talks.glow = 0 ~140ms
+                group {
+                    show: mem.kept > 0
+                    box { at: card.x + 160, card.top + 428; size: 112, 32; corner: 16; color: mix(mix(#2a2d30, #33383b, talks.glow), #5a2a24, mem.sure) }
+                    text pick(mem.sure, "Delete them", "Press again") { at: card.x + 160, card.top + 428; anchor: center; size: 12; weight: 600; color: mix(ink, #ffd9d2, mem.sure) }
+                }
+                zone box talks_btn { at: card.x + 160, card.top + 428; size: 112, 32; corner: 16; cursor: pointer; active: mem.kept > 0 }
+                on enter talks_btn { talks.glow: 1 }
+                on leave talks_btn { talks.glow: 0 }
+                on press talks_btn { emit mem_clear_talks }
+            }
+
+            // ── recording ──
+            //  What she does while she records the screen: by default she goes to a corner (out of what
+            //  is filmed, when it can be); staying, she is where she was, with the red eye, and she goes
+            //  on being herself on the video.
+            page recpage "Recording" {
+                prop rec.pos = 0 ~200ms
+                follow rec.pos = if(rec_stay, 1, 0)
+                ellipse { at: card.x, card.top + 186; radius: 26; stroke: 3.2; color: mix(ink, #e0655a, rec.pos) }
+                ellipse { at: card.x, card.top + 186; radius: 11 + 3 * rec.pos; color: #e0655a; opacity: 55% + 40% * rec.pos }
+                text "Super+Shift+C starts and stops a recording of the screen." { at: card.x, card.top + 244; anchor: center; size: 12.5; weight: 500; color: ink }
+                text "By default she slips into a corner so she is not in your video. If you want to show her own functions on a video, she can stay where she is: her eye turns red and she goes on as usual. The same keys stop it." { at: card.x, card.top + 292; anchor: center; size: 11; width: 410; lines: 4; color: st.faint }
+                box { at: card.x, card.top + 380; size: 456, 64; corner: 16; color: mix(#202021, #2a1c1a, rec.pos) }
+                box { at: card.x, card.top + 380; size: 456, 64; corner: 16; stroke: 1.2; color: #e0655a; opacity: rec.pos * 70% }
+                text "Stay where she is" { at: card.x - 206, card.top + 370; anchor: left center; size: 13; weight: 600; color: ink }
+                text "No trip to a corner: only the red eye shows she is recording" { at: card.x - 206, card.top + 389; anchor: left center; size: 11; width: 370; lines: 1; color: st.faint }
+                column { at: card.x + 174, card.top + 368
+                    Switch(rec_stay, flip_rec_stay, accent: #e0655a)
+                }
+            }
+        }
+    }
+
+}

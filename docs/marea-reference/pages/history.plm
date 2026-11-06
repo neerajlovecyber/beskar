@@ -1,0 +1,55 @@
+// Marea's scene, in pieces: the history. marea.plm includes it.
+part History {
+    // ── the history: what has washed up ──────────────────
+    //  Every notice dealt with —done, thrown away, opened, or closed by
+    //  its own application—, kept on disk by the logic, newest first,
+    //  in days. Each one with the drop of its category's colour; the
+    //  older, the paler, as things the tide left a while ago. «Clear»
+    //  lets the tide take them: they slide away one after another.
+    group {
+        show: page == history
+        let hx = card.x - 228
+        let history.hy = card.top + 104
+        column history_list {
+            at: hx, history.hy
+            gap: 3
+            for h in past {
+                group {
+                    size: 456, if(h.head, 26, 44)
+                    opacity: (1 - clamp(hist.wash * 1.6 - h.index * 0.07, 0, 1)) * if(h.head, 1, 1 - 0.45 * h.age)
+                    move: 120 * pow(clamp(hist.wash * 1.6 - h.index * 0.07, 0, 1), 2), 0
+                    text h.day { at: 6, 16; anchor: left center; size: 10.5; weight: 700; color: #8b8f95; show: h.head }
+                    box { from: 0, 0; size: 456, 44; corner: 11; color: #1f2021; show: not h.head }
+                    ellipse { at: 16, 22; radius: 4.5; color: mix(mix(blue, lilac, h.cat == 2), mix(green, amber, h.cat == 4), h.cat >= 3); show: not h.head }
+                    text h.app { at: 32, 14; anchor: left center; size: 8.5; weight: 700; color: mix(mix(blue, lilac, h.cat == 2), mix(green, amber, h.cat == 4), h.cat >= 3); show: not h.head }
+                    text h.title { at: 32, 29; anchor: left center; size: 12; weight: 500; width: 250; lines: 1; color: ink; show: not h.head }
+                    text h.detail { at: 292, 29; anchor: left center; size: 10.5; width: 110; lines: 1; color: #8b8f95; show: not h.head }
+                    text h.when { at: 446, 14; anchor: right center; size: 9.5; color: #8b8f95; show: not h.head }
+                }
+            }
+        }
+        //  Nothing yet: three little drops resting on a calm line.
+        group {
+            show: past.count < 1
+            line { from: card.x - 60, card.y + 30; to: card.x + 60, card.y + 30; width: 1.2; color: #8b8f95; opacity: 40% }
+            repeat d in 0..3 {
+                ellipse { at: card.x - 20 + d * 20, card.y + 24 - 2 * sin(tide.t * 360 + d * 120); radius: 4; color: mix(mix(blue, lilac, d == 1), green, d == 2); opacity: 70% }
+            }
+            text "Nothing has washed up yet" { at: card.x, card.y + 52; anchor: center; size: 11.5; color: #8b8f95 }
+        }
+        //  «Clear», top right, and the wheel to go back in time.
+        text "Clear" { at: card.x + 150, card.top + 45; anchor: right center; size: 11.5; weight: 600
+                       color: mix(#8b8f95, #ef7a66, clear.glow); show: past.count > 0 }
+        zone box clear_btn { at: card.x + 128, card.top + 45; size: 70, 30; corner: 15; cursor: pointer; active: page == history and paging > 0.9 and past.count > 0 }
+        zone box history_area { from: hx, history.hy; size: 456, 300; active: page == history and paging > 0.9 }
+    }
+    on enter clear_btn { clear.glow: 1 }
+    on leave clear_btn { clear.glow: 0 }
+    on press clear_btn { hist.wash: 1 ~700ms }
+    on still hist.wash for 80ms while hist.wash > 0.97 {
+        emit clear_history
+        hist.wash: 0 ~16ms
+    }
+    on scroll history_area { emit history_scroll(wheel) }
+
+}

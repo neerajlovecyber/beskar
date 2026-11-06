@@ -1,0 +1,148 @@
+// Marea's scene, in pieces: Bluetooth. marea.plm includes it.
+part Bluetooth {
+    // ── Bluetooth: what is hers, and what is near ────────
+    //  Two lists: the paired ones, the connected on top, and while
+    //  looking, the new ones near. Each row says what it is —a drawing
+    //  for headphones, a mouse, a keyboard, a phone…—, how it is, and
+    //  carries its one action as a button: connect, disconnect or pair.
+    //  On hover, the paired ones can also be forgotten.
+    //  `kind`: 0 any · 1 headphones · 2 mouse · 3 keyboard · 4 phone ·
+    //  5 computer · 6 gamepad · 7 speaker. `state`: 0 paired · 1 connected
+    //  · 2 working on it · 3 new.
+    component BtRow(d: record) {
+        size: 456, 44
+        prop glow = 0 ~140ms
+        prop act.glow = 0 ~140ms
+        prop forget.glow = 0 ~140ms
+        let lit = if(d.state == 1, 1, 0)
+        zone box touch { from: 0, 0; size: 456, 44; corner: 11; active: paging > 0.9 }
+        box { from: 0, 0; size: 456, 44; corner: 11; color: mix(mix(#202021, #262728, glow), #1a241f, lit) }
+        //  The drawing, in a round badge.
+        ellipse { at: 22, 22; radius: 15; color: mix(#2a2b2c, #21362c, lit) }
+        group {
+            let c = mix(ink, mint, lit)
+            //  headphones: the band and two cups
+            arc { at: 22, 23; radius: 7.5; span: 180deg; width: 1.7; rotate: -90deg; color: c; show: d.kind == 1 }
+            box { at: 15, 25; size: 4, 7; corner: 1.5; color: c; show: d.kind == 1 }
+            box { at: 29, 25; size: 4, 7; corner: 1.5; color: c; show: d.kind == 1 }
+            //  mouse: a capsule and its line
+            box { at: 22, 22; size: 11, 16; corner: 5.5; stroke: 1.6; color: c; show: d.kind == 2 }
+            line { from: 22, 15; to: 22, 19; width: 1.5; color: c; show: d.kind == 2 }
+            //  keyboard: a plate and its keys
+            box { at: 22, 22; size: 18, 11; corner: 2.5; stroke: 1.5; color: c; show: d.kind == 3 }
+            repeat k in 0..3 { box { at: 17 + k * 5, 20; size: 2, 2; color: c; show: d.kind == 3 } }
+            line { from: 18, 25; to: 26, 25; width: 1.5; color: c; show: d.kind == 3 }
+            //  phone
+            box { at: 22, 22; size: 10, 17; corner: 2.5; stroke: 1.6; color: c; show: d.kind == 4 }
+            line { from: 20.5, 28; to: 23.5, 28; width: 1.4; color: c; show: d.kind == 4 }
+            //  computer: a screen on its foot
+            box { at: 22, 20; size: 17, 11; corner: 2; stroke: 1.5; color: c; show: d.kind == 5 }
+            line { from: 18, 29; to: 26, 29; width: 1.6; color: c; show: d.kind == 5 }
+            //  gamepad
+            box { at: 22, 22; size: 20, 11; corner: 5.5; stroke: 1.5; color: c; show: d.kind == 6 }
+            line { from: 15.5, 22; to: 19.5, 22; width: 1.4; color: c; show: d.kind == 6 }
+            line { from: 17.5, 20; to: 17.5, 24; width: 1.4; color: c; show: d.kind == 6 }
+            ellipse { at: 26.5, 21; radius: 1.2; color: c; show: d.kind == 6 }
+            //  speaker: a box with its cone
+            box { at: 22, 22; size: 13, 17; corner: 3; stroke: 1.5; color: c; show: d.kind == 7 }
+            ellipse { at: 22, 24.5; radius: 3.2; stroke: 1.4; color: c; show: d.kind == 7 }
+            //  anything else: the rune
+            path { at: 18, 14; color: c; stroke: 1.5; show: d.kind == 0
+                   move 0, 3.5; line 8, 10.5; line 4, 14; line 4, 0; line 8, 3.5; line 0, 10.5 }
+        }
+        text d.name { at: 46, 15; anchor: left center; size: 12.5; weight: 500; width: 220; lines: 1; color: mix(#dfe1e3, #f6f6f5, glow) }
+        text d.status { at: 46, 31; anchor: left center; size: 10.5; width: 220; lines: 1
+                        color: mix(#8b8f95, mint, lit); opacity: if(d.state == 2, 55% + 45% * sin(join.t * 360), 100%) }
+        //  Its battery, if it says: a little cell, and the number.
+        group {
+            show: d.battery >= 0
+            box { at: 300, 22; size: 20, 10; corner: 2.5; stroke: 1.1; color: #8b8f95 }
+            box { at: 311, 22; size: 1.6, 4; corner: 0.8; color: #8b8f95 }
+            box { from: 291.5, 18.5; size: 17 * clamp(d.battery, 0, 1), 7; corner: 1.5
+                  color: mix(#e0655a, mint, clamp(d.battery * 3 - 0.3, 0, 1)) }
+            text "{d.battery * 100, 0}%" { at: 318, 22; anchor: left center; size: 10.5; color: #8b8f95 }
+        }
+        //  Forget, on hover, for the paired ones.
+        group {
+            show: d.state != 3
+            opacity: glow
+            ellipse { at: 354, 22; radius: 12; color: mix(#2b2324, #3a2828, forget.glow) }
+            line { from: 350, 18; to: 358, 26; width: 1.5; color: #f0b0a8 }
+            line { from: 358, 18; to: 350, 26; width: 1.5; color: #f0b0a8 }
+        }
+        zone box forget { at: 354, 22; size: 26, 26; corner: 13; cursor: pointer; active: paging > 0.9 and glow > 0.5 and d.state != 2; show: d.state != 3 }
+        //  The one action: what it is now decides it.
+        box { from: 372, 8; size: 76, 28; corner: 9
+              color: mix(mix(mix(#2a2b2c, #333536, act.glow), mix(mint, #8ff0cc, act.glow), if(d.state == 3 or d.state == 0, 1, 0)), #2a2b2c, if(d.state == 2, 1, 0)) }
+        text pick(d.state, "Connect", "Disconnect", "…", "Pair") { at: 410, 22; anchor: center; size: 11; weight: 600
+             color: mix(ink, #0c0f12, if(d.state == 3 or d.state == 0, 1, 0)) }
+        zone box act { from: 372, 8; size: 76, 28; corner: 9; cursor: pointer; active: paging > 0.9 and d.state != 2 }
+        on enter touch { glow: 1 }
+        on leave touch { glow: 0 }
+        on enter act { act.glow: 1 }
+        on leave act { act.glow: 0 }
+        on enter forget { forget.glow: 1 }
+        on leave forget { forget.glow: 0 }
+        on press act { emit pick_gadget(d.index + d.base) }
+        on press forget { emit bt_forget(d.index + d.base) }
+    }
+
+    group {
+        show: page == bluetooth
+        let bluetooth.lx = card.x - 228
+        let bluetooth.ty = card.top + 104
+        //  Off, or there is none: why, and the way to turn it on.
+        group {
+            show: not bt.on
+            ellipse { at: card.x, bluetooth.ty + 70; radius: 34; color: #202021 }
+            path { at: card.x - 7, bluetooth.ty + 57; color: #8b8f95; stroke: 2
+                   move 0, 6; line 14, 18; line 7, 25; line 7, 0; line 14, 6; line 0, 18 }
+            text pick(bt.present, "This computer has no Bluetooth", "Bluetooth is off") { at: card.x, bluetooth.ty + 128; anchor: center; size: 13; weight: 500; color: ink }
+            text "Turn it on to use your headphones and the rest." { at: card.x, bluetooth.ty + 148; anchor: center; size: 11; color: #8b8f95; show: bt.present }
+            row {
+                at: card.x, bluetooth.ty + 186
+                anchor: center middle
+                show: bt.present
+                Pill("Turn on", bt_power, w: 96, strong: 1)
+            }
+        }
+        group {
+            show: bt.on
+            text "YOURS" { at: bluetooth.lx, bluetooth.ty + 4; anchor: left center; size: 9.5; weight: 700; color: #8b8f95; show: bt_mine.count > 0 }
+            column bt_mine_list {
+                at: bluetooth.lx, bluetooth.ty + 16
+                gap: 4
+                for d in bt_mine { BtRow(d) }
+            }
+            let ny = bluetooth.ty + if(bt_mine.count > 0, 26 + bt_mine_list.height, 0)
+            text "NEAR" { at: bluetooth.lx, ny + 4; anchor: left center; size: 9.5; weight: 700; color: #8b8f95; show: bt_near.count > 0 }
+            column bt_near_list {
+                at: bluetooth.lx, ny + 16
+                gap: 4
+                for d in bt_near { BtRow(d) }
+            }
+            text pick(bt_scanning, "Nothing paired yet. Press Search to find what is near.", "Looking around…") {
+                at: card.x, bluetooth.ty + 80; anchor: center; size: 11.5; color: #8b8f95; width: 380; align: center
+                show: bt_mine.count < 1 and bt_near.count < 1 }
+        }
+    }
+    //  Looking for new ones: a radar in the header, rings that leave
+    //  from the Bluetooth mark while the radio listens; pressed, it
+    //  starts or stops listening.
+    group {
+        show: page == bluetooth and bt.on
+        let bluetooth.rx = card.x + 150
+        let bluetooth.ry = card.top + 45
+        repeat w in 0..3 {
+            let t = fract(radar.t + w / 3)
+            ellipse { at: bluetooth.rx, bluetooth.ry; radius: 6 + 16 * t; stroke: 1.4; color: mint; opacity: if(bt_scanning, (1 - t) * 70%, 0) }
+        }
+        ellipse { at: bluetooth.rx, bluetooth.ry; radius: 13; color: mix(#202021, #1a241f, if(bt_scanning, 1, 0)) }
+        path { at: bluetooth.rx - 4, bluetooth.ry - 7; color: mix(ink, mint, if(bt_scanning, 1, 0)); stroke: 1.5
+               move 0, 3.5; line 8, 10.5; line 4, 14; line 4, 0; line 8, 3.5; line 0, 10.5 }
+        text pick(bt_scanning, "Search", "Searching…") { at: bluetooth.rx - 22, bluetooth.ry; anchor: right center; size: 11.5; color: mix(#8b8f95, mint, if(bt_scanning, 1, 0)) }
+        zone box radar_btn { at: bluetooth.rx - 30, bluetooth.ry; size: 110, 32; corner: 16; cursor: pointer; active: page == bluetooth and paging > 0.9 and bt.on }
+    }
+    on press radar_btn { emit bt_scan }
+
+}

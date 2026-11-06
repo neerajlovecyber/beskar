@@ -1,0 +1,225 @@
+// Marea's scene, in pieces: the agents' reservoirs. marea.plm includes it.
+part Agents {
+    // ── the agents' reservoirs ───────────────────────────
+    //  What is left of Claude Code's and Codex's windows, as water in
+    //  glass tubes: as full as there is left, and of the colour of the
+    //  margin —mint, amber, coral—, never of the brand. Each tube is
+    //  its own window: nothing is added up between them. Coming in, they
+    //  fill one after another; a new reading makes them sway; the mouse
+    //  over one stirs its water. An unknown number is an empty tube with
+    //  a dashed line, not a zero.
+    shader reservoir = file "../../shaders/reservoir.wgsl"
+    //  The water rises once the page can be seen, from empty, every time:
+    //  started on asking for the page, it rose while the page was still
+    //  growing out of the card and by the time it showed it was full. And
+    //  leaving empties it at once, so coming back fills it again.
+    prop reveal = 0 ~3400ms
+    on change page == agents and paging > 0.9 while page == agents and paging > 0.9 { reveal: 0 ~16ms; reveal: 1 ~3400ms after 60ms }
+    on change page while page != agents { reveal: 0 ~16ms }
+    //  And she fills them herself: a breath, and a jet of water from her
+    //  mouth to each tube, one after another, left to right and top to
+    //  bottom. Each tube starts rising when its jet lands, not before —
+    //  the first drops take 0.7 s to fly to the top row and 0.9 s to the
+    //  bottom one—. Two jets overlap for a moment: she does not stop to
+    //  breathe between them.
+    on change page == agents and paging > 0.9 while page == agents and paging > 0.9 {
+        play gulp
+        blow: 1 ~200ms after 200ms
+        pour.1.1: 0 ~16ms; pour.1.2: 0 ~16ms; pour.1.3: 0 ~16ms
+        pour.2.1: 0 ~16ms; pour.2.2: 0 ~16ms; pour.2.3: 0 ~16ms
+        jet.head.1.1: 0 ~16ms; jet.head.1.2: 0 ~16ms; jet.head.1.3: 0 ~16ms; jet.head.2.1: 0 ~16ms; jet.head.2.2: 0 ~16ms; jet.head.2.3: 0 ~16ms
+        jet.tail.1.1: 0 ~16ms; jet.tail.1.2: 0 ~16ms; jet.tail.1.3: 0 ~16ms; jet.tail.2.1: 0 ~16ms; jet.tail.2.2: 0 ~16ms; jet.tail.2.3: 0 ~16ms
+        jet.head.1.1: 1 ~720ms after 260ms; jet.tail.1.1: 1 ~480ms after 1080ms; pour.1.1: 1 ~1300ms after 980ms
+        jet.head.1.2: 1 ~720ms after 660ms; jet.tail.1.2: 1 ~480ms after 1480ms; pour.1.2: 1 ~1300ms after 1380ms
+        jet.head.1.3: 1 ~720ms after 1060ms; jet.tail.1.3: 1 ~480ms after 1880ms; pour.1.3: 1 ~1300ms after 1780ms
+        jet.head.2.1: 1 ~930ms after 1460ms; jet.tail.2.1: 1 ~480ms after 2280ms; pour.2.1: 1 ~1300ms after 2390ms
+        jet.head.2.2: 1 ~930ms after 1860ms; jet.tail.2.2: 1 ~480ms after 2680ms; pour.2.2: 1 ~1300ms after 2790ms
+        jet.head.2.3: 1 ~930ms after 2260ms; jet.tail.2.3: 1 ~480ms after 3080ms; pour.2.3: 1 ~1300ms after 3190ms
+        blow: 0 ~300ms after 3250ms
+    }
+    on change page while page != agents {
+        blow: 0 ~16ms
+        jet.head.1.1: 0 ~16ms; jet.head.1.2: 0 ~16ms; jet.head.1.3: 0 ~16ms; jet.head.2.1: 0 ~16ms; jet.head.2.2: 0 ~16ms; jet.head.2.3: 0 ~16ms
+        jet.tail.1.1: 0 ~16ms; jet.tail.1.2: 0 ~16ms; jet.tail.1.3: 0 ~16ms; jet.tail.2.1: 0 ~16ms; jet.tail.2.2: 0 ~16ms; jet.tail.2.3: 0 ~16ms
+        pour.1.1: 0 ~16ms; pour.1.2: 0 ~16ms; pour.1.3: 0 ~16ms; pour.2.1: 0 ~16ms; pour.2.2: 0 ~16ms; pour.2.3: 0 ~16ms
+    }
+    //  Claude's rays turn slowly, only while the page is there: a
+    //  `time` would keep her painting all day for a page nobody sees.
+    prop rays = 0
+    spin rays by if(page == agents, 12, 0)
+    prop refresh.turn = 0 ~slow
+    prop refresh.glow = 0 ~140ms
+    group {
+        show: page == agents
+        //  Read again: the arrow turns once.
+        group {
+            opacity: 55% + refresh.glow * 45%
+            arc { at: card.x + 168, card.top + 37; radius: 7; span: 290deg; width: 1.8; rotate: refresh.turn * 1deg; color: ink }
+            path { at: card.x + 168 + 7 * cos(refresh.turn - 55), card.top + 37 + 7 * sin(refresh.turn - 55); color: ink; rotate: (refresh.turn + 35) * 1deg
+                   move -3, -3; line 3, 0; line -3, 3; close }
+        }
+        zone box refresh_btn { at: card.x + 168, card.top + 37; size: 30, 30; corner: 15; cursor: pointer; active: page == agents and paging > 0.9; label: "Refresh" }
+        on enter refresh_btn { refresh.glow: 1 }
+        on leave refresh_btn { refresh.glow: 0 }
+        on press refresh_btn { refresh.turn: refresh.turn + 360; emit agents_refresh }
+
+        text "Reading your windows…" { at: card.x, card.top + 250; anchor: center; size: 11.5; color: #8b8f95
+                                      show: ag.kind.1 < 1 and ag.kind.2 < 1 }
+
+        repeat a in 1..3 {
+            let agents.ay = card.top + 120 + (a - 1) * 186
+            let ax0 = card.x - 228
+            group {
+                show: ag.kind.$a > 0
+                //  Each agent comes in a moment after the one before.
+                opacity: clamp((reveal - (a - 1) * 0.12) * 3, 0, 1)
+                move: 0, (1 - clamp((reveal - (a - 1) * 0.12) * 3, 0, 1)) * 12
+                box { at: card.x, agents.ay + 88; size: 456, 178; corner: 16; color: mix(#202122, ink, glassiness); opacity: mix(1, veil, glassiness) }
+                //  Who it is. Claude: its burst of rays, turning very
+                //  slowly. Codex: a hexagon with its prompt.
+                group {
+                    show: ag.kind.$a == 1
+                    repeat r in 0..10 {
+                        line { from: ax0 + 26 + 3 * cos(r * 36 + rays), agents.ay + 24 + 3 * sin(r * 36 + rays)
+                               to: ax0 + 26 + 10 * cos(r * 36 + rays), agents.ay + 24 + 10 * sin(r * 36 + rays)
+                               width: 2.4; color: #d97757 }
+                    }
+                }
+                group {
+                    show: ag.kind.$a == 2
+                    path { at: ax0 + 26, agents.ay + 24; stroke: 1.8; color: ink
+                           move 0, -11; line 9.5, -5.5; line 9.5, 5.5; line 0, 11; line -9.5, 5.5; line -9.5, -5.5; close }
+                    path { at: ax0 + 22, agents.ay + 24; stroke: 1.6; color: ink; move 0, -3.5; line 3.5, 0; line 0, 3.5 }
+                    line { from: ax0 + 27, agents.ay + 27.5; to: ax0 + 31, agents.ay + 27.5; width: 1.6; color: ink }
+                }
+                text ag.name.$a { at: ax0 + 46, agents.ay + 17; anchor: left center; size: 15; weight: 600; color: ink }
+                text ag.sub.$a { at: ax0 + 46, agents.ay + 35; anchor: left center; size: 11; width: 380; lines: 1; color: faint; opacity: 75% }
+
+                repeat l in 1..4 {
+                    let sx = ax0 + 16 + (l - 1) * 146
+                    let used = ag.used.$a.$l
+                    let known = if(used > -0.5, 1, 0)
+                    let avail = clamp(100 - used, 0, 100)
+                    //  The colour of the margin: coral under 15 %, amber
+                    //  up to 50 %, mint above.
+                    let tone = mix(mix(#ef7a66, #f0b85a, clamp((avail - 12) / 8, 0, 1)), mint, clamp((avail - 40) / 15, 0, 1))
+                    prop lvl.$a.$l = 0 ~calm
+                    follow lvl.$a.$l = avail / 100
+                    prop sway.$a.$l = 0 ~lively
+                    prop hover.$a.$l = 0 ~140ms
+                    //  Its jet —on while she spits at it— and how full it is,
+                    //  which starts when the jet lands.
+                    prop jet.head.$a.$l = 0 ~16ms
+                    prop jet.tail.$a.$l = 0 ~16ms
+                    prop pour.$a.$l = 0 ~1300ms
+                    let fill = clamp(pour.$a.$l, 0, 1)
+                    let eased = fill * fill * (3 - 2 * fill)
+                    group {
+                        show: ag.on.$a.$l
+                        opacity: 45% + 55% * if(ag.active.$a.$l, 1, 0)
+                        //  A halo when there is little left: the tube says it
+                        //  without a notice.
+                        group {
+                            glow: 10, if(avail < 15 and known > 0.5, 70%, 0), #ef7a66
+                            shader reservoir { at: sx, agents.ay + 52; size: 46, 112; corner: 13
+                                               values: if(known > 0.5, lvl.$a.$l * eased, -1), sway.$a.$l + clamp(vel(lvl.$a.$l) * 0.3 + vel(reveal) * 0.5 * (1 - eased), -0.6, 0.6), a * 3.7 + l * 1.3, if(ag.pending.$a.$l, 1, 0), hover.$a.$l, if(avail < 15 and known > 0.5, 1, 0)
+                                               colors: tone, mix(tone, #0b1a22, 0.62) }
+                        }
+                        //  A reading splashes: drops jump off the surface of
+                        //  each tube and fall back into it.
+                        particles { at: sx + 23, agents.ay + 56 + 104 * (1 - lvl.$a.$l * eased); area: 30, 0; count: 14
+                                    life: 0.35s .. 0.7s; speed: 40 .. 110; direction: -90deg; spread: 70deg
+                                    gravity: 0, 520; size: 2.6, 1.2; colors: tone, #ffffff; opacity: 90%, 0%
+                                    burst: agents_read }
+                        //  The jet: drops fired from her mouth on a real
+                        //  parabola. Given how long they fly (T, longer the
+                        //  further down, so the jet rises before it falls),
+                        //  the speed to land on the tube's mouth comes out of
+                        //  the sums: vx = dx / T, vy = dy / T − g·T / 2. They
+                        //  live exactly T: they go into the tube and vanish.
+                        let jet.x0 = cx + 9
+                        let jet.y0 = cy_actual + 10
+                        let jet.dx = sx + 23 - jet.x0
+                        let jet.dy = agents.ay + 56 - jet.y0
+                        let jet.t = 0.55 + jet.dy / 900
+                        let jet.vx = jet.dx / jet.t
+                        let jet.vy = jet.dy / jet.t - 450 * jet.t
+                        //  Not drops: water. A parabola is exactly a quadratic
+                        //  Bézier, so the jet is ONE line with round ends, as
+                        //  long as it has to be, from its tail to its front:
+                        //  the ends are where the water is at those two
+                        //  moments, and the control point is where their
+                        //  tangents meet, P0 + (t1 − t0) / 2 · v(t0). Melted in
+                        //  a body with a fatter drop at its front —where the
+                        //  water piles up— and a line of light along the top.
+                        //  Its front flies from her mouth to the tube; when she
+                        //  stops, its tail follows it in.
+                        let jh = jet.head.$a.$l
+                        let jt = jet.tail.$a.$l
+                        let jon = jh > 0.002 and jt < 0.995 and ag.on.$a.$l
+                        let j0 = jt * jet.t
+                        let j1 = jh * jet.t
+                        let jx0 = jet.x0 + jet.vx * j0
+                        let jy0 = jet.y0 + jet.vy * j0 + 450 * j0 * j0
+                        let jx1 = jet.x0 + jet.vx * j1
+                        let jy1 = jet.y0 + jet.vy * j1 + 450 * j1 * j1
+                        let jcx = jx0 + (j1 - j0) / 2 * jet.vx
+                        let jcy = jy0 + (j1 - j0) / 2 * (jet.vy + 900 * j0)
+                        body {
+                            color: mix(tone, #ffffff, 0.18)
+                            rim: 24%
+                            show: jon
+                            path { at: 0, 0; stroke: 5
+                                   move jx0, jy0; curve jx1, jy1 via jcx, jcy }
+                            ellipse { at: jx1, jy1; radius: 4.2; blend: 6 }
+                        }
+                        group {
+                            show: jon
+                            opacity: 65%
+                            path { at: -0.8, -1.4; stroke: 1.3; color: #ffffff
+                                   move jx0, jy0; curve jx1, jy1 via jcx, jcy }
+                            ellipse { at: jx1 - 1.3, jy1 - 1.5; radius: 1.3; color: #ffffff }
+                        }
+                        //  And a few drops come loose from it on the way.
+                        particles { at: jx1, jy1; count: 40; life: 0.2s .. 0.45s; speed: 10 .. 45; spread: 360deg
+                                    gravity: 0, 500; size: 2.4, 1; colors: mix(tone, #ffffff, 0.4); opacity: 80%, 0%
+                                    emit: jon and jh < 0.98 }
+                        //  And where it lands, the water jumps while it pours.
+                        particles { at: sx + 23, agents.ay + 56 + 104 * (1 - lvl.$a.$l * eased); area: 14, 0; count: 60
+                                    life: 0.2s .. 0.45s; speed: 30 .. 90; direction: -90deg; spread: 100deg
+                                    gravity: 0, 600; size: 2.2, 0.8; colors: #ffffff, tone; opacity: 85%, 0%
+                                    emit: pour.$a.$l > 0.01 and pour.$a.$l < 0.45 }
+                        text ag.lname.$a.$l { at: sx + 58, agents.ay + 62; anchor: left center; size: 11; weight: 500; width: 76; lines: 1; color: faint }
+                        text number(avail * eased, 0, "%") { at: sx + 58, agents.ay + 90; anchor: left center; size: 26; weight: 700; color: tone; show: known > 0.5 }
+                        text "—" { at: sx + 58, agents.ay + 90; anchor: left center; size: 26; weight: 700; color: #8b8f95; show: known < 0.5 }
+                        text "left" { at: sx + 58, agents.ay + 112; anchor: left center; size: 10.5; color: faint; opacity: 70% }
+                        text ag.lrenew.$a.$l { at: sx + 58, agents.ay + 134; anchor: left center; size: 10.5; width: 76; lines: 1; color: faint; opacity: 80% }
+                        //  How far into its window it is, and a dot at
+                        //  how much it has used: a dot ahead of the bar
+                        //  is spending faster than time goes.
+                        box { from: sx + 58, agents.ay + 150; size: 72, 3; corner: 1.5; color: ink; opacity: 14% }
+                        box { from: sx + 58, agents.ay + 150; size: 72 * ag.elapsed.$a.$l * eased, 3; corner: 1.5; color: ink; opacity: 45% }
+                        ellipse { at: sx + 58 + 72 * clamp(used / 100, 0, 1) * eased, agents.ay + 151.5; radius: 3; color: tone; show: known > 0.5 }
+                    }
+                    zone box tank.$a.$l { at: sx + 23, agents.ay + 108; size: 46, 112; corner: 13; active: page == agents and paging > 0.9 and ag.on.$a.$l; label: "{ag.name.$a} · {ag.lname.$a.$l}"; value: "{avail, 0}%" }
+                    on enter tank.$a.$l { hover.$a.$l: 1; impulse sway.$a.$l 1.5 }
+                    on leave tank.$a.$l { hover.$a.$l: 0 }
+                    //  A new reading makes every tube sway, a little
+                    //  after its neighbour.
+                    on agents_read { impulse sway.$a.$l 2.4 }
+                }
+            }
+        }
+    }
+    //  And she reacts once, when the page comes in: little left
+    //  somewhere, the «!» face; everything with margin, the happy one.
+    on change page == agents and paging > 0.9 while page == agents and paging > 0.9 { face = reading; agents.face = reading }
+    on still agents.face for 3.6s while agents.face == reading and ag.worst < 15 { face = alert; agents.face = verdict }
+    on still agents.face for 3.6s while agents.face == reading and ag.worst >= 50 and ag.worst < 101 { face = happy; agents.face = verdict }
+    on still agents.face for 3.6s while agents.face == reading and (ag.worst >= 15 and ag.worst < 50 or ag.worst > 100) { face = eye; agents.face = none }
+    on still agents.face for 1.6s while agents.face == verdict { face = eye; agents.face = none }
+    //  Leaving the page mid-reading does not leave her with waves for eyes.
+    on change page while page != agents and agents.face != none { face = eye; agents.face = none }
+
+
+}

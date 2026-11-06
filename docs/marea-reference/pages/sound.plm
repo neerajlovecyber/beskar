@@ -1,0 +1,149 @@
+// Marea's scene, in pieces: sound. marea.plm includes it.
+part Sound {
+    // ── sound: a mixer ───────────────────────────────────
+    //  Two plates, where it plays and where it listens: each with its
+    //  device —pressed, the others to choose from drop below it—, its
+    //  level to drag and its icon to silence. Below, what is playing,
+    //  one row per application with its own level: a video too loud
+    //  next to the music is set here, not in the video.
+    component AppRow(a: record) {
+        size: 456, 40
+        prop glow = 0 ~140ms
+        prop mute.glow = 0 ~140ms
+        let off = if(a.muted, 1, 0)
+        zone box touch { from: 0, 0; size: 456, 40; corner: 10; active: paging > 0.9 }
+        box { from: 0, 0; size: 456, 40; corner: 10; color: mix(#202021, #262728, glow) }
+        group {
+            opacity: if(a.playing, 100%, 55%)
+            image a.icon { at: 9, 9; size: 22, 22; show: a.has_icon }
+            ellipse { at: 20, 20; radius: 11; color: #2f3a35; show: not a.has_icon }
+            text a.letter { at: 20, 20.5; anchor: center; size: 11; weight: 700; color: mint; show: not a.has_icon }
+            text a.name { at: 40, 13; anchor: left center; size: 12; weight: 500; width: 150; lines: 1; color: ink }
+            text a.title { at: 40, 28; anchor: left center; size: 10; width: 150; lines: 1; color: #8b8f95 }
+        }
+        //  Its speaker: pressed, it is silenced, and crossed out.
+        group {
+            opacity: 70% + 30% * mute.glow
+            path { at: 205, 15; color: ink; move 0, 3; line 4, 3; line 9, 0; line 9, 11; line 4, 8; line 0, 8; close }
+            arc { at: 216, 20.5; radius: 4.5; span: 110deg; width: 1.4; rotate: 90deg; color: ink; opacity: 1 - off }
+            line { from: 203, 13; to: 219, 28; width: 1.7; color: #e0655a; opacity: off }
+        }
+        zone box mute { at: 211, 20; size: 28, 28; corner: 14; cursor: pointer; active: paging > 0.9; label: "Mute {a.name}"; role: toggle; checked: off }
+        box { from: 236, 17; size: 164, 6; corner: 3; color: #2f3031 }
+        box { from: 236, 17; size: 164 * a.volume, 6; corner: 3; color: mix(mint, #6b7280, off) }
+        ellipse { at: 236 + 164 * a.volume, 20; radius: 6.5 + glow; color: #f0ece4 }
+        text "{a.volume * 100, 0}%" { at: 444, 20; anchor: right center; size: 10.5; weight: 500; color: mix(mint, #8b8f95, off) }
+        zone box track { from: 228, 6; size: 182, 28; cursor: pointer; active: paging > 0.9; label: "{a.name} volume"; role: slider; value: "{a.volume * 100, 0}%" }
+        on enter touch { glow: 1 }
+        on leave touch { glow: 0 }
+        on enter mute { mute.glow: 1 }
+        on leave mute { mute.glow: 0 }
+        on press mute { emit app_mute(a.index) }
+        on press track { emit app_volume(a.index * 1000 + floor(clamp((local.x - 236) / 164, 0, 1) * 100 + 0.5)) }
+        on drag track { emit app_volume(a.index * 1000 + floor(clamp((local.x - 236) / 164, 0, 1) * 100 + 0.5)) }
+    }
+    //  A device to choose, in the list that drops below its plate.
+    component DevRow(f: record, base: number = 0) {
+        size: 416, 30
+        prop glow = 0 ~140ms
+        box { from: 0, 0; size: 416, 30; corner: 8; color: #303233; opacity: glow }
+        text f.name { at: 14, 15; anchor: left center; size: 11.5; width: 340; lines: 1; color: mix(#dfe1e3, mint, if(f.current, 1, 0)) }
+        path { at: 392, 11; color: mint; stroke: 1.7; show: f.current
+               move 0, 4; line 3.5, 7.5; line 10, 0 }
+        zone box touch { from: 0, 0; size: 416, 30; corner: 8; cursor: pointer; active: paging > 0.9 }
+        on enter touch { glow: 1 }
+        on leave touch { glow: 0 }
+        on press touch { emit pick_device(f.index + base) }
+    }
+
+    group {
+        show: page == sound
+        let sound.lx = card.x - 228
+        let sound.ty = card.top + 102
+        //  The two plates: k = 0, where it plays; k = 1, where it listens.
+        repeat k in 0..2 {
+            let py = sound.ty + k * 82
+            let val = pick(k, vol_level, mic_level)
+            let off = pick(k, if(sound.muted, 1, 0), if(sound.input_muted, 1, 0))
+            prop dev.glow.$k = 0 ~140ms
+            prop icon.glow.$k = 0 ~140ms
+            box { from: sound.lx, py; size: 456, 74; corner: 14; color: #202021 }
+            ellipse { at: sound.lx + 30, py + 37; radius: 18; color: mix(mix(#21362c, #2b2324, off), mix(#2a4a3c, #3a2828, off), icon.glow.$k) }
+            group {
+                let c = mix(mint, #f0b0a8, off)
+                path { at: sound.lx + 22, py + 31; color: c; show: k == 0
+                       move 0, 3; line 4, 3; line 9, 0; line 9, 11; line 4, 8; line 0, 8; close }
+                arc { at: sound.lx + 33, py + 36.5; radius: 5; span: 110deg; width: 1.5; rotate: 90deg; color: c; opacity: 1 - off; show: k == 0 }
+                box { at: sound.lx + 30, py + 33; size: 7, 12; corner: 3.5; color: c; show: k == 1 }
+                arc { at: sound.lx + 30, py + 35; radius: 6.5; span: 180deg; width: 1.5; rotate: 90deg; color: c; show: k == 1 }
+                line { from: sound.lx + 30, py + 41.5; to: sound.lx + 30, py + 45; width: 1.5; color: c; show: k == 1 }
+                line { from: sound.lx + 20, py + 27; to: sound.lx + 40, py + 47; width: 1.8; color: #e0655a; opacity: off }
+            }
+            text pick(k, "OUTPUT", "INPUT") { at: sound.lx + 60, py + 17; anchor: left center; size: 9.5; weight: 700; color: #8b8f95 }
+            text sound.out_name { at: sound.lx + 60, py + 33; anchor: left center; size: 12.5; weight: 500; width: 330; lines: 1; color: mix(ink, #ffffff, dev.glow.$k); show: k == 0 }
+            text sound.in_name { at: sound.lx + 60, py + 33; anchor: left center; size: 12.5; weight: 500; width: 330; lines: 1; color: mix(ink, #ffffff, dev.glow.$k); show: k == 1 }
+            //  The ▾ that says there are others to choose.
+            path { at: sound.lx + 432, py + 31; color: mix(#8b8f95, ink, dev.glow.$k); stroke: 1.6; show: pick(k, outputs.count, mics.count) > 1
+                   move 0, 0; line 5, 5; line 10, 0 }
+            box { from: sound.lx + 60, py + 51; size: 330, 6; corner: 3; color: #2f3031 }
+            box { from: sound.lx + 60, py + 51; size: 330 * val, 6; corner: 3; color: mix(mint, #6b7280, off) }
+            ellipse { at: sound.lx + 60 + 330 * val, py + 54; radius: 7; color: #f0ece4 }
+            text "{val * 100, 0}%" { at: sound.lx + 444, py + 54; anchor: right center; size: 11; weight: 500; color: mix(mint, #8b8f95, off) }
+            zone box dev.$k { from: sound.lx + 56, py + 20; size: 390, 24; corner: 8; cursor: pointer; active: page == sound and paging > 0.9 and sound.choosing == 0 and pick(k, outputs.count, mics.count) > 1 }
+            zone box icon.$k { at: sound.lx + 30, py + 37; size: 38, 38; corner: 19; cursor: pointer; active: page == sound and paging > 0.9 and sound.choosing == 0; label: pick(k, "Mute the output", "Mute the input") }
+            zone box level.$k { from: sound.lx + 52, py + 44; size: 346, 22; cursor: pointer; active: page == sound and paging > 0.9 and sound.choosing == 0; label: pick(k, "Output volume", "Input volume"); value: "{val * 100, 0}%" }
+            on enter dev.$k { dev.glow.$k: 1 }
+            on leave dev.$k { dev.glow.$k: 0 }
+            on enter icon.$k { icon.glow.$k: 1 }
+            on leave icon.$k { icon.glow.$k: 0 }
+            on press dev.$k { sound.choosing = k + 1 }
+        }
+        on press icon.0 { emit mute_output }
+        on press icon.1 { emit mute_mic }
+        on press level.0 { emit set_volume(clamp((pointer.x - (card.x - 168)) / 330, 0, 1)) }
+        on drag level.0 { emit set_volume(clamp((pointer.x - (card.x - 168)) / 330, 0, 1)) }
+        on press level.1 { emit set_mic(clamp((pointer.x - (card.x - 168)) / 330, 0, 1)) }
+        on drag level.1 { emit set_mic(clamp((pointer.x - (card.x - 168)) / 330, 0, 1)) }
+
+        //  What is playing.
+        let sound.ay = sound.ty + 172
+        text "PLAYING" { at: sound.lx, sound.ay; anchor: left center; size: 9.5; weight: 700; color: #8b8f95 }
+        text sound.more { at: sound.lx + 456, sound.ay; anchor: right center; size: 10; color: #8b8f95 }
+        zone box apps_wheel { from: sound.lx, sound.ay + 10; size: 456, 132; active: page == sound and paging > 0.9 and sound.choosing == 0; label: "Apps"; role: list }
+        on scroll apps_wheel { emit sound_scroll(wheel) }
+        column app_list {
+            at: sound.lx, sound.ay + 12
+            gap: 4
+            for a in sound_apps { AppRow(a) }
+        }
+        text "Nothing is playing right now." { at: card.x, sound.ay + 50; anchor: center; size: 11.5; color: #8b8f95; show: sound_apps.count < 1 }
+
+        //  The devices to choose, dropped below their plate; pressing
+        //  elsewhere folds them away.
+        group {
+            show: sound.choosing > 0
+            let dy = sound.ty + 64 + (sound.choosing - 1) * 82
+            let n = if(sound.choosing == 1, outputs.count, mics.count)
+            zone box choose_away { from: sound.lx, sound.ty; size: 456, 310; active: sound.choosing > 0 }
+            box { from: sound.lx + 36, dy + 2; size: 424, n * 32 + 10; corner: 12; color: #000000; opacity: 35% }
+            box { from: sound.lx + 32, dy - 2; size: 424, n * 32 + 10; corner: 12; color: #262728 }
+            box { from: sound.lx + 32, dy - 2; size: 424, n * 32 + 10; corner: 12; stroke: 1; color: ink; opacity: 10% }
+            column {
+                at: sound.lx + 36, dy + 3
+                gap: 2
+                show: sound.choosing == 1
+                for a in outputs { DevRow(a) }
+            }
+            column {
+                at: sound.lx + 36, dy + 3
+                gap: 2
+                show: sound.choosing == 2
+                for a in mics { DevRow(a, base: outputs.count) }
+            }
+        }
+        on press choose_away { sound.choosing = 0 }
+        on pick_device { sound.choosing = 0 }
+    }
+    on key Escape while page == sound and sound.choosing > 0 { sound.choosing = 0 }
+
+}

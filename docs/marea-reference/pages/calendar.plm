@@ -1,0 +1,181 @@
+// Marea's scene, in pieces: the calendar. marea.plm includes it.
+part Calendar {
+    // ── the calendar ─────────────────────────────────────
+    //  Every day is a drop, and it fills with water as it fills with
+    //  things: one event a third, three and it is full. Today has a
+    //  ring of light; the chosen one grows and sends a ripple out.
+    //  Changing month, the days come in like a wave, each row a little
+    //  behind the one above. Writing an event, a drop flies from the
+    //  field to its day and splashes in it.
+    prop cal.shift = 0 ~520ms
+    prop cal.ripple = 1 ~650ms
+    prop cal.fall = 0 ~16ms
+    prop cal.jig = 0 ~lively
+    on cal_went_next { cal.shift: 1 ~16ms; cal.shift: 0 ~560ms after 16ms }
+    on cal_went_prev { cal.shift: -1 ~16ms; cal.shift: 0 ~560ms after 16ms }
+    on cal_pick { cal.ripple: 0 ~16ms; cal.ripple: 1 ~650ms after 16ms }
+    on cal_added { cal.fall: 0 ~16ms; cal.fall: 1 ~620ms after 16ms; play happy }
+    on change cal.fall > 0.97 while cal.fall > 0.97 { emit cal_splash; impulse cal.jig 7 }
+    on change page while page == calendar { focus cal_new }
+    let cal.cw = 31
+    let cal.ch = 34
+    let cal.gx = card.x - 212
+    let cal.gy = card.top + 152
+    let cal.sx = cal.gx + mod(cal.sel, 7) * cal.cw
+    let cal.sy = cal.gy + floor(cal.sel / 7) * cal.ch
+    group {
+        show: page == calendar
+        //  Back a month, today, forward a month.
+        prop cal.prev.glow = 0 ~140ms
+        prop cal.next.glow = 0 ~140ms
+        prop cal.today.glow = 0 ~140ms
+        path { at: card.x + 92, card.top + 32; color: ink; stroke: 1.8; opacity: 55% + cal.prev.glow * 45%
+               move 5, 0; line 0, 5; line 5, 10 }
+        box { at: card.x + 128, card.top + 37; size: 46, 24; corner: 12; color: ink; opacity: 8% + cal.today.glow * 10% }
+        text "Today" { at: card.x + 128, card.top + 37; anchor: center; size: 11; weight: 500; color: ink }
+        path { at: card.x + 160, card.top + 32; color: ink; stroke: 1.8; opacity: 55% + cal.next.glow * 45%
+               move 0, 0; line 5, 5; line 0, 10 }
+        zone box cal_prev_btn { at: card.x + 95, card.top + 37; size: 28, 28; corner: 14; cursor: pointer; active: page == calendar and paging > 0.9; label: "Previous month" }
+        zone box cal_today_btn { at: card.x + 128, card.top + 37; size: 46, 26; corner: 13; cursor: pointer; active: page == calendar and paging > 0.9 }
+        zone box cal_next_btn { at: card.x + 163, card.top + 37; size: 28, 28; corner: 14; cursor: pointer; active: page == calendar and paging > 0.9; label: "Next month" }
+        on enter cal_prev_btn { cal.prev.glow: 1 }
+        on leave cal_prev_btn { cal.prev.glow: 0 }
+        on enter cal_next_btn { cal.next.glow: 1 }
+        on leave cal_next_btn { cal.next.glow: 0 }
+        on enter cal_today_btn { cal.today.glow: 1 }
+        on leave cal_today_btn { cal.today.glow: 0 }
+        on press cal_prev_btn { emit cal_prev }
+        on press cal_next_btn { emit cal_next }
+        on press cal_today_btn { emit cal_today }
+
+        // ── her sky: where you are, and what it is like there. Pressed,
+        //  it becomes a field to write another city; Enter keeps it.
+        zone box sky_strip { at: card.x, card.top + 86; size: 456, 36; corner: 12; cursor: pointer; active: page == calendar and paging > 0.9 and not sky.editing }
+        box { at: card.x, card.top + 86; size: 456, 36; corner: 12; color: mix(#1d2124, #232a2c, sky_strip.hover) }
+        box { at: card.x, card.top + 86; size: 456, 36; corner: 12; stroke: 1; color: mint; opacity: if(sky.editing, 60%, 0%) }
+        group {
+            show: not sky.editing
+            //  A little sign of what it is like: the sun, or the moon at night;
+            //  a cloud if it is covered, with drops or flakes under it; a bolt.
+            let sg.x = card.x - 204
+            let sg.y = card.top + 86
+            let sg.cloudy = wx.cloud > 0.4 or wx.rain > 0.05 or wx.snow > 0.05 or wx.fog > 0.5
+            group {
+                glow: 5, 80%, #ffd36b
+                ellipse { at: sg.x, sg.y; radius: 6; color: #ffd36b; show: not sg.cloudy and sky.day > 0.3 }
+            }
+            ellipse { at: sg.x, sg.y; radius: 6; color: #e8ecf5; show: not sg.cloudy and sky.day <= 0.3 }
+            ellipse { at: sg.x + 2.8, sg.y - 1.8; radius: 5; color: #1d2124; show: not sg.cloudy and sky.day <= 0.3 }
+            body {
+                color: mix(#dfe3e8, #9aa3af, max(wx.rain, wx.storm))
+                opacity: if(sg.cloudy, 1, 0)
+                ellipse { at: sg.x - 4.5, sg.y - 1; radius: 4.5 }
+                ellipse { at: sg.x + 1, sg.y - 4; radius: 5.5; blend: 3 }
+                ellipse { at: sg.x + 6, sg.y; radius: 4; blend: 3 }
+                box { at: sg.x + 0.5, sg.y + 1.5; size: 17, 5; corner: 2.5; blend: 3 }
+            }
+            line { from: sg.x - 4, sg.y + 7; to: sg.x - 5.2, sg.y + 10.5; width: 1.4; color: #a8d8ff; show: wx.rain > 0.05 }
+            line { from: sg.x + 1, sg.y + 7; to: sg.x - 0.2, sg.y + 10.5; width: 1.4; color: #a8d8ff; show: wx.rain > 0.05 }
+            line { from: sg.x + 6, sg.y + 7; to: sg.x + 4.8, sg.y + 10.5; width: 1.4; color: #a8d8ff; show: wx.rain > 0.05 }
+            ellipse { at: sg.x - 3, sg.y + 9; radius: 1.2; color: #ffffff; show: wx.snow > 0.05 }
+            ellipse { at: sg.x + 3.5, sg.y + 9.5; radius: 1.2; color: #ffffff; show: wx.snow > 0.05 }
+            path { at: sg.x + 1, sg.y + 5; color: #ffd36b; show: wx.storm > 0.5
+                   move 1, 0; line -1.5, 4; line 1, 4; line -1, 8; line 3, 3; line 0.5, 3; line 2, 0; close }
+            text wx.place { at: card.x - 186, card.top + 86; anchor: left center; size: 12.5; weight: 600; width: 150; lines: 1; color: ink; show: wx.ok }
+            text "{wx.temp, 0}°" { at: card.x - 20, card.top + 86; anchor: left center; size: 17; weight: 600
+                                   color: mix(mix(ink, #a8d8ff, wx.cold), #ffbb85, wx.heat); show: wx.ok }
+            text wx.summary { at: card.x + 24, card.top + 86; anchor: left center; size: 11.5; width: 120; lines: 1; color: faint; show: wx.ok }
+            text "{wx.hi, 0}° · {wx.lo, 0}°" { at: card.x + 214, card.top + 86; anchor: right center; size: 11; color: faint; opacity: 75%; show: wx.ok }
+            text "Your city, for her sky" { at: card.x - 186, card.top + 86; anchor: left center; size: 12; color: faint; show: not wx.ok }
+        }
+        group {
+            show: sky.editing
+            input city_q { at: card.x - 206, card.top + 86; width: 400; size: 13; color: ink; placeholder: "A city · Enter keeps it"; selection: #2f5f52 }
+        }
+        on press sky_strip {
+            sky.editing = true
+            focus city_q
+        }
+        on submit city_q { sky.editing = false }
+        on key Escape while sky.editing { sky.editing = false }
+
+        //  The weekdays.
+        repeat w in 1..8 {
+            text cal.wd.$w { at: cal.gx + (w - 1) * cal.cw, card.top + 124; anchor: center; size: 10; weight: 600; color: faint; opacity: 60% }
+        }
+        //  The days.
+        repeat k in 0..42 {
+            let row = floor(k / 7)
+            let wave = cal.shift * 80 * (1 + row * 0.22)
+            let dx = cal.gx + mod(k, 7) * cal.cw + wave
+            let calendar.dy = cal.gy + row * cal.ch
+            prop cal.pick.$k = 0 ~lively
+            follow cal.pick.$k = if(cal.sel == k, 1, 0)
+            prop cal.lvl.$k = 0 ~calm
+            follow cal.lvl.$k = min(cal.n.$k, 3) / 3 * 0.85
+            let grow = 1 + 0.12 * cal.pick.$k + cal.jig * 0.02 * cal.pick.$k
+            group {
+                opacity: (35% + 65% * if(cal.in.$k, 1, 0)) * clamp(1 - abs(cal.shift) * 1.3, 0, 1)
+                pivot: dx, calendar.dy
+                scale: grow, grow
+                ellipse { at: dx, calendar.dy; radius: 13; color: mix(#24282c, #2f3a37, cal.pick.$k) }
+                //  Its water: a level inside the drop, with a lighter surface.
+                group {
+                    clip inset 0 ellipse { at: dx, calendar.dy; radius: 13 }
+                    box { from: dx - 13, calendar.dy + 13 - 26 * cal.lvl.$k; size: 26, 26 * cal.lvl.$k; color: mint; opacity: 50% }
+                    box { from: dx - 13, calendar.dy + 13 - 26 * cal.lvl.$k; size: 26, 1.5; color: #ffffff; opacity: 45% * if(cal.lvl.$k > 0.02, 1, 0) }
+                }
+                //  Today: a ring of light.
+                group {
+                    glow: 6, 70%, mint
+                    ellipse { at: dx, calendar.dy; radius: 14.5; stroke: 1.6; color: mint; show: cal.today.$k }
+                }
+                ellipse { at: dx, calendar.dy; radius: 13.5; stroke: 1.6; color: ink; opacity: cal.pick.$k * 90% }
+                text number(cal.day.$k, 0) { at: dx, calendar.dy; anchor: center; size: 12; weight: 500 + 200 * if(cal.today.$k, 1, 0); color: ink }
+            }
+            zone box cal_cell.$k { at: dx, calendar.dy; size: 30, 30; corner: 15; cursor: pointer; active: page == calendar and paging > 0.9 }
+            on press cal_cell.$k { emit cal_pick(k) }
+        }
+        //  The ripple from the chosen day.
+        ellipse { at: cal.sx, cal.sy; radius: 14 + 30 * cal.ripple; stroke: 1.5; color: mint; opacity: (1 - cal.ripple) * 70% }
+        particles { at: cal.sx, cal.sy - 6; count: 18; life: 0.3s .. 0.6s; speed: 40 .. 110; direction: -90deg; spread: 120deg
+                    gravity: 0, 420; size: 3, 1; colors: #ffffff, mint; opacity: 90%, 0%; burst: cal_splash }
+
+        //  The chosen day, big, and what it holds.
+        text cal.sel_day { at: card.x + 14, card.top + 138; anchor: left center; size: 34; weight: 700; color: ink }
+        text cal.sel_title { at: card.x + 66, card.top + 130; anchor: left center; size: 12; weight: 500; width: 150; lines: 1; color: ink }
+        text cal.sel_sub { at: card.x + 66, card.top + 148; anchor: left center; size: 10.5; width: 150; lines: 1; color: faint; opacity: 75% }
+        component CalRow(e: record, drop: event) {
+            size: 212, 30
+            prop glow = 0 ~140ms
+            zone box touch { from: 0, 0; size: 212, 30; corner: 9 }
+            box { from: 0, 0; size: 212, 30; corner: 9; color: #23272b; opacity: 70% + glow * 30% }
+            box { from: 5, 8; size: 3, 14; corner: 1.5; color: #9ed6bd }
+            text e.time { at: 15, 15; anchor: left center; size: 11; weight: 600; width: 44; lines: 1; color: #9ed6bd }
+            text e.title { at: 62, 15; anchor: left center; size: 12; width: 124; lines: 1; color: #f5f7f5 }
+            line { from: 194, 11; to: 202, 19; width: 1.6; color: #f5f7f5; opacity: 25% + glow * 60% }
+            line { from: 202, 11; to: 194, 19; width: 1.6; color: #f5f7f5; opacity: 25% + glow * 60% }
+            zone box gone { at: 198, 15; size: 24, 24; corner: 12; cursor: pointer; active: page == calendar }
+            on enter touch { glow: 1 }
+            on leave touch { glow: 0 }
+            on press gone { emit drop(e.index) }
+        }
+        column cal_list ~quick {
+            at: card.x + 8, card.top + 172
+            gap: 6
+            for e in cal_events { CalRow(e, drop: cal_delete) }
+        }
+        text "Nothing yet." { at: card.x + 118, card.top + 220; anchor: center; size: 11.5; color: faint; opacity: 60%; show: cal_events.count < 1 }
+
+        //  Writing one: the field, and the drop it becomes.
+        box { at: card.x, card.top + 380; size: 456, 44; corner: 14; color: mix(#202122, ink, glassiness); opacity: mix(1, veil, glassiness) }
+        ellipse { at: card.x - 206, card.top + 380; radius: 6; color: mint; opacity: 80% }
+        input cal_new { at: card.x - 190, card.top + 380; width: 380; size: 13; color: ink; placeholder: "New event: 10:30 Dentist"; selection: #2f5f52 }
+        text "Start with a time, or leave it for the whole day. Enter saves it." { at: card.x, card.top + 414; anchor: center; size: 10; color: faint; opacity: 55% }
+        let fall.x0 = card.x - 206
+        let fall.y0 = card.top + 380
+        ellipse { at: fall.x0 + (cal.sx - fall.x0) * cal.fall, fall.y0 + (cal.sy - fall.y0) * cal.fall - 110 * sin(cal.fall * 180)
+                  radius: 5.5; color: mint; show: cal.fall > 0.01 and cal.fall < 0.97 }
+    }
+
+}

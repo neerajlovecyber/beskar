@@ -1,0 +1,73 @@
+// Marea's scene, in pieces: the wardrobe. marea.plm includes it.
+part Wardrobe {
+    // ── the wardrobe ─────────────────────────────────────
+    //  The pieces there are, one per spot. What is seen of each one is the
+    //  real piece —the same SVG, not an icon of it—, so the day you draw
+    //  another one it appears here without touching this.
+    group {
+        show: page == wardrobe
+        text "Each piece chases in its own way: the hat rests, the glasses stay stuck on, the mug keeps her company and the headphones go on air when the screen is shared." {
+            at: card.x - 228, card.top + 121; anchor: left center; size: 11.5; width: 456; lines: 2; color: #8b8f95 }
+        repeat a in 1..5 {
+            let ax = card.x - 171 + (a - 1) * 114
+            prop piece_glow.$a = 0 ~140ms
+            box { at: ax, card.top + 191; size: 102, 96; corner: 14
+                  color: mix(#202021, #262728, piece_glow.$a) }
+            //  The mint outline of the one she is wearing, as on the cards.
+            box { at: ax, card.top + 191; size: 102, 96; corner: 14; stroke: 1; color: mint
+                  opacity: worn.$a }
+            zone box piece_zone.$a { at: ax, card.top + 191; size: 102, 96; corner: 14; cursor: pointer
+                                active: page == wardrobe and paging > 0.9 }
+            on enter piece_zone.$a { piece_glow.$a: 1 }
+            on leave piece_zone.$a { piece_glow.$a: 0 }
+        }
+        figure hat      { at: card.x - 171, card.top + 177; size: 62, 46 }
+        figure glasses  { at: card.x - 57,  card.top + 177; size: 54, 25 }
+        figure mug      { at: card.x + 57,  card.top + 177; size: 40, 40 }
+        figure phones   { at: card.x + 171, card.top + 177; size: 52, 52 }
+        text "Hat"      { at: card.x - 171, card.top + 221; anchor: center; size: 12; color: ink }
+        text "Glasses"  { at: card.x - 57,  card.top + 221; anchor: center; size: 12; color: ink }
+        text "Mug"      { at: card.x + 57,  card.top + 221; anchor: center; size: 12; color: ink }
+        text "Headphones" { at: card.x + 171, card.top + 221; anchor: center; size: 12; color: ink }
+        text "rests"     { at: card.x - 171, card.top + 235; anchor: center; size: 10; color: #8b8f95 }
+        text "stuck on"  { at: card.x - 57,  card.top + 235; anchor: center; size: 10; color: #8b8f95 }
+        text "tags along" { at: card.x + 57, card.top + 235; anchor: center; size: 10; color: #8b8f95 }
+        text "on air"    { at: card.x + 171, card.top + 235; anchor: center; size: 10; color: #8b8f95 }
+        on press piece_zone.1 { toggle wears.hat }
+        on press piece_zone.2 { toggle wears.glasses }
+        on press piece_zone.3 { toggle wears.mug }
+        on press piece_zone.4 { toggle wears.phones }
+
+        //  And the wallpaper: the one on now, small, and pressing it
+        //  opens the page where a new one is picked.
+        text "WALLPAPER" { at: card.x - 228, card.top + 284; anchor: left center; size: 9.5; weight: 700; color: #8b8f95 }
+        prop wallrow_glow = 0 ~140ms
+        box { from: card.x - 228, card.top + 298; size: 456, 116; corner: 14
+              color: mix(#202021, #262728, wallrow_glow) }
+        for w in wallnow {
+            body {
+                color: #1a2a26
+                shadow: 0, 3 + 3 * wallrow_glow, 10, 30%
+                box { from: card.x - 216, card.top + 311; size: 160, 90; corner: 10 }
+            }
+            group {
+                clip box { from: card.x - 216, card.top + 311; size: 160, 90; corner: 10 }
+                image w.thumb { at: card.x - 216, card.top + 311; size: 160, 90; show: w.ready }
+                //  A ring of water crosses it while the pointer is over it.
+                ellipse { at: card.x - 136, card.top + 356; radius: 12 + 90 * wallrow_glow; stroke: 1.5
+                          color: #e8f6ff; opacity: 50% * wallrow_glow * (1 - wallrow_glow * 0.6) }
+            }
+            box { from: card.x - 216, card.top + 311; size: 160, 90; corner: 10; stroke: 1.5; color: mint }
+            text w.name { at: card.x - 40, card.top + 342; anchor: left center; size: 13; weight: 500; width: 230; lines: 1; color: ink }
+        }
+        text "Pick another one: the tide brings it" { at: card.x - 40, card.top + 364; anchor: left center; size: 11; width: 230; lines: 2; color: #8b8f95 }
+        path { at: card.x + 206, card.top + 356; stroke: 2; color: mix(#8b8f95, mint, wallrow_glow)
+               move -3 - 3 * wallrow_glow, -6; line 3 - 3 * wallrow_glow, 0; line -3 - 3 * wallrow_glow, 6 }
+        zone box wallrow_zone { from: card.x - 228, card.top + 298; size: 456, 116; corner: 14; cursor: pointer
+                                active: page == wardrobe and paging > 0.9 }
+        on enter wallrow_zone { wallrow_glow: 1 }
+        on leave wallrow_zone { wallrow_glow: 0 }
+        on press wallrow_zone { emit show_walls }
+    }
+
+}

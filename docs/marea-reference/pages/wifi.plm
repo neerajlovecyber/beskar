@@ -1,0 +1,189 @@
+// Marea's scene, in pieces: Wi-Fi. marea.plm includes it.
+part Wifi {
+    // ── Wi-Fi: where she is connected, and the rest around ──
+    //  On top, the connection in use, large: its strength in arcs, how
+    //  good it is said in words, and what can be done with it —share it
+    //  (a code for the phone, and its password) or leave it—. Below, the
+    //  networks in range, the strongest first, each with what it takes:
+    //  a padlock if it asks for a password, «Saved» if it is known, and
+    //  on hover, a way to forget it. With the radio off, a way to turn it on.
+    //  `wifi.state`: 0 off · 1 on, not connected · 2 connected · 3 by cable · 4 joining.
+    component WifiRow(r: record) {
+        size: 456, 36
+        prop glow = 0 ~140ms
+        prop forget.glow = 0 ~140ms
+        let on = if(asking < 0 and not wifi.sharing, 1, 0)
+        zone box touch { from: 0, 0; size: 456, 36; corner: 10; cursor: pointer; active: on > 0.5 and paging > 0.9 }
+        box { from: 0, 0; size: 456, 36; corner: 10; color: mix(#202021, #262728, glow) }
+        repeat a in 1..4 {
+            arc { at: 20, 25; radius: 3 + a * 3.2; span: 110deg; width: 1.7; color: ink
+                  opacity: 18% + 82% * if(r.signal > (a - 1) * 0.25, 1, 0) }
+        }
+        ellipse { at: 20, 26; radius: 1.7; color: ink }
+        text r.name { at: 44, 18; anchor: left center; size: 12.5; width: 250; lines: 1; color: mix(#dfe1e3, #f6f6f5, glow) }
+        //  The padlock: it asks for a password the first time.
+        group {
+            show: r.secure and not r.known
+            box { at: 384, 20; size: 9, 7; corner: 2; color: #8b8f95 }
+            arc { at: 384, 17; radius: 3; span: 180deg; width: 1.4; color: #8b8f95 }
+        }
+        text "{r.percent, 0}%" { at: 444, 18; anchor: right center; size: 10.5; color: #8b8f95 }
+        //  Known: «Saved», which on hover becomes the way to forget it.
+        text "Saved" { at: 370, 18; anchor: right center; size: 10.5; color: #8b8f95; opacity: (1 - glow) * if(r.known, 1, 0) }
+        group {
+            show: r.known
+            opacity: glow
+            box { at: 336, 18; size: 64, 24; corner: 8; color: mix(#2b2324, #3a2828, forget.glow) }
+            text "Forget" { at: 336, 18; anchor: center; size: 10.5; weight: 600; color: mix(#d9a19a, #f0b0a8, forget.glow) }
+        }
+        zone box forget { at: 336, 18; size: 64, 24; corner: 8; cursor: pointer; active: on > 0.5 and glow > 0.5 and paging > 0.9; show: r.known }
+        on enter touch { glow: 1 }
+        on leave touch { glow: 0 }
+        on enter forget { forget.glow: 1 }
+        on leave forget { forget.glow: 0 }
+        on press touch { emit pick_network(r.index) }
+        on press forget { emit wifi_forget(r.index) }
+    }
+    //  A pill of the hero: a button with a word, lit on hover.
+    component Pill(label: text, press: event, w: number = 96, strong: number = 0, warn: number = 0) {
+        size: w, 30
+        prop glow = 0 ~140ms
+        box { from: 0, 0; size: w, 30; corner: 10
+              color: mix(mix(mix(#2a2b2c, #333536, glow), mix(mint, #8ff0cc, glow), strong), mix(#3a2626, #4a2d2d, glow), warn) }
+        text label { at: w / 2, 15; anchor: center; size: 11.5; weight: 600
+                     color: mix(mix(ink, #0c0f12, strong), #f0b0a8, warn) }
+        zone box touch { from: 0, 0; size: w, 30; corner: 10; cursor: pointer; active: paging > 0.9 }
+        on enter touch { glow: 1 }
+        on leave touch { glow: 0 }
+        on press touch { emit press }
+    }
+
+    group {
+        show: page == wifi
+        let lx = card.x - 228
+        let hy = card.top + 102
+        let wired = wifi.state == 3
+        let linked = if(wifi.state == 2 or wifi.state == 3, 1, 0)
+        //  The hero: the connection there is, or why there is none.
+        box { from: lx, hy; size: 456, 78; corner: 14; color: mix(#202021, #1a241f, linked) }
+        box { from: lx, hy; size: 456, 78; corner: 14; stroke: 1; color: mint; opacity: linked * 30% }
+        //  Its strength in four arcs, large; the cable, a plug.
+        group {
+            show: not wired
+            opacity: if(wifi.state == 0, 35%, 100%)
+            repeat a in 1..5 {
+                arc { at: lx + 40, hy + 54; radius: 2 + a * 5.2; span: 110deg; width: 2.6; color: mix(ink, mint, linked)
+                      opacity: 15% + 85% * if(net.strength > (a - 1) * 25 and wifi.state >= 2, 1, 0) }
+            }
+            ellipse { at: lx + 40, hy + 56; radius: 2.6; color: mix(ink, mint, linked) }
+            line { from: lx + 22, hy + 22; to: lx + 58, hy + 58; width: 2.2; color: #e0655a; show: wifi.state == 0 }
+        }
+        group {
+            show: wired
+            box { at: lx + 40, hy + 42; size: 22, 16; corner: 4; color: mint }
+            box { at: lx + 34, hy + 30; size: 3, 9; corner: 1.5; color: mint }
+            box { at: lx + 46, hy + 30; size: 3, 9; corner: 1.5; color: mint }
+            box { at: lx + 40, hy + 56; size: 4, 12; corner: 2; color: mint }
+        }
+        //  Joining: a ring of mint that breathes around the arcs.
+        ellipse { at: lx + 40, hy + 40; radius: 27; stroke: 1.6; color: mint
+                  opacity: if(wifi.state == 4, 30% + 40% * sin(join.t * 360), 0) }
+        text wifi.title { at: lx + 82, hy + 30; anchor: left center; size: 15; weight: 600; color: ink
+                          width: if(wifi.state == 2, 140, 250); lines: 1 }
+        text wifi.status { at: lx + 82, hy + 51; anchor: left center; size: 11; color: mix(#8b8f95, mint, linked * 0.6)
+                           width: if(wifi.state == 2, 140, 250); lines: 1 }
+        row {
+            at: lx + 444, hy + 39
+            anchor: right middle
+            gap: 8
+            show: wifi.state == 2
+            Pill("Share", wifi_share, w: 92)
+            Pill("Disconnect", wifi_disconnect, w: 100, warn: 1)
+        }
+        row {
+            at: lx + 444, hy + 39
+            anchor: right middle
+            show: wifi.state == 0
+            Pill("Turn on", wifi_power, w: 96, strong: 1)
+        }
+        row {
+            at: lx + 444, hy + 39
+            anchor: right middle
+            show: wifi.state == 4
+            Pill("Cancel", wifi_disconnect, w: 84)
+        }
+
+        //  The networks in range, below; the wheel goes through them.
+        let ly = hy + 96
+        group {
+            show: wifi.state != 0 and not wifi.sharing
+            opacity: 1 - ask.in
+            text "NEARBY" { at: lx, ly; anchor: left center; size: 9.5; weight: 700; color: #8b8f95 }
+            //  Look again: an arc that turns while it looks.
+            prop rescan.glow = 0 ~140ms
+            arc { at: lx + 444, ly; radius: 5.5; span: 280deg; width: 1.5; rotate: wifi.spin * 360; color: mix(#8b8f95, mint, max(rescan.glow, if(wifi.scanning, 1, 0))) }
+            text pick(wifi.scanning, "Look again", "Looking…") { at: lx + 432, ly; anchor: right center; size: 10.5; color: mix(#8b8f95, mint, max(rescan.glow, if(wifi.scanning, 1, 0))) }
+            zone box rescan_btn { at: lx + 400, ly; size: 100, 22; corner: 11; cursor: pointer; active: page == wifi and paging > 0.9 and asking < 0 }
+            on enter rescan_btn { rescan.glow: 1 }
+            on leave rescan_btn { rescan.glow: 0 }
+            on press rescan_btn { emit wifi_rescan }
+            //  The wheel's zone goes BEFORE the rows: the last declared is
+            //  the one on top, and it would take their presses.
+            zone box wifi_wheel { from: lx, ly + 12; size: 456, 200; active: page == wifi and paging > 0.9; label: "Networks"; role: list }
+            on scroll wifi_wheel { emit wifi_scroll(wheel) }
+            column wifi_list {
+                at: lx, ly + 14
+                gap: 4
+                for r in networks { WifiRow(r) }
+            }
+            text "Looking for networks…" { at: card.x, ly + 60; anchor: center; size: 11.5; color: #8b8f95
+                                           show: networks.count < 1 }
+            //  More than fit: a thin bar on the right says where you are.
+            box { from: lx + 459, ly + 14 + 190 * wifi.offset / max(1, wifi.total); size: 2.5, 190 * min(1, 5 / max(1, wifi.total)); corner: 1.25; color: ink; opacity: if(wifi.total > 5, 25%, 0) }
+        }
+        text "Turn it on to see the networks around you." { at: card.x, ly + 60; anchor: center; size: 11.5; color: #8b8f95
+                                                            show: wifi.state == 0 }
+
+        //  Its password, asked for in the list's place.
+        group {
+            show: asking >= 0
+            opacity: clamp(ask.in * 1.4, 0, 1)
+            move: 0, (1 - ask.in) * 8
+            box { from: lx, ly - 8; size: 456, 112; corner: 14; color: #1f2021 }
+            box { from: lx, ly - 8; size: 456, 112; corner: 14; stroke: 1.2; color: mint; opacity: 35% }
+            text "Password for «{ask.name}»" { at: lx + 16, ly + 14; anchor: left center; size: 12; weight: 500; color: ink; width: 420; lines: 1 }
+            box { from: lx + 16, ly + 32; size: 424, 34; corner: 9; color: #141415 }
+            input wifi_pw { at: lx + 28, ly + 49; width: 400; size: 13; color: ink; placeholder: "Password"; secret: true; selection: #2f5f52 }
+            row {
+                at: lx + 440, ly + 86
+                anchor: right middle
+                gap: 8
+                Pill("Cancel", forget_ask, w: 84)
+                Pill("Join", join, w: 84, strong: 1)
+            }
+        }
+
+        //  Shared: a code the phone reads, and the password, to copy.
+        group {
+            show: wifi.sharing
+            box { from: lx, ly - 8; size: 456, 196; corner: 14; color: #1f2021 }
+            box { from: lx + 14, ly + 6; size: 152, 152; corner: 12; color: #f6f6f5; show: wifi.has_qr }
+            for q in wifi_qr { image q.pic { at: lx + 20, ly + 12; size: 140, 140; show: wifi.has_qr } }
+            let wifi.tx = if(wifi.has_qr, lx + 184, lx + 18)
+            text wifi.share_hint { at: wifi.tx, ly + 22; anchor: left center; size: 12; color: ink; width: 250; lines: 2 }
+            text "PASSWORD" { at: wifi.tx, ly + 64; anchor: left center; size: 9.5; weight: 700; color: #8b8f95 }
+            text wifi.password { at: wifi.tx, ly + 88; anchor: left center; size: 16; weight: 600; color: mint; width: 250; lines: 1; selectable: true; selection: #2f5f52 }
+            row {
+                at: wifi.tx, ly + 136
+                anchor: left middle
+                gap: 8
+                Pill("Copy", wifi_copy, w: 84, strong: 1)
+                Pill("Done", wifi_unshare, w: 84)
+            }
+        }
+    }
+    on submit wifi_pw { emit join }
+    on key Escape while page == wifi and asking >= 0 { emit forget_ask }
+    on key Escape while page == wifi and wifi.sharing { emit wifi_unshare }
+
+}
