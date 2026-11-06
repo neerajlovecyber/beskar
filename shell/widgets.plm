@@ -10,8 +10,8 @@ scene MacWidgets {
     }
 
     permissions {
-        services: "clock", "notifications", "notification_history"
-        run: "sh"
+        services: "clock", "notifications", "notifications.*", "notification_history"
+        run: "sh", "curl"
     }
 
     service clock as now { time: text = "--:--"; date: text }
@@ -27,6 +27,8 @@ scene MacWidgets {
     text weather_temp = "24°C"
     text weather_cond = "Partly Cloudy"
     text weather_city = "New Delhi"
+    text weather_icon = "󰖐"
+    text weather_range = "H: –° · L: –°"
     text cal_month = "NOVEMBER"
     text cal_day = "6"
     text cal_dow = "Friday"
@@ -48,6 +50,7 @@ scene MacWidgets {
 
     event toggle
     event clear_notices ->
+    event dismiss_notice ->
     event refresh_stats ->
 
     prop seen = 0 ~quick
@@ -118,9 +121,9 @@ scene MacWidgets {
 
                 text weather_city { at: 14, 14; size: 13; weight: 600; color: ink_c; width: 126; lines: 1 }
                 text weather_temp { at: 14, 34; size: 34; weight: 600; color: ink_c }
-                text "󰖐" { at: 122, 42; anchor: center; size: 28; color: #ff9500 }
+                text weather_icon { at: 122, 42; anchor: center; size: 28; color: #ff9500 }
                 text weather_cond { at: 14, 82; size: 11.5; weight: 500; color: ink_c; width: 126; lines: 1 }
-                text "H: 28° · L: 19°" { at: 14, 102; size: 10.5; color: ink_sub }
+                text weather_range { at: 14, 102; size: 10.5; color: ink_sub }
             }
         }
 
@@ -228,7 +231,10 @@ scene MacWidgets {
                         text "󰂚" { at: 14, 18; size: 14; color: #007aff }
                         text n.app { at: 34, 18; size: 11.5; weight: 600; color: ink_c; width: 200; lines: 1 }
                         text n.title { at: 14, 34; size: 12.5; weight: 600; color: ink_c; width: 290; lines: 1 }
-                        text n.body { at: 14, 49; size: 11; color: ink_sub; width: 290; lines: 1 }
+                        text n.body { at: 14, 49; size: 11; color: ink_sub; width: 270; lines: 1 }
+                        text "×" { at: 304, 16; anchor: center; size: 15; color: ink_sub }
+                        zone box dismiss_hit { at: 304, 16; size: 22, 22; corner: 11; cursor: pointer }
+                        on press dismiss_hit { emit dismiss_notice(n.id) }
                     }
                 }
             }
