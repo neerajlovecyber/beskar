@@ -164,7 +164,6 @@ scene MacTopBar {
             smoke: bar_smoke
             milk: bar_milk
             rim: bar_rim
-            shine: pointer
             refraction: 80%
             dispersion: 40%
             shadow: 0, 2, 14, 30%
