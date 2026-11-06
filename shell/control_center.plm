@@ -90,8 +90,9 @@ scene MacControlCenter {
             glass: glass_amt
             lens: false
             frost: 100%
-            dispersion: 0
-            refraction: 0
+            dispersion: 35%
+            refraction: 75%
+            shine: pointer
             tint: tint_amt
             rim: rim_amt
             shadow: 0, 14, 30, shadow_amt

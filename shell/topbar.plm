@@ -71,6 +71,9 @@ scene MacTopBar {
         frost: 100%
         tint: bar_tint
         rim: bar_rim
+        shine: pointer
+        refraction: 80%
+        dispersion: 40%
         shadow: 0, 4, 16, 25%
 
         // 1. Continuous Top Ceiling Wire: runs along top edge across full display
@@ -84,7 +87,7 @@ scene MacTopBar {
             at: 12 + left_w / 2, 16
             size: left_w, 40
             corner: 16
-            blend: 14
+            blend: 16
         }
 
         // 3. Center Notch: completely envelops center_row, dead-centered
@@ -92,7 +95,7 @@ scene MacTopBar {
             at: screen.width / 2, 16
             size: center_w, 40
             corner: 16
-            blend: 14
+            blend: 16
         }
 
         // 4. Right Notch: completely envelops all tray icons and status controls
@@ -100,7 +103,7 @@ scene MacTopBar {
             at: screen.width - 12 - right_w / 2, 16
             size: right_w, 40
             corner: 16
-            blend: 14
+            blend: 16
         }
     }
 

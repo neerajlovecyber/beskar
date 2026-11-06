@@ -60,8 +60,9 @@ scene MacAppleMenu {
             glass: menu_glass
             lens: false
             frost: 100%
-            dispersion: 0
-            refraction: 0
+            dispersion: 35%
+            refraction: 75%
+            shine: pointer
             tint: menu_tint
             rim: menu_rim
             shadow: 0, 12, 28, menu_shadow

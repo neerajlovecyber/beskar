@@ -49,22 +49,15 @@ scene MacDock {
         tint: dock_tint
         shadow: 0, 8, 24, 30%
         rim: dock_rim
+        shine: pointer
+        refraction: 80%
+        dispersion: 40%
 
         box dock_pill {
             at: screen.width / 2, 40
             size: dock_w, dock_h
             corner: 24
         }
-    }
-
-    // Outer Specular Stroke - Aligned exactly with pill
-    box {
-        at: screen.width / 2, 40
-        size: dock_w, dock_h
-        corner: 24
-        stroke: 1.2
-        color: stroke_c
-        opacity: stroke_op
     }
 
     // Centered Dock Container Layout - Dead Centered in Pill

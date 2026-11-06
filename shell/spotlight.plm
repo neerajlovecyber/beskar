@@ -59,8 +59,9 @@ scene MacSpotlight {
             glass: spot_glass
             lens: false
             frost: 100%
-            dispersion: 0
-            refraction: 0
+            dispersion: 35%
+            refraction: 75%
+            shine: pointer
             tint: spot_tint
             rim: spot_rim
             shadow: 0, 14, 28, spot_shadow
