@@ -333,14 +333,53 @@ end)
 local all_binds, bind_view, boff = {}, {}, 0
 local MAX_BINDS = 9
 
+local KEY_NAMES = {
+    XF86AudioRaiseVolume = "Volume +", XF86AudioLowerVolume = "Volume −", XF86AudioMute = "Mute", XF86AudioMicMute = "Mic mute",
+    XF86MonBrightnessUp = "Brightness +", XF86MonBrightnessDown = "Brightness −",
+    XF86AudioPlay = "Play / Pause", XF86AudioNext = "Next track", XF86AudioPrev = "Previous track", XF86AudioStop = "Stop",
+}
+
 local function pretty_keys(k)
-    k = k:gsub("Mod", "Super"):gsub("Comma", ","):gsub("Period", "."):gsub("Slash", "/"):gsub("Return", "Enter"):gsub("BracketLeft", "["):gsub("BracketRight", "]"):gsub("Print", "PrtSc")
-    k = k:gsub("XF86Audio", ""):gsub("XF86MonBrightness", "Brightness "):gsub("Raise", "Up "):gsub("Lower", "Down ")
-    return (k:gsub("%+", " + "))
+    local parts = {}
+    for part in k:gmatch("[^%+]+") do
+        part = KEY_NAMES[part] or part
+        part = part:gsub("^Mod$", "Super"):gsub("^Comma$", ","):gsub("^Period$", "."):gsub("^Slash$", "/")
+        part = part:gsub("^Return$", "Enter"):gsub("^BracketLeft$", "["):gsub("^BracketRight$", "]"):gsub("^Print$", "PrtSc")
+        part = part:gsub("^Minus$", "−"):gsub("^Equal$", "="):gsub("^Next$", "Page Down"):gsub("^Prior$", "Page Up")
+        parts[#parts + 1] = part
+    end
+    return table.concat(parts, " + ")
 end
+
+-- friendly words for niri actions and for the shell's own `start.sh <command>` binds
+local ACTIONS = {
+    ["consume-or-expel-window-left"] = "Move window into the left column",
+    ["consume-or-expel-window-right"] = "Move window into the right column",
+    ["consume-window-into-column"] = "Stack window into the column",
+    ["expel-window-from-column"] = "Pull window out of the column",
+    ["toggle-window-floating"] = "Float / tile window",
+    ["fullscreen-window"] = "Fullscreen window",
+    ["maximize-column"] = "Maximize column",
+    ["center-column"] = "Centre column",
+    ["center-visible-columns"] = "Centre visible columns",
+    ["switch-preset-column-width"] = "Cycle column width",
+    ["screenshot"] = "Screenshot (choose area)",
+    ["screenshot-screen"] = "Screenshot the screen",
+    ["screenshot-window"] = "Screenshot the window",
+    ["close-window"] = "Close window",
+    ["quit"] = "Quit niri",
+    ["power-off-monitors"] = "Turn monitors off",
+}
+local SHELL_CMDS = {
+    spotlight = "Spotlight", clipboard = "Clipboard history", notifications = "Notification centre", wallpapers = "Wallpapers",
+    settings = "Settings", shortcuts = "Keyboard shortcuts", appswitcher = "App switcher", ["control-center"] = "Control Center",
+    dashboard = "Dashboard", capture = "Screen capture", lock = "Lock screen",
+    ["vol-up"] = "Volume up", ["vol-down"] = "Volume down", mute = "Mute", ["bright-up"] = "Brightness up", ["bright-down"] = "Brightness down",
+}
 
 local function humanize(action)
     local w = action:match("^([%w%-]+)") or action
+    if ACTIONS[w] then return ACTIONS[w] end
     return (w:gsub("%-", " "):gsub("^%l", string.upper))
 end
 
@@ -355,13 +394,21 @@ local function parse_binds(src)
             inside = false
         elseif inside and not t:match("^//") then
             local key, attrs, body = t:match("^([%w_%+]+)%s*(.-)%s*{%s*(.-)%s*}%s*$")
-            if key then
+            -- dms is not part of this shell: its binds ("dms ipc …") do nothing here
+            if key and not body:match('^spawn%s+"dms"') then
                 local title = attrs:match('hotkey%-overlay%-title="([^"]*)"')
                 local what = title
                 if not what then
                     local act = body:gsub(";%s*$", "")
-                    local spawned = act:match('^spawn%s+"[^"]*"%s+"([^"]*)"')
-                    what = spawned and humanize(spawned) or humanize(act)
+                    local cmd, arg = act:match('^spawn%s+"([^"]*)"%s+"([^"]*)"')
+                    if cmd and cmd:find("start%.sh$") and SHELL_CMDS[arg] then
+                        what = SHELL_CMDS[arg]
+                    elseif cmd then
+                        what = humanize(arg or cmd:match("([^/]+)$") or cmd)
+                    else
+                        local one = act:match('^spawn%s+"([^"]*)"')
+                        what = one and ("Open " .. (one:match("([^/]+)$") or one)) or humanize(act)
+                    end
                 end
                 if not map[key] then order[#order + 1] = key end
                 map[key] = what
