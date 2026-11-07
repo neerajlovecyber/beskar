@@ -99,8 +99,10 @@ scene MacNotifications {
         size: 352, r.h
         group {
             show: r.kind == 1
-            box { from: 26, 98; size: 300, 8; corner: 4; color: card_fill; opacity: card_fill_op * 60% }
-            box { from: 14, 92; size: 324, 12; corner: 6; color: card_fill; opacity: card_fill_op }
+            box { from: 28, 96; size: 296, 10; corner: 8; color: card_fill; opacity: card_fill_op * 70% }
+            box { from: 28, 96; size: 296, 10; corner: 8; stroke: 1; color: card_stroke; opacity: card_stroke_op * 70% }
+            box { from: 16, 90; size: 320, 10; corner: 8; color: card_fill; opacity: card_fill_op }
+            box { from: 16, 90; size: 320, 10; corner: 8; stroke: 1; color: card_stroke; opacity: card_stroke_op }
         }
         group {
             show: r.kind < 2
