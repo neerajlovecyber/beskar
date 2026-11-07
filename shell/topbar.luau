@@ -50,6 +50,9 @@ on("panel_open", function(id)
         elseif owner[p.island] == 7 then
             pcall(sys.call, "say", "notifications", "fact banner_on false")      -- a real panel opens: the banner leaves
         end
+        if owner[p.island] == 8 and p.kind ~= 1 then
+            owner[p.island] = nil                                                -- … and so does the volume feedback
+        end
         if p.island == "cp" then
             fact.cp_kind = p.kind or 0
         end
@@ -133,6 +136,88 @@ on("open_cc_wifi", open_island_panel("control_center", 1))
 on("open_cc_bt", open_island_panel("control_center", 2))
 on("open_dashboard", open_island_panel("dashboard"))
 on("open_notifications", open_island_panel("notifications"))
+
+-- ── volume / brightness feedback, inside the centre pill ─────────────────────────────────────
+-- (replaces the floating bezel). It borrows the centre island for a moment: not from the dashboard, but from a
+-- notification banner, which makes way. The level comes from the audio / brightness services, so it shows whatever
+-- changed them (a key, the Control Center slider, another program).
+local OSD_ID = 8
+local OSD_MS = 1500
+local osd_timer = nil
+
+local function osd_release()
+    if osd_timer then
+        cancel(osd_timer)
+        osd_timer = nil
+    end
+    if owner.cp == OSD_ID then
+        owner.cp = nil
+        fact.cp_on = false
+    end
+end
+
+local function osd_show(kind, level, muted)
+    if owner.cp and owner.cp ~= OSD_ID and owner.cp ~= 7 then
+        return                                       -- the dashboard has the island
+    end
+    if owner.cp == 7 then
+        pcall(sys.call, "say", "notifications", "fact banner_on false")
+    end
+    fact.osd_kind = kind
+    fact.osd_level = math.min(1, math.max(0, level or 0))
+    fact.osd_muted = muted == true
+    owner.cp = OSD_ID
+    fact.cp_screen = last_toast_screen or 0
+    fact.cp_kind = 2
+    fact.cp_w = 290
+    fact.cp_h = 0
+    fact.cp_on = true
+    if osd_timer then
+        cancel(osd_timer)
+    end
+    osd_timer = after(OSD_MS, function()
+        osd_timer = nil
+        osd_release()
+    end)
+end
+
+local last_vol, last_mute, last_br = nil, nil, nil
+pcall(sys.watch, "audio", function(a)
+    if a and a.volume ~= nil then
+        local mute = a.muted == true
+        if last_vol ~= nil and (math.abs(a.volume - last_vol) > 0.005 or mute ~= last_mute) then
+            osd_show(0, a.volume, mute)
+        end
+        last_vol, last_mute = a.volume, mute
+    end
+end)
+pcall(sys.watch, "brightness", function(b)
+    if b and b.level ~= nil then
+        if last_br ~= nil and math.abs(b.level - last_br) > 0.005 then
+            osd_show(1, b.level, false)
+        end
+        last_br = b.level
+    end
+end)
+
+on("osd_vol_up", function()
+    pcall(sys.call, "audio.step", 0.05)
+end)
+on("osd_vol_down", function()
+    pcall(sys.call, "audio.step", -0.05)
+end)
+on("osd_vol_mute", function()
+    pcall(sys.call, "audio.mute")
+end)
+on("osd_br_up", function()
+    pcall(sys.call, "brightness.level", math.min(1, (last_br or 0.5) + 0.05))
+end)
+on("osd_br_down", function()
+    pcall(sys.call, "brightness.level", math.max(0.05, (last_br or 0.5) - 0.05))
+end)
+on("osd_popup", function()
+    osd_show(0, last_vol or 0.5, last_mute)
+end)
 
 -- Keep the notification banner on the monitor with the focus: ask niri now and then, tell it when it changes.
 every(2000, function()

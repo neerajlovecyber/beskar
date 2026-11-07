@@ -19,7 +19,7 @@ is named after Apple, and nothing is hard-coded to one machine.
 **The frame** (`shell/topbar.plm`) is a single glass silhouette, so every junction melts into the next:
 
 - **Left island:** the gem button (opens the power menu: About, Settings, Lock, Sleep, Log Out, Restart, Shut Down), a capsule per workspace of the monitor it is on, then the icons of the apps open in the current workspace (the focused one highlighted).
-- **Centre island:** date, time and weather. Click it for the dashboard.
+- **Centre island:** date, time and weather. Click it for the dashboard. It also shows new notifications and the volume / brightness feedback, growing around them.
 - **Right island:** tray apps, Wi-Fi (with signal), Bluetooth while a device is connected, battery, Control
   Center, and the notification bell (with an unread count and a Do Not Disturb slash). Each icon does
   something when clicked.
@@ -41,7 +41,7 @@ is named after Apple, and nothing is hard-coded to one machine.
 | **Settings** | Control Center → Settings | Appearance (dark mode, glass skin, accent colour), displays, sound, Wi-Fi, Bluetooth, wallpaper, about this PC |
 | **Power menu** | the gem button | Grows out of the left island |
 | **Lock screen** | `start.sh lock` | `ext-session-lock`, password checked by PAM |
-| **Also** | | App switcher, screenshot / screen-recording toolbar, volume and brightness popup, session (shut down / restart / log out) dialog |
+| **Also** | | App switcher, screenshot / screen-recording toolbar, session (shut down / restart / log out) dialog |
 
 **One colour system** (`shell/common/theme.plm`): dark mode, three glass skins and seven accent colours reach every
 scene. The accent can follow your wallpaper.

@@ -30,7 +30,7 @@ kill_all() {
 
 check_status() {
     echo "macOS / iNiR Shell Status:"
-    for comp in topbar border spotlight control_center notifications dashboard wallpapers osd settings lock session capture appswitcher clipboard; do
+    for comp in topbar border spotlight control_center notifications dashboard wallpapers settings lock session capture appswitcher clipboard; do
         if pgrep -f "pleamar.*$comp\.plm" >/dev/null 2>&1; then
             echo "  ✔ $comp is RUNNING"
         else
@@ -51,11 +51,11 @@ apply_saved_theme() {
         [ -z "$DM" ] && DM="true"
         [ -z "$SKIN" ] && SKIN="0"
 
-        for comp in topbar border spotlight control_center notifications dashboard wallpapers osd settings session capture appswitcher clipboard; do
+        for comp in topbar border spotlight control_center notifications dashboard wallpapers settings session capture appswitcher clipboard; do
             "$BIN" --say "$comp" "fact dark_mode $DM" >/dev/null 2>&1 || true
             "$BIN" --say "$comp" "fact skin $SKIN" >/dev/null 2>&1 || true
         done
-        for comp in topbar control_center notifications dashboard settings wallpapers spotlight osd clipboard session capture appswitcher lock; do
+        for comp in topbar control_center notifications dashboard settings wallpapers spotlight clipboard session capture appswitcher lock; do
             "$BIN" --say "$comp" "fact accent $ACCENT" >/dev/null 2>&1 || true
             "$BIN" --say "$comp" "fact accent_auto $AUTO" >/dev/null 2>&1 || true
         done
@@ -106,8 +106,6 @@ start_shell() {
     PID_DASH=$!
     setsid "$BIN" --no-hud --scene "$DIR/shell/wallpapers.plm" </dev/null >/tmp/pleamar_wallpapers.log 2>&1 &
     PID_WALL=$!
-    setsid "$BIN" --no-hud --scene "$DIR/shell/osd.plm" </dev/null >/tmp/pleamar_osd.log 2>&1 &
-    PID_OSD=$!
     setsid "$BIN" --no-hud --scene "$DIR/shell/settings.plm" </dev/null >/tmp/pleamar_settings.log 2>&1 &
     PID_SETTINGS=$!
     setsid "$BIN" --no-hud --scene "$DIR/shell/lock.plm" </dev/null >/tmp/pleamar_lock.log 2>&1 &
@@ -121,7 +119,7 @@ start_shell() {
     setsid "$BIN" --no-hud --scene "$DIR/shell/clipboard.plm" </dev/null >/tmp/pleamar_clipboard.log 2>&1 &
     PID_CLIP=$!
 
-    echo "$PID_BAR $PID_BORDER $PID_SPOTLIGHT $PID_CC $PID_WIDGETS $PID_DASH $PID_WALL $PID_OSD $PID_SETTINGS $PID_LOCK $PID_SESSION $PID_CAPTURE $PID_SWITCHER $PID_CLIP" > "$PID_FILE"
+    echo "$PID_BAR $PID_BORDER $PID_SPOTLIGHT $PID_CC $PID_WIDGETS $PID_DASH $PID_WALL $PID_SETTINGS $PID_LOCK $PID_SESSION $PID_CAPTURE $PID_SWITCHER $PID_CLIP" > "$PID_FILE"
     sleep 0.6
 
     apply_saved_theme
@@ -133,7 +131,6 @@ start_shell() {
     echo "  - Control Center: PID $PID_CC"
     echo "  - Apple Menu: PID"
     echo "  - Widgets & Notifications: PID $PID_WIDGETS"
-    echo "  - Bezel OSD (HUD): PID $PID_OSD"
     echo "  - System Settings: PID $PID_SETTINGS"
     echo "  - Wayland Lock Screen: PID $PID_LOCK"
     echo "  - Session Shutdown Dialog: PID $PID_SESSION"
@@ -154,11 +151,11 @@ start_shell() {
     echo "  - $0 notifications   (Toggle Notification Center)"
     echo "  - $0 dashboard       (Toggle the dashboard under the clock)"
     echo "  - $0 wallpapers      (Toggle the wallpaper picker, Super+W)"
-    echo "  - $0 vol-up          (Increase Volume + Bezel OSD)"
-    echo "  - $0 vol-down        (Decrease Volume + Bezel OSD)"
-    echo "  - $0 mute            (Toggle Mute + Bezel OSD)"
-    echo "  - $0 bright-up       (Increase Brightness + Bezel OSD)"
-    echo "  - $0 bright-down     (Decrease Brightness + Bezel OSD)"
+    echo "  - $0 vol-up          (Increase Volume (shown in the centre pill))"
+    echo "  - $0 vol-down        (Decrease Volume (shown in the centre pill))"
+    echo "  - $0 mute            (Toggle Mute (shown in the centre pill))"
+    echo "  - $0 bright-up       (Increase Brightness (shown in the centre pill))"
+    echo "  - $0 bright-down     (Decrease Brightness (shown in the centre pill))"
     echo "  - $0 dark-mode [on|off]"
     echo "  - $0 skin [0|1|2]    (0=Liquid Glass, 1=Light Acrylic, 2=Classic Solid)"
     echo "  - $0 status          (Check shell status)"
@@ -218,27 +215,27 @@ case "$1" in
         "$BIN" --say topbar "emit open_panel 3"
         ;;
     vol-up)
-        "$BIN" --say osd "emit volume_up"
+        "$BIN" --say topbar "emit osd_vol_up"
         ;;
     vol-down)
-        "$BIN" --say osd "emit volume_down"
+        "$BIN" --say topbar "emit osd_vol_down"
         ;;
     mute)
-        "$BIN" --say osd "emit volume_mute"
+        "$BIN" --say topbar "emit osd_vol_mute"
         ;;
     bright-up)
-        "$BIN" --say osd "emit brightness_up"
+        "$BIN" --say topbar "emit osd_br_up"
         ;;
     bright-down)
-        "$BIN" --say osd "emit brightness_down"
+        "$BIN" --say topbar "emit osd_br_down"
         ;;
     osd)
-        "$BIN" --say osd "emit popup"
+        "$BIN" --say topbar "emit osd_popup"
         ;;
     dark-mode)
         VAL="true"
         [ "$2" = "off" ] && VAL="false"
-        for comp in topbar spotlight control_center notifications dashboard wallpapers osd settings session capture; do
+        for comp in topbar spotlight control_center notifications dashboard wallpapers settings session capture; do
             "$BIN" --say "$comp" "fact dark_mode $VAL"
         done
         mkdir -p "$(dirname "$CONFIG_FILE")"
@@ -247,7 +244,7 @@ case "$1" in
         ;;
     skin)
         SKIN_VAL="${2:-0}"
-        for comp in topbar spotlight control_center notifications dashboard wallpapers osd settings session capture; do
+        for comp in topbar spotlight control_center notifications dashboard wallpapers settings session capture; do
             "$BIN" --say "$comp" "fact skin $SKIN_VAL"
         done
         mkdir -p "$(dirname "$CONFIG_FILE")"

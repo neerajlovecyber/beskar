@@ -12,7 +12,7 @@ scene MacCapture {
     }
 
     permissions {
-        services: "clock", "say:topbar", "say:osd"
+        services: "clock", "say:topbar"
         run: "grim", "slurp", "wf-recorder", "wl-copy", "magick", "pkill", "notify-send", "sh"
     }
 

@@ -24,7 +24,7 @@ scene MacTopBar {
     //  What topbar.luau may touch. `run` is only what it needs: niri for the workspace, curl for
     //  the weather, and the dock's apps. Undeclared is nothing.
     permissions {
-        services: "clock", "network", "battery", "window", "tray", "tray.*", "apps", "apps.launch", "say:control_center", "say:spotlight", "say:notifications", "say:dashboard", "say:settings", "say:session", "say:appswitcher", "say:lock", "say:clipboard", "say:wallpapers"
+        services: "clock", "network", "battery", "window", "tray", "tray.*", "apps", "apps.launch", "audio", "audio.*", "brightness", "brightness.*", "say:control_center", "say:spotlight", "say:notifications", "say:dashboard", "say:settings", "say:session", "say:appswitcher", "say:lock", "say:clipboard", "say:wallpapers"
         run: "niri msg", "curl", "sh", "systemctl"
     }
 
@@ -68,6 +68,10 @@ scene MacTopBar {
     fact rp_screen = -1
     fact rp_w = 372
     fact rp_h = 434
+    //  The volume / brightness feedback inside the centre pill (osd_*): set by topbar.luau
+    fact osd_kind = 0         // 0 volume · 1 brightness
+    fact osd_level = 0.5
+    fact osd_muted = false
     fact last_screen = -1     // the monitor of the last click on one of the bar's buttons
     fact menu_i = -1          // which dock item has its right-click menu open (-1 none)
     //  One record per monitor, in niri's output order: the workspace each one shows.
@@ -76,6 +80,12 @@ scene MacTopBar {
     text weather_icon = "󰖐"
 
     event pm_item ->
+    event osd_vol_up ->
+    event osd_vol_down ->
+    event osd_vol_mute ->
+    event osd_br_up ->
+    event osd_br_down ->
+    event osd_popup ->
     event panel_open ->
     event panel_height ->
     event panel_close ->
@@ -372,6 +382,8 @@ scene MacTopBar {
         follow cv = if(cp_on and cp_screen == screen.index, 1, 0)
         prop bnv = 0 ~calm                                  // the banner: the clock fades while it shows
         follow bnv = if(cp_on and cp_kind == 1 and cp_screen == screen.index, 1, 0)
+        prop ov = 0 ~calm                                   // the volume / brightness feedback
+        follow ov = if(cp_on and cp_kind == 2 and cp_screen == screen.index, 1, 0)
         prop cpw = 360 ~calm
         follow cpw = cp_w
         prop cph = 496 ~calm
@@ -468,11 +480,35 @@ scene MacTopBar {
             }
         }
 
+        // ── the volume / brightness feedback, inside the centre pill (the clock gives way) ──
+        group {
+            show: ov > 0.02
+            opacity: clamp(ov * 1.6 - 0.5, 0, 1)
+            move: screen.width / 2 - 125, 0
+            //  the icon: a speaker with waves (or crossed out when muted), or a sun for brightness
+            group {
+                show: osd_kind == 0
+                path { at: 0, cy - 7; color: ink_c; move 0, 4; line 4, 4; line 9, 0; line 9, 14; line 4, 10; line 0, 10; close }
+                path { at: 11, cy; color: ink_c; stroke: 1.8; opacity: if(osd_muted, 0%, if(osd_level > 0.05, 100%, 25%)); move 0, -3.5; line 2.5, -1.5; line 2.5, 1.5; line 0, 3.5 }
+                path { at: 14, cy; color: ink_c; stroke: 1.8; opacity: if(osd_muted, 0%, if(osd_level > 0.5, 100%, 25%)); move 0, -6.5; line 3, -3; line 3, 3; line 0, 6.5 }
+                line { from: 13, cy - 7; to: 23, cy + 7; width: 2; color: danger_c; opacity: if(osd_muted, 100%, 0%) }
+            }
+            group {
+                show: osd_kind == 1
+                ellipse { at: 8, cy; radius: 3.6; color: ink_c }
+                repeat k in 0..8 { line { from: 8 + 6 * cos(k * 45), cy + 6 * sin(k * 45); to: 8 + 8.4 * cos(k * 45), cy + 8.4 * sin(k * 45); width: 1.5; color: ink_c } }
+            }
+            //  the track and its fill, and the number
+            box { from: 36, cy - 3; size: 160, 6; corner: 3; color: ink_c; opacity: 22% }
+            box { from: 36, cy - 3; size: max(6, 160 * clamp(if(osd_muted and osd_kind == 0, 0, osd_level), 0, 1)), 6; corner: 3; color: ink_c }
+            text if(osd_muted and osd_kind == 0, "0", "{osd_level * 100, 0}") { at: 244, cy; anchor: right center; size: 12; weight: 700; color: ink_c }
+        }
+
         // ── centre island: clock · weather · sound ───────────────
         row center_row {
             at: screen.width / 2, cy
             anchor: center middle
-            opacity: 1 - bnv
+            opacity: 1 - max(bnv, ov)
             gap: 12
             align: center
 

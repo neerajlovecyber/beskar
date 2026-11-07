@@ -11,7 +11,7 @@ local wallpapers = {
 
 -- Scenes that follow the shared theme (shell/common/theme.plm) and so have an `accent` fact too.
 local THEMED = { "topbar", "control_center", "notifications", "dashboard", "settings", "wallpapers",
-                "spotlight", "osd", "clipboard", "session", "capture", "appswitcher", "lock" }
+                "spotlight", "clipboard", "session", "capture", "appswitcher", "lock" }
 local PLAIN = {}
 
 local function save_theme(dm_str, skin_str, accent_str, auto_str)
