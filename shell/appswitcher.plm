@@ -30,24 +30,27 @@ scene MacAppSwitcher {
             refraction: 0
             tint: tint_amt
             rim: rim_amt
-            box { from: 0, 0; size: 620, 120; corner: 24 }
+            box { from: 310 - bw / 2, 0; size: bw, 132; corner: 26 }
         }
-        box { from: 0, 0; size: 620, 120; corner: 24; stroke: 1; color: stroke_c; opacity: stroke_op }
+        box { from: 310 - bw / 2, 0; size: bw, 132; corner: 26; stroke: 1; color: stroke_c; opacity: stroke_op }
 
-        // Selected Window Title Banner (macOS style below/above icons)
-        text "Application Switcher" {
-            at: 310, 18
-            anchor: center
-            size: 11
+        //  the title of the window that is selected
+        text sel_title {
+            at: 310, 112
+            anchor: center center
+            size: 12
             weight: 600
-            color: ink_sub
+            color: ink_c
+            width: bw - 40
+            align: center
+            lines: 1
         }
 
         // Horizontal Icons Strip
         row app_strip {
-            at: 310, 66
+            at: 310, 18
             gap: 12
-            anchor: center
+            anchor: center top
             align: center
 
             for w in wins {
@@ -60,12 +63,15 @@ scene MacAppSwitcher {
     }
 
     permissions {
-        services: "apps", "window", "say:topbar", "say:dock"
-        run: "niri", "hyprctl", "sh"
+        services: "apps", "window", "say:topbar"
+        run: "niri msg"
     }
 
     fact open = false
     fact sel = 0
+    text sel_title = ""
+    prop bw = 200 ~calm
+    follow bw = max(200, wins.count * 84 + 32)
 
     model wins max 7 { id: number; title: text; app_id: text; icon: image 48, 48 }
 

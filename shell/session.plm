@@ -102,7 +102,7 @@ scene MacSession {
     }
 
     permissions {
-        services: "say:topbar", "say:dock"
+        services: "say:topbar"
         run: "systemctl", "niri msg"
     }
 
