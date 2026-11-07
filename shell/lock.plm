@@ -1,168 +1,142 @@
-// macOS Sequoia Native Wayland Lock Screen (ext-session-lock)
+// Lock screen (ext-session-lock: the compositor itself keeps everything else hidden and untouchable).
+//
+//   · the wallpaper, blurred and dimmed, with a big clock and the date on top
+//   · your picture (or an initial), your name, and a password pill; Enter or the arrow unlocks
+//   · a wrong password shakes the pill and says so; there is NO bypass: only the password (checked by PAM) opens it
+//   · bottom: battery, and Sleep / Restart / Shut Down, as on a Mac
+//
+// If the process holding the lock dies, the session STAYS locked (on purpose). To get back in from a text console:
+//     XDG_RUNTIME_DIR=/run/user/$UID WAYLAND_DISPLAY=wayland-1 bin/pleamar --say lock "fact locked false"
 import "common/palette.plm"
 
 scene MacLock {
     include "common/theme.plm"
-    surface {
-        kind: lock
-        size: 640, 480
-        open: locked
-    }
 
     permissions {
-        services: "clock", "auth", "say:topbar", "say:dock"
-        run: "loginctl", "sh"
+        services: "clock", "auth", "say:topbar", "say:session"
+        run: "sh", "systemctl suspend", "systemctl reboot", "systemctl poweroff", "niri msg"
     }
 
-    service clock as now {
-        time: text = "--:--"
-        date: text
-    }
+    service clock as now { time: text = "--:--"; date: text }
 
     fact locked = false
     text user_name = ""
-    text clock_text = ""
+    text avatar_initial = ""
+    text avatar_path = ""
+    image avatar_img = from avatar_path, 96, 96
+    fact has_avatar = false
+    text lock_wall = ""
+    image lock_bg = from lock_wall, 1920, 1080
+    fact has_wall = false
+    text big_time = ""
+    text date_line = ""
+    fact notif_count = 0
     fact checking = false
-    fact with_exit = true     // Emergency Esc exit for desktop security safety
-
+    fact wrong = false
     text password = ""
-    event toggle_lock
-    event unlock
+    text lbl_restart = "Restart"
+    text lbl_off = "Shut Down"
+
+    event unlock ->
     event wrong_password
+    event lock_now ->
+    event do_sleep ->
+    event do_restart ->
+    event do_off ->
 
     prop headshake = 0 ~quick
-    prop glow = 0 ~quick
+    prop glow = 0 ~lively
 
-    // Full screen darkened canvas backdrop (covers whatever display size)
-    box { from: -4000, -4000; size: 8640, 8440; color: #0a0c10 }
+    surface screen_lock {
+        kind: lock
+        size: 640, 480
+        open: locked
 
-    // Ambient radial backdrop glow in center
-    body {
-        gradient: radial 320, 240 radius 300, #181c24, #0a0c10
-        ellipse { at: 320, 240; radius: 300 }
-    }
-
-    // Top: Massive macOS Sequoia Lock Screen Clock
-    text clock_text {
-        at: 320, 68
-        anchor: center
-        size: 78
-        weight: 300
-        color: #f5f7f5
-    }
-
-    // Date Line
-    text now.date {
-        at: 320, 126
-        anchor: center
-        size: 14
-        weight: 600
-        color: #8e8e93
-    }
-
-    // Center: User Profile Card (macOS Apple ID Avatar)
-    group {
-        move: 320 + headshake, 230
-        pivot: 0, 0
-
-        // User Avatar Circle with subtle glass rim
-        body {
-            color: #1e222a
-            rim: 15%
-            ellipse { at: 0, 0; radius: 46 }
-        }
-        text "󰀉" { at: 0, -2; anchor: center; size: 48; color: accent_c }
-
-        // Username
-        text user_name {
-            at: 0, 64
-            anchor: center
-            size: 16
-            weight: 600
-            color: #f5f7f5
-        }
-    }
-
-    // Password Capsule Input Box
-    group {
-        move: 320 + headshake, 350
-        pivot: 0, 0
-
-        // Capsule Box
-        body {
-            color: #161820
-            glass: 50%
-            lens: false
-            tint: 30%
-            rim: 10%
-            box { from: -140, -20; size: 280, 40; corner: 20 }
-        }
-        box {
-            from: -140, -20
-            size: 280, 40
-            corner: 20
-            stroke: 1.5
-            color: if(checking, accent_c, if(abs(headshake) > 2, danger_c, #ffffff))
-            opacity: if(checking or abs(headshake) > 2, 80%, 15%)
-        }
-
-        // Secret Password Input Field
-        input password {
-            at: -100, -11
-            width: 200
-            size: 14
-            color: #f5f7f5
-            placeholder: "Enter Password"
-            secret: true
-            agent: no
-        }
-
-        // Arrow Submit Button inside pill
+        //  ── backdrop: painted far beyond the box, which is only centred on each monitor ──
+        box { from: -4000, -4000; size: 8640, 8480; color: #07080a }
         group {
-            move: 116, 0
-            ellipse { at: 0, 0; radius: 13; color: if(checking, #8e8e93, accent_c); opacity: 85% }
-            text if(checking, "󰑮", "󰅂") { at: 0, 0; anchor: center; size: 13; color: #ffffff }
-            zone box btn_submit { from: -13, -13; size: 26, 26; cursor: pointer }
-            on press btn_submit { emit unlock }
+            show: has_wall
+            blur: 30
+            brightness: 0.55
+            saturation: 1.15
+            image lock_bg { at: 320 - 2200, 240 - 1238; size: 4400, 2475 }
         }
+        box { from: -4000, -4000; size: 8640, 8480; color: #000000; opacity: 32% }
+
+        //  ── date and time ──
+        text date_line { at: 320, 28; anchor: center center; size: 22; weight: 500; color: #ffffff; opacity: 85% }
+        text big_time { at: 320, 108; anchor: center center; size: 128; weight: 200; color: #ffffff }
+        group {
+            show: notif_count > 0
+            text pick(min(notif_count, 2) - 1, "1 notification", "{notif_count} notifications") { at: 320, 184; anchor: center center; size: 14; weight: 500; color: #ffffff; opacity: 75% }
+        }
+
+        //  ── who you are, and the password ──
+        group {
+            move: headshake, 0
+            group {
+                show: not has_avatar
+                body {
+                    gradient: 276, 226 to 364, 314, accent_c, focus_c
+                    ellipse { at: 320, 270; radius: 44 }
+                }
+                text avatar_initial { at: 320, 270; anchor: center center; size: 40; weight: 700; color: #ffffff }
+            }
+            group {
+                show: has_avatar
+                clip ellipse { at: 320, 270; radius: 44 }
+                image avatar_img { at: 276, 226; size: 88, 88 }
+            }
+            ellipse { at: 320, 270; radius: 45; stroke: 2; color: #ffffff; opacity: 35% }
+            text user_name { at: 320, 338; anchor: center center; size: 20; weight: 600; color: #ffffff }
+
+            box { from: 170, 364; size: 300, 46; corner: 23; color: #ffffff; opacity: 16% }
+            box { from: 170, 364; size: 300, 46; corner: 23; stroke: 1.5; color: if(wrong, danger_c, if(checking, accent_c, #ffffff)); opacity: if(wrong or checking, 90%, 30% + glow * 30%) }
+            input password {
+                at: 194, 376
+                width: 220
+                size: 16
+                color: #ffffff
+                placeholder: "Enter Password"
+                secret: true
+                agent: no
+            }
+            ellipse { at: 446, 387; radius: 15; color: if(checking, #8e8e93, accent_c); opacity: 90% }
+            text pick(if(checking, 1, 0), "󰁔", "󰑐") { at: 446, 387; anchor: center center; size: 14; color: #ffffff }
+            zone box btn_submit { at: 446, 387; size: 32, 32; corner: 16; cursor: pointer }
+            on press btn_submit { emit unlock }
+            on press right btn_submit { }
+        }
+        text pick(if(wrong, 2, if(checking, 1, 0)), "Enter your password to unlock", "Checking…", "Incorrect password, try again") { at: 320, 434; anchor: center center; size: 13; color: if(wrong, danger_c, #ffffff); opacity: if(wrong, 100%, 65%) }
+
+        //  ── sleep / restart / shut down ──
+        row {
+            at: 320, 462
+            anchor: center top
+            gap: 34
+            LockAction("󰤄", "Sleep", do_sleep)
+            LockAction("󰜉", lbl_restart, do_restart)
+            LockAction("󰐥", lbl_off, do_off)
+        }
+
+        on submit password { emit unlock }
+        on wrong_password { impulse headshake 20 }
+        on change locked while locked { focus password; glow: 1 }
+        on change locked while not locked { glow: 0 }
+        on key Escape { password = "" }
     }
 
-    // Status or Prompt Message below
-    text pick(checking, "Touch ID or Enter Password", "Verifying credentials…") {
-        at: 320, 412
-        anchor: center
-        size: 12
-        color: #8e8e93
-    }
-
-    // Emergency test escape prompt (shows while with_exit is true)
-    text "Press Esc to dismiss · safety bypass active" {
-        at: 320, 452
-        anchor: center
-        size: 10.5
-        color: ok_c
-        opacity: 65%
-        show: with_exit
-    }
-
-    on toggle_lock {
-        toggle locked
-    }
-
-    on change locked while locked {
-        focus password
-    }
-
-    on submit password {
-        emit unlock
-    }
-
-    on wrong_password {
-        impulse headshake 18
-    }
-
-    // Safety fallback
-    on key Escape while locked and with_exit {
-        locked = false
+    //  A round button with its name under it.
+    component LockAction(icon: text, label: text, tap: event) {
+        size: 64, 56
+        prop hot = 0 ~quick
+        ellipse { at: 32, 20; radius: 19; color: #ffffff; opacity: 14% + hot * 14% }
+        text icon { at: 32, 20; anchor: center center; size: 17; color: #ffffff }
+        text label { at: 32, 50; anchor: center center; size: 11; color: #ffffff; opacity: 70% }
+        zone box hit { from: 6, 0; size: 52, 56; corner: 14; cursor: pointer }
+        on enter hit { hot: 1 }
+        on leave hit { hot: 0 }
+        on press hit { emit tap }
+        on press right hit { }
     }
 }

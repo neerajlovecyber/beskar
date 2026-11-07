@@ -76,11 +76,13 @@ local function b(v)
     return v == true or v == 1
 end
 
+local LOCK_MINUTES = { [0] = 0, 3, 5, 10, 15 }
+
 local function save_prefs()
     local j = string.format(
-        '{"appearance": %d, "seconds": %s, "weather": %s, "tray": %s, "dock_auto": %s, "banners": %s, "banner_i": %d, "group": %s}',
+        '{"appearance": %d, "seconds": %s, "weather": %s, "tray": %s, "dock_auto": %s, "banners": %s, "banner_i": %d, "group": %s, "lock_min": %d}',
         tonumber(fact.appearance) or 1, tostring(b(fact.pref_seconds)), tostring(b(fact.pref_weather)), tostring(b(fact.pref_tray)),
-        tostring(b(fact.pref_dock_auto)), tostring(b(fact.banners)), tonumber(fact.banner_i) or 1, tostring(b(fact.group_apps)))
+        tostring(b(fact.pref_dock_auto)), tostring(b(fact.banners)), tonumber(fact.banner_i) or 1, tostring(b(fact.group_apps)), LOCK_MINUTES[tonumber(fact.lock_i) or 0] or 0)
     sh('mkdir -p "$HOME/.config/beskar" && printf "%s\\n" "$1" > "$HOME/.config/beskar/prefs.json"', nil, j)
 end
 
@@ -111,6 +113,9 @@ local function load_prefs()
             if p.dock_auto ~= nil then fact.pref_dock_auto = p.dock_auto == true end
             if p.banners ~= nil then fact.banners = p.banners == true end
             if p.group ~= nil then fact.group_apps = p.group == true end
+            if p.lock_min ~= nil then
+                for i = 0, 4 do if LOCK_MINUTES[i] == tonumber(p.lock_min) then fact.lock_i = i end end
+            end
             if p.banner_i ~= nil then fact.banner_i = tonumber(p.banner_i) or 1 end
         end
         -- the other scenes may still be starting: push now and once more a little later
@@ -200,6 +205,12 @@ on("toggle_dock_auto", function() fact.pref_dock_auto = not b(fact.pref_dock_aut
 
 -- ── Notifications ────────────────────────────────────────────────
 on("toggle_dnd", function() fact.dnd = not b(fact.dnd); changed_pref() end)
+on("lock_pick", function(n)
+    fact.lock_i = tonumber(n) or 0
+    save_prefs()
+    -- idle.sh lives next to start.sh: find the shell's folder from where the scene runs
+    sh('d=$(cat "$HOME/.config/beskar/shell-dir" 2>/dev/null); [ -x "$d/shell/idle.sh" ] && "$d/shell/idle.sh" "$1"', nil, tostring(LOCK_MINUTES[fact.lock_i] or 0))
+end)
 on("toggle_group", function() fact.group_apps = not b(fact.group_apps); changed_pref() end)
 on("toggle_banners", function() fact.banners = not b(fact.banners); changed_pref() end)
 on("banner_secs_pick", function(n) fact.banner_i = tonumber(n) or 1; changed_pref() end)

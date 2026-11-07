@@ -151,6 +151,7 @@ local function paint()
 
     -- the bell
     pcall(sys.call, "say", "topbar", "fact notif_count " .. tostring(#order))
+    pcall(sys.call, "say", "lock", "fact notif_count " .. tostring(#order))        -- the lock screen shows how many, never what
 end
 
 local function remember(n)

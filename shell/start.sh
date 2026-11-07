@@ -128,6 +128,11 @@ start_shell() {
 
     apply_saved_theme
 
+    mkdir -p "$HOME/.config/beskar" && printf '%s\n' "$DIR" > "$HOME/.config/beskar/shell-dir"
+    # Lock when away (minutes chosen in Settings, off by default) and before sleep
+    LOCK_MIN=$(grep -o '"lock_min": *[0-9]*' "$HOME/.config/beskar/prefs.json" 2>/dev/null | awk '{print $2}')
+    "$DIR/shell/idle.sh" "${LOCK_MIN:-0}" >/dev/null 2>&1 || true
+
     echo "macOS / iNiR Shell is active!"
     echo "  - Frame (ring + 3 top islands + bottom dock): PID $PID_BAR"
     echo "  - Screen Border: PID $PID_BORDER"
