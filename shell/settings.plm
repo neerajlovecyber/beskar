@@ -1,8 +1,7 @@
 // System Settings: a sidebar of categories (with search) and a pane of real controls. Every switch, slider and
 // button here does something: the logic is settings.luau. Window 840 × 580, centred on the monitor with the focus.
 //
-//   0 Appearance · 1 Displays · 2 Sound · 3 Wi-Fi · 4 Bluetooth · 5 Notifications · 6 Menu Bar & Dock
-//   7 Wallpaper · 8 Shortcuts · 9 General · 10 Software Update
+//   0 Appearance · 1 Displays · 2 Sound · 3 Notifications · 4 Menu Bar & Dock · 5 Shortcuts · 6 General · 7 Software Update
 import "common/palette.plm"
 
 scene MacSettings {
@@ -212,47 +211,9 @@ scene MacSettings {
             }
         }
 
-        // 3 ── Wi-Fi ────────────────────────────────────────────
+        // 3 ── Notifications ────────────────────────────────────
         group tab_3 {
             show: tab == 3
-            move: 254, 60
-            column {
-                gap: 12
-                ToggleRow("Wi-Fi", wifi_line, wifi_on, toggle_wifi)
-                row {
-                    gap: 8
-                    text "Networks" { size: 13; weight: 600; color: ink_c; width: 440 }
-                    Btn("Rescan", 90, rescan_wifi, false, 0, 0)
-                }
-                column {
-                    gap: 6
-                    for n in nets { NetRow(n) }
-                }
-                text "No networks found" { size: 12; color: ink_sub; show: nets.count < 1 and wifi_on }
-                text "Secured networks you have not used before ask for their password in the Control Center." { size: 10.5; color: ink_sub; width: 540; lines: 2; show: nets.count > 0 }
-            }
-        }
-
-        // 4 ── Bluetooth ────────────────────────────────────────
-        group tab_4 {
-            show: tab == 4
-            move: 254, 60
-            column {
-                gap: 12
-                ToggleRow("Bluetooth", bt_line, bt_on, toggle_bt)
-                ToggleRow("Look for new devices", "Pairing mode: nearby devices appear below", bt_scanning, toggle_bt_scan)
-                text "Devices" { size: 13; weight: 600; color: ink_c }
-                column {
-                    gap: 6
-                    for d in devs { DevRow(d) }
-                }
-                text "No devices yet. Turn on the scan, then put the device in pairing mode." { size: 12; color: ink_sub; width: 540; lines: 2; show: devs.count < 1 and bt_on }
-            }
-        }
-
-        // 5 ── Notifications ────────────────────────────────────
-        group tab_5 {
-            show: tab == 5
             move: 254, 60
             column {
                 gap: 12
@@ -274,9 +235,9 @@ scene MacSettings {
             }
         }
 
-        // 6 ── Menu Bar & Dock ──────────────────────────────────
-        group tab_6 {
-            show: tab == 6
+        // 4 ── Menu Bar & Dock ──────────────────────────────────
+        group tab_4 {
+            show: tab == 4
             move: 254, 60
             column {
                 gap: 12
@@ -288,36 +249,9 @@ scene MacSettings {
             }
         }
 
-        // 7 ── Wallpaper ────────────────────────────────────────
-        group tab_7 {
-            show: tab == 7
-            move: 254, 60
-            column {
-                gap: 12
-                Card(64) {
-                    text "Current wallpaper" { at: 18, 22; anchor: left center; size: 13; weight: 600; color: ink_c }
-                    text wall_name { at: 18, 42; anchor: left center; size: 11; color: ink_sub; width: 380; lines: 1 }
-                    Btn("Browse all…", 110, open_wallpapers, true, 428, 18)
-                }
-                row {
-                    gap: 10
-                    WallThumb(0)
-                    WallThumb(1)
-                    WallThumb(2)
-                }
-                row {
-                    gap: 10
-                    WallThumb(3)
-                    WallThumb(4)
-                    WallThumb(5)
-                }
-                ToggleRow("Match accent to the wallpaper", "Picks the closest accent each time the wallpaper changes", accent_auto, toggle_accent_auto)
-            }
-        }
-
-        // 8 ── Shortcuts ────────────────────────────────────────
-        group tab_8 {
-            show: tab == 8
+        // 5 ── Shortcuts ────────────────────────────────────────
+        group tab_5 {
+            show: tab == 5
             move: 254, 60
             box { from: 0, 0; size: 556, 34; corner: 10; color: card_fill; opacity: card_fill_op }
             box { from: 0, 0; size: 556, 34; corner: 10; stroke: 1; color: c_border; opacity: c_border_op }
@@ -341,9 +275,9 @@ scene MacSettings {
             text "No shortcuts match" { at: 278, 200; anchor: center center; size: 12; color: ink_sub; show: binds.count < 1 }
         }
 
-        // 9 ── General ──────────────────────────────────────────
-        group tab_9 {
-            show: tab == 9
+        // 6 ── General ──────────────────────────────────────────
+        group tab_6 {
+            show: tab == 6
             move: 254, 60
             column {
                 gap: 12
@@ -390,9 +324,9 @@ scene MacSettings {
             }
         }
 
-        // 10 ── Software Update ─────────────────────────────────
-        group tab_10 {
-            show: tab == 10
+        // 7 ── Software Update ─────────────────────────────────
+        group tab_7 {
+            show: tab == 7
             move: 254, 60
             column {
                 gap: 12
@@ -442,17 +376,13 @@ scene MacSettings {
     fact appearance = 1          // 0 light · 1 dark · 2 auto (by the time of day)
 
     //  the sidebar's list (filtered by the search), displays, shortcuts, sound outputs, updates
-    model cats max 11 { idx: number; icon: text; tint: number; name: text; dx: number }
+    model cats max 8 { idx: number; icon: text; tint: number; name: text; dx: number }
     model disps max 4 { name: text; title: text; mode: text; sel: bool }
     model reslist max 4 { label: text; cur: bool }
     model hzlist max 5 { label: text; cur: bool }
     model outs max 4 { name: text; def: bool }
     model binds max 9 { keys: text; what: text }
     model ups max 6 { name: text; ver: text }
-    model nets max 7 { ssid: text; signal: number; secure: bool; known: bool; active: bool }
-    model devs max 7 { name: text; connected: bool; paired: bool; busy: bool; word: text }
-    model walls max 6 { name: text; thumb: image 176, 99; current: bool; path: text }
-    fact bt_scanning = false
     text about_host = "…"
     text about_up = "…"
     fact disp_scale_i = 0
@@ -461,10 +391,6 @@ scene MacSettings {
     text bind_q = ""
 
     fact in_level = 0
-    fact wifi_on = false
-    text wifi_line = ""
-    fact bt_on = false
-    text bt_line = ""
     fact banners = true
     fact banner_i = 1
     fact dnd = false
@@ -473,10 +399,6 @@ scene MacSettings {
     fact pref_tray = true
     fact pref_dock_auto = true
 
-    text wall_path = ""
-    image wall_img = from wall_path, 320, 180
-    text wall_name = ""
-    fact wall_ready = false
 
     fact up_n = 0
     fact up_checking = false
@@ -526,23 +448,15 @@ scene MacSettings {
     event disp_scale ->
     event disp_res ->
     event disp_hz ->
-    event open_wallpapers ->
     event open_updates_tab ->
     event run_update ->
     event check_updates ->
-    event toggle_wifi ->
-    event toggle_bt ->
     event toggle_dnd ->
     event toggle_banners ->
     event banner_secs_pick ->
     event clear_notif_history ->
     event bind_scroll ->
     event pick_cat ->
-    event pick_net ->
-    event rescan_wifi ->
-    event pick_dev ->
-    event toggle_bt_scan ->
-    event apply_wall ->
     event session_lock ->
     event session_restart ->
     event session_off ->
@@ -727,54 +641,7 @@ scene MacSettings {
         text u.ver { at: 506, 15; anchor: right center; size: 11; color: ink_sub; width: 240; lines: 1; align: right }
     }
 
-    component NetRow(n: record) {
-        size: 556, 44
-        box { from: 0, 0; size: 556, 44; corner: 12; color: if(n.active, if(dark_mode, #283040, #eef4ff), card_fill); opacity: if(n.active, 100%, card_fill_op) }
-        box { from: 0, 0; size: 556, 44; corner: 12; stroke: if(n.active, 2, 1); color: if(n.active, accent_c, c_border); opacity: if(n.active, 100%, c_border_op) }
-        text "󰤨" { at: 26, 22; anchor: center center; size: 16; color: if(n.active, accent_c, ink_c); opacity: 0.35 + 0.65 * n.signal }
-        text n.ssid { at: 48, 22; anchor: left center; size: 12.5; weight: if(n.active, 600, 400); color: ink_c; width: 380; lines: 1 }
-        text "󰌾" { at: 506, 22; anchor: center center; size: 13; color: ink_sub; show: n.secure }
-        text "󰄬" { at: 534, 22; anchor: center center; size: 15; color: accent_c; show: n.active }
-        text "known" { at: 480, 22; anchor: right center; size: 10.5; color: ink_sub; show: n.known and not n.active }
-        zone box hit { from: 0, 0; size: 556, 44; corner: 12; cursor: pointer }
-        on press hit { emit pick_net(n.index) }
-        on press right hit { }
-    }
-
-    component DevRow(d: record) {
-        size: 556, 44
-        box { from: 0, 0; size: 556, 44; corner: 12; color: if(d.connected, if(dark_mode, #283040, #eef4ff), card_fill); opacity: if(d.connected, 100%, card_fill_op) }
-        box { from: 0, 0; size: 556, 44; corner: 12; stroke: if(d.connected, 2, 1); color: if(d.connected, accent_c, c_border); opacity: if(d.connected, 100%, c_border_op) }
-        text "󰂯" { at: 26, 22; anchor: center center; size: 16; color: if(d.connected, accent_c, ink_sub) }
-        text d.name { at: 48, 22; anchor: left center; size: 12.5; weight: if(d.connected, 600, 400); color: ink_c; width: 320; lines: 1 }
-        text pick(if(d.connected, 2, if(d.paired, 1, 0)), "New", "Paired", "Connected") { at: 534, 22; anchor: right center; size: 11; color: if(d.connected, accent_c, ink_sub); show: not d.busy }
-        text d.word { at: 534, 22; anchor: right center; size: 11; color: accent_c; show: d.busy }
-        zone box hit { from: 0, 0; size: 556, 44; corner: 12; cursor: pointer }
-        on press hit { emit pick_dev(d.index) }
-        on press right hit { }
-    }
-
     //  A wallpaper thumbnail: click to apply.
-    component WallThumb(i: number) {
-        size: 178, 101
-        prop lift = 0 ~lively
-        group {
-            show: walls.count > i
-            move: 0, -lift * 2
-            box { from: 0, 0; size: 176, 99; corner: 12; color: item_solid }
-            group {
-                clip box { from: 0, 0; size: 176, 99; corner: 12 }
-                image walls.$i.thumb { at: 0, 0; size: 176, 99 }
-            }
-            box { from: 0, 0; size: 176, 99; corner: 12; stroke: 3; color: accent_c; opacity: if(walls.$i.current, 100%, 0%) }
-            zone box hit { from: 0, 0; size: 176, 99; corner: 12; cursor: pointer }
-            on enter hit { lift: 1 }
-            on leave hit { lift: 0 }
-            on press hit { emit apply_wall(i) }
-            on press right hit { }
-        }
-    }
-
     component SpecRow(label_t: text, val_t: text) {
         size: 520, 22
         text label_t { at: 0, 11; anchor: left center; size: 12; weight: 600; color: ink_sub; width: 110 }
@@ -794,7 +661,7 @@ scene MacSettings {
         }
         group {
             move: 6, 4
-            box { from: 0, 0; size: 22, 22; corner: 5; color: pick(c.tint, #5856d6, #0a84ff, #ff2d55, #32ade6, #0a84ff, #ff453a, #8e8e93, #30b0c7, #ff9f0a, #8e8e93, #30d158) }
+            box { from: 0, 0; size: 22, 22; corner: 5; color: pick(c.tint, #5856d6, #0a84ff, #ff2d55, #ff453a, #8e8e93, #ff9f0a, #8e8e93, #30d158) }
             text c.icon { at: 11 - c.dx, 10.5; anchor: center center; size: 13; color: #ffffff }
         }
         text c.name { at: 36, 15; anchor: left center; size: 13; weight: if(tab == c.idx, 600, 400); color: if(tab == c.idx, #ffffff, ink_c) }

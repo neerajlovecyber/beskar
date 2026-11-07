@@ -188,7 +188,7 @@ case "$1" in
         "$BIN" --say topbar "emit open_panel 4"
         ;;
     shortcuts)
-        "$BIN" --say settings "fact tab 8" >/dev/null 2>&1 || true
+        "$BIN" --say settings "fact tab 5" >/dev/null 2>&1 || true
         "$BIN" --say topbar "emit open_panel 4"
         ;;
     lock)

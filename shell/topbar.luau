@@ -291,7 +291,7 @@ local function show_on_menu_monitor(name)
     say(name, "fact open true")
 end
 local PM = {
-    [1] = function() say("settings", "fact tab 9"); show_on_menu_monitor("settings") end,         -- About This PC
+    [1] = function() say("settings", "fact tab 6"); show_on_menu_monitor("settings") end,         -- About This PC
     [2] = function() say("settings", "fact tab 0"); show_on_menu_monitor("settings") end,         -- System Settings
     [3] = function() say("lock", "fact locked true") end,                                           -- Lock Screen
     [4] = function() run("systemctl", { "suspend" }, nil, { output = false }) end,                 -- Sleep
