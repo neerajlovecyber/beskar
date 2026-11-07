@@ -249,7 +249,7 @@ on("wall_pick", function(i)
     current = w.path
     paint()
     local script = [[
-pgrep -x awww-daemon >/dev/null || { setsid awww-daemon </dev/null >/dev/null 2>&1 & sleep 0.4; }
+awww query >/dev/null 2>&1 || { setsid awww-daemon </dev/null >/dev/null 2>&1 & sleep 0.4; }
 awww img "$1" --transition-type grow --transition-pos 0.85,0.1 --transition-duration 1.4 --transition-fps 60
 mkdir -p "$HOME/.config/beskar" && printf '%s\n' "$1" > "$HOME/.config/beskar/wallpaper"
 ]]

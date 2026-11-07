@@ -4,7 +4,8 @@ set -e
 export PLEAMAR_NO_LENS=1
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BIN="$DIR/bin/pleamar"
-PID_FILE="/tmp/pleamar_macos_shell.pids"
+# One pid file per Wayland display, so a second shell (say, one in a nested pleamar-wm) never touches the first.
+PID_FILE="/tmp/pleamar_macos_shell.${WAYLAND_DISPLAY:-wayland-0}.pids"
 CONFIG_FILE="$HOME/.config/pleamar_shell.json"
 
 if [ ! -f "$BIN" ]; then
@@ -15,8 +16,15 @@ if [ ! -f "$BIN" ]; then
 fi
 
 kill_all() {
-    echo "Stopping all Pleamar shell components..."
-    pkill -9 -x pleamar 2>/dev/null || true
+    echo "Stopping the Pleamar shell components on ${WAYLAND_DISPLAY:-this display}..."
+    # Only the pleamar processes that belong to THIS Wayland display (their own WAYLAND_DISPLAY says so),
+    # so a shell running in a nested compositor does not kill the one on the real desktop, nor the reverse.
+    for pid in $(pgrep -x pleamar 2>/dev/null); do
+        theirs=$(tr '\0' '\n' < "/proc/$pid/environ" 2>/dev/null | sed -n 's/^WAYLAND_DISPLAY=//p' | head -1)
+        if [ "${theirs:-wayland-0}" = "${WAYLAND_DISPLAY:-wayland-0}" ]; then
+            kill -9 "$pid" 2>/dev/null || true
+        fi
+    done
     rm -f "$PID_FILE"
 }
 
@@ -61,7 +69,7 @@ start_shell() {
     echo "Starting macOS / iNiR Shell components (Pleamar daemon mode)..."
 
     # Ensure wallpaper daemon is running and wallpaper is displayed
-    if ! pgrep -x awww-daemon >/dev/null 2>&1; then
+    if ! awww query >/dev/null 2>&1; then
         setsid awww-daemon </dev/null >/tmp/awww.log 2>&1 &
         sleep 0.4
     fi
