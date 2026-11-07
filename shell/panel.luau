@@ -6,7 +6,7 @@
 -- It reports to the frame (topbar.plm), which draws the glass: when the panel opens and closes, and how tall
 -- it is. The frame arbitrates when two panels share an island (the Control Center and the notifications both
 -- use the right one: whichever opened last owns it).
-local IDS = { control_center = 1, notifications = 2, dashboard = 3, spotlight = 4, wallpapers = 5 }
+local IDS = { control_center = 1, notifications = 2, dashboard = 3, spotlight = 4, wallpapers = 5, clipboard = 6 }
 
 return function(name)
     local id = IDS[name]

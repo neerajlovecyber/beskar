@@ -73,6 +73,12 @@ start_shell() {
         setsid awww-daemon </dev/null >/tmp/awww.log 2>&1 &
         sleep 0.4
     fi
+    # Clipboard history: something has to store what is copied for the clipboard panel (Super+V) to list
+    if command -v wl-paste >/dev/null 2>&1 && command -v cliphist >/dev/null 2>&1; then
+        pgrep -f "wl-paste --type text --watch cliphist" >/dev/null 2>&1 || \
+            { setsid wl-paste --type text --watch cliphist store </dev/null >/dev/null 2>&1 & }
+    fi
+
     # Wallpapers that ship with Beskar go where the picker looks for them (never overwriting)
     mkdir -p "$HOME/.local/share/beskar/wallpapers"
     cp -n "$DIR"/assets/wallpapers/*.jpg "$HOME/.local/share/beskar/wallpapers/" 2>/dev/null || true

@@ -24,6 +24,7 @@ local PANELS = {
     dashboard = { id = 3, island = "cp", w = 360 },
     spotlight = { id = 4, island = "bp", w = 640 },      -- bottom: grow out of the dock
     wallpapers = { id = 5, island = "bp", w = 980 },
+    clipboard = { id = 6, island = "bp", w = 560 },
 }
 local BY_ID = {}
 for name, p in pairs(PANELS) do
