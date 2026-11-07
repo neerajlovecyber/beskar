@@ -42,6 +42,32 @@ on("pick_output", function(id)
 end)
 
 
+-- ── the card's height, and telling the frame ───────────────────
+-- The frame (topbar.plm) draws the glass, so it has to know how big the card is and whether it is open.
+-- Counts of what the pages list are kept by the code below.
+local wifi_n, bt_n, outs_n, apps_n = 0, 0, 1, 0
+local last_h = nil
+local function push_height()
+    local page = tonumber(fact.page) or 0
+    local h
+    if page == 0 then
+        h = 434
+    elseif page == 1 then
+        h = (fact.asking == true) and 240 or math.max(230, 176 + wifi_n * 40)
+    elseif page == 2 then
+        h = math.max(200, 78 + bt_n * 52)
+    else
+        h = math.max(190, 100 + outs_n * 40 + apps_n * 56 + (apps_n > 0 and 12 or 40))
+    end
+    if h ~= last_h then
+        last_h = h
+        fact.cc_h = h
+        pcall(sys.call, "say", "topbar", "fact cc_h " .. h)
+    end
+end
+on("fact:page", push_height)
+on("fact:asking", push_height)
+
 -- ── Wi-Fi ────────────────────────────────────────────────────────
 -- Rows are built here (active one first, then strongest) so they can say "Joining…". A secured
 -- network that was never used asks for its password on a sheet; a known one just joins.
@@ -76,6 +102,8 @@ local function paint_wifi()
         end
     end
     model.wifi_rows = rows
+    wifi_n = #rows
+    push_height()
     if joining and current and current.ssid == joining then joining = nil end
 
     local wired = net_state.kind == "wired" and net_state.online
@@ -303,6 +331,8 @@ local function paint_bt()
     for _, d in ipairs(mine) do add(d) end
     for _, d in ipairs(near) do add(d) end
     model.bt_rows = rows
+    bt_n = #rows
+    push_height()
 
     local present = bt_state.present ~= false
     fact.bt_present = present
@@ -388,6 +418,10 @@ end)
 
 -- Stop listening for new devices when the panel closes.
 on("fact:open", function(v)
+    pcall(sys.call, "say", "topbar", "fact cc_on " .. tostring(v == true or v == 1))
+    if v == true or v == 1 then
+        push_height()
+    end
     if not v then
         stop_asking()
     end
@@ -413,6 +447,9 @@ sys.watch("audio", function(a)
         end
     end
     model.app_rows = rows
+    apps_n = #rows
+    outs_n = math.max(1, #((a and a.outputs) or {}))
+    push_height()
 end)
 
 on("app_volume", function(v)

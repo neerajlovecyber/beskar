@@ -52,6 +52,14 @@ scene MacTopBar {
     //  The power menu (the gem button): `open` is what shell/exclusive.luau closes, `open_screen` which monitor shows it.
     fact open = false
     fact open_screen = -1
+    //  The Control Center (right island): its glass is drawn here; control_center.luau reports its state.
+    fact cc_on = false
+    fact cc_screen = -1       // which monitor it is open on
+    fact cc_h = 434           // the card's height
+    fact dash_on = false      // the dashboard (centre island), same arrangement as the Control Center
+    fact dash_screen = -1
+    fact dash_h = 496
+    fact last_screen = -1     // the monitor of the last click on one of the bar's buttons
     fact menu_i = -1          // which dock item has its right-click menu open (-1 none)
     //  One record per monitor, in niri's output order: the workspace each one shows.
     model mon max 4 { active: number = 1; busy: number = 0; nws: number = 1 }
@@ -130,7 +138,7 @@ scene MacTopBar {
         zone box hit { from: 0, 0; size: 24, 24; corner: 8; cursor: pointer }
         on enter hit { hot: 1 }
         on leave hit { hot: 0 }
-        on press hit { emit tap }
+        on press hit { last_screen = screen.index; emit tap }
         on press right hit { }
     }
 
@@ -142,7 +150,7 @@ scene MacTopBar {
         zone box hit { from: 0, 0; size: 24, 24; corner: 8; cursor: pointer }
         on enter hit { hot: 1 }
         on leave hit { hot: 0 }
-        on press hit { emit tap }
+        on press hit { last_screen = screen.index; emit tap }
         on press right hit { }
     }
 
@@ -159,7 +167,7 @@ scene MacTopBar {
         zone box hit { from: 0, 0; size: 54, 24; corner: 8; cursor: pointer }
         on enter hit { hot: 1 }
         on leave hit { hot: 0 }
-        on press hit { emit tap }
+        on press hit { last_screen = screen.index; emit tap }
         on press right hit { }
     }
 
@@ -175,7 +183,7 @@ scene MacTopBar {
         zone box hit { from: 0, 0; size: 24, 24; corner: 8; cursor: pointer }
         on enter hit { hot: 1 }
         on leave hit { hot: 0 }
-        on press hit { emit tap }
+        on press hit { last_screen = screen.index; emit tap }
         on press right hit { }
     }
 
@@ -347,6 +355,15 @@ scene MacTopBar {
         prop fl = 0 ~calm
         follow fl = if(panel_style == 1, 1, 0)
         let pm_w = 236
+        //  The Control Center's glass: cv how open it is on THIS monitor, chh its height (springs).
+        prop cv = 0 ~calm
+        follow cv = if(cc_on and cc_screen == screen.index, 1, 0)
+        prop chh = 434 ~calm
+        follow chh = cc_h
+        prop dv = 0 ~calm
+        follow dv = if(dash_on and dash_screen == screen.index, 1, 0)
+        prop dhh = 496 ~calm
+        follow dhh = dash_h
         let pm_h = 312
 
         // ── the glass: ring + top islands + dock, one silhouette ──
@@ -375,6 +392,13 @@ scene MacTopBar {
             //  into it. Float: a separate rounded sheet that appears below with a gap.
             box power_m { from: -ext, -14; size: lw + (pm_w - lw) * pv * (1 - fl) + ext, notch_h + pm_h * pv * (1 - fl); corner: 18; blend: fillet }
             box power_f { from: pad - 6, 62; size: pm_w * pv * fl, pm_h * pv * fl; corner: 20 }
+            //  The Control Center, as glass: morph grows the right island down and out to the left (360 + ring);
+            //  float is a separate sheet below it.
+            box cc_m { from: screen.width - (rw + max(0, 372 - rw) * cv * (1 - fl)), -14; size: rw + max(0, 372 - rw) * cv * (1 - fl) + ext, notch_h + chh * cv * (1 - fl); corner: 18; blend: fillet }
+            box cc_f { from: screen.width - 16 - 360 * cv * fl, 62; size: 360 * cv * fl, chh * cv * fl; corner: 22 }
+            //  The dashboard, as glass: the centre island grows down and out to 360 wide, or a sheet floats below.
+            box dash_m { from: screen.width / 2 - (cw + max(0, 360 - cw) * dv * (1 - fl)) / 2, -14; size: cw + max(0, 360 - cw) * dv * (1 - fl), notch_h + dhh * dv * (1 - fl); corner: 18; blend: fillet }
+            box dash_f { from: screen.width / 2 - 174 * dv * fl, 62; size: 348 * dv * fl, dhh * dv * fl; corner: 22 }
             box center_notch { from: screen.width / 2 - cw / 2, -14; size: cw, notch_h; corner: 18; blend: fillet }
             box right_notch  { from: screen.width - rw, -14; size: rw + ext, notch_h; corner: 18; blend: fillet }
 
@@ -449,7 +473,7 @@ scene MacTopBar {
             }
 
         }
-        on press clock { emit open_dashboard }
+        on press clock { last_screen = screen.index; emit open_dashboard }
         //  Right button is ours (see the tray): a right click on anything here does nothing
         //  instead of quitting the shell.
         on press right clock { }

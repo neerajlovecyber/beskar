@@ -193,7 +193,8 @@ case "$1" in
         "$BIN" --say spotlight "emit toggle"
         ;;
     control-center)
-        "$BIN" --say control_center "emit toggle"
+        # through the frame, which knows which monitor has the focus
+        "$BIN" --say topbar "emit open_control_center"
         ;;
     power-menu)
         # the first copy of the frame (the monitor the compositor lists first)
@@ -204,7 +205,7 @@ case "$1" in
         "$BIN" --say notifications "emit toggle"
         ;;
     dashboard)
-        "$BIN" --say dashboard "emit toggle"
+        "$BIN" --say topbar "emit open_dashboard"
         ;;
     wallpapers)
         "$BIN" --say wallpapers "emit toggle"

@@ -8,6 +8,7 @@ scene MacDashboard {
         anchor: top
         margin: 0, 0, 0, 0
         level: overlay
+        screens: each
     }
 
     permissions {
@@ -19,6 +20,8 @@ scene MacDashboard {
     service clock as now { time: text = "--:--"; date: text }
 
     fact open = false
+    fact open_screen = 0         // which monitor shows it (set by topbar.luau)
+    fact dash_h = 496            // the card's height (484 without a battery), reported by dashboard.luau; the frame's glass follows it
     fact cpu_pct = 18
     fact mem_pct = 44
     fact disk_pct = 52
@@ -40,39 +43,27 @@ scene MacDashboard {
     event toggle
     event refresh_stats ->
 
-    prop seen = 0 ~quick
-    prop ph = 420 ~calm
-    follow ph = if(bat.present, 496, 420)
-    prop scale = 0.96 ~quick
+    prop seen = 0 ~calm
+    prop ph = 496 ~calm
+    follow ph = dash_h
+    //  panel_style: 0 morph (the frame's glass grows out of the centre island) · 1 float (a sheet below it)
+    prop fl = 0 ~calm
+    follow fl = if(panel_style == 1, 1, 0)
 
     layer panel ~quick {
-        shown while open { seen: 1 ~quick; scale: 1 ~quick }
-        gone             { seen: 0 ~quick; scale: 0.96 ~quick }
+        shown while open { seen: 1 ~calm }
+        gone             { seen: 0 ~quick }
     }
 
-    zone box dismiss { from: 0, 0; size: 380, 560; active: open }
+    zone box dismiss { from: 0, 0; size: 380, 560; active: open and open_screen == screen.index }
     on press dismiss { open = false }
     on press right dismiss { }
 
+    //  The glass behind this is drawn by the frame (topbar.plm), melting out of the centre island.
     group {
-        move: 16, 8
-        pivot: 174, 0
-        scale: scale
-        opacity: seen
-
-        // Main Glass Body
-        body {
-            color: bg_color
-            glass: glass_amt
-            lens: false
-            frost: 100%
-            dispersion: 35%
-            refraction: 75%
-            shine: pointer
-            tint: tint_amt
-            rim: rim_amt
-            box { from: 0, 0; size: 348, ph; corner: 22 }
-        }
+        show: open_screen == screen.index
+        move: 16, -2 + fl * 22
+        opacity: clamp(seen * 1.5 - 0.5, 0, 1)
 
         // ── Top Header ────────────────────────────────────────────
         row {

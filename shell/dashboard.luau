@@ -117,5 +117,26 @@ every(60000, refresh_zones)
 refresh_weather()
 every(15 * 60 * 1000, refresh_weather)
 
+-- ── tell the frame (it draws the glass) whether the card is open and how tall it is ──
+local has_battery = true
+local function push_height()
+    local h = has_battery and 496 or 420
+    fact.dash_h = h
+    pcall(sys.call, "say", "topbar", "fact dash_h " .. h)
+end
+sys.watch("battery", function(b)
+    local present = not (b and b.present == false)
+    if present ~= has_battery then
+        has_battery = present
+        push_height()
+    end
+end)
+on("fact:open", function(v)
+    pcall(sys.call, "say", "topbar", "fact dash_on " .. tostring(v == true or v == 1))
+    if v == true or v == 1 then
+        push_height()
+    end
+end)
+
 -- one panel at a time
 require("exclusive")("dashboard")

@@ -12,10 +12,65 @@ local function toggle(panel)
     end
 end
 
-on("open_control_center", toggle("control_center"))
 on("open_spotlight", toggle("spotlight"))
 on("open_notifications", toggle("notifications"))
-on("open_dashboard", toggle("dashboard"))
+
+-- ── the Control Center: its glass is drawn by this scene, on the monitor of the button you pressed ──
+-- `last_screen` is set by the button's own rule just before it emits, so it says which monitor. Anything
+-- else (a niri key bound to start.sh) has none, and then the monitor with the focus is used.
+local OUTPUTS = {}                       -- monitor names by screen index (filled further down)
+
+local function monitor_of_click(cb)
+    local s = tonumber(fact.last_screen)
+    if s and s >= 0 then
+        fact.last_screen = -1
+        cb(s)
+        return
+    end
+    run("niri", { "msg", "-j", "focused-output" }, function(out)
+        local ok, o = pcall(json.decode, out or "")
+        local name = ok and type(o) == "table" and o.name
+        for i, n in ipairs(OUTPUTS) do
+            if n == name then
+                cb(i - 1)
+                return
+            end
+        end
+        cb(0)
+    end)
+end
+
+local function open_cc(page)
+    return function()
+        monitor_of_click(function(s)
+            local open_here = fact.cc_on == true and tonumber(fact.cc_screen) == s
+            if open_here and page == nil then
+                pcall(sys.call, "say", "control_center", "fact open false")
+                return
+            end
+            fact.cc_screen = s
+            pcall(sys.call, "say", "control_center", "fact open_screen " .. s)
+            pcall(sys.call, "say", "control_center", "fact page " .. (page or 0))
+            pcall(sys.call, "say", "control_center", "fact open true")
+        end)
+    end
+end
+on("open_control_center", open_cc(nil))
+on("open_cc_wifi", open_cc(1))
+on("open_cc_bt", open_cc(2))
+
+-- ── the dashboard (centre island): same arrangement ──
+on("open_dashboard", function()
+    monitor_of_click(function(s)
+        if fact.dash_on == true and tonumber(fact.dash_screen) == s then
+            pcall(sys.call, "say", "dashboard", "fact open false")
+            return
+        end
+        fact.dash_screen = s
+        pcall(sys.call, "say", "dashboard", "fact open_screen " .. s)
+        pcall(sys.call, "say", "dashboard", "fact open true")
+    end)
+end)
 
 -- ── the power menu (the gem button) ──────────────────────────────
 local function say(scene, words)
@@ -37,15 +92,6 @@ on("pm_item", function(n)
     end
 end)
 
--- Open the Control Center straight on a page (1 Wi-Fi, 2 Bluetooth).
-local function open_cc_page(n)
-    return function()
-        pcall(sys.call, "say", "control_center", "fact page " .. n)
-        pcall(sys.call, "say", "control_center", "fact open true")
-    end
-end
-on("open_cc_wifi", open_cc_page(1))
-on("open_cc_bt", open_cc_page(2))
 
 -- ── tray ─────────────────────────────────────────────────────────
 -- The service's list goes to the scene's `icons` model (it draws the picture). Reading the model
@@ -323,7 +369,6 @@ every(5000, read_pins)
 -- ── workspaces: one capsule per workspace of each monitor ──
 -- `model ws_list`: one record per workspace, `out` the monitor (0 = first of `niri msg outputs`, sorted by name).
 -- `wins` is how many windows it has.
-local OUTPUTS = {}
 local function build_ws()
     local by_ws = {}
     for _, w in ipairs(WINS) do
