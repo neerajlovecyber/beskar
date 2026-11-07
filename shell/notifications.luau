@@ -44,6 +44,12 @@ local function save_history()
     end)
 end
 
+-- A body may hold line breaks and blank lines ("www.instagram.com\n\nYou have unseen notifications"): the card
+-- has room for two lines, so it is flattened to one run of text.
+local function flat(s)
+    return ((s or ""):gsub("%s*[\r\n]+%s*", " "):gsub("%s+", " "):gsub("^%s+", ""):gsub("%s+$", ""))
+end
+
 local live = {}             -- id -> record, as the service gave it
 local order = {}            -- ids, newest first
 local expanded = {}         -- app -> true while its stack is open
@@ -55,7 +61,7 @@ local MAX_ROWS = 14
 
 local function row_of(n, kind, key, h, age)
     return {
-        kind = kind, key = key, id = n.id, app = n.app or "", title = n.title or "", body = n.body or "",
+        kind = kind, key = key, id = n.id, app = n.app or "", title = n.title or "", body = flat(n.body),
         icon = n.icon or "", age = age or age_of(n.time), h = h,
     }
 end
@@ -67,7 +73,7 @@ local function paint()
         local n = live[id]
         if n and #top < MAX_LIVE then
             top[#top + 1] = {
-                id = n.id, app = n.app or "", title = n.title or "", body = n.body or "",
+                id = n.id, app = n.app or "", title = n.title or "", body = flat(n.body),
                 icon = n.icon or "", age = age_of(n.time),
             }
         end
@@ -125,7 +131,7 @@ local function paint()
     local past = {}
     for k = 1, count do
         local h = history[k]
-        past[k] = { title = h.title or "", body = h.body or "", icon = h.icon or "", age = age_of(h.time) }
+        past[k] = { title = h.title or "", body = flat(h.body), icon = h.icon or "", age = age_of(h.time) }
     end
     model.past = past
 
