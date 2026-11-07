@@ -361,15 +361,25 @@ scene MacTopBar {
             gap: 10
             align: center
 
+            //  The menu button: a small gem in the accent colours (the mark of the shell)
             group {
                 size: 24, 24
                 prop hot = 0 ~quick
-                ellipse { at: 12, 12; radius: 11; stroke: 1.2; color: stroke_c; opacity: 55% + hot * 45% }
-                text "󰑄" { at: 12, 12; anchor: center; size: 13.5; color: stroke_c }
-                zone box logo_hit { from: 0, 0; size: 24, 24; cursor: pointer }
+                group {
+                    pivot: 12, 12
+                    scale: 1 + hot * 0.08
+                    body {
+                        gradient: 0, 0 to 24, 24, accent_c, focus_c
+                        box { from: 1, 1; size: 22, 22; corner: 7 }
+                    }
+                    path { at: 5.5, 5.5; color: #ffffff; stroke: 1.7; move 6.5, 0; line 13, 6.5; line 6.5, 13; line 0, 6.5; close }
+                    path { at: 9, 9; color: #ffffff; move 3, 0; line 6, 3; line 3, 6; line 0, 3; close }
+                }
+                zone box logo_hit { from: 0, 0; size: 24, 24; corner: 7; cursor: pointer }
                 on enter logo_hit { hot: 1 }
                 on leave logo_hit { hot: 0 }
                 on press logo_hit { emit open_apple_menu }
+                on press right logo_hit { }
             }
 
             //  the workspaces of THIS monitor
