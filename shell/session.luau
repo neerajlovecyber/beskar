@@ -1,10 +1,10 @@
--- macOS Session Shutdown / Restart Companion Logic
+-- Session dialog logic: shut down, restart, log out (with a 60 s countdown)
 
 local timer_id = nil
 
 local function clear_timer()
     if timer_id then
-        cancel_timer(timer_id)
+        cancel(timer_id)
         timer_id = nil
     end
 end
@@ -15,13 +15,21 @@ on("confirm_action", function()
     local k = fact.kind or 0
     if k == 0 then
         log("Session: Powering off system...")
-        run("systemctl", { "poweroff" })
+        run("systemctl", { "poweroff" }, function(_, code)
+            if code ~= 0 then
+                log("Session: poweroff failed with code", code)
+            end
+        end)
     elseif k == 1 then
         log("Session: Restarting system...")
-        run("systemctl", { "reboot" })
+        run("systemctl", { "reboot" }, function(_, code)
+            if code ~= 0 then
+                log("Session: reboot failed with code", code)
+            end
+        end)
     else
         log("Session: Logging out...")
-        run("loginctl", { "terminate-user", os.getenv("USER") or os.getenv("LOGNAME") or "" })
+        run("niri", { "msg", "action", "quit", "--skip-confirmation" })
     end
 end)
 

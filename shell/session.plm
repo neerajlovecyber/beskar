@@ -12,7 +12,7 @@ scene MacSession {
 
     permissions {
         services: "say:apple_menu", "say:topbar", "say:dock"
-        run: "systemctl", "loginctl", "sh"
+        run: "systemctl", "niri msg"
     }
 
     fact open = false
