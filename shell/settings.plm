@@ -4,94 +4,17 @@ import "common/palette.plm"
 scene MacSettings {
     include "common/theme.plm"
     include "common/here.plm"
-    surface {
+    surface sheet {
         size: 900, 620
         anchor: center
         level: overlay
         keyboard: on_demand
         screens: each
-    }
+        open: (open or seen > 0.02) and open_screen == screen.index
 
-    permissions {
-        services: "clock", "audio", "audio.*", "brightness", "brightness.*", "network", "network.*", "bluetooth", "bluetooth.*", "say:topbar", "say:dock", "say:spotlight", "say:control_center", "say:notifications", "say:dashboard", "say:osd", "say:clipboard", "say:wallpapers"
-        run: "awww", "awww-daemon", "gsettings", "systemctl", "loginctl", "kitty", "pacman", "yay", "paru", "sh", "niri msg"
-    }
-
-    service audio as sound { volume: number; muted: bool }
-    service brightness as bright { level: number }
-    service network as net { online: bool; name: text }
-    service bluetooth as bt { powered: bool }
-
-    fact open = false
-    text user_name = ""
-    fact tab = 0             // 0: Appearance, 1: Displays, 2: Sound, 3: Wi-Fi, 4: Bluetooth, 5: Notifications, 6: Wallpaper, 7: General / About
-
-    // Displays facts
-    fact disp_choice = 0     // which of the listed displays is selected
-    fact disp_count = 0
-    text disp_name_0 = ""
-    text disp_mode_0 = ""
-    text disp_name_1 = ""
-    text disp_mode_1 = ""
-    fact night_shift = false
-    //  About this PC: filled in by settings.luau from the machine itself
-    text about_os = "Linux"
-    text about_cpu = "…"
-    text about_gpu = "…"
-    text about_mem = "…"
-    text about_kernel = "…"
-    text about_disk = "…"
-    fact true_tone = true
-
-    // Audio sink
-    fact sound_sink = 0      // 0: Built-in Speakers, 1: HDMI Audio, 2: Headphones
-
-    // Wallpaper selection
-    fact wall_choice = 0
-
-    // Notification facts
-    fact dnd = false
-
-    // Appearance preview hover & animation props
-    prop seen = 0 ~quick
-    prop scale = 0.96 ~lively
-
-    layer panel ~quick {
-        shown while open { seen: 1 ~quick; scale: 1 ~lively }
-        gone             { seen: 0 ~quick; scale: 0.96 ~quick }
-    }
-
-    // Dynamic theme colors
-    let sidebar_bg = if(dark_mode, if(skin == 2, #13151a, if(skin == 1, #11131c, #0d0f14)), if(skin == 2, #ebecee, if(skin == 1, #e4e6ee, #f0f2f7)))
-
-    let c_border = card_stroke
-    let c_border_op = card_stroke_op
-
-    let stroke_c = card_stroke
-    let stroke_op = card_stroke_op
-
-    event toggle
-    event toggle_dark ->
-    event choose_skin ->
-    event choose_accent ->
-    event toggle_accent_auto ->
-    event auto_accent ->
-    event volume_set ->
-    event brightness_set ->
-    event apply_wallpaper ->
-    event open_wallpapers ->
-    event run_update ->
-    event toggle_wifi ->
-    event toggle_bt ->
-    event toggle_dnd ->
-
-    // ── Full-screen Scrim click zone for outside dismiss ──
-    zone box dismiss { from: 0, 0; size: 900, 620; active: open and here }
-    on press dismiss { open = false }
-    on press right dismiss { }
+    zone box dismiss { from: 0, 0; size: 900, 620; active: open }
 
     group {
-        show: here
         move: 30, 20
         pivot: 420, 290
         scale: scale
@@ -682,6 +605,85 @@ scene MacSettings {
             }
         }
     }
+        on press dismiss { open = false }
+    on press right dismiss { }
+    }
+
+    permissions {
+        services: "clock", "audio", "audio.*", "brightness", "brightness.*", "network", "network.*", "bluetooth", "bluetooth.*", "say:topbar", "say:dock", "say:spotlight", "say:control_center", "say:notifications", "say:dashboard", "say:osd", "say:clipboard", "say:wallpapers"
+        run: "awww", "awww-daemon", "gsettings", "systemctl", "loginctl", "kitty", "pacman", "yay", "paru", "sh", "niri msg"
+    }
+
+    service audio as sound { volume: number; muted: bool }
+    service brightness as bright { level: number }
+    service network as net { online: bool; name: text }
+    service bluetooth as bt { powered: bool }
+
+    fact open = false
+    text user_name = ""
+    fact tab = 0             // 0: Appearance, 1: Displays, 2: Sound, 3: Wi-Fi, 4: Bluetooth, 5: Notifications, 6: Wallpaper, 7: General / About
+
+    // Displays facts
+    fact disp_choice = 0     // which of the listed displays is selected
+    fact disp_count = 0
+    text disp_name_0 = ""
+    text disp_mode_0 = ""
+    text disp_name_1 = ""
+    text disp_mode_1 = ""
+    fact night_shift = false
+    //  About this PC: filled in by settings.luau from the machine itself
+    text about_os = "Linux"
+    text about_cpu = "…"
+    text about_gpu = "…"
+    text about_mem = "…"
+    text about_kernel = "…"
+    text about_disk = "…"
+    fact true_tone = true
+
+    // Audio sink
+    fact sound_sink = 0      // 0: Built-in Speakers, 1: HDMI Audio, 2: Headphones
+
+    // Wallpaper selection
+    fact wall_choice = 0
+
+    // Notification facts
+    fact dnd = false
+
+    // Appearance preview hover & animation props
+    prop seen = 0 ~quick
+    prop scale = 0.96 ~lively
+
+    layer panel ~quick {
+        shown while open { seen: 1 ~quick; scale: 1 ~lively }
+        gone             { seen: 0 ~quick; scale: 0.96 ~quick }
+    }
+
+    // Dynamic theme colors
+    let sidebar_bg = if(dark_mode, if(skin == 2, #13151a, if(skin == 1, #11131c, #0d0f14)), if(skin == 2, #ebecee, if(skin == 1, #e4e6ee, #f0f2f7)))
+
+    let c_border = card_stroke
+    let c_border_op = card_stroke_op
+
+    let stroke_c = card_stroke
+    let stroke_op = card_stroke_op
+
+    event toggle
+    event toggle_dark ->
+    event choose_skin ->
+    event choose_accent ->
+    event toggle_accent_auto ->
+    event auto_accent ->
+    event volume_set ->
+    event brightness_set ->
+    event apply_wallpaper ->
+    event open_wallpapers ->
+    event run_update ->
+    event toggle_wifi ->
+    event toggle_bt ->
+    event toggle_dnd ->
+
+    // ── Full-screen Scrim click zone for outside dismiss ──
+
 
     // ==============================================================
     // REUSABLE COMPONENTS

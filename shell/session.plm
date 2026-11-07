@@ -4,48 +4,17 @@ import "common/palette.plm"
 scene MacSession {
     include "common/theme.plm"
     include "common/here.plm"
-    surface {
+    surface sheet {
         size: 520, 360
         anchor: center
         level: overlay
-        keyboard: exclusive while open and open_screen == screen.index
+        keyboard: exclusive while open
         screens: each
-    }
+        open: (open or seen > 0.02) and open_screen == screen.index
 
-    permissions {
-        services: "say:topbar", "say:dock"
-        run: "systemctl", "niri msg"
-    }
-
-    fact open = false
-    fact kind = 0            // 0: Shut Down, 1: Restart, 2: Log Out
-    fact countdown = 60      // 60-second automatic timer
-    fact reopen = true       // Reopen windows when logging back in
-
-    prop seen = 0 ~quick
-    prop scale = 0.96 ~lively
-
-    layer modal ~quick {
-        shown while open { seen: 1 ~quick; scale: 1 ~lively }
-        gone             { seen: 0 ~quick; scale: 0.96 ~quick }
-    }
-
-    let stroke_c = card_stroke
-    let stroke_op = card_stroke_op
-
-    event toggle
-    event confirm_action ->
-    event dismiss
-
-    // Dismiss zone
-    zone box dismiss_scrim { from: 0, 0; size: 520, 360; active: open and here }
-    on press dismiss_scrim { open = false }
-    // A scene that never uses the right button is closed by pleamar on any right click
-    // (its prototype emergency exit). This empty rule says the right button is ours: nothing happens.
-    on press right dismiss_scrim { }
+    zone box dismiss_scrim { from: 0, 0; size: 520, 360; active: open }
 
     group {
-        show: here
         move: 40, 40
         pivot: 220, 140
         scale: scale
@@ -128,6 +97,39 @@ scene MacSession {
             }
         }
     }
+        on press dismiss_scrim { open = false }
+    on press right dismiss_scrim { }
+    }
+
+    permissions {
+        services: "say:topbar", "say:dock"
+        run: "systemctl", "niri msg"
+    }
+
+    fact open = false
+    fact kind = 0            // 0: Shut Down, 1: Restart, 2: Log Out
+    fact countdown = 60      // 60-second automatic timer
+    fact reopen = true       // Reopen windows when logging back in
+
+    prop seen = 0 ~quick
+    prop scale = 0.96 ~lively
+
+    layer modal ~quick {
+        shown while open { seen: 1 ~quick; scale: 1 ~lively }
+        gone             { seen: 0 ~quick; scale: 0.96 ~quick }
+    }
+
+    let stroke_c = card_stroke
+    let stroke_op = card_stroke_op
+
+    event toggle
+    event confirm_action ->
+    event dismiss
+
+    // Dismiss zone
+    // A scene that never uses the right button is closed by pleamar on any right click
+    // (its prototype emergency exit). This empty rule says the right button is ours: nothing happens.
+
 
     on toggle     { toggle open }
     on dismiss    { open = false }

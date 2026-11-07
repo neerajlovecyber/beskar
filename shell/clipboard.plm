@@ -4,49 +4,17 @@ import "common/palette.plm"
 scene MacClipboard {
     include "common/theme.plm"
     include "common/here.plm"
-    surface {
+    surface sheet {
         size: 560, 480
         anchor: center
         level: overlay
-        keyboard: exclusive while open and open_screen == screen.index
+        keyboard: exclusive while open
         screens: each
-    }
+        open: (open or seen > 0.02) and open_screen == screen.index
 
-    permissions {
-        services: "say:topbar", "say:dock", "say:spotlight", "say:control_center", "say:notifications", "say:dashboard", "say:settings", "say:wallpapers"
-        run: "cliphist", "wl-copy", "notify-send", "sh"
-    }
-
-    fact open = false
-    fact sel = 0
-
-    model clips max 8 { id: number; preview: text; full: text }
-
-    prop seen = 0 ~quick
-    prop scale = 0.96 ~lively
-
-    layer panel ~quick {
-        shown while open { seen: 1 ~quick; scale: 1 ~lively }
-        gone             { seen: 0 ~quick; scale: 0.96 ~quick }
-    }
-
-    let stroke_c = card_stroke
-    let stroke_op = card_stroke_op
-
-    event toggle
-    event copy_clip ->
-    event delete_clip ->
-    event clear_all ->
-
-    // Scrim outside click dismiss
-    zone box dismiss { from: 0, 0; size: 560, 480; active: open and here }
-    on press dismiss { open = false }
-    // A scene that never uses the right button is closed by pleamar on any right click
-    // (its prototype emergency exit). This empty rule says the right button is ours: nothing happens.
-    on press right dismiss { }
+    zone box dismiss { from: 0, 0; size: 560, 480; active: open }
 
     group {
-        show: here
         move: 30, 20
         pivot: 250, 220
         scale: scale
@@ -96,6 +64,40 @@ scene MacClipboard {
             }
         }
     }
+        on press dismiss { open = false }
+    on press right dismiss { }
+    }
+
+    permissions {
+        services: "say:topbar", "say:dock", "say:spotlight", "say:control_center", "say:notifications", "say:dashboard", "say:settings", "say:wallpapers"
+        run: "cliphist", "wl-copy", "notify-send", "sh"
+    }
+
+    fact open = false
+    fact sel = 0
+
+    model clips max 8 { id: number; preview: text; full: text }
+
+    prop seen = 0 ~quick
+    prop scale = 0.96 ~lively
+
+    layer panel ~quick {
+        shown while open { seen: 1 ~quick; scale: 1 ~lively }
+        gone             { seen: 0 ~quick; scale: 0.96 ~quick }
+    }
+
+    let stroke_c = card_stroke
+    let stroke_op = card_stroke_op
+
+    event toggle
+    event copy_clip ->
+    event delete_clip ->
+    event clear_all ->
+
+    // Scrim outside click dismiss
+    // A scene that never uses the right button is closed by pleamar on any right click
+    // (its prototype emergency exit). This empty rule says the right button is ours: nothing happens.
+
 
     component ClipRow(c: record) {
         size: 468, 42

@@ -4,49 +4,17 @@ import "common/palette.plm"
 scene MacAppSwitcher {
     include "common/theme.plm"
     include "common/here.plm"
-    surface {
+    surface sheet {
         size: 700, 160
         anchor: center
         level: overlay
-        keyboard: exclusive while open and open_screen == screen.index
+        keyboard: exclusive while open
         screens: each
-    }
+        open: (open or seen > 0.02) and open_screen == screen.index
 
-    permissions {
-        services: "apps", "window", "say:topbar", "say:dock"
-        run: "niri", "hyprctl", "sh"
-    }
-
-    fact open = false
-    fact sel = 0
-
-    model wins max 7 { id: number; title: text; app_id: text; icon: image 48, 48 }
-
-    prop seen = 0 ~quick
-    prop scale = 0.95 ~lively
-
-    layer switcher ~quick {
-        shown while open { seen: 1 ~quick; scale: 1 ~lively }
-        gone             { seen: 0 ~quick; scale: 0.95 ~quick }
-    }
-
-    let stroke_c = card_stroke
-    let stroke_op = card_stroke_op
-
-    event toggle
-    event next_app ->
-    event prev_app ->
-    event switch_to ->
-
-    // Outside dismiss
-    zone box dismiss { from: 0, 0; size: 700, 160; active: open and here }
-    on press dismiss { open = false }
-    // A scene that never uses the right button is closed by pleamar on any right click
-    // (its prototype emergency exit). This empty rule says the right button is ours: nothing happens.
-    on press right dismiss { }
+    zone box dismiss { from: 0, 0; size: 700, 160; active: open }
 
     group {
-        show: here
         move: 40, 20
         pivot: 310, 60
         scale: scale
@@ -87,6 +55,40 @@ scene MacAppSwitcher {
             }
         }
     }
+        on press dismiss { open = false }
+    on press right dismiss { }
+    }
+
+    permissions {
+        services: "apps", "window", "say:topbar", "say:dock"
+        run: "niri", "hyprctl", "sh"
+    }
+
+    fact open = false
+    fact sel = 0
+
+    model wins max 7 { id: number; title: text; app_id: text; icon: image 48, 48 }
+
+    prop seen = 0 ~quick
+    prop scale = 0.95 ~lively
+
+    layer switcher ~quick {
+        shown while open { seen: 1 ~quick; scale: 1 ~lively }
+        gone             { seen: 0 ~quick; scale: 0.95 ~quick }
+    }
+
+    let stroke_c = card_stroke
+    let stroke_op = card_stroke_op
+
+    event toggle
+    event next_app ->
+    event prev_app ->
+    event switch_to ->
+
+    // Outside dismiss
+    // A scene that never uses the right button is closed by pleamar on any right click
+    // (its prototype emergency exit). This empty rule says the right button is ours: nothing happens.
+
 
     component AppTile(w: record) {
         size: 72, 72

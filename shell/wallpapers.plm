@@ -7,15 +7,67 @@ scene MacWallpapers {
     let mp_sw = 1000
     let mp_sh = 300
     include "common/theme.plm"
-    include "common/morph.plm"
+    include "common/morph_core.plm"
 
-    surface {
+    surface sheet {
         size: 1000, 300
         anchor: bottom
         margin: 0, 0, 0, 0
         level: overlay
-        keyboard: exclusive while open and open_screen == screen.index
+        keyboard: exclusive while open
         screens: each
+        open: (open or seen > 0.02) and open_screen == screen.index
+
+    zone box dismiss { from: 0, 0; size: 1000, 300; active: open }
+
+    group {
+        move: 10, 300 - ph
+        opacity: mp_fade
+
+        //  clicks on the strip itself do not close it
+        zone box inside { from: 0, 0; size: 980, 250 }
+        on press right inside { }
+
+        text "Wallpapers" { at: 28, 30; anchor: left center; size: 17; weight: 700; color: ink_c }
+        text wall_hint { at: 150, 32; anchor: left center; size: 11.5; color: ink_sub }
+        row {
+            at: 950, 30
+            anchor: right middle
+            gap: 8
+            TabPill("All", 0, 60)
+            TabPill("Mine", 1, 66)
+            TabPill("Built-in", 2, 84)
+        }
+
+        //  The wheel goes BEFORE the cards: the last declared zone is the one on top.
+        zone box wall_wheel { from: 20, 56; size: 940, 140 }
+        on scroll wall_wheel { emit wall_scroll(wheel) }
+
+        row {
+            at: 34, 62
+            gap: 8
+            for w in walls { WallCard(w, wall_pick) }
+        }
+        //  the arrow buttons, on both sides of the cards
+        group {
+            move: 1, 96
+            ArrowBtn(-1)
+        }
+        group {
+            move: 947, 96
+            ArrowBtn(1)
+        }
+
+        //  Nothing found
+        text "No pictures found. Put some in ~/Pictures/wallpapers." { at: 490, 120; anchor: center; size: 13; color: ink_sub; show: wall_total < 1 }
+
+        //  Where you are in a long list: a thin bar under the cards
+        box { from: 28, 196; size: 924, 3; corner: 1.5; color: ink_c; opacity: if(wall_rows > 1, 10%, 0%) }
+        box { from: 28 + 924 * wall_row / max(1, wall_total), 196; size: max(30, 924 * 5 / max(1, wall_total)), 3; corner: 1.5; color: ink_c; opacity: if(wall_rows > 1, 45%, 0%) }
+
+        text "← →  to browse   ·   Enter or click to apply   ·   Esc to close" { at: 490, 222; anchor: center; size: 10.5; color: ink_sub; opacity: 80% }
+    }
+        on press dismiss { open = false }
     }
 
     permissions {
@@ -95,57 +147,8 @@ scene MacWallpapers {
         on press right hit { }
     }
 
-    on press dismiss { open = false }
 
     //  The glass is drawn by the frame: the dock island grows up and out into the strip (topbar.plm).
-    group {
-        show: mp_here
-        move: 10, 300 - ph
-        opacity: mp_fade
-
-        //  clicks on the strip itself do not close it
-        zone box inside { from: 0, 0; size: 980, 250 }
-        on press right inside { }
-
-        text "Wallpapers" { at: 28, 30; anchor: left center; size: 17; weight: 700; color: ink_c }
-        text wall_hint { at: 150, 32; anchor: left center; size: 11.5; color: ink_sub }
-        row {
-            at: 950, 30
-            anchor: right middle
-            gap: 8
-            TabPill("All", 0, 60)
-            TabPill("Mine", 1, 66)
-            TabPill("Built-in", 2, 84)
-        }
-
-        //  The wheel goes BEFORE the cards: the last declared zone is the one on top.
-        zone box wall_wheel { from: 20, 56; size: 940, 140 }
-        on scroll wall_wheel { emit wall_scroll(wheel) }
-
-        row {
-            at: 34, 62
-            gap: 8
-            for w in walls { WallCard(w, wall_pick) }
-        }
-        //  the arrow buttons, on both sides of the cards
-        group {
-            move: 1, 96
-            ArrowBtn(-1)
-        }
-        group {
-            move: 947, 96
-            ArrowBtn(1)
-        }
-
-        //  Nothing found
-        text "No pictures found. Put some in ~/Pictures/wallpapers." { at: 490, 120; anchor: center; size: 13; color: ink_sub; show: wall_total < 1 }
-
-        //  Where you are in a long list: a thin bar under the cards
-        box { from: 28, 196; size: 924, 3; corner: 1.5; color: ink_c; opacity: if(wall_rows > 1, 10%, 0%) }
-        box { from: 28 + 924 * wall_row / max(1, wall_total), 196; size: max(30, 924 * 5 / max(1, wall_total)), 3; corner: 1.5; color: ink_c; opacity: if(wall_rows > 1, 45%, 0%) }
-
-        text "← →  to browse   ·   Enter or click to apply   ·   Esc to close" { at: 490, 222; anchor: center; size: 10.5; color: ink_sub; opacity: 80% }
-    }
 
     on toggle     { toggle open }
     on key Left   { emit wall_move(-1) }

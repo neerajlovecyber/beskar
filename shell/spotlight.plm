@@ -5,35 +5,19 @@ scene MacSpotlight {
     let mp_sw = 680
     let mp_sh = 520
     include "common/theme.plm"
-    include "common/morph.plm"
-    surface {
+    include "common/morph_core.plm"
+    surface sheet {
         size: 680, 520
         anchor: bottom
         margin: 0, 0, 0, 0
         level: overlay
-        keyboard: exclusive while open and open_screen == screen.index
+        keyboard: exclusive while open
         screens: each
-    }
+        open: (open or seen > 0.02) and open_screen == screen.index
 
-    permissions {
-        services: "apps", "apps.launch", "say:clipboard", "say:control_center", "say:notifications", "say:dashboard", "say:settings", "say:wallpapers", "say:topbar"
-    }
-
-    let line_color = card_stroke
-    let line_op = card_stroke_op
-
-    model hits max 7 { name: text; icon: image 26, 26 }
-    fact sel   = 0
-    text query = ""
-    event toggle
-    event launch ->
-
-    //  The glass is drawn by the frame: the dock island grows UP into it (topbar.plm). This scene only draws the
-    //  content, anchored to the bottom: the results above, the search field at the bottom where the dock was.
-    on press dismiss { open = false }
+    zone box dismiss { from: 0, 0; size: 680, 520; active: open }
 
     group {
-        show: mp_here
         move: 20, 520 - ph
         opacity: mp_fade
 
@@ -58,6 +42,25 @@ scene MacSpotlight {
             selection: accent_c
         }
     }
+        on press dismiss { open = false }
+    }
+
+    permissions {
+        services: "apps", "apps.launch", "say:clipboard", "say:control_center", "say:notifications", "say:dashboard", "say:settings", "say:wallpapers", "say:topbar"
+    }
+
+    let line_color = card_stroke
+    let line_op = card_stroke_op
+
+    model hits max 7 { name: text; icon: image 26, 26 }
+    fact sel   = 0
+    text query = ""
+    event toggle
+    event launch ->
+
+    //  The glass is drawn by the frame: the dock island grows UP into it (topbar.plm). This scene only draws the
+    //  content, anchored to the bottom: the results above, the search field at the bottom where the dock was.
+
 
     component Row(h: record) {
         size: 576, 42
