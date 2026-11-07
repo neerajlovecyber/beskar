@@ -1,4 +1,8 @@
-// macOS System Settings for Wayland Compositors (Pleamar Engine)
+// System Settings: a sidebar of categories (with search) and a pane of real controls. Every switch, slider and
+// button here does something: the logic is settings.luau. Window 840 × 580, centred on the monitor with the focus.
+//
+//   0 Appearance · 1 Displays · 2 Sound · 3 Wi-Fi · 4 Bluetooth · 5 Notifications · 6 Menu Bar & Dock
+//   7 Wallpaper · 8 Shortcuts · 9 General · 10 Software Update
 import "common/palette.plm"
 
 scene MacSettings {
@@ -20,7 +24,7 @@ scene MacSettings {
         scale: scale
         opacity: seen
 
-        // Window Frame Glass Base
+        // ── window glass ─────────────────────────────────────────
         body {
             color: bg_color
             glass: glass_amt
@@ -33,586 +37,336 @@ scene MacSettings {
             box { from: 0, 0; size: 840, 580; corner: 20 }
         }
         box { from: 0, 0; size: 840, 580; corner: 20; stroke: 1; color: stroke_c; opacity: stroke_op }
-
-        // Sidebar Background
         box { from: 0, 0; size: 230, 580; corner: 20; color: sidebar_bg; opacity: 85% }
-        // Sidebar Separator Line
         box { from: 230, 0; size: 1, 580; color: stroke_c; opacity: stroke_op }
 
-        // ==========================================================
-        // LEFT SIDEBAR: Traffic Lights, User ID, Search, Categories
-        // ==========================================================
+        //  clicks on the window itself do not close it
+        zone box inside { from: 0, 0; size: 840, 580 }
+        on press right inside { }
 
-        // Traffic Light Window Controls
+        // ── sidebar ──────────────────────────────────────────────
         group {
             move: 18, 18
-            // Close (Red)
             ellipse { at: 6, 6; radius: 6; color: #ff5f56 }
             zone box btn_close { from: 0, 0; size: 14, 14; cursor: pointer }
             on press btn_close { open = false }
-
-            // Minimize (Yellow)
             ellipse { at: 26, 6; radius: 6; color: #ffbd2e }
             zone box btn_min { from: 20, 0; size: 14, 14; cursor: pointer }
             on press btn_min { open = false }
-
-            // Zoom (Green)
             ellipse { at: 46, 6; radius: 6; color: #27c93f }
-            zone box btn_zoom { from: 40, 0; size: 14, 14; cursor: pointer }
         }
 
-        // User ID Profile Card 
+        //  who is logged in
         group {
             move: 14, 46
             box { from: 0, 0; size: 202, 54; corner: 10; color: card_fill; opacity: card_fill_op * 50% }
             box { from: 0, 0; size: 202, 54; corner: 10; stroke: 1; color: c_border; opacity: c_border_op }
-
-            // Avatar Circle
             ellipse { at: 26, 27; radius: 18; color: accent_c }
             text "󰀉" { at: 26, 27; anchor: center; size: 18; color: #ffffff }
-
-            // User Info
             column {
                 at: 52, 17
                 gap: 2
-                text user_name { size: 13; weight: 600; color: ink_c }
-                text "Account & Media" { size: 10.5; color: ink_sub }
+                text user_name { size: 13; weight: 600; color: ink_c; width: 140; lines: 1 }
+                text "This computer" { size: 10.5; color: ink_sub }
             }
         }
 
-        // Search Field Mockup
+        //  search: filters the list below
         group {
             move: 14, 108
             box { from: 0, 0; size: 202, 28; corner: 7; color: if(dark_mode, #242730, #e8eaf0) }
             text "󰍉" { at: 18, 14; anchor: center; size: 13; color: ink_sub }
-            text "Search" { at: 32, 14; anchor: left center; size: 12; color: ink_sub }
+            input side_q {
+                at: 32, 5
+                width: 160
+                size: 12
+                color: ink_c
+                placeholder: "Search"
+                selection: accent_c
+            }
         }
 
-        // Category List
         column cat_list {
             at: 12, 144
             gap: 2
-
-            SidebarItem(0, "󰏘", #5856d6, "Appearance")
-            SidebarItem(1, "󰍹", accent_c, "Displays")
-            SidebarItem(2, "󰕾", #ff2d55, "Sound")
-            SidebarItem(3, "󰤨", accent_c, "Wi-Fi")
-            SidebarItem(4, "󰂯", accent_c, "Bluetooth")
-            SidebarItem(5, "󰒎", danger_c, "Notifications")
-            SidebarItem(6, "󰖐", #30b0c7, "Wallpaper")
-            SidebarItem(7, "󰋚", #8e8e93, "General")
-            SidebarItem(8, "󰚰", ok_c, "Software Update")
+            for c in cats { SidebarItem(c) }
         }
+        text "No matches" { at: 115, 170; anchor: center; size: 12; color: ink_sub; show: cats.count < 1 }
 
-        // ==========================================================
-        // RIGHT DETAIL CONTENT PANE
-        // ==========================================================
+        // ── the pane ─────────────────────────────────────────────
+        text pane_title { at: 254, 34; anchor: left center; size: 20; weight: 700; color: ink_c }
 
-        // Pane Header Bar
-        group {
-            move: 254, 20
-            row {
-                gap: 10; align: center
-                text pick(tab, "Appearance", "Displays", "Sound", "Wi-Fi", "Bluetooth", "Notifications", "Wallpaper", "General", "Software Update") {
-                    size: 20; weight: 700; color: ink_c
-                }
-            }
-        }
-
-        // ──────────────────────────────────────────────────────────
-        // TAB 0: APPEARANCE
-        // ──────────────────────────────────────────────────────────
+        // 0 ── Appearance ───────────────────────────────────────
         group tab_0 {
             show: tab == 0
             move: 254, 60
-
-            // 1. Appearance Mode Card (Light / Dark)
-            box { from: 0, 0; size: 556, 138; corner: 14; color: card_fill; opacity: card_fill_op }
-            box { from: 0, 0; size: 556, 138; corner: 14; stroke: 1; color: c_border; opacity: c_border_op }
-            text "Appearance" { at: 18, 16; size: 13; weight: 600; color: ink_c }
-
-            row {
-                at: 40, 42
-                gap: 28
-
-                // Light Mode Preview
-                group {
-                    size: 100, 78
-                    box { from: 0, 0; size: 100, 60; corner: 8; color: #f2f3f7 }
-                    box { from: 0, 0; size: 100, 60; corner: 8; stroke: if(not dark_mode, 2.5, 1); color: if(not dark_mode, accent_c, #d1d5db) }
-                    // Miniature macOS Mockup Light
-                    box { from: 6, 6; size: 88, 8; corner: 2; color: #e5e7eb }
-                    box { from: 6, 18; size: 26, 36; corner: 2; color: #ffffff }
-                    box { from: 36, 18; size: 58, 36; corner: 2; color: #ffffff }
-                    text "Light" { at: 50, 72; anchor: center; size: 12; weight: if(not dark_mode, 600, 400); color: if(not dark_mode, accent_c, ink_c) }
-
-                    zone box hit_light { from: 0, 0; size: 100, 78; cursor: pointer }
-                    on press hit_light { emit toggle_dark }
+            column {
+                gap: 12
+                Card(138) {
+                    text "Appearance" { at: 18, 16; size: 13; weight: 600; color: ink_c }
+                    row {
+                        at: 40, 42
+                        gap: 28
+                        ModeThumb(0, "Light", #f2f3f7, #ffffff, #e5e7eb)
+                        ModeThumb(1, "Dark", #1e2026, #252830, #2d3139)
+                        ModeThumb(2, "Auto", #1e2026, #f2f3f7, #8e8e93)
+                    }
+                    text "Auto switches to dark at 7 pm and back to light at 7 am" { at: 380, 70; anchor: left center; size: 10.5; color: ink_sub; width: 160; lines: 3; show: appearance == 2 }
                 }
-
-                // Dark Mode Preview
-                group {
-                    size: 100, 78
-                    box { from: 0, 0; size: 100, 60; corner: 8; color: #1e2026 }
-                    box { from: 0, 0; size: 100, 60; corner: 8; stroke: if(dark_mode, 2.5, 1); color: if(dark_mode, accent_c, #374151) }
-                    // Miniature macOS Mockup Dark
-                    box { from: 6, 6; size: 88, 8; corner: 2; color: #2d3139 }
-                    box { from: 6, 18; size: 26, 36; corner: 2; color: #252830 }
-                    box { from: 36, 18; size: 58, 36; corner: 2; color: #252830 }
-                    text "Dark" { at: 50, 72; anchor: center; size: 12; weight: if(dark_mode, 600, 400); color: if(dark_mode, accent_c, ink_c) }
-
-                    zone box hit_dark { from: 0, 0; size: 100, 78; cursor: pointer }
-                    on press hit_dark { emit toggle_dark }
+                Card(88) {
+                    text "Window glass" { at: 18, 16; size: 13; weight: 600; color: ink_c }
+                    row {
+                        at: 18, 36
+                        gap: 10
+                        SkinPill(0, "Liquid Glass", "Dynamic blur and reflection")
+                        SkinPill(1, "Light Acrylic", "Smooth frosted acrylic")
+                        SkinPill(2, "Classic Solid", "Opaque, high contrast")
+                    }
                 }
-
-                // Auto Mode Preview
-                group {
-                    size: 100, 78
-                    box { from: 0, 0; size: 100, 60; corner: 8; color: #1e2026 }
-                    box { from: 0, 0; size: 50, 60; corner: 8; color: #f2f3f7 }
-                    box { from: 0, 0; size: 100, 60; corner: 8; stroke: 1; color: #4b5563 }
-                    text "Auto" { at: 50, 72; anchor: center; size: 12; color: ink_c }
-                    zone box hit_auto { from: 0, 0; size: 100, 78; cursor: pointer }
-                    on press hit_auto { emit toggle_dark }
+                Card(78) {
+                    text "Accent colour" { at: 18, 16; size: 13; weight: 600; color: ink_c }
+                    row {
+                        at: 18, 38
+                        gap: 14
+                        AccentCircle(0, #007aff)
+                        AccentCircle(1, #af52de)
+                        AccentCircle(2, #ff2d55)
+                        AccentCircle(3, #ff3b30)
+                        AccentCircle(4, #ff9500)
+                        AccentCircle(5, #34c759)
+                        AccentCircle(6, #8e8e93)
+                    }
                 }
+                ToggleRow("Match accent to the wallpaper", "Picks the closest accent each time the wallpaper changes", accent_auto, toggle_accent_auto)
             }
-
-            // 2. Glass Style (Marea Skins)
-            box { from: 0, 150; size: 556, 134; corner: 14; color: card_fill; opacity: card_fill_op }
-            box { from: 0, 150; size: 556, 134; corner: 14; stroke: 1; color: c_border; opacity: c_border_op }
-            text "Window Glass Style" { at: 18, 166; size: 13; weight: 600; color: ink_c }
-            text "Control transparency, blur effects, and acrylic materials across all shell components." { at: 18, 184; size: 11; color: ink_sub }
-
-            row {
-                at: 18, 204
-                gap: 14
-
-                SkinPill(0, "Liquid Glass", "Dynamic blur & reflection")
-                SkinPill(1, "Light Acrylic", "Smooth frosted acrylic")
-                SkinPill(2, "Classic Solid", "Opaque high-contrast")
-            }
-
-            // 3. Accent Colors Card
-            box { from: 0, 296; size: 556, 92; corner: 14; color: card_fill; opacity: card_fill_op }
-            box { from: 0, 296; size: 556, 92; corner: 14; stroke: 1; color: c_border; opacity: c_border_op }
-            text "Accent Color" { at: 18, 312; size: 13; weight: 600; color: ink_c }
-
-            row swatches {
-                at: 18, 338
-                gap: 16
-                AccentCircle(0, #007aff)
-                AccentCircle(1, #af52de)
-                AccentCircle(2, #ff2d55)
-                AccentCircle(3, #ff3b30)
-                AccentCircle(4, #ff9500)
-                AccentCircle(5, #34c759)
-                AccentCircle(6, #8e8e93)
-            }
-
-            // 4. Accent follows the wallpaper
-            box { from: 0, 400; size: 556, 60; corner: 14; color: card_fill; opacity: card_fill_op }
-            box { from: 0, 400; size: 556, 60; corner: 14; stroke: 1; color: c_border; opacity: c_border_op }
-            text "Match accent colour to the wallpaper" { at: 18, 422; anchor: left center; size: 12.5; color: ink_c; width: 440 }
-            text "Picks the closest accent every time you change the wallpaper" { at: 18, 440; anchor: left center; size: 10.5; color: ink_sub; width: 440 }
-            group {
-                move: 494, 418
-                SwitchToggle(accent_auto)
-                zone box accent_auto_hit { from: 0, 0; size: 44, 24; corner: 12; cursor: pointer }
-            }
-            on press accent_auto_hit { emit toggle_accent_auto }
         }
 
-        // ──────────────────────────────────────────────────────────
-        // TAB 1: DISPLAYS
-        // ──────────────────────────────────────────────────────────
+        // 1 ── Displays ─────────────────────────────────────────
         group tab_1 {
             show: tab == 1
             move: 254, 60
-
-            // Monitor Preview Canvas Card
-            box { from: 0, 0; size: 556, 170; corner: 14; color: card_fill; opacity: card_fill_op }
-            box { from: 0, 0; size: 556, 170; corner: 14; stroke: 1; color: c_border; opacity: c_border_op }
-            text "Connected Displays" { at: 18, 16; size: 13; weight: 600; color: ink_c }
-
-            row {
-                at: 50, 42
-                gap: 36
-
-                //  Up to two displays, as niri reports them (name, make/model, mode).
-                group {
-                    show: disp_count > 0
-                    size: 190, 104
-                    box { from: 0, 0; size: 190, 80; corner: 8; color: item_solid }
-                    box { from: 0, 0; size: 190, 80; corner: 8; stroke: if(disp_choice == 0, 2, 1); color: if(disp_choice == 0, accent_c, c_border); opacity: if(disp_choice == 0, 100%, c_border_op) }
-                    text "󰍹" { at: 95, 30; anchor: center; size: 24; color: if(disp_choice == 0, accent_c, ink_sub) }
-                    text disp_name_0 { at: 95, 56; anchor: center; size: 11; weight: 600; color: ink_c; width: 176; lines: 1 }
-                    text disp_mode_0 { at: 95, 92; anchor: center; size: 10.5; color: ink_sub }
-                    zone box hit_disp0 { from: 0, 0; size: 190, 104; cursor: pointer }
-                    on press hit_disp0 { disp_choice = 0 }
+            column {
+                gap: 12
+                row {
+                    gap: 10
+                    for d in disps { DispTile(d) }
                 }
-                group {
-                    show: disp_count > 1
-                    size: 190, 104
-                    box { from: 0, 0; size: 190, 80; corner: 8; color: item_solid }
-                    box { from: 0, 0; size: 190, 80; corner: 8; stroke: if(disp_choice == 1, 2, 1); color: if(disp_choice == 1, accent_c, c_border); opacity: if(disp_choice == 1, 100%, c_border_op) }
-                    text "󰍹" { at: 95, 30; anchor: center; size: 24; color: if(disp_choice == 1, accent_c, ink_sub) }
-                    text disp_name_1 { at: 95, 56; anchor: center; size: 11; weight: 600; color: ink_c; width: 176; lines: 1 }
-                    text disp_mode_1 { at: 95, 92; anchor: center; size: 10.5; color: ink_sub }
-                    zone box hit_disp1 { from: 0, 0; size: 190, 104; cursor: pointer }
-                    on press hit_disp1 { disp_choice = 1 }
+                Card(70) {
+                    text "Scale" { at: 18, 22; anchor: left center; size: 13; weight: 600; color: ink_c }
+                    text "Applies now. To keep it after a restart, set it in niri's config." { at: 18, 50; anchor: left center; size: 10.5; color: ink_sub; width: 330 }
+                    row {
+                        at: 290, 14
+                        gap: 6
+                        Seg("100%", 0, disp_scale_i, disp_scale, 62)
+                        Seg("125%", 1, disp_scale_i, disp_scale, 62)
+                        Seg("150%", 2, disp_scale_i, disp_scale, 62)
+                        Seg("200%", 3, disp_scale_i, disp_scale, 62)
+                    }
                 }
-            }
-
-            // Display Brightness Slider Card
-            box { from: 0, 182; size: 556, 120; corner: 14; color: card_fill; opacity: card_fill_op }
-            box { from: 0, 182; size: 556, 120; corner: 14; stroke: 1; color: c_border; opacity: c_border_op }
-            text "Brightness" { at: 18, 198; size: 13; weight: 600; color: ink_c }
-            text "Adjust the screen luminance for optimal viewing comfort." { at: 18, 216; size: 11; color: ink_sub }
-
-            // Brightness Track
-            group {
-                move: 18, 244
-                size: 520, 36
-                box { from: 0, 0; size: 520, 36; corner: 18; color: if(dark_mode, #282c35, #e5e7eb) }
-                box { from: 0, 0; size: 52 + bright.level * 468, 36; corner: 18; color: #ffffff }
-                text "󰃠" { at: 20, 18; anchor: center; size: 16; color: if(bright.level > 0.08, #1d1d1f, ink_c) }
-                text "{bright.level * 100}%" { at: 490, 18; anchor: right center; size: 12.5; weight: 600; color: if(bright.level > 0.88, #1d1d1f, ink_c) }
-
-                zone box bright_hit { from: 0, 0; size: 520, 36; cursor: pointer }
-                on press bright_hit { emit brightness_set(0.75) }
-            }
-
-            // True Tone & Night Shift Options Card
-            box { from: 0, 314; size: 556, 96; corner: 14; color: card_fill; opacity: card_fill_op }
-            box { from: 0, 314; size: 556, 96; corner: 14; stroke: 1; color: c_border; opacity: c_border_op }
-            row {
-                at: 18, 330
-                text "True Tone (Adaptive Color Temperature)" { size: 12.5; color: ink_c; width: 440 }
-                SwitchToggle(true)
-            }
-            box { from: 18, 362; size: 520, 1; color: c_border; opacity: c_border_op }
-            row {
-                at: 18, 378
-                text "Night Shift (Warm Display Tone)" { size: 12.5; color: ink_c; width: 440 }
-                SwitchToggle(false)
+                Card(56) {
+                    text "Resolution" { at: 18, 28; anchor: left center; size: 13; weight: 600; color: ink_c }
+                    row {
+                        at: 150, 14
+                        gap: 6
+                        for r in reslist { Chip(r.label, r.cur, disp_res, r.index, 92) }
+                    }
+                }
+                Card(56) {
+                    text "Refresh rate" { at: 18, 28; anchor: left center; size: 13; weight: 600; color: ink_c }
+                    row {
+                        at: 160, 14
+                        gap: 6
+                        for r in hzlist { Chip(r.label, r.cur, disp_hz, r.index, 80) }
+                    }
+                }
+                SliderRow("Brightness", bright.level, brightness_set, 0, true)
             }
         }
 
-        // ──────────────────────────────────────────────────────────
-        // TAB 2: SOUND
-        // ──────────────────────────────────────────────────────────
+        // 2 ── Sound ────────────────────────────────────────────
         group tab_2 {
             show: tab == 2
             move: 254, 60
-
-            // Output Volume Card
-            box { from: 0, 0; size: 556, 120; corner: 14; color: card_fill; opacity: card_fill_op }
-            box { from: 0, 0; size: 556, 120; corner: 14; stroke: 1; color: c_border; opacity: c_border_op }
-            text "Output Volume" { at: 18, 16; size: 13; weight: 600; color: ink_c }
-            text "Master system playback level across all audio devices." { at: 18, 34; size: 11; color: ink_sub }
-
-            // Volume Slider Track
-            group {
-                move: 18, 62
-                size: 520, 36
-                box { from: 0, 0; size: 520, 36; corner: 18; color: if(dark_mode, #282c35, #e5e7eb) }
-                box { from: 0, 0; size: if(sound.muted, 0, 52 + sound.volume * 468), 36; corner: 18; color: #ffffff }
-                text if(sound.muted, "󰝟", "󰕾") { at: 20, 18; anchor: center; size: 16; color: if(sound.volume > 0.08 and not sound.muted, #1d1d1f, ink_c) }
-                text if(sound.muted, "Muted", "{sound.volume * 100}%") { at: 490, 18; anchor: right center; size: 12.5; weight: 600; color: if(sound.volume > 0.88 and not sound.muted, #1d1d1f, ink_c) }
-
-                zone box vol_hit { from: 0, 0; size: 520, 36; cursor: pointer }
-                on press vol_hit { emit volume_set(0.65) }
-            }
-
-            // Output Devices Card
-            box { from: 0, 132; size: 556, 176; corner: 14; color: card_fill; opacity: card_fill_op }
-            box { from: 0, 132; size: 556, 176; corner: 14; stroke: 1; color: c_border; opacity: c_border_op }
-            text "Select Output Device" { at: 18, 148; size: 13; weight: 600; color: ink_c }
-
             column {
-                at: 18, 174
-                gap: 4
-                SinkRow(0, "󰓃", "Built-in Internal Speakers", "Internal Stereo Audio")
-                SinkRow(1, "󰍹", "HDMI / DisplayPort Audio", "LG ULTRAGEAR Audio")
-                SinkRow(2, "󰋋", "Headphones (3.5mm Output)", "Direct Analog Port")
-            }
-
-            // Sound Effects Card
-            box { from: 0, 320; size: 556, 96; corner: 14; color: card_fill; opacity: card_fill_op }
-            box { from: 0, 320; size: 556, 96; corner: 14; stroke: 1; color: c_border; opacity: c_border_op }
-            row {
-                at: 18, 336
-                text "Play sound effects on startup" { size: 12.5; color: ink_c; width: 440 }
-                SwitchToggle(true)
-            }
-            box { from: 18, 368; size: 520, 1; color: c_border; opacity: c_border_op }
-            row {
-                at: 18, 384
-                text "Play user interface sound effects" { size: 12.5; color: ink_c; width: 440 }
-                SwitchToggle(true)
+                gap: 12
+                SliderRow("Output volume", sound.volume, volume_set, 1, not sound.muted)
+                ToggleRow("Mute", "Silences the output", sound.muted, toggle_mute)
+                SliderRow("Input volume", in_level, input_set, 2, true)
+                text "Output device" { size: 13; weight: 600; color: ink_c }
+                column {
+                    gap: 6
+                    for o in outs { OutRow(o) }
+                }
             }
         }
 
-        // ──────────────────────────────────────────────────────────
-        // TAB 3: WI-FI & NETWORKING
-        // ──────────────────────────────────────────────────────────
+        // 3 ── Wi-Fi ────────────────────────────────────────────
         group tab_3 {
             show: tab == 3
             move: 254, 60
-
-            // Master Wi-Fi Card
-            box { from: 0, 0; size: 556, 60; corner: 14; color: card_fill; opacity: card_fill_op }
-            box { from: 0, 0; size: 556, 60; corner: 14; stroke: 1; color: c_border; opacity: c_border_op }
-            row {
-                at: 18, 16
-                text "Wi-Fi" { size: 14; weight: 600; color: ink_c; width: 440 }
-                SwitchToggle(net.online)
-            }
-
-            // Current Connected Network Card
-            box { from: 0, 72; size: 556, 134; corner: 14; color: card_fill; opacity: card_fill_op }
-            box { from: 0, 72; size: 556, 134; corner: 14; stroke: 1; color: c_border; opacity: c_border_op }
-            text "Known Network" { at: 18, 88; size: 13; weight: 600; color: ink_c }
-
-            row {
-                at: 18, 116
-                gap: 14; align: center
-                ellipse { radius: 18; color: accent_c }
-                text "󰤨" { anchor: center; size: 18; color: #ffffff }
-                column {
-                    gap: 3
-                    text if(net.online, net.name, "Disconnected") { size: 14; weight: 600; color: ink_c }
-                    row {
-                        gap: 6; align: center
-                        ellipse { radius: 3.5; color: if(net.online, ok_c, danger_c) }
-                        text if(net.online, "Connected · 5 GHz WPA3 · IP: 192.168.1.105", "No network connection") { size: 11; color: ink_sub }
-                    }
-                }
-            }
-
-            // Other Nearby Networks Card
-            box { from: 0, 218; size: 556, 160; corner: 14; color: card_fill; opacity: card_fill_op }
-            box { from: 0, 218; size: 556, 160; corner: 14; stroke: 1; color: c_border; opacity: c_border_op }
-            text "Nearby Networks" { at: 18, 234; size: 13; weight: 600; color: ink_c }
-
             column {
-                at: 18, 260
-                gap: 4
-                NetItem("󰤨", "Home_Fiber_5G", "Secured (WPA3)", true)
-                NetItem("󰤥", "Studio_Guest_Network", "Secured (WPA2)", true)
-                NetItem("󰤢", "City_Public_WiFi", "Open Network", false)
+                gap: 12
+                ToggleRow("Wi-Fi", wifi_line, wifi_on, toggle_wifi)
+                ActionRow("Networks", "Pick a network and connect from the Control Center", "Open", open_wifi_panel)
             }
         }
 
-        // ──────────────────────────────────────────────────────────
-        // TAB 4: BLUETOOTH
-        // ──────────────────────────────────────────────────────────
+        // 4 ── Bluetooth ────────────────────────────────────────
         group tab_4 {
             show: tab == 4
             move: 254, 60
-
-            // Master Bluetooth Card
-            box { from: 0, 0; size: 556, 60; corner: 14; color: card_fill; opacity: card_fill_op }
-            box { from: 0, 0; size: 556, 60; corner: 14; stroke: 1; color: c_border; opacity: c_border_op }
-            row {
-                at: 18, 16
-                text "Bluetooth" { size: 14; weight: 600; color: ink_c; width: 440 }
-                SwitchToggle(bt.powered)
-            }
-
-            // Paired Devices Card
-            box { from: 0, 72; size: 556, 216; corner: 14; color: card_fill; opacity: card_fill_op }
-            box { from: 0, 72; size: 556, 216; corner: 14; stroke: 1; color: c_border; opacity: c_border_op }
-            text "My Devices" { at: 18, 88; size: 13; weight: 600; color: ink_c }
-
             column {
-                at: 18, 114
-                gap: 6
-                BtItem("󰌌", "Magic Keyboard with Touch ID", "Connected · 88% Battery", true)
-                BtItem("󰋋", "AirPods Pro", "Saved · Dual Beamforming", false)
-                BtItem("󰍽", "Logitech MX Master 3S", "Connected · 94% Battery", true)
+                gap: 12
+                ToggleRow("Bluetooth", bt_line, bt_on, toggle_bt)
+                ActionRow("Devices", "Pair and connect devices from the Control Center", "Open", open_bt_panel)
             }
         }
 
-        // ──────────────────────────────────────────────────────────
-        // TAB 5: NOTIFICATIONS & FOCUS
-        // ──────────────────────────────────────────────────────────
+        // 5 ── Notifications ────────────────────────────────────
         group tab_5 {
             show: tab == 5
             move: 254, 60
-
-            // Master Focus / DND Card
-            box { from: 0, 0; size: 556, 68; corner: 14; color: card_fill; opacity: card_fill_op }
-            box { from: 0, 0; size: 556, 68; corner: 14; stroke: 1; color: c_border; opacity: c_border_op }
-            row {
-                at: 18, 14
-                gap: 12; align: center
-                ellipse { radius: 18; color: #5856d6 }
-                text "󰒎" { anchor: center; size: 18; color: #ffffff }
-                column {
-                    gap: 2
-                    text "Do Not Disturb" { size: 13.5; weight: 600; color: ink_c; width: 380 }
-                    text "Silence all notification banners and sound alerts" { size: 10.5; color: ink_sub }
-                }
-                SwitchToggle(dnd)
-            }
-
-            // Application Notifications Preferences
-            box { from: 0, 80; size: 556, 260; corner: 14; color: card_fill; opacity: card_fill_op }
-            box { from: 0, 80; size: 556, 260; corner: 14; stroke: 1; color: c_border; opacity: c_border_op }
-            text "Application Notifications" { at: 18, 96; size: 13; weight: 600; color: ink_c }
-
             column {
-                at: 18, 122
-                gap: 6
-                AppNoticeRow("󰈹", "Firefox Web Browser", "Banners, Sounds, Badges", true)
-                AppNoticeRow("󰉋", "Files (Nautilus)", "Banners and Sounds", true)
-                AppNoticeRow("󰞷", "Terminal (Kitty)", "Badges only", false)
-                AppNoticeRow("󰎆", "Music Player", "Lock Screen & Banners", true)
+                gap: 12
+                ToggleRow("Do Not Disturb", "Notifications still arrive, silently, in the centre", dnd, toggle_dnd)
+                ToggleRow("Show banners", "A new notification drops into the clock pill", banners, toggle_banners)
+                Card(64) {
+                    text "Banner stays for" { at: 18, 22; anchor: left center; size: 13; weight: 600; color: ink_c }
+                    row {
+                        at: 270, 14
+                        gap: 6
+                        Seg("3 s", 0, banner_i, banner_secs_pick, 62)
+                        Seg("5 s", 1, banner_i, banner_secs_pick, 62)
+                        Seg("8 s", 2, banner_i, banner_secs_pick, 62)
+                        Seg("12 s", 3, banner_i, banner_secs_pick, 62)
+                    }
+                    text "Hovering a banner keeps it open" { at: 18, 46; anchor: left center; size: 10.5; color: ink_sub }
+                }
+                ActionRow("History", "Forget the notifications listed under Earlier", "Clear", clear_notif_history)
             }
         }
 
-        // ──────────────────────────────────────────────────────────
-        // TAB 6: WALLPAPER
-        // ──────────────────────────────────────────────────────────
+        // 6 ── Menu Bar & Dock ──────────────────────────────────
         group tab_6 {
             show: tab == 6
             move: 254, 60
-
-            box { from: 0, 0; size: 556, 150; corner: 14; color: card_fill; opacity: card_fill_op }
-            box { from: 0, 0; size: 556, 150; corner: 14; stroke: 1; color: c_border; opacity: c_border_op }
-            text "Desktop Background" { at: 18, 20; anchor: left center; size: 13; weight: 600; color: ink_c }
-            text "Pick from your pictures (~/Pictures/wallpapers), the wallpapers that come with Beskar, and the system's." { at: 18, 46; size: 11.5; color: ink_sub; width: 520; lines: 2 }
-            box { from: 18, 88; size: 190, 40; corner: 12; color: accent_c }
-            text "Choose Wallpaper…" { at: 113, 108; anchor: center; size: 12.5; weight: 600; color: #ffffff }
-            zone box open_walls_hit { from: 18, 88; size: 190, 40; corner: 12; cursor: pointer }
-            text "Shortcut: Super + W" { at: 224, 108; anchor: left center; size: 11.5; color: ink_sub }
-            on press open_walls_hit { emit open_wallpapers }
+            column {
+                gap: 12
+                ToggleRow("24-hour clock", "Shows 14:05 instead of 2:05 PM", not hour12, toggle_hour12)
+                ToggleRow("Show seconds", "2:05:09 PM", pref_seconds, toggle_seconds)
+                ToggleRow("Show weather", "Temperature next to the clock", pref_weather, toggle_weather)
+                ToggleRow("Show system tray", "Icons of running applications in the top right", pref_tray, toggle_tray)
+                ToggleRow("Hide the dock automatically", "It rises when the pointer reaches the bottom edge", pref_dock_auto, toggle_dock_auto)
+            }
         }
 
-        // ──────────────────────────────────────────────────────────
-        // TAB 7: GENERAL & ABOUT THIS PC
-        // ──────────────────────────────────────────────────────────
+        // 7 ── Wallpaper ────────────────────────────────────────
         group tab_7 {
             show: tab == 7
             move: 254, 60
+            column {
+                gap: 12
+                Card(250) {
+                    box { from: 18, 18; size: 320, 180; corner: 14; color: item_solid }
+                    group {
+                        clip box { from: 18, 18; size: 320, 180; corner: 14 }
+                        image wall_img { at: 18, 18; size: 320, 180; show: wall_ready }
+                    }
+                    text "Current wallpaper" { at: 360, 30; anchor: left center; size: 13; weight: 600; color: ink_c }
+                    text wall_name { at: 360, 52; anchor: left center; size: 11; color: ink_sub; width: 180; lines: 2 }
+                    Btn("Choose…", 100, open_wallpapers, true, 360, 150)
+                    text "Super + W opens the picker anywhere" { at: 18, 222; anchor: left center; size: 10.5; color: ink_sub }
+                }
+                ToggleRow("Match accent to the wallpaper", "Picks the closest accent each time the wallpaper changes", accent_auto, toggle_accent_auto)
+            }
+        }
 
-            // Header banner
-            box { from: 0, 0; size: 556, 120; corner: 14; color: card_fill; opacity: card_fill_op }
-            box { from: 0, 0; size: 556, 120; corner: 14; stroke: 1; color: c_border; opacity: c_border_op }
+        // 8 ── Shortcuts ────────────────────────────────────────
+        group tab_8 {
+            show: tab == 8
+            move: 254, 60
+            box { from: 0, 0; size: 556, 34; corner: 10; color: card_fill; opacity: card_fill_op }
+            box { from: 0, 0; size: 556, 34; corner: 10; stroke: 1; color: c_border; opacity: c_border_op }
+            text "󰍉" { at: 18, 17; anchor: center; size: 13; color: ink_sub }
+            input bind_q {
+                at: 34, 8
+                width: 440
+                size: 13
+                color: ink_c
+                placeholder: "Search shortcuts"
+                selection: accent_c
+            }
+            text bind_count { at: 538, 17; anchor: right center; size: 10.5; color: ink_sub }
+            zone box bind_wheel { from: 0, 44; size: 556, 410 }
+            on scroll bind_wheel { emit bind_scroll(wheel) }
+            column {
+                at: 0, 44
+                gap: 4
+                for b in binds { BindRow(b) }
+            }
+            text "No shortcuts match" { at: 278, 200; anchor: center; size: 12; color: ink_sub; show: binds.count < 1 }
+        }
 
-            group {
-                move: 30, 20
-                text "" { at: 30, 40; anchor: center; size: 54; weight: 700; color: ink_c }
+        // 9 ── General ──────────────────────────────────────────
+        group tab_9 {
+            show: tab == 9
+            move: 254, 60
+            Card(120) {
+                text "" { at: 60, 60; anchor: center; size: 54; weight: 700; color: ink_c }
                 column {
-                    at: 75, 12
+                    at: 105, 32
                     gap: 3
                     text "About This PC" { size: 22; weight: 700; color: ink_c }
                     text about_os { size: 12; color: ink_sub }
                     text "Beskar shell · niri · Pleamar" { size: 12; weight: 500; color: ink_c }
                 }
             }
-
-            // Specs Table Card
-            box { from: 0, 132; size: 556, 224; corner: 14; color: card_fill; opacity: card_fill_op }
-            box { from: 0, 132; size: 556, 224; corner: 14; stroke: 1; color: c_border; opacity: c_border_op }
-            text "Hardware Overview" { at: 18, 148; size: 13; weight: 600; color: ink_c }
-
-            column {
-                at: 18, 172
-                gap: 8
-                SpecRow("Processor", about_cpu)
-                SpecRow("Graphics", about_gpu)
-                SpecRow("Memory", about_mem)
-                SpecRow("Kernel", about_kernel)
-                SpecRow("Storage", about_disk)
-            }
-
-            // Action Buttons
-            row {
-                at: 0, 368
-                gap: 12
-                group {
-                    size: 140, 32
-                    box { from: 0, 0; size: 140, 32; corner: 8; color: if(dark_mode, #282c35, #e5e7eb) }
-                    text "Software Update..." { at: 70, 16; anchor: center; size: 12; weight: 600; color: ink_c }
-                    zone box btn_sw_up { from: 0, 0; size: 140, 32; cursor: pointer }
-                    on press btn_sw_up { tab = 8 }
-                }
-                group {
-                    size: 140, 32
-                    box { from: 0, 0; size: 140, 32; corner: 8; color: if(dark_mode, #282c35, #e5e7eb) }
-                    text "System Report..." { at: 70, 16; anchor: center; size: 12; weight: 600; color: ink_c }
-                }
-            }
-
-            // Clock format
-            box { from: 0, 424; size: 556, 60; corner: 14; color: card_fill; opacity: card_fill_op }
-            box { from: 0, 424; size: 556, 60; corner: 14; stroke: 1; color: c_border; opacity: c_border_op }
-            text "24-hour clock" { at: 18, 446; anchor: left center; size: 12.5; color: ink_c; width: 440 }
-            text if(hour12, "Showing 2:05 PM in the bar. Turn on for 14:05", "Showing 14:05 in the bar. Turn off for 2:05 PM") { at: 18, 464; anchor: left center; size: 10.5; color: ink_sub; width: 440 }
             group {
-                move: 494, 442
-                SwitchToggle(not hour12)
-                zone box hour12_hit { from: 0, 0; size: 44, 24; corner: 12; cursor: pointer }
+                move: 0, 132
+                Card(224) {
+                    text "Hardware Overview" { at: 18, 16; size: 13; weight: 600; color: ink_c }
+                    column {
+                        at: 18, 40
+                        gap: 8
+                        SpecRow("Processor", about_cpu)
+                        SpecRow("Graphics", about_gpu)
+                        SpecRow("Memory", about_mem)
+                        SpecRow("Kernel", about_kernel)
+                        SpecRow("Storage", about_disk)
+                    }
+                }
             }
-            on press hour12_hit { emit toggle_hour12 }
+            group {
+                move: 0, 368
+                ActionRow("Software update", "Check for new packages", "Open", open_updates_tab)
+            }
         }
 
-        // ──────────────────────────────────────────────────────────
-        // TAB 8: SOFTWARE UPDATE & SYSTEM PACKAGES
-        // ──────────────────────────────────────────────────────────
-        group tab_8 {
-            show: tab == 8
+        // 10 ── Software Update ─────────────────────────────────
+        group tab_10 {
+            show: tab == 10
             move: 254, 60
-
-            // Header Overview Card
-            box { from: 0, 0; size: 556, 110; corner: 14; color: card_fill; opacity: card_fill_op }
-            box { from: 0, 0; size: 556, 110; corner: 14; stroke: 1; color: c_border; opacity: c_border_op }
-
-            group {
-                move: 20, 18
-                ellipse { at: 24, 24; radius: 24; color: ok_c }
-                text "󰚰" { at: 24, 24; anchor: center; size: 24; color: #ffffff }
-                column {
-                    at: 60, 6
-                    gap: 3
-                    text "Updates Available" { size: 16; weight: 700; color: ink_c }
-                    text "14 system and application updates are ready to install." { size: 12; color: ink_sub }
-                    text "Last checked: Today at 13:20 · Automatic updates enabled" { size: 11; color: ink_sub }
-                }
-            }
-
-            // Updates List Card
-            box { from: 0, 122; size: 556, 260; corner: 14; color: card_fill; opacity: card_fill_op }
-            box { from: 0, 122; size: 556, 260; corner: 14; stroke: 1; color: c_border; opacity: c_border_op }
-            text "Pending Updates" { at: 18, 138; size: 13; weight: 600; color: ink_c }
-
             column {
-                at: 18, 162
-                gap: 6
-                UpdateRow("󰈹", "Firefox Web Browser", "159.0 → 159.0.1 (Security and stability patch)")
-                UpdateRow("󰍹", "Hyprland Wayland Compositor", "0.57.0 → 0.57.1 (Renderer improvements)")
-                UpdateRow("󰌌", "HarfBuzz Text Shaping Engine", "15.0.0 → 15.1.0 (Font rendering updates)")
-                UpdateRow("󰉋", "Glycin Image Loader GTK4", "2.2.5 → 2.2.6 (Decoder enhancements)")
-                UpdateRow("󰏘", "Dux Shell Framework", "2.0.0 → 2.1.0 (Performance optimizations)")
-            }
-
-            // Upgrade Action Button
-            row {
-                at: 0, 396
                 gap: 12
-                group {
-                    size: 150, 34
-                    box { from: 0, 0; size: 150, 34; corner: 8; color: accent_c }
-                    text "Update All Now" { at: 75, 17; anchor: center; size: 13; weight: 600; color: #ffffff }
-                    zone box btn_up_now { from: 0, 0; size: 150, 34; cursor: pointer }
-                    on press btn_up_now { emit run_update }
+                Card(84) {
+                    ellipse { at: 44, 42; radius: 24; color: if(up_n > 0, accent_c, ok_c) }
+                    text pick(if(up_checking, 2, if(up_n > 0, 1, 0)), "󰄬", "󰚰", "󰑐") { at: 44, 42; anchor: center; size: 24; color: #ffffff }
+                    text up_title { at: 84, 30; anchor: left center; size: 16; weight: 700; color: ink_c }
+                    text up_sub { at: 84, 54; anchor: left center; size: 11.5; color: ink_sub; width: 440 }
                 }
-                group {
-                    size: 130, 34
-                    box { from: 0, 0; size: 130, 34; corner: 8; color: if(dark_mode, #282c35, #e5e7eb) }
-                    text "Check Again" { at: 65, 17; anchor: center; size: 13; weight: 500; color: ink_c }
+                Card(250) {
+                    text "Available updates" { at: 18, 18; size: 13; weight: 600; color: ink_c }
+                    column {
+                        at: 18, 40
+                        gap: 4
+                        for u in ups { UpdateRow(u) }
+                    }
+                    text "Everything is up to date" { at: 278, 130; anchor: center; size: 12; color: ink_sub; show: ups.count < 1 and not up_checking }
+                }
+                row {
+                    gap: 12
+                    Btn("Update all", 130, run_update, true, 0, 0)
+                    Btn("Check again", 120, check_updates, false, 0, 0)
                 }
             }
         }
@@ -622,27 +376,55 @@ scene MacSettings {
     }
 
     permissions {
-        services: "clock", "audio", "audio.*", "brightness", "brightness.*", "network", "network.*", "bluetooth", "bluetooth.*", "say:topbar", "say:dock", "say:spotlight", "say:control_center", "say:notifications", "say:dashboard", "say:clipboard", "say:music", "say:wallpapers"
-        run: "awww", "awww-daemon", "gsettings", "systemctl", "loginctl", "kitty", "pacman", "yay", "paru", "sh", "niri msg"
+        services: "clock", "audio", "audio.*", "brightness", "brightness.*", "network", "network.*", "bluetooth", "bluetooth.*", "say:topbar", "say:spotlight", "say:control_center", "say:notifications", "say:dashboard", "say:clipboard", "say:music", "say:wallpapers", "say:lock", "say:capture", "say:session", "say:appswitcher"
+        run: "awww", "awww-daemon", "gsettings", "systemctl", "loginctl", "kitty", "pacman", "yay", "paru", "checkupdates", "sh", "niri msg"
     }
 
     service audio as sound { volume: number; muted: bool }
     service brightness as bright { level: number }
-    service network as net { online: bool; name: text }
-    service bluetooth as bt { powered: bool }
 
     fact open = false
     text user_name = ""
-    fact tab = 0             // 0: Appearance, 1: Displays, 2: Sound, 3: Wi-Fi, 4: Bluetooth, 5: Notifications, 6: Wallpaper, 7: General / About
+    text pane_title = "Appearance"
+    fact tab = 0
+    fact appearance = 1          // 0 light · 1 dark · 2 auto (by the time of day)
 
-    // Displays facts
-    fact disp_choice = 0     // which of the listed displays is selected
-    fact disp_count = 0
-    text disp_name_0 = ""
-    text disp_mode_0 = ""
-    text disp_name_1 = ""
-    text disp_mode_1 = ""
-    fact night_shift = false
+    //  the sidebar's list (filtered by the search), displays, shortcuts, sound outputs, updates
+    model cats max 11 { idx: number; icon: text; tint: number; name: text }
+    model disps max 4 { name: text; title: text; mode: text; sel: bool }
+    model reslist max 4 { label: text; cur: bool }
+    model hzlist max 5 { label: text; cur: bool }
+    model outs max 4 { name: text; def: bool }
+    model binds max 9 { keys: text; what: text }
+    model ups max 6 { name: text; ver: text }
+    fact disp_scale_i = 0
+    text bind_count = ""
+    text side_q = ""
+    text bind_q = ""
+
+    fact in_level = 0
+    fact wifi_on = false
+    text wifi_line = ""
+    fact bt_on = false
+    text bt_line = ""
+    fact banners = true
+    fact banner_i = 1
+    fact dnd = false
+    fact pref_seconds = false
+    fact pref_weather = true
+    fact pref_tray = true
+    fact pref_dock_auto = true
+
+    text wall_path = ""
+    image wall_img = from wall_path, 320, 180
+    text wall_name = ""
+    fact wall_ready = false
+
+    fact up_n = 0
+    fact up_checking = false
+    text up_title = "Software Update"
+    text up_sub = ""
+
     //  About this PC: filled in by settings.luau from the machine itself
     text about_os = "Linux"
     text about_cpu = "…"
@@ -650,18 +432,7 @@ scene MacSettings {
     text about_mem = "…"
     text about_kernel = "…"
     text about_disk = "…"
-    fact true_tone = true
 
-    // Audio sink
-    fact sound_sink = 0      // 0: Built-in Speakers, 1: HDMI Audio, 2: Headphones
-
-    // Wallpaper selection
-    fact wall_choice = 0
-
-    // Notification facts
-    fact dnd = false
-
-    // Appearance preview hover & animation props
     prop seen = 0 ~quick
     prop scale = 0.96 ~lively
 
@@ -670,225 +441,253 @@ scene MacSettings {
         gone             { seen: 0 ~quick; scale: 0.96 ~quick }
     }
 
-    // Dynamic theme colors
     let sidebar_bg = if(dark_mode, if(skin == 2, #13151a, if(skin == 1, #11131c, #0d0f14)), if(skin == 2, #ebecee, if(skin == 1, #e4e6ee, #f0f2f7)))
-
     let c_border = card_stroke
     let c_border_op = card_stroke_op
-
     let stroke_c = card_stroke
     let stroke_op = card_stroke_op
 
     event toggle
-    event toggle_dark ->
+    event set_mode ->
+    event set_dark_mode ->
     event choose_skin ->
     event choose_accent ->
     event toggle_accent_auto ->
     event toggle_hour12 ->
+    event toggle_seconds ->
+    event toggle_weather ->
+    event toggle_tray ->
+    event toggle_dock_auto ->
     event auto_accent ->
     event volume_set ->
+    event input_set ->
+    event toggle_mute ->
+    event pick_out ->
     event brightness_set ->
-    event apply_wallpaper ->
+    event disp_pick ->
+    event disp_scale ->
+    event disp_res ->
+    event disp_hz ->
     event open_wallpapers ->
+    event open_wifi_panel ->
+    event open_bt_panel ->
+    event open_updates_tab ->
     event run_update ->
+    event check_updates ->
     event toggle_wifi ->
     event toggle_bt ->
     event toggle_dnd ->
-
-    // ── Full-screen Scrim click zone for outside dismiss ──
-
+    event toggle_banners ->
+    event banner_secs_pick ->
+    event clear_notif_history ->
+    event bind_scroll ->
+    event pick_cat ->
 
     // ==============================================================
-    // REUSABLE COMPONENTS
+    // COMPONENTS
     // ==============================================================
 
-    // Category Sidebar Item
-    component SidebarItem(idx: number, icon_sym: text, icon_bg: color, label_text: text) {
-        size: 206, 32
-        prop on = 0 ~quick
-        follow on = if(tab == idx, 1, 0)
-
-        // Active background pill
-        box hit {
-            from: 0, 0
-            size: 206, 32
-            corner: 8
-            color: accent_c
-            opacity: if(tab == idx, 95%, 0%)
-            cursor: pointer
-        }
-
-        // Icon Box
-        group {
-            move: 6, 5
-            box { from: 0, 0; size: 22, 22; corner: 5; color: icon_bg }
-            text icon_sym { at: 11, 11; anchor: center; size: 13; color: #ffffff }
-        }
-
-        // Label
-        text label_text {
-            at: 36, 16
-            anchor: left center
-            size: 13
-            weight: if(tab == idx, 600, 400)
-            color: if(tab == idx, #ffffff, ink_c)
-        }
-
-        on press hit { tab = idx }
+    //  A rounded card, 556 wide; what goes between its braces is drawn inside.
+    component Card(h: number = 56) {
+        size: 556, h
+        box { from: 0, 0; size: 556, h; corner: 14; color: card_fill; opacity: card_fill_op }
+        box { from: 0, 0; size: 556, h; corner: 14; stroke: 1; color: c_border; opacity: c_border_op }
+        children
     }
 
-    // Glass Skin Selector Pill
-    component SkinPill(idx: number, title_t: text, desc_t: text) {
-        size: 164, 60
-        prop on = 0 ~quick
-        follow on = if(skin == idx, 1, 0)
-
-        box hit {
-            from: 0, 0
-            size: 164, 60
-            corner: 10
-            color: if(skin == idx, if(dark_mode, #2c3240, #ebf2ff), if(dark_mode, #1e2026, #f3f4f6))
-            cursor: pointer
-        }
-        box {
-            from: 0, 0
-            size: 164, 60
-            corner: 10
-            stroke: if(skin == idx, 2, 1)
-            color: if(skin == idx, accent_c, c_border)
-            opacity: if(skin == idx, 100%, c_border_op)
-        }
-
-        text title_t { at: 12, 18; size: 12; weight: 600; color: if(skin == idx, accent_c, ink_c) }
-        text desc_t { at: 12, 36; size: 10; color: ink_sub; width: 140; lines: 1 }
-
-        on press hit { emit choose_skin(idx) }
-    }
-
-    // Accent Color Swatch (the colours here are the accent palette itself: keep in step with `accent_c` in common/theme.plm)
-    component AccentCircle(idx: number, col: color) {
-        size: 28, 28
-        prop on = 0 ~quick
-        follow on = if(accent == idx, 1, 0)
-
-        ellipse { at: 14, 14; radius: 10; color: col }
-        ellipse { at: 14, 14; radius: 13; stroke: 2; color: col; opacity: on * 100% }
-
-        zone box hit { from: 0, 0; size: 28, 28; cursor: pointer }
-        on press hit { emit choose_accent(idx) }
-    }
-
-    // Switch Toggle Component
-    component SwitchToggle(state: bool) {
+    //  The switch (it carries its own click).
+    component Switch(state: bool, tap: event) {
         size: 44, 24
         box { from: 0, 0; size: 44, 24; corner: 12; color: if(state, accent_c, if(dark_mode, #3a3d46, #d1d5db)) }
         ellipse { at: if(state, 32, 12), 12; radius: 9.5; color: #ffffff }
+        zone box hit { from: 0, 0; size: 44, 24; corner: 12; cursor: pointer }
+        on press hit { emit tap }
+        on press right hit { }
     }
 
-    // Audio Sink Device Row
-    component SinkRow(idx: number, icon_t: text, name_t: text, desc_t: text) {
-        size: 520, 36
-        box hit {
-            from: 0, 0
-            size: 520, 36
-            corner: 8
-            color: if(sound_sink == idx, if(dark_mode, #283040, #eef4ff), #000000)
-            opacity: if(sound_sink == idx, 100%, 0%)
-            cursor: pointer
-        }
-        text icon_t { at: 12, 18; anchor: left center; size: 16; color: if(sound_sink == idx, accent_c, ink_sub) }
-        text name_t { at: 38, 18; anchor: left center; size: 12.5; weight: if(sound_sink == idx, 600, 400); color: ink_c }
-        text desc_t { at: 480, 18; anchor: right center; size: 11; color: ink_sub }
-
-        on press hit { sound_sink = idx }
-    }
-
-    // Network Row Item
-    component NetItem(icon_t: text, name_t: text, sec_t: text, locked: bool) {
-        size: 520, 32
-        text icon_t { at: 10, 16; anchor: left center; size: 14; color: ink_sub }
-        text name_t { at: 34, 16; anchor: left center; size: 12.5; color: ink_c }
-        text sec_t { at: 500, 16; anchor: right center; size: 11; color: ink_sub }
-    }
-
-    // Bluetooth Item
-    component BtItem(icon_t: text, name_t: text, status_t: text, connected: bool) {
-        size: 520, 38
-        row {
-            at: 10, 8
-            gap: 12; align: center
-            text icon_t { size: 18; color: if(connected, accent_c, ink_sub) }
-            column {
-                gap: 2
-                text name_t { size: 12.5; weight: 600; color: ink_c }
-                text status_t { size: 10.5; color: if(connected, ok_c, ink_sub) }
-            }
+    component ToggleRow(title: text, sub: text, state: bool, tap: event) {
+        size: 556, 56
+        box { from: 0, 0; size: 556, 56; corner: 14; color: card_fill; opacity: card_fill_op }
+        box { from: 0, 0; size: 556, 56; corner: 14; stroke: 1; color: c_border; opacity: c_border_op }
+        text title { at: 18, 20; anchor: left center; size: 13; weight: 600; color: ink_c; width: 440; lines: 1 }
+        text sub { at: 18, 38; anchor: left center; size: 10.5; color: ink_sub; width: 440; lines: 1 }
+        group {
+            move: 494, 16
+            Switch(state, tap)
         }
     }
 
-    // Notification App Row
-    component AppNoticeRow(icon_t: text, name_t: text, desc_t: text, enabled: bool) {
-        size: 520, 36
-        row {
-            at: 10, 6
-            gap: 12; align: center
-            text icon_t { size: 18; color: ink_c }
-            column {
-                gap: 2
-                text name_t { size: 12.5; weight: 500; color: ink_c; width: 380 }
-                text desc_t { size: 10.5; color: ink_sub }
-            }
-            SwitchToggle(enabled)
+    //  A row with a button on its right.
+    component ActionRow(title: text, sub: text, label: text, tap: event) {
+        size: 556, 56
+        box { from: 0, 0; size: 556, 56; corner: 14; color: card_fill; opacity: card_fill_op }
+        box { from: 0, 0; size: 556, 56; corner: 14; stroke: 1; color: c_border; opacity: c_border_op }
+        text title { at: 18, 20; anchor: left center; size: 13; weight: 600; color: ink_c; width: 400; lines: 1 }
+        text sub { at: 18, 38; anchor: left center; size: 10.5; color: ink_sub; width: 400; lines: 1 }
+        group {
+            move: 450, 14
+            Btn(label, 88, tap, false, 0, 0)
         }
     }
 
-    // Wallpaper Grid Tile
-    component WallTile(idx: number, name_t: text, bg_col: color) {
-        size: 160, 96
-        prop on = 0 ~quick
-        follow on = if(wall_choice == idx, 1, 0)
-
-        box hit {
-            from: 0, 0
-            size: 160, 72
-            corner: 8
-            color: bg_col
-            cursor: pointer
-        }
-        box {
-            from: 0, 0
-            size: 160, 72
-            corner: 8
-            stroke: if(wall_choice == idx, 2.5, 1)
-            color: if(wall_choice == idx, accent_c, c_border)
-            opacity: if(wall_choice == idx, 100%, c_border_op)
-        }
-        text "󰖐" { at: 80, 36; anchor: center; size: 22; color: #ffffff; opacity: 75% }
-        text name_t { at: 80, 84; anchor: center; size: 11; weight: if(wall_choice == idx, 600, 400); color: if(wall_choice == idx, accent_c, ink_c) }
-
-        on press hit { emit apply_wallpaper(idx) }
-    }
-
-    // Update Row Item
-    component UpdateRow(icon_t: text, name_t: text, desc_t: text) {
-        size: 520, 36
-        row {
-            at: 10, 6
-            gap: 12; align: center
-            text icon_t { size: 18; color: accent_c }
-            column {
-                gap: 2
-                text name_t { size: 12.5; weight: 600; color: ink_c }
-                text desc_t { size: 10.5; color: ink_sub }
-            }
+    //  A button; `x, y` places it when it sits inside a Card.
+    component Btn(label: text, w: number, tap: event, primary: bool = false, x: number = 0, y: number = 0) {
+        size: w, 28
+        prop hot = 0 ~quick
+        group {
+            move: x, y
+            box { from: 0, 0; size: w, 28; corner: 8; color: if(primary, accent_c, if(dark_mode, #2a2e38, #e5e7eb)); opacity: 0.85 + hot * 0.15 }
+            text label { at: w / 2, 14; anchor: center; size: 12; weight: 600; color: if(primary, #ffffff, ink_c) }
+            zone box hit { from: 0, 0; size: w, 28; corner: 8; cursor: pointer }
+            on enter hit { hot: 1 }
+            on leave hit { hot: 0 }
+            on press hit { emit tap }
+            on press right hit { }
         }
     }
 
-    // Hardware Specification Row
+    //  A slider you can drag.
+    component SliderRow(title: text, level: number, set: event, kind: number, live: bool) {
+        size: 556, 64
+        box { from: 0, 0; size: 556, 64; corner: 14; color: card_fill; opacity: card_fill_op }
+        box { from: 0, 0; size: 556, 64; corner: 14; stroke: 1; color: c_border; opacity: c_border_op }
+        text title { at: 18, 20; anchor: left center; size: 13; weight: 600; color: ink_c }
+        text "{clamp(level, 0, 1) * 100, 0}%" { at: 538, 20; anchor: right center; size: 11.5; color: ink_sub }
+        box { from: 18, 38; size: 520, 10; corner: 5; color: slider_bg; opacity: slider_bg_op }
+        box { from: 18, 38; size: max(10, 520 * clamp(level, 0, 1)), 10; corner: 5; color: if(live, accent_c, ink_sub) }
+        zone box hit { from: 18, 32; size: 520, 22; cursor: pointer }
+        on press hit { emit set(clamp(local.x / 520, 0, 1)) }
+        on drag hit { emit set(clamp(local.x / 520, 0, 1)) }
+        on press right hit { }
+    }
+
+    //  A segment of a row of choices.
+    component Seg(label: text, n: number, cur: number, pick: event, w: number = 52) {
+        size: w, 28
+        box { from: 0, 0; size: w, 28; corner: 8; color: if(cur == n, accent_c, if(dark_mode, #2a2e38, #e5e7eb)) }
+        text label { at: w / 2, 14; anchor: center; size: 11.5; weight: 600; color: if(cur == n, #ffffff, ink_c) }
+        zone box hit { from: 0, 0; size: w, 28; corner: 8; cursor: pointer }
+        on press hit { emit pick(n) }
+        on press right hit { }
+    }
+
+    //  A chip chosen from a list (resolution, refresh rate).
+    component Chip(label: text, on: bool, pick: event, n: number, w: number = 80) {
+        size: w, 28
+        box { from: 0, 0; size: w, 28; corner: 8; color: if(on, accent_c, if(dark_mode, #2a2e38, #e5e7eb)) }
+        text label { at: w / 2, 14; anchor: center; size: 11.5; weight: 600; color: if(on, #ffffff, ink_c) }
+        zone box hit { from: 0, 0; size: w, 28; corner: 8; cursor: pointer }
+        on press hit { emit pick(n) }
+        on press right hit { }
+    }
+
+    //  Light / Dark / Auto thumbnail.
+    component ModeThumb(n: number, label: text, base: color, panel_c: color, bar: color) {
+        size: 100, 78
+        box { from: 0, 0; size: 100, 60; corner: 8; color: base }
+        group {
+            show: n == 2
+            box { from: 0, 0; size: 50, 60; corner: 8; color: #f2f3f7 }
+        }
+        group {
+            show: n != 2
+            box { from: 6, 6; size: 88, 8; corner: 2; color: bar }
+            box { from: 6, 18; size: 26, 36; corner: 2; color: panel_c }
+            box { from: 36, 18; size: 58, 36; corner: 2; color: panel_c }
+        }
+        box { from: 0, 0; size: 100, 60; corner: 8; stroke: if(appearance == n, 2.5, 1); color: if(appearance == n, accent_c, c_border) }
+        text label { at: 50, 72; anchor: center; size: 12; weight: if(appearance == n, 600, 400); color: if(appearance == n, accent_c, ink_c) }
+        zone box hit { from: 0, 0; size: 100, 78; cursor: pointer }
+        on press hit { emit set_mode(n) }
+        on press right hit { }
+    }
+
+    component SkinPill(idx: number, title_t: text, desc_t: text) {
+        size: 166, 40
+        box { from: 0, 0; size: 166, 40; corner: 10; color: if(skin == idx, if(dark_mode, #2c3240, #ebf2ff), if(dark_mode, #1e2026, #f3f4f6)) }
+        box { from: 0, 0; size: 166, 40; corner: 10; stroke: if(skin == idx, 2, 1); color: if(skin == idx, accent_c, c_border) }
+        text title_t { at: 12, 14; anchor: left center; size: 12; weight: 600; color: if(skin == idx, accent_c, ink_c) }
+        text desc_t { at: 12, 29; anchor: left center; size: 9.5; color: ink_sub; width: 146; lines: 1 }
+        zone box hit { from: 0, 0; size: 166, 40; corner: 10; cursor: pointer }
+        on press hit { emit choose_skin(idx) }
+        on press right hit { }
+    }
+
+    component AccentCircle(idx: number, col: color) {
+        size: 28, 28
+        ellipse { at: 14, 14; radius: 11; color: col }
+        ellipse { at: 14, 14; radius: 13.5; stroke: 2; color: ink_c; opacity: if(accent == idx and not accent_auto, 90%, 0%) }
+        zone box hit { from: 0, 0; size: 28, 28; corner: 14; cursor: pointer }
+        on press hit { emit choose_accent(idx) }
+        on press right hit { }
+    }
+
+    //  A display: pick it to change its scale and mode.
+    component DispTile(d: record) {
+        size: 270, 78
+        box { from: 0, 0; size: 270, 78; corner: 14; color: card_fill; opacity: card_fill_op }
+        box { from: 0, 0; size: 270, 78; corner: 14; stroke: if(d.sel, 2, 1); color: if(d.sel, accent_c, c_border); opacity: if(d.sel, 100%, c_border_op) }
+        text "󰍹" { at: 34, 39; anchor: center; size: 30; color: if(d.sel, accent_c, ink_sub) }
+        text d.title { at: 66, 28; anchor: left center; size: 12.5; weight: 600; color: ink_c; width: 190; lines: 1 }
+        text d.mode { at: 66, 48; anchor: left center; size: 10.5; color: ink_sub; width: 190; lines: 1 }
+        text d.name { at: 66, 62; anchor: left center; size: 10; color: ink_sub; width: 190; lines: 1 }
+        zone box hit { from: 0, 0; size: 270, 78; corner: 14; cursor: pointer }
+        on press hit { emit disp_pick(d.index) }
+        on press right hit { }
+    }
+
+    component OutRow(o: record) {
+        size: 556, 44
+        box { from: 0, 0; size: 556, 44; corner: 12; color: if(o.def, if(dark_mode, #283040, #eef4ff), card_fill); opacity: if(o.def, 100%, card_fill_op) }
+        box { from: 0, 0; size: 556, 44; corner: 12; stroke: if(o.def, 2, 1); color: if(o.def, accent_c, c_border); opacity: if(o.def, 100%, c_border_op) }
+        text "󰓃" { at: 26, 22; anchor: center; size: 16; color: if(o.def, accent_c, ink_sub) }
+        text o.name { at: 48, 22; anchor: left center; size: 12.5; color: ink_c; width: 440; lines: 1 }
+        text "󰄬" { at: 530, 22; anchor: center; size: 15; color: accent_c; show: o.def }
+        zone box hit { from: 0, 0; size: 556, 44; corner: 12; cursor: pointer }
+        on press hit { emit pick_out(o.index) }
+        on press right hit { }
+    }
+
+    component BindRow(b: record) {
+        size: 556, 40
+        box { from: 0, 0; size: 556, 40; corner: 10; color: card_fill; opacity: card_fill_op * 70% }
+        text b.what { at: 16, 20; anchor: left center; size: 12.5; color: ink_c; width: 280; lines: 1 }
+        text b.keys { at: 540, 20; anchor: right center; size: 12; weight: 600; color: accent_c; width: 240; lines: 1; align: right }
+    }
+
+    component UpdateRow(u: record) {
+        size: 520, 30
+        box { from: 0, 0; size: 520, 30; corner: 8; color: if(dark_mode, #1e2026, #f3f4f6) }
+        text "󰏗" { at: 18, 15; anchor: center; size: 14; color: accent_c }
+        text u.name { at: 38, 15; anchor: left center; size: 12; weight: 600; color: ink_c; width: 220; lines: 1 }
+        text u.ver { at: 506, 15; anchor: right center; size: 11; color: ink_sub; width: 240; lines: 1; align: right }
+    }
+
     component SpecRow(label_t: text, val_t: text) {
         size: 520, 26
         text label_t { at: 0, 13; anchor: left center; size: 12; weight: 600; color: ink_sub; width: 110 }
         text val_t { at: 120, 13; anchor: left center; size: 12; color: ink_c; width: 390; lines: 1 }
+    }
+
+    //  A category in the sidebar; `c.tint` picks the icon colour.
+    component SidebarItem(c: record) {
+        size: 206, 30
+        box hit {
+            from: 0, 0
+            size: 206, 30
+            corner: 8
+            color: accent_c
+            opacity: if(tab == c.idx, 95%, 0%)
+            cursor: pointer
+        }
+        group {
+            move: 6, 4
+            box { from: 0, 0; size: 22, 22; corner: 5; color: pick(c.tint, #5856d6, #0a84ff, #ff2d55, #32ade6, #0a84ff, #ff453a, #8e8e93, #30b0c7, #ff9f0a, #8e8e93, #30d158) }
+            text c.icon { at: 11, 11; anchor: center; size: 13; color: #ffffff }
+        }
+        text c.name { at: 36, 15; anchor: left center; size: 13; weight: if(tab == c.idx, 600, 400); color: if(tab == c.idx, #ffffff, ink_c) }
+        on press hit { emit pick_cat(c.idx) }
+        on press right hit { }
     }
 
     on toggle     { toggle open }

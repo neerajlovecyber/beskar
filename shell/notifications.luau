@@ -186,7 +186,7 @@ local function arm_banner()
     if banner_timer then
         cancel(banner_timer)
     end
-    banner_timer = after(BANNER_MS, function()
+    banner_timer = after(tonumber(fact.banner_ms) or BANNER_MS, function()
         banner_timer = nil
         if fact.banner_hover == true then
             arm_banner()               -- the pointer is on it: wait a little longer
@@ -197,7 +197,7 @@ local function arm_banner()
 end
 
 local function banner_show()
-    if fact.dnd == true or fact.open == true then
+    if fact.dnd == true or fact.open == true or fact.banners == false then
         return
     end
     if not banner_visible then

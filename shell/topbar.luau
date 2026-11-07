@@ -145,14 +145,15 @@ end)
 -- ── the clock: the time only (no date), 12 hour with AM / PM unless Settings says 24 ──
 local clockfmt = require("clockfmt")
 local function paint_clock()
-    local t = clockfmt(fact.hour12)
+    local t = clockfmt(fact.hour12, fact.pref_seconds)
     if text.clock_text ~= t then
         text.clock_text = t
     end
 end
 paint_clock()
-every(5000, paint_clock)
+every(1000, paint_clock)
 on("fact:hour12", paint_clock)
+on("fact:pref_seconds", paint_clock)
 
 -- ── music in the clock pill: the cover and a few bars while a player has something ──
 pcall(sys.watch, "media", function(m)
@@ -290,7 +291,7 @@ local function show_on_menu_monitor(name)
     say(name, "fact open true")
 end
 local PM = {
-    [1] = function() say("settings", "fact tab 7"); show_on_menu_monitor("settings") end,         -- About This PC
+    [1] = function() say("settings", "fact tab 9"); show_on_menu_monitor("settings") end,         -- About This PC
     [2] = function() say("settings", "fact tab 0"); show_on_menu_monitor("settings") end,         -- System Settings
     [3] = function() say("lock", "fact locked true") end,                                           -- Lock Screen
     [4] = function() run("systemctl", { "suspend" }, nil, { output = false }) end,                 -- Sleep

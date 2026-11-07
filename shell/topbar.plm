@@ -59,6 +59,11 @@ scene MacTopBar {
     fact cp_screen = -1
     fact cp_w = 360
     fact cp_h = 496
+    //  options chosen in Settings → Menu Bar & Dock (settings.luau pushes them, and again after a restart)
+    fact pref_seconds = false
+    fact pref_weather = true
+    fact pref_tray = true
+    fact pref_dock_auto = true
     fact rec_on = false       // a screen recording runs (capture.luau): a red dot and the time show in the pill
     text rec_time = "0:00"
     text clock_text = ""      // the time, in the format chosen in Settings (topbar.luau)
@@ -388,6 +393,7 @@ scene MacTopBar {
         //  again 2.5 s after the pointer stops asking for it. With an empty workspace it stays up.
         prop vis = 1 ~calm
         layer dockshow ~calm {
+            always while not pref_dock_auto { vis: 1 }
             empty  while mon.$screen.busy == 0 { vis: 1 }
             panel  while bp_on and bp_screen == screen.index { vis: 1 }
             peek   for 2500ms after reveal, keep_dock { vis: 1 }
@@ -568,6 +574,7 @@ scene MacTopBar {
             }
 
             row {
+                show: pref_weather
                 gap: 4
                 align: center
                 text weather_icon { size: 12; color: hint_c }
@@ -592,6 +599,7 @@ scene MacTopBar {
             align: center
 
             row {
+                show: pref_tray
                 gap: 6
                 align: center
                 for i in icons {

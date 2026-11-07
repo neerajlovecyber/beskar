@@ -146,6 +146,7 @@ start_shell() {
     echo "  - $0 appswitcher     (Toggle Cmd+Tab Application Switcher)"
     echo "  - $0 clipboard       (Toggle Clipboard History Manager)"
     echo "  - $0 settings        (Toggle System Settings)"
+    echo "  - $0 shortcuts       (Settings on the keyboard shortcuts list)"
     echo "  - $0 lock            (Lock Screen with ext-session-lock)"
     echo "  - $0 session [0|1|2] (0=Shutdown, 1=Restart, 2=Logout modal)"
     echo "  - $0 capture         (Toggle Screen Capture & Record HUD)"
@@ -184,6 +185,10 @@ case "$1" in
         "$BIN" --say topbar "emit open_panel 2"
         ;;
     settings)
+        "$BIN" --say topbar "emit open_panel 4"
+        ;;
+    shortcuts)
+        "$BIN" --say settings "fact tab 8" >/dev/null 2>&1 || true
         "$BIN" --say topbar "emit open_panel 4"
         ;;
     lock)
