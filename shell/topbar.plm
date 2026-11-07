@@ -24,7 +24,7 @@ scene MacTopBar {
     //  What topbar.luau may touch. `run` is only what it needs: niri for the workspace, curl for
     //  the weather, and the dock's apps. Undeclared is nothing.
     permissions {
-        services: "clock", "network", "battery", "window", "tray", "tray.*", "apps", "apps.launch", "audio", "audio.*", "brightness", "brightness.*", "say:control_center", "say:spotlight", "say:notifications", "say:dashboard", "say:settings", "say:session", "say:appswitcher", "say:lock", "say:clipboard", "say:wallpapers"
+        services: "clock", "network", "battery", "window", "tray", "tray.*", "apps", "apps.launch", "audio", "audio.*", "brightness", "brightness.*", "media", "media.*", "say:music", "say:control_center", "say:spotlight", "say:notifications", "say:dashboard", "say:settings", "say:session", "say:appswitcher", "say:lock", "say:clipboard", "say:wallpapers"
         run: "niri msg", "curl", "sh", "systemctl"
     }
 
@@ -59,6 +59,11 @@ scene MacTopBar {
     fact cp_screen = -1
     fact cp_w = 360
     fact cp_h = 496
+    fact m_on = false         // something is playing: its cover and a few bars show in the clock pill
+    fact m_playing = false
+    fact m_has_art = false
+    text m_art = ""
+    image m_cover = from m_art, 22, 22
     fact cp_kind = 0          // what owns the centre island: 0 the dashboard · 1 a notification banner (the clock gives way)
     fact bp_on = false        // bottom: the dock island grows UP into Spotlight / the wallpaper strip
     fact bp_screen = -1
@@ -93,6 +98,7 @@ scene MacTopBar {
     event open_panel ->      // a number: which separate panel to toggle on the focused monitor (see topbar.luau)
     event open_notifications ->
     event open_dashboard ->
+    event open_music ->
     event open_cc_wifi ->
     event open_cc_bt ->
     event tray_activate ->
@@ -361,6 +367,16 @@ scene MacTopBar {
         follow rw = right_row.width + pad * 2
         follow dw = dock_row.width + dock_pad * 2
 
+        //  the little bars beside the cover: three sines at different speeds, flat while paused
+        prop mb1 = 0
+        prop mb2 = 0
+        prop mb3 = 0
+        wave mb1 = 1 at 5.3
+        wave mb2 = 1 at 7.1
+        wave mb3 = 1 at 6.2
+        prop mplay = 0 ~calm
+        follow mplay = if(m_playing, 1, 0)
+
         //  Auto-hide: while a window is on this monitor's workspace the dock sinks into the ring.
         //  It comes back when the pointer reaches the bottom edge (or is on the dock) and goes
         //  again 2.5 s after the pointer stops asking for it. With an empty workspace it stays up.
@@ -510,6 +526,26 @@ scene MacTopBar {
             gap: 12
             align: center
 
+            row music_chip {
+                show: m_on
+                gap: 7
+                align: center
+                cursor: pointer
+                group {
+                    size: 22, 22
+                    ellipse { at: 11, 11; radius: 11; color: accent_c }
+                    group {
+                        clip box { from: 0, 0; size: 22, 22; corner: 11 }
+                        image m_cover { at: 0, 0; size: 22, 22; show: m_has_art }
+                    }
+                }
+                group {
+                    size: 14, 16
+                    box { from: 0, 8 - (2.5 + mplay * (3 + 3 * mb1)); size: 3, (2.5 + mplay * (3 + 3 * mb1)) * 2; corner: 1.5; color: ink_c }
+                    box { from: 5, 8 - (2.5 + mplay * (3 + 3 * mb2)); size: 3, (2.5 + mplay * (3 + 3 * mb2)) * 2; corner: 1.5; color: ink_c }
+                    box { from: 10, 8 - (2.5 + mplay * (3 + 3 * mb3)); size: 3, (2.5 + mplay * (3 + 3 * mb3)) * 2; corner: 1.5; color: ink_c }
+                }
+            }
             row clock {
                 gap: 6
                 align: center
@@ -527,6 +563,8 @@ scene MacTopBar {
 
         }
         on press clock { last_screen = screen.index; emit open_dashboard }
+        on press music_chip { last_screen = screen.index; emit open_music }
+        on press right music_chip { }
         //  Right button is ours (see the tray): a right click on anything here does nothing
         //  instead of quitting the shell.
         on press right clock { }

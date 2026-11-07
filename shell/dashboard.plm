@@ -15,7 +15,7 @@ scene MacDashboard {
     }
 
     permissions {
-        services: "clock", "battery", "say:spotlight", "say:clipboard", "say:control_center", "say:notifications", "say:settings", "say:wallpapers", "say:topbar"
+        services: "clock", "battery", "say:spotlight", "say:clipboard", "say:music", "say:control_center", "say:notifications", "say:settings", "say:wallpapers", "say:topbar"
         run: "sh", "curl"
     }
 

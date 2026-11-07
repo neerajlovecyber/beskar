@@ -610,7 +610,7 @@ scene MacSettings {
     }
 
     permissions {
-        services: "clock", "audio", "audio.*", "brightness", "brightness.*", "network", "network.*", "bluetooth", "bluetooth.*", "say:topbar", "say:dock", "say:spotlight", "say:control_center", "say:notifications", "say:dashboard", "say:clipboard", "say:wallpapers"
+        services: "clock", "audio", "audio.*", "brightness", "brightness.*", "network", "network.*", "bluetooth", "bluetooth.*", "say:topbar", "say:dock", "say:spotlight", "say:control_center", "say:notifications", "say:dashboard", "say:clipboard", "say:music", "say:wallpapers"
         run: "awww", "awww-daemon", "gsettings", "systemctl", "loginctl", "kitty", "pacman", "yay", "paru", "sh", "niri msg"
     }
 

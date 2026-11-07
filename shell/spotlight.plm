@@ -46,7 +46,7 @@ scene MacSpotlight {
     }
 
     permissions {
-        services: "apps", "apps.launch", "say:clipboard", "say:control_center", "say:notifications", "say:dashboard", "say:settings", "say:wallpapers", "say:topbar"
+        services: "apps", "apps.launch", "say:clipboard", "say:music", "say:control_center", "say:notifications", "say:dashboard", "say:settings", "say:wallpapers", "say:topbar"
     }
 
     let line_color = card_stroke

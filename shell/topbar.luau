@@ -22,6 +22,7 @@ local PANELS = {
     control_center = { id = 1, island = "rp", w = 372 },
     notifications = { id = 2, island = "rp", w = 386 },
     dashboard = { id = 3, island = "cp", w = 360 },
+    music = { id = 9, island = "cp", w = 380 },
     banner = { id = 7, island = "cp", w = 380, kind = 1 },     -- a notification, shown inside the centre pill
     spotlight = { id = 4, island = "bp", w = 640 },      -- bottom: grow out of the dock
     wallpapers = { id = 5, island = "bp", w = 980 },
@@ -136,6 +137,17 @@ on("open_cc_wifi", open_island_panel("control_center", 1))
 on("open_cc_bt", open_island_panel("control_center", 2))
 on("open_dashboard", open_island_panel("dashboard"))
 on("open_notifications", open_island_panel("notifications"))
+on("open_music", open_island_panel("music"))
+
+-- ── music in the clock pill: the cover and a few bars while a player has something ──
+pcall(sys.watch, "media", function(m)
+    m = m or {}
+    local has = (m.player or "") ~= "" and (m.title or "") ~= ""
+    fact.m_on = has
+    fact.m_playing = m.playing == true
+    fact.m_has_art = (m.art or "") ~= ""
+    text.m_art = m.art or ""
+end)
 
 -- ── volume / brightness feedback, inside the centre pill ─────────────────────────────────────
 -- (replaces the floating bezel). It borrows the centre island for a moment: not from the dashboard, but from a

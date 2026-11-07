@@ -30,7 +30,7 @@ kill_all() {
 
 check_status() {
     echo "macOS / iNiR Shell Status:"
-    for comp in topbar border spotlight control_center notifications dashboard wallpapers settings lock session capture appswitcher clipboard; do
+    for comp in topbar border spotlight control_center notifications dashboard wallpapers settings lock session capture appswitcher clipboard music; do
         if pgrep -f "pleamar.*$comp\.plm" >/dev/null 2>&1; then
             echo "  ✔ $comp is RUNNING"
         else
@@ -51,11 +51,11 @@ apply_saved_theme() {
         [ -z "$DM" ] && DM="true"
         [ -z "$SKIN" ] && SKIN="0"
 
-        for comp in topbar border spotlight control_center notifications dashboard wallpapers settings session capture appswitcher clipboard; do
+        for comp in topbar border spotlight control_center notifications dashboard wallpapers settings session capture appswitcher clipboard music; do
             "$BIN" --say "$comp" "fact dark_mode $DM" >/dev/null 2>&1 || true
             "$BIN" --say "$comp" "fact skin $SKIN" >/dev/null 2>&1 || true
         done
-        for comp in topbar control_center notifications dashboard settings wallpapers spotlight clipboard session capture appswitcher lock; do
+        for comp in topbar control_center notifications dashboard settings wallpapers spotlight clipboard music session capture appswitcher lock; do
             "$BIN" --say "$comp" "fact accent $ACCENT" >/dev/null 2>&1 || true
             "$BIN" --say "$comp" "fact accent_auto $AUTO" >/dev/null 2>&1 || true
         done
@@ -117,6 +117,7 @@ start_shell() {
     setsid "$BIN" --no-hud --scene "$DIR/shell/appswitcher.plm" </dev/null >/tmp/pleamar_switcher.log 2>&1 &
     PID_SWITCHER=$!
     setsid "$BIN" --no-hud --scene "$DIR/shell/clipboard.plm" </dev/null >/tmp/pleamar_clipboard.log 2>&1 &
+    setsid "$BIN" --no-hud --scene "$DIR/shell/music.plm" </dev/null >/tmp/pleamar_music.log 2>&1 &
     PID_CLIP=$!
 
     echo "$PID_BAR $PID_BORDER $PID_SPOTLIGHT $PID_CC $PID_WIDGETS $PID_DASH $PID_WALL $PID_SETTINGS $PID_LOCK $PID_SESSION $PID_CAPTURE $PID_SWITCHER $PID_CLIP" > "$PID_FILE"
