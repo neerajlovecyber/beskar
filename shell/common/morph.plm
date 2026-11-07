@@ -1,0 +1,31 @@
+// The boilerplate every panel that grows out of a bar island needs. A panel is a scene with `screens: each`
+// that draws ONLY its content; the glass is drawn by the frame (topbar.plm), which melts it into the island.
+//
+// A scene that uses it writes, before this include:
+//     let mp_sw = 440      // its surface width
+//     let mp_sh = 520      // its surface height
+// and then wraps its content in
+//     group { show: mp_here; move: X, -2; opacity: mp_fade; … }
+// where X puts the content's left edge where the island's glass starts (for the right island, surface width
+// minus the glass width). `-2` puts the top at the island's bottom edge (the surface starts under the bar).
+//
+// The scene's logic ends with `local panel = require("panel")("<scene name>")` (shell/panel.luau) and calls
+// `panel.height(h)` whenever its height changes; opening, closing and arbitration are handled there and in
+// topbar.luau. To open it from a button, emit an event that topbar.luau turns into `open_island_panel(...)`.
+part Morph {
+    fact open = false
+    fact open_screen = 0         // which monitor shows it (set by topbar.luau)
+    fact panel_h = 400           // its height, reported by its logic through panel.height(h)
+    prop seen = 0 ~calm
+    prop ph = 400 ~calm
+    follow ph = panel_h
+    layer panel ~quick {
+        shown while open { seen: 1 ~calm }
+        gone             { seen: 0 ~quick }
+    }
+    let mp_here = open_screen == screen.index
+    let mp_fade = clamp(seen * 1.5 - 0.5, 0, 1)
+    //  a click outside the content closes it (only on the monitor that shows it)
+    zone box dismiss { from: 0, 0; size: mp_sw, mp_sh; active: open and open_screen == screen.index }
+    on press right dismiss { }
+}

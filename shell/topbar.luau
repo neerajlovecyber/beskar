@@ -13,10 +13,58 @@ local function toggle(panel)
 end
 
 on("open_spotlight", toggle("spotlight"))
-on("open_notifications", toggle("notifications"))
 
--- ── the Control Center: its glass is drawn by this scene, on the monitor of the button you pressed ──
--- `last_screen` is set by the button's own rule just before it emits, so it says which monitor. Anything
+-- ── panels that grow out of an island ───────────────────────────
+-- The glass is drawn by this scene (one shape per island, driven by the facts `rp_*` right, `cp_*` centre); the
+-- panel scenes draw only content and report to us (shell/panel.luau → panel_open / panel_height / panel_close).
+-- Two panels can share an island (the Control Center and the notifications use the right one): the one that
+-- opened last owns it, and a panel closing only turns the glass off if it still owns it.
+local PANELS = {
+    control_center = { id = 1, island = "rp", w = 372 },
+    notifications = { id = 2, island = "rp", w = 386 },
+    dashboard = { id = 3, island = "cp", w = 360 },
+}
+local BY_ID = {}
+for name, p in pairs(PANELS) do
+    p.name = name
+    BY_ID[p.id] = p
+end
+local owner = {}        -- island → id of the panel that owns its glass
+local heights = {}      -- id → last height it reported
+
+on("panel_open", function(id)
+    local p = BY_ID[tonumber(id) or 0]
+    if p then
+        owner[p.island] = p.id
+        fact[p.island .. "_w"] = p.w
+        if heights[p.id] then
+            fact[p.island .. "_h"] = heights[p.id]
+        end
+        fact[p.island .. "_on"] = true
+    end
+end)
+
+on("panel_height", function(v)
+    v = tonumber(v) or 0
+    local id, h = math.floor(v / 10000), v % 10000
+    local p = BY_ID[id]
+    if p then
+        heights[id] = h
+        if owner[p.island] == id then
+            fact[p.island .. "_h"] = h
+        end
+    end
+end)
+
+on("panel_close", function(id)
+    local p = BY_ID[tonumber(id) or 0]
+    if p and owner[p.island] == p.id then
+        owner[p.island] = nil
+        fact[p.island .. "_on"] = false
+    end
+end)
+
+-- Which monitor a click was on: `last_screen` is set by the button's own rule just before it emits. Anything
 -- else (a niri key bound to start.sh) has none, and then the monitor with the focus is used.
 local OUTPUTS = {}                       -- monitor names by screen index (filled further down)
 
@@ -40,37 +88,33 @@ local function monitor_of_click(cb)
     end)
 end
 
-local function open_cc(page)
+-- Open (or close, if it is already open on that monitor) a panel on the monitor of the click. `page` is for the
+-- Control Center only: a number opens it on that page (a second click on the same button closes nothing, it
+-- just switches page), nil toggles it.
+local function open_island_panel(name, page)
     return function()
         monitor_of_click(function(s)
-            local open_here = fact.cc_on == true and tonumber(fact.cc_screen) == s
+            local p = PANELS[name]
+            local open_here = fact[p.island .. "_on"] == true and owner[p.island] == p.id
+                and tonumber(fact[p.island .. "_screen"]) == s
             if open_here and page == nil then
-                pcall(sys.call, "say", "control_center", "fact open false")
+                pcall(sys.call, "say", name, "fact open false")
                 return
             end
-            fact.cc_screen = s
-            pcall(sys.call, "say", "control_center", "fact open_screen " .. s)
-            pcall(sys.call, "say", "control_center", "fact page " .. (page or 0))
-            pcall(sys.call, "say", "control_center", "fact open true")
+            fact[p.island .. "_screen"] = s
+            pcall(sys.call, "say", name, "fact open_screen " .. s)
+            if name == "control_center" then
+                pcall(sys.call, "say", name, "fact page " .. (page or 0))
+            end
+            pcall(sys.call, "say", name, "fact open true")
         end)
     end
 end
-on("open_control_center", open_cc(nil))
-on("open_cc_wifi", open_cc(1))
-on("open_cc_bt", open_cc(2))
-
--- ── the dashboard (centre island): same arrangement ──
-on("open_dashboard", function()
-    monitor_of_click(function(s)
-        if fact.dash_on == true and tonumber(fact.dash_screen) == s then
-            pcall(sys.call, "say", "dashboard", "fact open false")
-            return
-        end
-        fact.dash_screen = s
-        pcall(sys.call, "say", "dashboard", "fact open_screen " .. s)
-        pcall(sys.call, "say", "dashboard", "fact open true")
-    end)
-end)
+on("open_control_center", open_island_panel("control_center"))
+on("open_cc_wifi", open_island_panel("control_center", 1))
+on("open_cc_bt", open_island_panel("control_center", 2))
+on("open_dashboard", open_island_panel("dashboard"))
+on("open_notifications", open_island_panel("notifications"))
 
 -- ── the power menu (the gem button) ──────────────────────────────
 local function say(scene, words)

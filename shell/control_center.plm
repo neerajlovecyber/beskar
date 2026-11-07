@@ -2,7 +2,10 @@
 import "common/palette.plm"
 
 scene MacControlCenter {
+    let mp_sw = 440
+    let mp_sh = 520
     include "common/theme.plm"
+    include "common/morph.plm"
     surface {
         size: 440, 520
         anchor: top_right
@@ -64,9 +67,6 @@ scene MacControlCenter {
     text time_pos = "0:00"
     text time_len = "0:00"
     image cover = from cover_art, 52, 52
-    fact open = false
-    fact open_screen = 0         // which monitor shows it (set by topbar.luau)
-    fact cc_h = 434              // the card's height, worked out by control_center.luau (the frame's glass follows it)
 
 
     event toggle
@@ -102,17 +102,11 @@ scene MacControlCenter {
     event toggle_wifi ->
     event toggle_bt ->
 
-    prop seen = 0 ~calm
-    //  panel_style: 0 morph (the frame's glass grows out of the right island) · 1 float (a sheet below it)
-    prop fl = 0 ~calm
-    follow fl = if(panel_style == 1, 1, 0)
     //  Closing the password sheet hands the keyboard back, which is a `blur`: this stays above zero
     //  for a moment after it so that blur does not close the whole panel.
     prop askhold = 0 ~calm
     follow askhold = if(asking, 1, 0)
     //  The card is shorter on the overview than on the pickers, and grows when one opens.
-    prop ch = 434 ~calm
-    follow ch = cc_h
 
     //  A small button with a word.
     component Pill(label: text, press: event, w: number = 96, strong: bool = false, warn: bool = false, onfill: bool = false) {
@@ -168,22 +162,16 @@ scene MacControlCenter {
         on press more_hit { emit more }
     }
 
-    layer panel ~quick {
-        shown while open { seen: 1 ~calm }
-        gone             { seen: 0 ~quick }
-    }
 
     // Dismiss click zone for outside
-    zone box dismiss { from: 0, 0; size: 440, 520; active: open and open_screen == screen.index }
     on press dismiss { open = false; page = 0 }
-    on press right dismiss { }
 
     //  The glass behind this is drawn by the frame (topbar.plm), so it can melt out of the right island:
-    //  this scene only draws the content, placed where the card is (morph) or where the sheet hovers (float).
+    //  this scene only draws the content, placed where the card is.
     group {
-        show: open_screen == screen.index
-        move: 74 - fl * 10, -2 + fl * 22
-        opacity: clamp(seen * 1.5 - 0.5, 0, 1)
+        show: mp_here
+        move: 74, -2
+        opacity: mp_fade
 
         // ==========================================================
         // PAGE 0: MAIN CONTROL CENTER OVERVIEW

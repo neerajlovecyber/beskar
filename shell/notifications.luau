@@ -6,6 +6,7 @@
 --     newest first, and to disk (`history.json`), so a restart does not wash it away
 --   · the top bar's bell is told how many are waiting
 
+local panel = require("panel")("notifications")   -- the frame draws the glass: tell it the height
 local MAX_LIVE = 6          -- cards in the centre
 local MAX_PAST = 5          -- rows of history shown
 local KEEP_PAST = 100       -- rows of history kept on disk
@@ -69,6 +70,16 @@ local function paint()
         past[k] = { title = h.title or "", body = h.body or "", icon = h.icon or "", age = age_of(h.time) }
     end
     model.past = past
+
+    -- how tall the card is: header, one card per notification (or the empty message), the Earlier rows
+    local live_n = #rows
+    local height
+    if live_n < 1 and #past < 1 then
+        height = 190
+    else
+        height = 70 + math.max(live_n, #past > 0 and 0 or 1) * 100 + (#past > 0 and (44 + #past * 58) or 0) + 8
+    end
+    panel.height(height)
 
     -- the bell
     pcall(sys.call, "say", "topbar", "fact notif_count " .. tostring(#order))

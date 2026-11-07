@@ -52,13 +52,17 @@ scene MacTopBar {
     //  The power menu (the gem button): `open` is what shell/exclusive.luau closes, `open_screen` which monitor shows it.
     fact open = false
     fact open_screen = -1
-    //  The Control Center (right island): its glass is drawn here; control_center.luau reports its state.
-    fact cc_on = false
-    fact cc_screen = -1       // which monitor it is open on
-    fact cc_h = 434           // the card's height
-    fact dash_on = false      // the dashboard (centre island), same arrangement as the Control Center
-    fact dash_screen = -1
-    fact dash_h = 496
+    //  The glass of a panel that grows out of an island is drawn here, one shape per island, driven by facts:
+    //  `lp_` left (the power menu, below), `cp_` centre, `rp_` right. on = open, screen = which monitor, w / h = size.
+    //  panel scenes report through topbar.luau (events `panel_open`, `panel_height`, `panel_close`).
+    fact cp_on = false
+    fact cp_screen = -1
+    fact cp_w = 360
+    fact cp_h = 496
+    fact rp_on = false
+    fact rp_screen = -1
+    fact rp_w = 372
+    fact rp_h = 434
     fact last_screen = -1     // the monitor of the last click on one of the bar's buttons
     fact menu_i = -1          // which dock item has its right-click menu open (-1 none)
     //  One record per monitor, in niri's output order: the workspace each one shows.
@@ -67,6 +71,9 @@ scene MacTopBar {
     text weather_icon = "󰖐"
 
     event pm_item ->
+    event panel_open ->
+    event panel_height ->
+    event panel_close ->
     event open_control_center ->
     event open_spotlight ->
     event open_notifications ->
@@ -349,22 +356,24 @@ scene MacTopBar {
             away   { vis: 0 }
         }
 
-        //  The power menu: `pv` is how open it is on THIS monitor; `fl` 0 morphs it out of the island, 1 lets it float.
-        prop pv = 0 ~calm
-        follow pv = if(open and open_screen == screen.index, 1, 0)
-        prop fl = 0 ~calm
-        follow fl = if(panel_style == 1, 1, 0)
+        //  Panels that grow out of the islands. Per island: `v` how open it is on THIS monitor, and its size, all
+        //  springs, so the glass morphs when a panel opens, closes or changes height (or another takes the island).
         let pm_w = 236
-        //  The Control Center's glass: cv how open it is on THIS monitor, chh its height (springs).
-        prop cv = 0 ~calm
-        follow cv = if(cc_on and cc_screen == screen.index, 1, 0)
-        prop chh = 434 ~calm
-        follow chh = cc_h
-        prop dv = 0 ~calm
-        follow dv = if(dash_on and dash_screen == screen.index, 1, 0)
-        prop dhh = 496 ~calm
-        follow dhh = dash_h
         let pm_h = 312
+        prop pv = 0 ~calm                                   // left: the power menu
+        follow pv = if(open and open_screen == screen.index, 1, 0)
+        prop cv = 0 ~calm                                   // centre
+        follow cv = if(cp_on and cp_screen == screen.index, 1, 0)
+        prop cpw = 360 ~calm
+        follow cpw = cp_w
+        prop cph = 496 ~calm
+        follow cph = cp_h
+        prop rv = 0 ~calm                                   // right
+        follow rv = if(rp_on and rp_screen == screen.index, 1, 0)
+        prop rpw = 372 ~calm
+        follow rpw = rp_w
+        prop rph = 434 ~calm
+        follow rph = rp_h
 
         // ── the glass: ring + top islands + dock, one silhouette ──
         body {
@@ -388,17 +397,10 @@ scene MacTopBar {
 
             //  Top islands.
             box left_notch   { from: -ext, -14; size: lw + ext, notch_h; corner: 18; blend: fillet }
-            //  The power menu, as glass. Morph: the left island itself grows down (and a little wider), melted
-            //  into it. Float: a separate rounded sheet that appears below with a gap.
-            box power_m { from: -ext, -14; size: lw + (pm_w - lw) * pv * (1 - fl) + ext, notch_h + pm_h * pv * (1 - fl); corner: 18; blend: fillet }
-            box power_f { from: pad - 6, 62; size: pm_w * pv * fl, pm_h * pv * fl; corner: 20 }
-            //  The Control Center, as glass: morph grows the right island down and out to the left (360 + ring);
-            //  float is a separate sheet below it.
-            box cc_m { from: screen.width - (rw + max(0, 372 - rw) * cv * (1 - fl)), -14; size: rw + max(0, 372 - rw) * cv * (1 - fl) + ext, notch_h + chh * cv * (1 - fl); corner: 18; blend: fillet }
-            box cc_f { from: screen.width - 16 - 360 * cv * fl, 62; size: 360 * cv * fl, chh * cv * fl; corner: 22 }
-            //  The dashboard, as glass: the centre island grows down and out to 360 wide, or a sheet floats below.
-            box dash_m { from: screen.width / 2 - (cw + max(0, 360 - cw) * dv * (1 - fl)) / 2, -14; size: cw + max(0, 360 - cw) * dv * (1 - fl), notch_h + dhh * dv * (1 - fl); corner: 18; blend: fillet }
-            box dash_f { from: screen.width / 2 - 174 * dv * fl, 62; size: 348 * dv * fl, dhh * dv * fl; corner: 22 }
+            //  The panels' glass: each island grows downward (and wider if the panel is), melted into itself.
+            box power_m { from: -ext, -14; size: lw + max(0, pm_w - lw) * pv + ext, notch_h + pm_h * pv; corner: 18; blend: fillet }
+            box right_m { from: screen.width - (rw + max(0, rpw - rw) * rv), -14; size: rw + max(0, rpw - rw) * rv + ext, notch_h + rph * rv; corner: 18; blend: fillet }
+            box center_m { from: screen.width / 2 - (cw + max(0, cpw - cw) * cv) / 2, -14; size: cw + max(0, cpw - cw) * cv, notch_h + cph * cv; corner: 18; blend: fillet }
             box center_notch { from: screen.width / 2 - cw / 2, -14; size: cw, notch_h; corner: 18; blend: fillet }
             box right_notch  { from: screen.width - rw, -14; size: rw + ext, notch_h; corner: 18; blend: fillet }
 
@@ -526,7 +528,7 @@ scene MacTopBar {
         group {
             show: pv > 0.02
             opacity: clamp(pv * 1.6 - 0.45, 0, 1)
-            move: 14 + fl * (pad - 20), 48 + fl * 22 + (1 - pv) * -10
+            move: 14, 48 + (1 - pv) * -10
             zone box pm_panel { from: -14, -4; size: pm_w, pm_h; corner: 18 }
             on press right pm_panel { }
             on away pm_panel for 1300ms { open = false }

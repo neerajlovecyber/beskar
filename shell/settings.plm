@@ -73,7 +73,6 @@ scene MacSettings {
     event choose_skin ->
     event choose_accent ->
     event toggle_accent_auto ->
-    event set_panel_style ->
     event auto_accent ->
     event volume_set ->
     event brightness_set ->
@@ -295,20 +294,6 @@ scene MacSettings {
                 zone box accent_auto_hit { from: 0, 0; size: 44, 24; corner: 12; cursor: pointer }
             }
             on press accent_auto_hit { emit toggle_accent_auto }
-
-            // 5. How panels appear: grown out of the bar, or floating beside it
-            box { from: 0, 472; size: 556, 60; corner: 14; color: card_fill; opacity: card_fill_op }
-            box { from: 0, 472; size: 556, 60; corner: 14; stroke: 1; color: c_border; opacity: c_border_op }
-            text "Panel style" { at: 18, 494; anchor: left center; size: 12.5; color: ink_c; width: 300 }
-            text "Morph grows panels out of the bar; Float lets them hover beside it" { at: 18, 512; anchor: left center; size: 10.5; color: ink_sub; width: 330 }
-            box { from: 390, 487; size: 70, 30; corner: 15; color: if(panel_style == 0, accent_c, item_solid) }
-            text "Morph" { at: 425, 502; anchor: center; size: 12; weight: 600; color: if(panel_style == 0, #ffffff, ink_c) }
-            zone box style_morph_hit { from: 390, 487; size: 70, 30; corner: 15; cursor: pointer }
-            box { from: 468, 487; size: 70, 30; corner: 15; color: if(panel_style == 1, accent_c, item_solid) }
-            text "Float" { at: 503, 502; anchor: center; size: 12; weight: 600; color: if(panel_style == 1, #ffffff, ink_c) }
-            zone box style_float_hit { from: 468, 487; size: 70, 30; corner: 15; cursor: pointer }
-            on press style_morph_hit { emit set_panel_style(0) }
-            on press style_float_hit { emit set_panel_style(1) }
         }
 
         // ──────────────────────────────────────────────────────────

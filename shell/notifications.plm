@@ -8,7 +8,10 @@
 import "common/palette.plm"
 
 scene MacNotifications {
+    let mp_sw = 412
+    let mp_sh = 800
     include "common/theme.plm"
+    include "common/morph.plm"
     //  `notifications` is what makes this the receiver of the desktop's notifications (the logic asks for
     //  them); `files` / `files.write` keep the history of dismissed ones across restarts; `say:topbar`
     //  tells the bell how many are waiting.
@@ -21,7 +24,6 @@ scene MacNotifications {
     model notices max 6 { id: number; app: text; title: text; body: text; icon: image 40, 40; age: text }
     model past max 5 { title: text; body: text; icon: image 28, 28; age: text }
 
-    fact open = false
     fact last_n = 0
     fact dnd = false            // Do Not Disturb: no banners (they still land in the centre)
 
@@ -88,90 +90,63 @@ scene MacNotifications {
         text h.age { at: 338, 20; anchor: right center; size: 10.5; color: ink_sub }
     }
 
-    // ── the centre ───────────────────────────────────────────────
-    prop seen = 0 ~quick
-    prop scale = 0.96 ~quick
-    //  The centre is as tall as its cards.
-    prop ph = 150 ~calm
-    follow ph = if(notices.count < 1 and past.count < 1, 190, 70 + max(notices.count, if(past.count > 0, 0, 1)) * 100 + if(past.count > 0, 44 + past.count * 58, 0) + 8)
-
-    layer centre ~quick {
-        shown while open { seen: 1 ~quick; scale: 1 ~quick }
-        gone             { seen: 0 ~quick; scale: 0.96 ~quick }
-    }
-
-    surface panel {
+    // ── the centre: content only; the frame draws the glass, melting it out of the right island ──
+    surface {
         size: 412, 800
         anchor: top_right
-        margin: 0, 12, 0, 0
+        margin: 0, 0, 0, 0
         level: overlay
+        screens: each
+    }
 
-        zone box dismiss { from: 0, 0; size: 412, 800; active: open }
-        on press dismiss { open = false }
-        on press right dismiss { }
+    on press dismiss { open = false }
 
+    group {
+        show: mp_here
+        move: 26, -2
+        opacity: mp_fade
+
+        text "Notifications" { at: 24, 32; anchor: left center; size: 17; weight: 700; color: ink_c }
+        //  Clear all
         group {
-            move: 16, 8
-            pivot: 360, 0
-            scale: scale
-            opacity: seen
+            show: notices.count > 0
+            box { from: 280, 18; size: 76, 28; corner: 14; color: item_solid }
+            text "Clear All" { at: 318, 32; anchor: center; size: 10.5; weight: 600; color: ink_c }
+            zone box clear_hit { from: 280, 18; size: 76, 28; corner: 14; cursor: pointer }
+            on press clear_hit { emit clear_notices }
+            on press right clear_hit { }
+        }
 
-            body {
-                color: bg_color
-                glass: glass_amt
-                lens: false
-                frost: 100%
-                dispersion: 35%
-                refraction: 75%
-                tint: tint_amt
-                rim: rim_amt
-                box { from: 0, 0; size: 380, ph; corner: 30 }
-            }
+        column {
+            at: 14, 62
+            gap: 8
+            for n in notices { NoticeCard(n) }
+        }
 
-            text "Notifications" { at: 24, 32; anchor: left center; size: 17; weight: 700; color: ink_c }
-            //  Clear all
-            group {
-                show: notices.count > 0
-                box { from: 280, 18; size: 76, 28; corner: 14; color: item_solid }
-                text "Clear All" { at: 318, 32; anchor: center; size: 10.5; weight: 600; color: ink_c }
-                zone box clear_hit { from: 280, 18; size: 76, 28; corner: 14; cursor: pointer }
-                on press clear_hit { emit clear_notices }
-                on press right clear_hit { }
-            }
-
+        //  What was dealt with, kept across restarts
+        group {
+            show: past.count > 0
+            move: 0, 62 + notices.count * 100 + 4
+            text "Earlier" { at: 24, 14; anchor: left center; size: 12; weight: 700; color: ink_sub }
+            text "Clear" { at: 356, 14; anchor: right center; size: 11; weight: 600; color: ink_sub }
+            zone box clear_past_hit { from: 300, 4; size: 56, 22; corner: 11; cursor: pointer }
+            on press clear_past_hit { emit clear_past }
+            on press right clear_past_hit { }
             column {
-                at: 14, 62
-                gap: 8
-                for n in notices { NoticeCard(n) }
-            }
-
-            //  What was dealt with, kept across restarts
-            group {
-                show: past.count > 0
-                move: 0, 62 + notices.count * 100 + 4
-                text "Earlier" { at: 24, 14; anchor: left center; size: 12; weight: 700; color: ink_sub }
-                text "Clear" { at: 356, 14; anchor: right center; size: 11; weight: 600; color: ink_sub }
-                zone box clear_past_hit { from: 300, 4; size: 56, 22; corner: 11; cursor: pointer }
-                on press clear_past_hit { emit clear_past }
-                on press right clear_past_hit { }
-                column {
-                    at: 14, 32
-                    gap: 6
-                    for h in past { PastRow(h) }
-                }
-            }
-
-            //  Nothing new
-            group {
-                show: notices.count < 1 and past.count < 1
-                ellipse { at: 190, 100; radius: 28; color: item_solid }
-                path { at: 181, 90; color: ink_sub; move 0, 15; line 2.5, 15; line 3, 7; line 5, 2; line 9, 2; line 11, 7; line 11.5, 15; line 14, 15; line 14, 17; line 0, 17; close }
-                ellipse { at: 188, 108; radius: 2.2; color: ink_sub }
-                text "No Notifications" { at: 190, 148; anchor: center; size: 13; weight: 600; color: ink_c }
+                at: 14, 32
+                gap: 6
+                for h in past { PastRow(h) }
             }
         }
 
-        on press right dismiss { }
+        //  Nothing new
+        group {
+            show: notices.count < 1 and past.count < 1
+            ellipse { at: 190, 100; radius: 28; color: item_solid }
+            path { at: 181, 90; color: ink_sub; move 0, 15; line 2.5, 15; line 3, 7; line 5, 2; line 9, 2; line 11, 7; line 11.5, 15; line 14, 15; line 14, 17; line 0, 17; close }
+            ellipse { at: 188, 108; radius: 2.2; color: ink_sub }
+            text "No Notifications" { at: 190, 148; anchor: center; size: 13; weight: 600; color: ink_c }
+        }
     }
 
     // ── the banner: a new notification drops from the island ─────

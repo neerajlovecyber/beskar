@@ -47,6 +47,7 @@ end)
 -- Counts of what the pages list are kept by the code below.
 local wifi_n, bt_n, outs_n, apps_n = 0, 0, 1, 0
 local last_h = nil
+local panel = require("panel")("control_center")
 local function push_height()
     local page = tonumber(fact.page) or 0
     local h
@@ -61,8 +62,7 @@ local function push_height()
     end
     if h ~= last_h then
         last_h = h
-        fact.cc_h = h
-        pcall(sys.call, "say", "topbar", "fact cc_h " .. h)
+        panel.height(h)
     end
 end
 on("fact:page", push_height)
@@ -418,7 +418,6 @@ end)
 
 -- Stop listening for new devices when the panel closes.
 on("fact:open", function(v)
-    pcall(sys.call, "say", "topbar", "fact cc_on " .. tostring(v == true or v == 1))
     if v == true or v == 1 then
         push_height()
     end

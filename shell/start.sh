@@ -48,8 +48,6 @@ apply_saved_theme() {
         [ -z "$ACCENT" ] && ACCENT="0"
         AUTO=$(grep -o '"accent_auto": *[a-z]*' "$CONFIG_FILE" | awk '{print $2}' || true)
         [ -z "$AUTO" ] && AUTO="false"
-        STYLE=$(grep -o '"panel_style": *[0-9]*' "$CONFIG_FILE" | awk '{print $2}' || true)
-        [ -z "$STYLE" ] && STYLE="0"
         [ -z "$DM" ] && DM="true"
         [ -z "$SKIN" ] && SKIN="0"
 
@@ -60,7 +58,6 @@ apply_saved_theme() {
         for comp in topbar control_center notifications dashboard settings wallpapers spotlight osd clipboard session capture appswitcher lock; do
             "$BIN" --say "$comp" "fact accent $ACCENT" >/dev/null 2>&1 || true
             "$BIN" --say "$comp" "fact accent_auto $AUTO" >/dev/null 2>&1 || true
-            "$BIN" --say "$comp" "fact panel_style $STYLE" >/dev/null 2>&1 || true
         done
     fi
 }

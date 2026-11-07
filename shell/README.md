@@ -41,7 +41,7 @@ An ultra-performant, GPU-accelerated macOS Sequoia/Sonoma desktop shell for Wayl
 | **Dashboard** | [`shell/dashboard.plm`](dashboard.plm) | Drops from the centre island when you click the clock: date, live weather, CPU / memory / disk, world clocks. |
 | **Bezel OSD (HUD)** | [`shell/osd.plm`](osd.plm) | Centered floating bezel HUD for Volume and Brightness adjustments with auto-dismiss timer and spring physics. |
 | **Spotlight Search** | [`shell/spotlight.plm`](spotlight.plm) | Centered search bar with live fuzzy filtering of desktop applications, arrow-key navigation, and Enter to launch. |
-| **Power menu** | [`shell/topbar.plm`](topbar.plm) | The gem button in the top bar: About This PC, System Settings, Lock, Sleep, Log Out, Restart, Shut Down. It grows out of the left island (Morph) or floats below it (Float): Settings → Appearance → Panel style. |
+| **Power menu** | [`shell/topbar.plm`](topbar.plm) | The gem button in the top bar: About This PC, System Settings, Lock, Sleep, Log Out, Restart, Shut Down. It grows out of the left island. |
 | **Supervisor & CLI** | [`shell/start.sh`](start.sh) | Process supervisor, theme persistence, and CLI hotkey runner. |
 
 ---

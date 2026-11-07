@@ -14,9 +14,9 @@ local THEMED = { "topbar", "control_center", "notifications", "dashboard", "sett
                 "spotlight", "osd", "clipboard", "session", "capture", "appswitcher", "lock" }
 local PLAIN = {}
 
-local function save_theme(dm_str, skin_str, accent_str, auto_str, style_str)
+local function save_theme(dm_str, skin_str, accent_str, auto_str)
     -- ~/.config/pleamar_shell.json is read by start.sh to restore the look after a restart.
-    local json_text = string.format('{"dark_mode": %s, "skin": %s, "accent": %s, "accent_auto": %s, "panel_style": %s}', dm_str, skin_str, accent_str, auto_str, style_str)
+    local json_text = string.format('{"dark_mode": %s, "skin": %s, "accent": %s, "accent_auto": %s}', dm_str, skin_str, accent_str, auto_str)
     pcall(run, "sh", { "-c", "mkdir -p \"$HOME/.config\" && printf '%s\\n' '" .. json_text .. "' > \"$HOME/.config/pleamar_shell.json\"" }, nil, { output = false })
 end
 
@@ -26,20 +26,18 @@ local function broadcast_theme()
     local skin_str = tostring(fact.skin or 0)
     local accent_str = tostring(fact.accent or 0)
     local auto_str = tostring(fact.accent_auto == true)
-    local style_str = tostring(fact.panel_style or 0)
 
     for _, s in ipairs(THEMED) do
         pcall(sys.call, "say", s, "fact dark_mode " .. dm_str)
         pcall(sys.call, "say", s, "fact skin " .. skin_str)
         pcall(sys.call, "say", s, "fact accent " .. accent_str)
         pcall(sys.call, "say", s, "fact accent_auto " .. auto_str)
-        pcall(sys.call, "say", s, "fact panel_style " .. style_str)
     end
     for _, s in ipairs(PLAIN) do
         pcall(sys.call, "say", s, "fact dark_mode " .. dm_str)
         pcall(sys.call, "say", s, "fact skin " .. skin_str)
     end
-    save_theme(dm_str, skin_str, accent_str, auto_str, style_str)
+    save_theme(dm_str, skin_str, accent_str, auto_str)
     -- GTK / libadwaita apps follow too
     pcall(run, "gsettings", { "set", "org.gnome.desktop.interface", "color-scheme", dm and "prefer-dark" or "prefer-light" }, nil, { output = false })
 end
@@ -68,11 +66,6 @@ on("auto_accent", function(val)
         fact.accent = tonumber(val) or 0
         broadcast_theme()
     end
-end)
-
-on("set_panel_style", function(v)
-    fact.panel_style = tonumber(v) or 0
-    broadcast_theme()
 end)
 
 on("toggle_accent_auto", function()
