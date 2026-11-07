@@ -95,6 +95,84 @@ local function remember(n)
     save_history()
 end
 
+-- ── the banner: a new notification is shown inside the centre pill for a few seconds ──────────
+-- The frame draws the glass (it reports to topbar.luau with panel_open 7); the card is drawn by the `banner` surface
+-- of this scene. Hover keeps it up; a click opens the centre; Do Not Disturb or an open centre keep it away.
+local BANNER_MS = 5500
+local BANNER_ID = 7
+local banner_timer = nil
+local banner_visible = false
+
+local function to_topbar(words)
+    pcall(sys.call, "say", "topbar", words)
+end
+
+local function banner_hide()
+    if banner_timer then
+        cancel(banner_timer)
+        banner_timer = nil
+    end
+    if banner_visible then
+        banner_visible = false
+        fact.banner_on = false
+        to_topbar("emit panel_close " .. BANNER_ID)
+    end
+end
+
+local function arm_banner()
+    if banner_timer then
+        cancel(banner_timer)
+    end
+    banner_timer = after(BANNER_MS, function()
+        banner_timer = nil
+        if fact.banner_hover == true then
+            arm_banner()               -- the pointer is on it: wait a little longer
+        else
+            banner_hide()
+        end
+    end)
+end
+
+local function banner_show()
+    if fact.dnd == true or fact.open == true then
+        return
+    end
+    if not banner_visible then
+        banner_visible = true
+        fact.banner_on = true
+        to_topbar("emit panel_open " .. BANNER_ID)
+        to_topbar("emit panel_height " .. (BANNER_ID * 10000 + 58))
+    end
+    arm_banner()
+end
+
+-- the frame may refuse (a panel owns the centre island) and turns `banner_on` off itself
+on("fact:banner_on", function(v)
+    if not (v == true or v == 1) then
+        banner_visible = false
+        if banner_timer then
+            cancel(banner_timer)
+            banner_timer = nil
+        end
+    end
+end)
+
+-- opening the centre hides the banner; a click on the banner opens the centre
+on("fact:open", function(v)
+    if v == true or v == 1 then
+        banner_hide()
+    end
+end)
+on("card_click", function()
+    if fact.open == true then
+        return
+    end
+    banner_hide()
+    to_topbar("emit open_notifications")
+end)
+
+local first_list = true
+
 sys.watch("notifications", function(list)
     local present = {}
     local fresh = {}
@@ -118,6 +196,11 @@ sys.watch("notifications", function(list)
     end
     order = ids
     paint()
+    if first_list then
+        first_list = false               -- what was already waiting when we started is not news
+    elseif #fresh > 0 then
+        banner_show()
+    end
 end)
 
 -- Keep what arrives until somebody decides (see the top of the file).

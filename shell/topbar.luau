@@ -22,6 +22,7 @@ local PANELS = {
     control_center = { id = 1, island = "rp", w = 372 },
     notifications = { id = 2, island = "rp", w = 386 },
     dashboard = { id = 3, island = "cp", w = 360 },
+    banner = { id = 7, island = "cp", w = 380, kind = 1 },     -- a notification, shown inside the centre pill
     spotlight = { id = 4, island = "bp", w = 640 },      -- bottom: grow out of the dock
     wallpapers = { id = 5, island = "bp", w = 980 },
     clipboard = { id = 6, island = "bp", w = 560 },
@@ -34,9 +35,24 @@ end
 local owner = {}        -- island → id of the panel that owns its glass
 local heights = {}      -- id → last height it reported
 
+local last_toast_screen = nil      -- the monitor with the focus (kept up to date below)
+
 on("panel_open", function(id)
     local p = BY_ID[tonumber(id) or 0]
     if p then
+        if p.kind == 1 then
+            -- a banner never takes the island from a panel that is open there
+            if owner[p.island] and owner[p.island] ~= p.id then
+                pcall(sys.call, "say", "notifications", "fact banner_on false")
+                return
+            end
+            fact[p.island .. "_screen"] = last_toast_screen or 0
+        elseif owner[p.island] == 7 then
+            pcall(sys.call, "say", "notifications", "fact banner_on false")      -- a real panel opens: the banner leaves
+        end
+        if p.island == "cp" then
+            fact.cp_kind = p.kind or 0
+        end
         owner[p.island] = p.id
         fact[p.island .. "_w"] = p.w
         if heights[p.id] then
@@ -119,7 +135,6 @@ on("open_dashboard", open_island_panel("dashboard"))
 on("open_notifications", open_island_panel("notifications"))
 
 -- Keep the notification banner on the monitor with the focus: ask niri now and then, tell it when it changes.
-local last_toast_screen = nil
 every(2000, function()
     run("niri", { "msg", "-j", "focused-output" }, function(out)
         local ok, o = pcall(json.decode, out or "")

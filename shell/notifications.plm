@@ -24,13 +24,14 @@ scene MacNotifications {
     model notices max 6 { id: number; app: text; title: text; body: text; icon: image 40, 40; age: text }
     model past max 5 { title: text; body: text; icon: image 28, 28; age: text }
 
-    fact last_n = 0
+    fact banner_on = false      // a notification is shown inside the centre pill (the frame draws the glass)
+    fact banner_hover = false   // the pointer is on it: it stays
     fact toast_screen = 0       // the monitor with the focus (kept up to date by topbar.luau): the banner drops there
     fact dnd = false            // Do Not Disturb: no banners (they still land in the centre)
 
     event toggle
-    event arrived
     event clear_notices ->
+    event card_click ->
     event clear_past ->
     event dismiss_notice ->
 
@@ -69,8 +70,9 @@ scene MacNotifications {
         }
         zone box card_hit { from: 0, 0; size: 352, 92; corner: 26 }
         zone box x_hit { at: 322, 28; size: 26, 26; corner: 13; cursor: pointer; active: hot > 0.5 }
-        on enter card_hit { hot: 1 }
-        on leave card_hit { hot: 0 }
+        on enter card_hit { hot: 1; banner_hover = true }
+        on leave card_hit { hot: 0; banner_hover = false }
+        on press card_hit { emit card_click }
         on press x_hit { emit dismiss_notice(n.id) }
         on press right card_hit { }
         on press right x_hit { }
@@ -150,51 +152,33 @@ scene MacNotifications {
         }
     }
 
-    // ── the banner: a new notification drops from the island ─────
-    prop tin = 0 ~quick
+    // ── the banner: a new notification appears INSIDE the centre pill ─────────────────────────────
+    //  The frame (topbar.plm) draws the glass: the centre island grows to hold it and the clock fades. This surface
+    //  starts at the very top of the screen (a negative margin, over the bar) and draws only the card. notifications.luau
+    //  shows it for a few seconds; hover keeps it, a click opens the centre.
+    prop bn = 0 ~calm
+    follow bn = if(banner_on, 1, 0)
 
-    layer banner ~quick {
-        live for 5500ms after arrived { tin: 1 ~quick }
-        gone                          { tin: 0 ~quick }
-    }
-
-    //  New ones arrive when the count goes up.
-    on change notices.count while notices.count > last_n { emit arrived }
-    on change notices.count { last_n = notices.count }
-
-    surface toast {
-        size: 412, 150
-        anchor: top_right
-        margin: 0, 12, 0, 0
+    surface banner {
+        size: 412, 100
+        anchor: top
+        margin: -42, 0, 0, 0
         level: overlay
         screens: each
-        open: tin > 0.02 and not open and not dnd and toast_screen == screen.index
+        open: banner_on and toast_screen == screen.index
+
+        zone box banner_pad { from: 16, 0; size: 380, 96 }
+        on press right banner_pad { }
 
         group {
-            move: 16, 8 + (1 - tin) * -26
-            pivot: 360, 0
-            scale: 0.94 + tin * 0.06
-            opacity: tin
-
-            body {
-                color: bg_color
-                glass: glass_amt
-                lens: false
-                frost: 100%
-                tint: tint_amt
-                rim: rim_amt
-                box { from: 0, 0; size: 380, 104; corner: 30 }
-            }
+            move: 30, 2
+            opacity: clamp(bn * 1.6 - 0.5, 0, 1)
             for n in notices {
                 group {
                     show: n.index == 0
-                    move: 14, 6
                     NoticeCard(n, true)
                 }
             }
-            zone box toast_hit { from: 0, 0; size: 380, 104; corner: 30; cursor: pointer }
-            on press toast_hit { open = true }
-            on press right toast_hit { }
         }
     }
 

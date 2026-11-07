@@ -59,6 +59,7 @@ scene MacTopBar {
     fact cp_screen = -1
     fact cp_w = 360
     fact cp_h = 496
+    fact cp_kind = 0          // what owns the centre island: 0 the dashboard · 1 a notification banner (the clock gives way)
     fact bp_on = false        // bottom: the dock island grows UP into Spotlight / the wallpaper strip
     fact bp_screen = -1
     fact bp_w = 680
@@ -369,6 +370,8 @@ scene MacTopBar {
         follow pv = if(open and open_screen == screen.index, 1, 0)
         prop cv = 0 ~calm                                   // centre
         follow cv = if(cp_on and cp_screen == screen.index, 1, 0)
+        prop bnv = 0 ~calm                                  // the banner: the clock fades while it shows
+        follow bnv = if(cp_on and cp_kind == 1 and cp_screen == screen.index, 1, 0)
         prop cpw = 360 ~calm
         follow cpw = cp_w
         prop cph = 496 ~calm
@@ -469,6 +472,7 @@ scene MacTopBar {
         row center_row {
             at: screen.width / 2, cy
             anchor: center middle
+            opacity: 1 - bnv
             gap: 12
             align: center
 

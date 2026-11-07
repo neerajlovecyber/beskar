@@ -33,7 +33,7 @@ is named after Apple, and nothing is hard-coded to one machine.
 | Panel | Opens with | What it does |
 | :--- | :--- | :--- |
 | **Control Center** | the switches icon, the Wi-Fi / Bluetooth icons, `Super+Shift+C` | Wi-Fi and Bluetooth (join networks with a password, connect, pair, per-app volume), Now Playing with seek, Do Not Disturb, dark mode, brightness and volume sliders, shortcuts |
-| **Notifications** | the bell, `Super+N` | The notification server; grows out of the right island. Cards with icon, title and body, hover ×, Clear All, a saved history ("Earlier"), a banner that drops from the island |
+| **Notifications** | the bell, `Super+N` | The notification server; grows out of the right island. Cards with icon, title and body, hover ×, Clear All, a saved history ("Earlier"), a banner that appears inside the centre pill |
 | **Dashboard** | click the clock | Date, live weather, CPU / memory / disk, battery, clocks |
 | **Spotlight** | `Super+Space` | Search and launch apps |
 | **Clipboard** | `Super+V` | Clipboard history (cliphist) |
