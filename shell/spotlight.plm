@@ -46,13 +46,14 @@ scene MacSpotlight {
     }
 
     permissions {
-        services: "apps", "apps.launch", "say:clipboard", "say:music", "say:control_center", "say:notifications", "say:dashboard", "say:settings", "say:wallpapers", "say:topbar"
+        run: "xdg-open", "wl-copy", "systemctl suspend"
+        services: "apps", "apps.launch", "say:lock", "say:session", "say:capture", "say:clipboard", "say:music", "say:control_center", "say:notifications", "say:dashboard", "say:settings", "say:wallpapers", "say:topbar"
     }
 
     let line_color = card_stroke
     let line_op = card_stroke_op
 
-    model hits max 7 { name: text; icon: image 26, 26 }
+    model hits max 7 { name: text; sub: text; kind: number; glyph: text; icon: image 26, 26 }
     fact sel   = 0
     text query = ""
     event toggle
@@ -79,12 +80,19 @@ scene MacSpotlight {
         // Blue selection pill bar on left
         box { from: 0, 11; size: 3, 20; corner: 1.5; color: accent_c; opacity: on }
 
-        image h.icon { at: 16, 8; size: 26, 26 }
+        image h.icon { at: 16, 8; size: 26, 26; show: h.kind == 0 }
+        group {
+            show: h.kind != 0
+            ellipse { at: 29, 21; radius: 13; color: accent_c; opacity: 85% }
+            text h.glyph { at: 29, 21; anchor: center; size: 14; color: #ffffff }
+        }
+        text h.sub { at: 560, 21; anchor: right center; size: 11.5; color: ink_sub; width: 200; lines: 1; align: right }
         text h.name {
             at: 54, 21
             anchor: left center
-            size: 15
-            width: 500
+            size: if(h.kind == 1, 19, 15)
+            weight: if(h.kind == 1, 700, 400)
+            width: 360
             lines: 1
             color: ink_c
             opacity: 65% + on * 35%
