@@ -218,6 +218,7 @@ scene MacSettings {
             column {
                 gap: 12
                 ToggleRow("Do Not Disturb", "Notifications still arrive, silently, in the centre", dnd, toggle_dnd)
+                ToggleRow("Group by app", "Stack several notifications from one app into a pile", group_apps, toggle_group)
                 ToggleRow("Show banners", "A new notification drops into the clock pill", banners, toggle_banners)
                 Card(64) {
                     text "Banner stays for" { at: 18, 22; anchor: left center; size: 13; weight: 600; color: ink_c }
@@ -392,6 +393,7 @@ scene MacSettings {
 
     fact in_level = 0
     fact banners = true
+    fact group_apps = false
     fact banner_i = 1
     fact dnd = false
     fact pref_seconds = false
@@ -453,6 +455,7 @@ scene MacSettings {
     event check_updates ->
     event toggle_dnd ->
     event toggle_banners ->
+    event toggle_group ->
     event banner_secs_pick ->
     event clear_notif_history ->
     event bind_scroll ->

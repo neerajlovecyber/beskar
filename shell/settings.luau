@@ -78,9 +78,9 @@ end
 
 local function save_prefs()
     local j = string.format(
-        '{"appearance": %d, "seconds": %s, "weather": %s, "tray": %s, "dock_auto": %s, "banners": %s, "banner_i": %d}',
+        '{"appearance": %d, "seconds": %s, "weather": %s, "tray": %s, "dock_auto": %s, "banners": %s, "banner_i": %d, "group": %s}',
         tonumber(fact.appearance) or 1, tostring(b(fact.pref_seconds)), tostring(b(fact.pref_weather)), tostring(b(fact.pref_tray)),
-        tostring(b(fact.pref_dock_auto)), tostring(b(fact.banners)), tonumber(fact.banner_i) or 1)
+        tostring(b(fact.pref_dock_auto)), tostring(b(fact.banners)), tonumber(fact.banner_i) or 1, tostring(b(fact.group_apps)))
     sh('mkdir -p "$HOME/.config/beskar" && printf "%s\\n" "$1" > "$HOME/.config/beskar/prefs.json"', nil, j)
 end
 
@@ -91,6 +91,7 @@ local function push_prefs()
     say("topbar", "fact pref_dock_auto " .. tostring(b(fact.pref_dock_auto)))
     say("notifications", "fact banners " .. tostring(b(fact.banners)))
     say("notifications", "fact banner_ms " .. tostring(BANNER_MS[tonumber(fact.banner_i) or 1] or 5500))
+    say("notifications", "fact group_apps " .. tostring(b(fact.group_apps)))
     say("notifications", "fact dnd " .. tostring(b(fact.dnd)))
 end
 
@@ -109,6 +110,7 @@ local function load_prefs()
             if p.tray ~= nil then fact.pref_tray = p.tray == true end
             if p.dock_auto ~= nil then fact.pref_dock_auto = p.dock_auto == true end
             if p.banners ~= nil then fact.banners = p.banners == true end
+            if p.group ~= nil then fact.group_apps = p.group == true end
             if p.banner_i ~= nil then fact.banner_i = tonumber(p.banner_i) or 1 end
         end
         -- the other scenes may still be starting: push now and once more a little later
@@ -198,6 +200,7 @@ on("toggle_dock_auto", function() fact.pref_dock_auto = not b(fact.pref_dock_aut
 
 -- ── Notifications ────────────────────────────────────────────────
 on("toggle_dnd", function() fact.dnd = not b(fact.dnd); changed_pref() end)
+on("toggle_group", function() fact.group_apps = not b(fact.group_apps); changed_pref() end)
 on("toggle_banners", function() fact.banners = not b(fact.banners); changed_pref() end)
 on("banner_secs_pick", function(n) fact.banner_i = tonumber(n) or 1; changed_pref() end)
 on("clear_notif_history", function() say("notifications", "emit clear_past") end)

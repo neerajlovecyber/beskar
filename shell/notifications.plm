@@ -31,6 +31,7 @@ scene MacNotifications {
     fact banner_hover = false   // the pointer is on it: it stays
     fact toast_screen = 0       // the monitor with the focus (kept up to date by topbar.luau): the banner drops there
     fact live_h = 0             // how tall the waiting rows are together
+    fact group_apps = false     // Settings → Notifications: stack several from one app (default: a plain list)
     fact banners = true         // Settings → Notifications: show banners at all
     fact banner_ms = 5500       // …and for how long
     fact dnd = false            // Do Not Disturb: no banners (they still land in the centre)
