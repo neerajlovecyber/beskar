@@ -123,14 +123,12 @@ scene MacWallpapers {
         on press right touch { }
     }
 
-    //  A round arrow button at one end of the strip; `dir` -1 left, 1 right. Dim when there is nowhere to go.
+    //  An arrow (just the chevron, no circle) at one end of the strip; `dir` -1 left, 1 right. Dim when there is nowhere to go.
     component ArrowBtn(dir: number) {
         size: 32, 32
         prop hot = 0 ~quick
         let can = if(dir < 0, wall_row > 0, wall_row < wall_rows - 1)
-        ellipse { at: 16, 16; radius: 16; color: item_solid; opacity: if(can, 100%, 35%) + hot * 0% }
-        ellipse { at: 16, 16; radius: 16; color: accent_c; opacity: if(can, hot * 80%, 0%) }
-        path { at: 13 + dir * 0.5, 9.5; color: if(can and hot > 0.5, #ffffff, ink_c); stroke: 2; opacity: if(can, 100%, 40%); move 3 - dir * 3, 0; line 3 + dir * 3, 6.5; line 3 - dir * 3, 13 }
+        path { at: 12 + dir * 0.5, 7; color: if(can and hot > 0.5, accent_c, ink_c); stroke: 2.6; opacity: if(can, 80% + hot * 20%, 25%); move 4 - dir * 4, 0; line 4 + dir * 4, 9; line 4 - dir * 4, 18 }
         zone box hit { from: 0, 0; size: 32, 32; corner: 16; cursor: pointer; active: can }
         on enter hit { hot: 1 }
         on leave hit { hot: 0 }
