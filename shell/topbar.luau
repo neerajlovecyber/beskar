@@ -294,7 +294,78 @@ end
 read_pins()
 every(5000, read_pins)
 
+-- ── workspaces: one capsule per workspace of each monitor, and what runs in each ──
+-- `model ws_list`: one record per workspace, `out` the monitor (0 = first of `niri msg outputs`, sorted by name).
+-- Up to six apps per workspace (icon i1…i6, title t1…t6, window id w1…w6), `count` is how many there are.
 local OUTPUTS = {}
+local function build_ws()
+    local by_ws = {}
+    for _, w in ipairs(WINS) do
+        if w.workspace_id then
+            local l = by_ws[w.workspace_id]
+            if not l then
+                l = {}
+                by_ws[w.workspace_id] = l
+            end
+            l[#l + 1] = w
+        end
+    end
+    local out_index = {}
+    for i, name in ipairs(OUTPUTS) do
+        out_index[name] = i - 1
+    end
+    local sorted = {}
+    for _, ws in ipairs(WS) do
+        sorted[#sorted + 1] = ws
+    end
+    table.sort(sorted, function(a, b)
+        if a.output ~= b.output then
+            return (a.output or "") < (b.output or "")
+        end
+        return (a.idx or 0) < (b.idx or 0)
+    end)
+    local list = {}
+    for _, ws in ipairs(sorted) do
+        local o = out_index[ws.output]
+        if o and #list < 12 then
+            local wins = by_ws[ws.id] or {}
+            local rec = { out = o, idx = ws.idx or 1, active = ws.is_active == true, wins = #wins }
+            for k = 1, 6 do
+                local w = wins[k]
+                if w then
+                    local e = entry_for(w.app_id)
+                    rec["i" .. k] = e and e.icon or lower(w.app_id)
+                    rec["t" .. k] = (w.title and w.title ~= "") and w.title or (w.app_id or "")
+                    rec["w" .. k] = w.id
+                else
+                    rec["i" .. k] = ""
+                    rec["t" .. k] = ""
+                    rec["w" .. k] = 0
+                end
+            end
+            list[#list + 1] = rec
+        end
+    end
+    model.ws_list = list
+end
+
+on("ws_go", function(v)
+    v = tonumber(v) or 0
+    local out, idx = math.floor(v / 100), v % 100
+    local name = OUTPUTS[out + 1]
+    if name then
+        run("niri", { "msg", "action", "focus-monitor", name }, function()
+            run("niri", { "msg", "action", "focus-workspace", tostring(idx) }, nil, { output = false })
+        end, { output = false })
+    end
+end)
+
+on("ws_focus", function(wid)
+    if wid and wid > 0 then
+        run("niri", { "msg", "action", "focus-window", "--id", tostring(wid) }, nil, { output = false })
+    end
+end)
+
 local function push_mon()
     local shown, busy = {}, {}
     for _, w in ipairs(WS) do
@@ -309,11 +380,16 @@ local function push_mon()
             count[win.workspace_id] = (count[win.workspace_id] or 0) + 1
         end
     end
+    local per_out = {}
+    for _, w in ipairs(WS) do
+        per_out[w.output or ""] = (per_out[w.output or ""] or 0) + 1
+    end
     local recs = {}
     for i, name in ipairs(OUTPUTS) do
-        recs[i] = { active = shown[name] or 1, busy = count[busy[name] or -1] or 0 }
+        recs[i] = { active = shown[name] or 1, busy = count[busy[name] or -1] or 0, nws = per_out[name] or 1 }
     end
     model.mon = recs
+    build_ws()
 end
 
 local function refresh_running()
@@ -362,6 +438,27 @@ run("niri", { "msg", "-j", "outputs" }, function(out, code)
     end
     refresh_niri()
 end)
+
+-- Which copy of the scene is on which monitor is up to the compositor and changes between runs (screen 0 was
+-- HDMI one day and eDP the next), so sorting the names is only a guess. pleamar logs the truth at startup
+-- ("surface 0 on eDP-1 …"); read it from the log start.sh keeps, and use it for every per-monitor model.
+local learned = false
+local function learn_screens(tries)
+    run("sh", { "-c", "grep 'surface [0-9]* on' /tmp/pleamar_topbar.log 2>/dev/null | head -8" }, function(out)
+        local map = {}
+        for idx, name in (out or ""):gmatch("surface (%d+) on (%S+)") do
+            map[tonumber(idx) + 1] = name
+        end
+        if #map > 0 then
+            OUTPUTS = map
+            learned = true
+            push_mon()
+        elseif tries > 0 then
+            after(3000, function() learn_screens(tries - 1) end)
+        end
+    end)
+end
+after(2500, function() learn_screens(6) end)
 
 -- niri prints one JSON object per event. Workspaces and windows are all that can change what we
 -- show; ask niri again instead of reading the event.

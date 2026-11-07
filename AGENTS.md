@@ -55,7 +55,8 @@ pattern matches the invoking command) and relaunching `bin/pleamar --no-hud --sc
    time zone all come from the system (`location.luau`, `$HOME`, `niri msg`, `date`).
 10. **One panel at a time.** A panel's logic ends with `require("exclusive")("<scene>")` (`shell/exclusive.luau`), which closes the other panels when it opens. A new panel must be added to `PANELS` there and get `say:<scene>` permissions both ways.
 11. **Colours come from `shell/common/theme.plm`.** It is a `part`: put `include "common/theme.plm"` as the first line of a scene and use its tokens (`accent_c`, `ok_c`, `danger_c`, `focus_c`, `ink_c`, `ink_sub`, `card_fill`, `item_solid`, `bg_color`, …) instead of hex values. It declares the `dark_mode`, `skin` and `accent` facts; Settings broadcasts them to every scene and saves them to `~/.config/pleamar_shell.json`.
-12. **Names.** Component-scoped names are mangled (`hit#Shell7#DockItem36`); `--say` can see them via `describe`.
+12. **Which screen is which monitor.** With `screens: each` the compositor decides which copy is on which output, and it changes between runs. Never assume `screen.index` follows sorted output names: `topbar.luau` reads pleamar's startup log (`surface N on NAME`) to learn it and builds every per-monitor model (`mon`, `ws_list`) from that.
+13. **Names.** Component-scoped names are mangled (`hit#Shell7#DockItem36`); `--say` can see them via `describe`.
 
 ## Working style
 
