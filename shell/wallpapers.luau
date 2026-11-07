@@ -15,6 +15,7 @@ panel.height(250)               -- the strip's height, for the frame's glass
 local all = {}              -- { path, name, builtin }, in the order shown by "All"
 local view = {}             -- what the current tab shows
 local row = 0               -- the first picture on screen (0-based)
+local cur = 0               -- the picture the keyboard cursor is on (0-based, in `view`)
 local current = nil         -- path on now
 local HOME = ""
 local CACHE = ""
@@ -72,6 +73,7 @@ paint = function()
             ready = state[w.path] == "ready",
             current = w.path == current,
             builtin = w.builtin,
+            sel = (first + #rows) == cur + 1,
         }
     end
     model.walls = rows
@@ -89,6 +91,7 @@ local function rebuild(tab)
         end
     end
     row = 0
+    cur = 0
     paint()
 end
 
@@ -96,6 +99,7 @@ local function show_current_row()
     for i, w in ipairs(view) do
         if w.path == current then
             row = math.max(0, math.min(i - 3, #view - PAGE))      -- the one in use, about the middle
+            cur = i - 1
             return
         end
     end
@@ -241,8 +245,7 @@ on("wall_scroll", function(wheel)
     end
 end)
 
-on("wall_pick", function(i)
-    local w = view[row + (tonumber(i) or 0) + 1]
+local function apply(w)
     if not w then
         return
     end
@@ -261,6 +264,48 @@ mkdir -p "$HOME/.config/beskar" && printf '%s\n' "$1" > "$HOME/.config/beskar/wa
     if fact.accent_auto == true then
         accent_from(w.path)
     end
+end
+
+on("wall_pick", function(i)
+    local idx = row + (tonumber(i) or 0)
+    cur = idx
+    apply(view[idx + 1])
+end)
+
+-- Arrows (on screen or on the keyboard). Left / Right move the cursor one picture and scroll to keep it in view;
+-- the arrow buttons turn a whole page; Enter applies the picture under the cursor.
+local function keep_in_view()
+    local max_off = math.max(0, #view - PAGE)
+    if cur < row then
+        row = cur
+    elseif cur >= row + PAGE then
+        row = cur - PAGE + 1
+    end
+    row = math.max(0, math.min(max_off, row))
+end
+
+on("wall_move", function(d)
+    if #view < 1 then
+        return
+    end
+    cur = math.max(0, math.min(#view - 1, cur + (tonumber(d) or 0)))
+    keep_in_view()
+    paint()
+end)
+
+on("wall_page", function(d)
+    if #view < 1 then
+        return
+    end
+    local max_off = math.max(0, #view - PAGE)
+    row = math.max(0, math.min(max_off, row + (tonumber(d) or 0) * PAGE))
+    cur = math.max(row, math.min(row + PAGE - 1, cur + (tonumber(d) or 0) * PAGE))
+    cur = math.max(0, math.min(#view - 1, cur))
+    paint()
+end)
+
+on("wall_enter", function()
+    apply(view[cur + 1])
 end)
 
 -- Opening the picker looks again (a new picture in the folder shows up) and lands on the one in use.
