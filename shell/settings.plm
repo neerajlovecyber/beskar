@@ -390,7 +390,7 @@ scene MacSettings {
     fact appearance = 1          // 0 light · 1 dark · 2 auto (by the time of day)
 
     //  the sidebar's list (filtered by the search), displays, shortcuts, sound outputs, updates
-    model cats max 11 { idx: number; icon: text; tint: number; name: text }
+    model cats max 11 { idx: number; icon: text; tint: number; name: text; dx: number }
     model disps max 4 { name: text; title: text; mode: text; sel: bool }
     model reslist max 4 { label: text; cur: bool }
     model hzlist max 5 { label: text; cur: bool }
@@ -683,7 +683,7 @@ scene MacSettings {
         group {
             move: 6, 4
             box { from: 0, 0; size: 22, 22; corner: 5; color: pick(c.tint, #5856d6, #0a84ff, #ff2d55, #32ade6, #0a84ff, #ff453a, #8e8e93, #30b0c7, #ff9f0a, #8e8e93, #30d158) }
-            text c.icon { at: 11, 11; anchor: center center; size: 13; color: #ffffff }
+            text c.icon { at: 11 - c.dx, 10.5; anchor: center center; size: 13; color: #ffffff }
         }
         text c.name { at: 36, 15; anchor: left center; size: 13; weight: if(tab == c.idx, 600, 400); color: if(tab == c.idx, #ffffff, ink_c) }
         on press hit { emit pick_cat(c.idx) }

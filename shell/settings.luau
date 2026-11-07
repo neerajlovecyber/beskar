@@ -20,6 +20,8 @@ local CATS = {
     { 4, "󰂯", 4, "Bluetooth" }, { 5, "󰒎", 5, "Notifications" }, { 6, "󰍜", 6, "Menu Bar & Dock" },
     { 7, "󰸉", 7, "Wallpaper" }, { 8, "󰌌", 8, "Shortcuts" }, { 9, "󰋚", 9, "General" }, { 10, "󰚰", 10, "Software Update" },
 }
+-- Nerd-font glyphs are not drawn symmetrically in their box: how far each one sits right of the middle (measured)
+local GLYPH_DX = { [0] = 1, 1.5, 0.5, 2, 0.5, 1.5, 1, 1, 1.5, 2, 2 }
 local TITLES = {}
 for _, c in ipairs(CATS) do
     TITLES[c[1]] = c[4]
@@ -30,7 +32,7 @@ local function paint_cats()
     local rows = {}
     for _, c in ipairs(CATS) do
         if q == "" or c[4]:lower():find(q, 1, true) then
-            rows[#rows + 1] = { idx = c[1], icon = c[2], tint = c[3], name = c[4] }
+            rows[#rows + 1] = { idx = c[1], icon = c[2], tint = c[3], name = c[4], dx = GLYPH_DX[c[1]] or 0 }
         end
     end
     model.cats = rows
