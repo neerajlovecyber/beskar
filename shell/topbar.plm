@@ -24,7 +24,7 @@ scene MacTopBar {
     //  What topbar.luau may touch. `run` is only what it needs: niri for the workspace, curl for
     //  the weather, and the dock's apps. Undeclared is nothing.
     permissions {
-        services: "clock", "network", "battery", "window", "tray", "tray.*", "apps", "apps.launch", "say:control_center", "say:spotlight", "say:notifications", "say:dashboard", "say:settings", "say:session", "say:lock", "say:clipboard", "say:wallpapers"
+        services: "clock", "network", "battery", "window", "tray", "tray.*", "apps", "apps.launch", "say:control_center", "say:spotlight", "say:notifications", "say:dashboard", "say:settings", "say:session", "say:appswitcher", "say:lock", "say:clipboard", "say:wallpapers"
         run: "niri msg", "curl", "sh", "systemctl"
     }
 
@@ -75,7 +75,7 @@ scene MacTopBar {
     event panel_height ->
     event panel_close ->
     event open_control_center ->
-    event open_spotlight ->
+    event open_panel ->      // a number: which separate panel to toggle on the focused monitor (see topbar.luau)
     event open_notifications ->
     event open_dashboard ->
     event open_cc_wifi ->
@@ -405,7 +405,8 @@ scene MacTopBar {
             box right_notch  { from: screen.width - rw, -14; size: rw + ext, notch_h; corner: 18; blend: fillet }
 
             //  The dock, rising from the floor.
-            box dock_island { from: screen.width / 2 - dw / 2, screen.height - dock_h * vis; size: dw, dock_h + ext; corner: 24; blend: dock_fillet }
+            //  Hidden, the dock island is zero wide as well as sunk, so no bump of its fillet is left on the floor.
+            box dock_island { from: screen.width / 2 - dw * clamp(vis * 1.25 - 0.05, 0, 1) / 2, screen.height - dock_h * vis; size: dw * clamp(vis * 1.25 - 0.05, 0, 1), dock_h + ext; corner: 24; blend: dock_fillet }
         }
 
         // ── left island: menu orb · workspace · window ───────────

@@ -87,7 +87,7 @@ on("brightness_set", function(val)
 end)
 
 on("open_wallpapers", function()
-    pcall(sys.call, "say", "wallpapers", "fact open true")
+    pcall(sys.call, "say", "topbar", "emit open_panel 3")
 end)
 
 on("run_update", function()

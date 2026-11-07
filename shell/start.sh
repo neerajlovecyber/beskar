@@ -167,13 +167,13 @@ case "$1" in
         start_shell
         ;;
     appswitcher)
-        "$BIN" --say appswitcher "emit toggle"
+        "$BIN" --say topbar "emit open_panel 6"
         ;;
     clipboard)
-        "$BIN" --say clipboard "emit toggle"
+        "$BIN" --say topbar "emit open_panel 2"
         ;;
     settings)
-        "$BIN" --say settings "emit toggle"
+        "$BIN" --say topbar "emit open_panel 4"
         ;;
     lock)
         "$BIN" --say lock "fact locked true"
@@ -181,13 +181,13 @@ case "$1" in
     session)
         K_VAL="${2:-0}"
         "$BIN" --say session "fact kind $K_VAL"
-        "$BIN" --say session "fact open true"
+        "$BIN" --say topbar "emit open_panel 5"
         ;;
     capture)
         "$BIN" --say capture "emit toggle"
         ;;
     spotlight)
-        "$BIN" --say spotlight "emit toggle"
+        "$BIN" --say topbar "emit open_panel 1"
         ;;
     control-center)
         # through the frame, which knows which monitor has the focus
@@ -205,7 +205,7 @@ case "$1" in
         "$BIN" --say topbar "emit open_dashboard"
         ;;
     wallpapers)
-        "$BIN" --say wallpapers "emit toggle"
+        "$BIN" --say topbar "emit open_panel 3"
         ;;
     vol-up)
         "$BIN" --say osd "emit volume_up"

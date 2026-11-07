@@ -216,8 +216,8 @@ local function say_later(scene, words)
         pcall(sys.call, "say", scene, words)
     end)
 end
-on("sc_search", function() say_later("spotlight", "emit toggle") end)
-on("sc_clip", function() say_later("clipboard", "emit toggle") end)
+on("sc_search", function() say_later("topbar", "emit open_panel 1") end)
+on("sc_clip", function() say_later("topbar", "emit open_panel 2") end)
 on("sc_shot", function() say_later("capture", "emit toggle") end)
 on("sc_lock", function() say_later("lock", "fact locked true") end)
 

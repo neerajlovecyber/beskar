@@ -12,7 +12,6 @@ local function toggle(panel)
     end
 end
 
-on("open_spotlight", toggle("spotlight"))
 
 -- ── panels that grow out of an island ───────────────────────────
 -- The glass is drawn by this scene (one shape per island, driven by the facts `rp_*` right, `cp_*` centre); the
@@ -116,18 +115,54 @@ on("open_cc_bt", open_island_panel("control_center", 2))
 on("open_dashboard", open_island_panel("dashboard"))
 on("open_notifications", open_island_panel("notifications"))
 
+-- Keep the notification banner on the monitor with the focus: ask niri now and then, tell it when it changes.
+local last_toast_screen = nil
+every(2000, function()
+    run("niri", { "msg", "-j", "focused-output" }, function(out)
+        local ok, o = pcall(json.decode, out or "")
+        local name = ok and type(o) == "table" and o.name
+        for i, n in ipairs(OUTPUTS) do
+            if n == name and (i - 1) ~= last_toast_screen then
+                last_toast_screen = i - 1
+                pcall(sys.call, "say", "notifications", "fact toast_screen " .. (i - 1))
+            end
+        end
+    end)
+end)
+
+-- Panels that are their own window (Spotlight, clipboard, wallpapers, Settings, the session dialog, the app
+-- switcher) open on ONE monitor: the one with the focus. They are `screens: each` scenes that show their content
+-- only where `open_screen` says (common/here.plm). Everything that wants one asks us (`open_panel N`): a niri key
+-- through start.sh, a button in another panel. The toggle is the panel's own.
+local FOCUS_PANELS = { [1] = "spotlight", [2] = "clipboard", [3] = "wallpapers", [4] = "settings", [5] = "session", [6] = "appswitcher" }
+on("open_panel", function(n)
+    local name = FOCUS_PANELS[tonumber(n) or 0]
+    if not name then
+        return
+    end
+    monitor_of_click(function(s)
+        pcall(sys.call, "say", name, "fact open_screen " .. s)
+        pcall(sys.call, "say", name, "emit toggle")
+    end)
+end)
+
 -- ── the power menu (the gem button) ──────────────────────────────
 local function say(scene, words)
     pcall(sys.call, "say", scene, words)
 end
+-- The monitor the power menu is on (`open_screen`), for the windows its items open.
+local function show_on_menu_monitor(name)
+    say(name, "fact open_screen " .. (tonumber(fact.open_screen) or 0))
+    say(name, "fact open true")
+end
 local PM = {
-    [1] = function() say("settings", "fact tab 7"); say("settings", "fact open true") end,        -- About This PC
-    [2] = function() say("settings", "fact tab 0"); say("settings", "fact open true") end,        -- System Settings
+    [1] = function() say("settings", "fact tab 7"); show_on_menu_monitor("settings") end,         -- About This PC
+    [2] = function() say("settings", "fact tab 0"); show_on_menu_monitor("settings") end,         -- System Settings
     [3] = function() say("lock", "fact locked true") end,                                           -- Lock Screen
     [4] = function() run("systemctl", { "suspend" }, nil, { output = false }) end,                 -- Sleep
-    [5] = function() say("session", "fact kind 2"); say("session", "fact open true") end,          -- Log Out…
-    [6] = function() say("session", "fact kind 1"); say("session", "fact open true") end,          -- Restart…
-    [7] = function() say("session", "fact kind 0"); say("session", "fact open true") end,          -- Shut Down…
+    [5] = function() say("session", "fact kind 2"); show_on_menu_monitor("session") end,          -- Log Out…
+    [6] = function() say("session", "fact kind 1"); show_on_menu_monitor("session") end,          -- Restart…
+    [7] = function() say("session", "fact kind 0"); show_on_menu_monitor("session") end,          -- Shut Down…
 }
 on("pm_item", function(n)
     local f = PM[tonumber(n) or 0]

@@ -3,11 +3,13 @@ import "common/palette.plm"
 
 scene MacSession {
     include "common/theme.plm"
+    include "common/here.plm"
     surface {
         size: 520, 360
         anchor: center
         level: overlay
-        keyboard: exclusive while open
+        keyboard: exclusive while open and open_screen == screen.index
+        screens: each
     }
 
     permissions {
@@ -36,13 +38,14 @@ scene MacSession {
     event dismiss
 
     // Dismiss zone
-    zone box dismiss_scrim { from: 0, 0; size: 520, 360; active: open }
+    zone box dismiss_scrim { from: 0, 0; size: 520, 360; active: open and here }
     on press dismiss_scrim { open = false }
     // A scene that never uses the right button is closed by pleamar on any right click
     // (its prototype emergency exit). This empty rule says the right button is ours: nothing happens.
     on press right dismiss_scrim { }
 
     group {
+        show: here
         move: 40, 40
         pivot: 220, 140
         scale: scale

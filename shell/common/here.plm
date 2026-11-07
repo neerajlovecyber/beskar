@@ -1,0 +1,9 @@
+// For a panel that is its own window and should open on ONE monitor only (the one with the focus, or the one
+// you clicked on), not on every monitor. The scene's surface is `screens: each`; this part gives it the fact
+// `open_screen` (set by topbar.luau just before it toggles the panel) and `here` (this copy is that monitor).
+// The scene gates its main group with `show: here`, its dismiss zone with `active: open and here`, and any
+// `keyboard: … while` with `open and open_screen == screen.index`.
+part Here {
+    fact open_screen = 0
+    let here = open_screen == screen.index
+}

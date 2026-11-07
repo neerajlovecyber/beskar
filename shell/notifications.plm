@@ -25,6 +25,7 @@ scene MacNotifications {
     model past max 5 { title: text; body: text; icon: image 28, 28; age: text }
 
     fact last_n = 0
+    fact toast_screen = 0       // the monitor with the focus (kept up to date by topbar.luau): the banner drops there
     fact dnd = false            // Do Not Disturb: no banners (they still land in the centre)
 
     event toggle
@@ -166,7 +167,8 @@ scene MacNotifications {
         anchor: top_right
         margin: 0, 12, 0, 0
         level: overlay
-        open: tin > 0.02 and not open and not dnd
+        screens: each
+        open: tin > 0.02 and not open and not dnd and toast_screen == screen.index
 
         group {
             move: 16, 8 + (1 - tin) * -26

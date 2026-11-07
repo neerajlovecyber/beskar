@@ -3,11 +3,13 @@ import "common/palette.plm"
 
 scene MacClipboard {
     include "common/theme.plm"
+    include "common/here.plm"
     surface {
         size: 560, 480
         anchor: center
         level: overlay
-        keyboard: exclusive while open
+        keyboard: exclusive while open and open_screen == screen.index
+        screens: each
     }
 
     permissions {
@@ -37,13 +39,14 @@ scene MacClipboard {
     event clear_all ->
 
     // Scrim outside click dismiss
-    zone box dismiss { from: 0, 0; size: 560, 480; active: open }
+    zone box dismiss { from: 0, 0; size: 560, 480; active: open and here }
     on press dismiss { open = false }
     // A scene that never uses the right button is closed by pleamar on any right click
     // (its prototype emergency exit). This empty rule says the right button is ours: nothing happens.
     on press right dismiss { }
 
     group {
+        show: here
         move: 30, 20
         pivot: 250, 220
         scale: scale

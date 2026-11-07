@@ -3,11 +3,13 @@ import "common/palette.plm"
 
 scene MacSpotlight {
     include "common/theme.plm"
+    include "common/here.plm"
     surface {
         size: 680, 500
         anchor: center
         level: overlay
-        keyboard: exclusive while open
+        keyboard: exclusive while open and open_screen == screen.index
+        screens: each
     }
 
     permissions {
@@ -41,11 +43,12 @@ scene MacSpotlight {
     }
 
     // Click outside to dismiss
-    zone box dismiss { from: 0, 0; size: 680, 500; active: open }
+    zone box dismiss { from: 0, 0; size: 680, 500; active: open and here }
     on press dismiss { open = false }
     on press right dismiss { }
 
     group {
+        show: here
         pivot: 340, 40
         scale: scale
         opacity: seen

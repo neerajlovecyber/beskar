@@ -5,12 +5,14 @@ import "common/palette.plm"
 
 scene MacWallpapers {
     include "common/theme.plm"
+    include "common/here.plm"
 
     surface {
         size: 840, 600
         anchor: center
         level: overlay
         keyboard: on_demand
+        screens: each
     }
 
     permissions {
@@ -47,6 +49,7 @@ scene MacWallpapers {
         prop lift = 0 ~lively
         zone box touch { from: 0, 0; size: 176, 99; corner: 14; cursor: pointer }
         group {
+        show: here
             move: 0, -lift * 2
             pivot: 88, 50
             scale: 1 + 0.035 * lift
@@ -80,7 +83,7 @@ scene MacWallpapers {
         on press right hit { }
     }
 
-    zone box dismiss { from: 0, 0; size: 840, 600; active: open }
+    zone box dismiss { from: 0, 0; size: 840, 600; active: open and here }
     on press dismiss { open = false }
     on press right dismiss { }
 
