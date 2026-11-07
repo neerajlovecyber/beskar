@@ -46,23 +46,81 @@ end
 
 local live = {}             -- id -> record, as the service gave it
 local order = {}            -- ids, newest first
+local expanded = {}         -- app -> true while its stack is open
+local group_apps = {}       -- key -> app, as of the last paint (the buttons send a key)
+local group_ids = {}        -- key -> the ids of that app's notifications
+
+local ROW_CARD, ROW_STACK, ROW_HEAD = 100, 112, 32
+local MAX_ROWS = 14
+
+local function row_of(n, kind, key, h, age)
+    return {
+        kind = kind, key = key, id = n.id, app = n.app or "", title = n.title or "", body = n.body or "",
+        icon = n.icon or "", age = age or age_of(n.time), h = h,
+    }
+end
 
 local function paint()
-    -- waiting
-    local rows = {}
+    -- waiting, for the banner (the newest first)
+    local top = {}
     for _, id in ipairs(order) do
         local n = live[id]
-        if n and #rows < MAX_LIVE then
-            rows[#rows + 1] = {
+        if n and #top < MAX_LIVE then
+            top[#top + 1] = {
                 id = n.id, app = n.app or "", title = n.title or "", body = n.body or "",
                 icon = n.icon or "", age = age_of(n.time),
             }
         end
     end
-    model.notices = rows
+    model.notices = top
+
+    -- waiting, for the centre: grouped by app, in the order of each app's newest notification
+    local groups, by_app = {}, {}
+    for _, id in ipairs(order) do
+        local n = live[id]
+        if n then
+            local app = n.app or ""
+            local g = by_app[app]
+            if not g then
+                g = { app = app, items = {} }
+                by_app[app] = g
+                groups[#groups + 1] = g
+            end
+            g.items[#g.items + 1] = n
+        end
+    end
+    group_apps, group_ids = {}, {}
+    local rows, live_h = {}, 0
+    local function add(r)
+        if #rows < MAX_ROWS then
+            rows[#rows + 1] = r
+            live_h = live_h + r.h
+        end
+    end
+    for key, g in ipairs(groups) do
+        group_apps[key] = g.app
+        group_ids[key] = {}
+        for i, n in ipairs(g.items) do
+            group_ids[key][i] = n.id
+        end
+        local k = key - 1                                  -- keys count from 0 in the scene
+        if #g.items == 1 then
+            add(row_of(g.items[1], 0, k, ROW_CARD))
+        elseif expanded[g.app] then
+            add({ kind = 2, key = k, id = 0, app = g.app ~= "" and g.app or "Notifications", title = "", body = "", icon = "", age = "", h = ROW_HEAD })
+            for _, n in ipairs(g.items) do
+                add(row_of(n, 0, k, ROW_CARD))
+            end
+        else
+            local n = g.items[1]
+            add(row_of(n, 1, k, ROW_STACK, age_of(n.time) .. "  +" .. (#g.items - 1)))
+        end
+    end
+    model.rows = rows
+    fact.live_h = live_h
 
     -- earlier: as many as fit under the waiting ones
-    local room = math.floor((800 - 70 - #rows * 100 - 60) / 58)
+    local room = math.floor((800 - 70 - live_h - 60) / 58)
     local count = math.max(0, math.min(MAX_PAST, room, #history))
     local past = {}
     for k = 1, count do
@@ -71,13 +129,12 @@ local function paint()
     end
     model.past = past
 
-    -- how tall the card is: header, one card per notification (or the empty message), the Earlier rows
-    local live_n = #rows
+    -- how tall the card is: header, the waiting rows (or the empty message), the Earlier rows
     local height
-    if live_n < 1 and #past < 1 then
+    if #rows < 1 and #past < 1 then
         height = 190
     else
-        height = 70 + math.max(live_n, #past > 0 and 0 or 1) * 100 + (#past > 0 and (44 + #past * 58) or 0) + 8
+        height = 70 + (#rows > 0 and live_h or (#past > 0 and 0 or 100)) + (#past > 0 and (44 + #past * 58) or 0) + 8
     end
     panel.height(height)
 
@@ -212,6 +269,20 @@ end
 -- ── buttons ──────────────────────────────────────────────────────
 on("dismiss_notice", function(id)
     if id then
+        pcall(sys.call, "notifications.dismiss", id)
+    end
+end)
+
+on("group_toggle", function(key)
+    local app = group_apps[(tonumber(key) or -1) + 1]
+    if app ~= nil then
+        expanded[app] = not expanded[app] or nil
+        paint()
+    end
+end)
+
+on("dismiss_group", function(key)
+    for _, id in ipairs(group_ids[(tonumber(key) or -1) + 1] or {}) do
         pcall(sys.call, "notifications.dismiss", id)
     end
 end)
