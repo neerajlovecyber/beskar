@@ -119,6 +119,18 @@ local SITES = {
     w = { "Wikipedia", "https://en.wikipedia.org/w/index.php?search=%s" },
     maps = { "Maps", "https://www.google.com/maps/search/%s" },
 }
+-- longer names for the same sites
+SITES.google = SITES.g
+SITES.youtube = SITES.yt
+SITES.github = SITES.gh
+SITES.wiki = SITES.w
+SITES.wikipedia = SITES.w
+SITES.duckduckgo = SITES.ddg
+
+local HOMES = {
+    g = "https://www.google.com", ddg = "https://duckduckgo.com", yt = "https://www.youtube.com",
+    gh = "https://github.com", w = "https://en.wikipedia.org", maps = "https://www.google.com/maps",
+}
 
 local function urlencode(s)
     return (s:gsub("[^%w%-%._~]", function(c) return string.format("%%%02X", c:byte()) end))
@@ -198,10 +210,19 @@ local function build()
         }
     end
 
-    -- a web prefix: `g cats`
-    local key, term = low:match("^(%a+)%s+(.+)$")
+    -- a web prefix: `yt lofi` searches there; the prefix alone (`yt`) offers to open the site
+    local key = low:match("^(%a+)%s+.+$")
     if key and SITES[key] then
         entries[#entries + 1] = web_entry(key, q:match("^%a+%s+(.+)$"))
+    end
+    local bare = low:match("^(%a+)$")
+    if bare and SITES[bare] then
+        local site = SITES[bare]
+        local home = HOMES[bare] or HOMES[(bare == "google" and "g") or (bare == "youtube" and "yt") or (bare == "github" and "gh") or (bare == "wiki" and "w") or (bare == "wikipedia" and "w") or (bare == "duckduckgo" and "ddg") or "g"]
+        entries[#entries + 1] = {
+            name = "Search " .. site[1], sub = "type what to look for, e.g. “" .. bare .. " cats”", kind = 2, icon = "󰖟",
+            run = function() open_url(home) end,
+        }
     end
 
     -- applications
