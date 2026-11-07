@@ -555,6 +555,15 @@ local function load_user_name()
         local n = (out or ""):match("([^\n]+)")
         if n and n ~= "" then
             text.user_name = n
+            text.avatar_initial = (n:sub(1, 1) or ""):upper()
+        end
+    end)
+    -- a picture: ~/.face, ~/.face.icon or the account's icon
+    run("sh", { "-c", 'for f in "$HOME/.face" "$HOME/.face.icon" "/var/lib/AccountsService/icons/$(id -un)"; do [ -f "$f" ] && echo "$f" && break; done' }, function(out)
+        local path = (out or ""):match("([^\n]+)")
+        if path and path ~= "" then
+            text.avatar_path = path
+            fact.has_avatar = true
         end
     end)
 end

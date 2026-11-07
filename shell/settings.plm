@@ -61,8 +61,20 @@ scene MacSettings {
             move: 14, 46
             box { from: 0, 0; size: 202, 54; corner: 10; color: card_fill; opacity: card_fill_op * 50% }
             box { from: 0, 0; size: 202, 54; corner: 10; stroke: 1; color: c_border; opacity: c_border_op }
-            ellipse { at: 26, 27; radius: 18; color: accent_c }
-            text "󰀉" { at: 23.5, 27; anchor: center center; size: 18; color: #ffffff }
+            //  your picture if there is one (~/.face or the account's icon), else a gradient disc with your initial
+            group {
+                show: not has_avatar
+                body {
+                    gradient: 8, 9 to 44, 45, accent_c, focus_c
+                    box { from: 8, 9; size: 36, 36; corner: 18 }
+                }
+            }
+            text avatar_initial { at: 26, 27; anchor: center center; size: 18; weight: 700; color: #ffffff; show: not has_avatar }
+            group {
+                show: has_avatar
+                clip box { from: 8, 9; size: 36, 36; corner: 18 }
+                image avatar_img { at: 8, 9; size: 36, 36 }
+            }
             column {
                 at: 52, 17
                 gap: 2
@@ -385,6 +397,10 @@ scene MacSettings {
 
     fact open = false
     text user_name = ""
+    text avatar_initial = ""
+    text avatar_path = ""
+    image avatar_img = from avatar_path, 36, 36
+    fact has_avatar = false
     text pane_title = "Appearance"
     fact tab = 0
     fact appearance = 1          // 0 light · 1 dark · 2 auto (by the time of day)
