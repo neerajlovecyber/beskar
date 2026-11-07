@@ -62,7 +62,7 @@ scene MacSettings {
             box { from: 0, 0; size: 202, 54; corner: 10; color: card_fill; opacity: card_fill_op * 50% }
             box { from: 0, 0; size: 202, 54; corner: 10; stroke: 1; color: c_border; opacity: c_border_op }
             ellipse { at: 26, 27; radius: 18; color: accent_c }
-            text "󰀉" { at: 26, 27; anchor: center; size: 18; color: #ffffff }
+            text "󰀉" { at: 26, 27; anchor: center center; size: 18; color: #ffffff }
             column {
                 at: 52, 17
                 gap: 2
@@ -75,7 +75,7 @@ scene MacSettings {
         group {
             move: 14, 108
             box { from: 0, 0; size: 202, 28; corner: 7; color: if(dark_mode, #242730, #e8eaf0) }
-            text "󰍉" { at: 18, 14; anchor: center; size: 13; color: ink_sub }
+            text "󰍉" { at: 18, 14; anchor: center center; size: 13; color: ink_sub }
             input side_q {
                 at: 32, 5
                 width: 160
@@ -91,7 +91,7 @@ scene MacSettings {
             gap: 2
             for c in cats { SidebarItem(c) }
         }
-        text "No matches" { at: 115, 170; anchor: center; size: 12; color: ink_sub; show: cats.count < 1 }
+        text "No matches" { at: 115, 170; anchor: center center; size: 12; color: ink_sub; show: cats.count < 1 }
 
         // ── the pane ─────────────────────────────────────────────
         text pane_title { at: 254, 34; anchor: left center; size: 20; weight: 700; color: ink_c }
@@ -287,7 +287,7 @@ scene MacSettings {
             move: 254, 60
             box { from: 0, 0; size: 556, 34; corner: 10; color: card_fill; opacity: card_fill_op }
             box { from: 0, 0; size: 556, 34; corner: 10; stroke: 1; color: c_border; opacity: c_border_op }
-            text "󰍉" { at: 18, 17; anchor: center; size: 13; color: ink_sub }
+            text "󰍉" { at: 18, 17; anchor: center center; size: 13; color: ink_sub }
             input bind_q {
                 at: 34, 8
                 width: 440
@@ -304,7 +304,7 @@ scene MacSettings {
                 gap: 4
                 for b in binds { BindRow(b) }
             }
-            text "No shortcuts match" { at: 278, 200; anchor: center; size: 12; color: ink_sub; show: binds.count < 1 }
+            text "No shortcuts match" { at: 278, 200; anchor: center center; size: 12; color: ink_sub; show: binds.count < 1 }
         }
 
         // 9 ── General ──────────────────────────────────────────
@@ -312,7 +312,7 @@ scene MacSettings {
             show: tab == 9
             move: 254, 60
             Card(120) {
-                text "" { at: 60, 60; anchor: center; size: 54; weight: 700; color: ink_c }
+                text "" { at: 60, 60; anchor: center center; size: 54; weight: 700; color: ink_c }
                 column {
                     at: 105, 32
                     gap: 3
@@ -350,7 +350,7 @@ scene MacSettings {
                 gap: 12
                 Card(84) {
                     ellipse { at: 44, 42; radius: 24; color: if(up_n > 0, accent_c, ok_c) }
-                    text pick(if(up_checking, 2, if(up_n > 0, 1, 0)), "󰄬", "󰚰", "󰑐") { at: 44, 42; anchor: center; size: 24; color: #ffffff }
+                    text pick(if(up_checking, 2, if(up_n > 0, 1, 0)), "󰄬", "󰚰", "󰑐") { at: 44, 42; anchor: center center; size: 24; color: #ffffff }
                     text up_title { at: 84, 30; anchor: left center; size: 16; weight: 700; color: ink_c }
                     text up_sub { at: 84, 54; anchor: left center; size: 11.5; color: ink_sub; width: 440 }
                 }
@@ -361,7 +361,7 @@ scene MacSettings {
                         gap: 4
                         for u in ups { UpdateRow(u) }
                     }
-                    text "Everything is up to date" { at: 278, 130; anchor: center; size: 12; color: ink_sub; show: ups.count < 1 and not up_checking }
+                    text "Everything is up to date" { at: 278, 130; anchor: center center; size: 12; color: ink_sub; show: ups.count < 1 and not up_checking }
                 }
                 row {
                     gap: 12
@@ -537,7 +537,7 @@ scene MacSettings {
         group {
             move: x, y
             box { from: 0, 0; size: w, 28; corner: 8; color: if(primary, accent_c, if(dark_mode, #2a2e38, #e5e7eb)); opacity: 0.85 + hot * 0.15 }
-            text label { at: w / 2, 14; anchor: center; size: 12; weight: 600; color: if(primary, #ffffff, ink_c) }
+            text label { at: w / 2, 14; anchor: center center; size: 12; weight: 600; color: if(primary, #ffffff, ink_c) }
             zone box hit { from: 0, 0; size: w, 28; corner: 8; cursor: pointer }
             on enter hit { hot: 1 }
             on leave hit { hot: 0 }
@@ -565,7 +565,7 @@ scene MacSettings {
     component Seg(label: text, n: number, cur: number, pick: event, w: number = 52) {
         size: w, 28
         box { from: 0, 0; size: w, 28; corner: 8; color: if(cur == n, accent_c, if(dark_mode, #2a2e38, #e5e7eb)) }
-        text label { at: w / 2, 14; anchor: center; size: 11.5; weight: 600; color: if(cur == n, #ffffff, ink_c) }
+        text label { at: w / 2, 14; anchor: center center; size: 11.5; weight: 600; color: if(cur == n, #ffffff, ink_c) }
         zone box hit { from: 0, 0; size: w, 28; corner: 8; cursor: pointer }
         on press hit { emit pick(n) }
         on press right hit { }
@@ -575,7 +575,7 @@ scene MacSettings {
     component Chip(label: text, on: bool, pick: event, n: number, w: number = 80) {
         size: w, 28
         box { from: 0, 0; size: w, 28; corner: 8; color: if(on, accent_c, if(dark_mode, #2a2e38, #e5e7eb)) }
-        text label { at: w / 2, 14; anchor: center; size: 11.5; weight: 600; color: if(on, #ffffff, ink_c) }
+        text label { at: w / 2, 14; anchor: center center; size: 11.5; weight: 600; color: if(on, #ffffff, ink_c) }
         zone box hit { from: 0, 0; size: w, 28; corner: 8; cursor: pointer }
         on press hit { emit pick(n) }
         on press right hit { }
@@ -596,7 +596,7 @@ scene MacSettings {
             box { from: 36, 18; size: 58, 36; corner: 2; color: panel_c }
         }
         box { from: 0, 0; size: 100, 60; corner: 8; stroke: if(appearance == n, 2.5, 1); color: if(appearance == n, accent_c, c_border) }
-        text label { at: 50, 72; anchor: center; size: 12; weight: if(appearance == n, 600, 400); color: if(appearance == n, accent_c, ink_c) }
+        text label { at: 50, 72; anchor: center center; size: 12; weight: if(appearance == n, 600, 400); color: if(appearance == n, accent_c, ink_c) }
         zone box hit { from: 0, 0; size: 100, 78; cursor: pointer }
         on press hit { emit set_mode(n) }
         on press right hit { }
@@ -627,7 +627,7 @@ scene MacSettings {
         size: 270, 78
         box { from: 0, 0; size: 270, 78; corner: 14; color: card_fill; opacity: card_fill_op }
         box { from: 0, 0; size: 270, 78; corner: 14; stroke: if(d.sel, 2, 1); color: if(d.sel, accent_c, c_border); opacity: if(d.sel, 100%, c_border_op) }
-        text "󰍹" { at: 34, 39; anchor: center; size: 30; color: if(d.sel, accent_c, ink_sub) }
+        text "󰍹" { at: 34, 39; anchor: center center; size: 30; color: if(d.sel, accent_c, ink_sub) }
         text d.title { at: 66, 28; anchor: left center; size: 12.5; weight: 600; color: ink_c; width: 190; lines: 1 }
         text d.mode { at: 66, 48; anchor: left center; size: 10.5; color: ink_sub; width: 190; lines: 1 }
         text d.name { at: 66, 62; anchor: left center; size: 10; color: ink_sub; width: 190; lines: 1 }
@@ -640,9 +640,9 @@ scene MacSettings {
         size: 556, 44
         box { from: 0, 0; size: 556, 44; corner: 12; color: if(o.def, if(dark_mode, #283040, #eef4ff), card_fill); opacity: if(o.def, 100%, card_fill_op) }
         box { from: 0, 0; size: 556, 44; corner: 12; stroke: if(o.def, 2, 1); color: if(o.def, accent_c, c_border); opacity: if(o.def, 100%, c_border_op) }
-        text "󰓃" { at: 26, 22; anchor: center; size: 16; color: if(o.def, accent_c, ink_sub) }
+        text "󰓃" { at: 26, 22; anchor: center center; size: 16; color: if(o.def, accent_c, ink_sub) }
         text o.name { at: 48, 22; anchor: left center; size: 12.5; color: ink_c; width: 440; lines: 1 }
-        text "󰄬" { at: 530, 22; anchor: center; size: 15; color: accent_c; show: o.def }
+        text "󰄬" { at: 530, 22; anchor: center center; size: 15; color: accent_c; show: o.def }
         zone box hit { from: 0, 0; size: 556, 44; corner: 12; cursor: pointer }
         on press hit { emit pick_out(o.index) }
         on press right hit { }
@@ -658,7 +658,7 @@ scene MacSettings {
     component UpdateRow(u: record) {
         size: 520, 30
         box { from: 0, 0; size: 520, 30; corner: 8; color: if(dark_mode, #1e2026, #f3f4f6) }
-        text "󰏗" { at: 18, 15; anchor: center; size: 14; color: accent_c }
+        text "󰏗" { at: 18, 15; anchor: center center; size: 14; color: accent_c }
         text u.name { at: 38, 15; anchor: left center; size: 12; weight: 600; color: ink_c; width: 220; lines: 1 }
         text u.ver { at: 506, 15; anchor: right center; size: 11; color: ink_sub; width: 240; lines: 1; align: right }
     }
@@ -683,7 +683,7 @@ scene MacSettings {
         group {
             move: 6, 4
             box { from: 0, 0; size: 22, 22; corner: 5; color: pick(c.tint, #5856d6, #0a84ff, #ff2d55, #32ade6, #0a84ff, #ff453a, #8e8e93, #30b0c7, #ff9f0a, #8e8e93, #30d158) }
-            text c.icon { at: 11, 11; anchor: center; size: 13; color: #ffffff }
+            text c.icon { at: 11, 11; anchor: center center; size: 13; color: #ffffff }
         }
         text c.name { at: 36, 15; anchor: left center; size: 13; weight: if(tab == c.idx, 600, 400); color: if(tab == c.idx, #ffffff, ink_c) }
         on press hit { emit pick_cat(c.idx) }
