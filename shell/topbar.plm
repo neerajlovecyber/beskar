@@ -229,19 +229,18 @@ scene MacTopBar {
         on press right ws_grid_hit { }
     }
 
-    //  One app of the current workspace: its icon; the focused one is in a pill and says its name.
+    //  One app of the current workspace: just its icon; the focused one sits in a pill.
     component CurApp(it: record) {
         prop hot = 0 ~quick
-        //  the focused one: in a pill, with its name
+        //  the focused one: in a pill
         row {
             show: it.focused
             padding: 3
             gap: 6
             align: center
-            fill: pill_fill
+            fill: item_solid
             corner: 9
             image it.icon { size: 20, 20 }
-            text it.name { size: 11.5; weight: 600; color: ink_c; tight: true; lines: 1; width: 150 }
         }
         //  the others: just the icon, a little dimmer until the pointer is on it
         row {
