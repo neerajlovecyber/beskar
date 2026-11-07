@@ -22,6 +22,8 @@ local PANELS = {
     control_center = { id = 1, island = "rp", w = 372 },
     notifications = { id = 2, island = "rp", w = 386 },
     dashboard = { id = 3, island = "cp", w = 360 },
+    spotlight = { id = 4, island = "bp", w = 640 },      -- bottom: grow out of the dock
+    wallpapers = { id = 5, island = "bp", w = 980 },
 }
 local BY_ID = {}
 for name, p in pairs(PANELS) do
@@ -141,6 +143,10 @@ on("open_panel", function(n)
         return
     end
     monitor_of_click(function(s)
+        local p = PANELS[name]
+        if p then
+            fact[p.island .. "_screen"] = s          -- its glass is drawn by the frame, on that monitor
+        end
         pcall(sys.call, "say", name, "fact open_screen " .. s)
         pcall(sys.call, "say", name, "emit toggle")
     end)

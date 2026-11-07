@@ -8,12 +8,13 @@
 --
 -- The choice is remembered in ~/.config/beskar/wallpaper, which start.sh puts back at login.
 
-local COLS, ROWS = 4, 3
-local PAGE = COLS * ROWS
+local PAGE = 5                  -- pictures on screen, in one row
+local panel = require("panel")("wallpapers")
+panel.height(250)               -- the strip's height, for the frame's glass
 
 local all = {}              -- { path, name, builtin }, in the order shown by "All"
 local view = {}             -- what the current tab shows
-local row = 0               -- first row on screen
+local row = 0               -- the first picture on screen (0-based)
 local current = nil         -- path on now
 local HOME = ""
 local CACHE = ""
@@ -59,7 +60,7 @@ local function make_thumb(path)
 end
 
 paint = function()
-    local first = row * COLS + 1
+    local first = row + 1
     local rows = {}
     for i = first, math.min(#view, first + PAGE - 1) do
         local w = view[i]
@@ -76,7 +77,7 @@ paint = function()
     model.walls = rows
     fact.wall_total = #view
     fact.wall_row = row
-    fact.wall_rows = math.max(1, math.ceil(#view / COLS))
+    fact.wall_rows = math.max(1, #view - PAGE + 1)
     text.wall_hint = string.format("%d pictures", #view)
 end
 
@@ -94,7 +95,7 @@ end
 local function show_current_row()
     for i, w in ipairs(view) do
         if w.path == current then
-            row = math.min(math.floor((i - 1) / COLS), math.max(0, math.ceil(#view / COLS) - ROWS))
+            row = math.max(0, math.min(i - 3, #view - PAGE))      -- the one in use, about the middle
             return
         end
     end
@@ -231,10 +232,9 @@ on("wall_tab_set", function(n)
 end)
 
 on("wall_scroll", function(wheel)
-    local rows = math.max(1, math.ceil(#view / COLS))
-    local max_row = math.max(0, rows - ROWS)
+    local max_off = math.max(0, #view - PAGE)
     local step = (tonumber(wheel) or 0) > 0 and -1 or 1
-    local nxt = math.max(0, math.min(max_row, row + step))
+    local nxt = math.max(0, math.min(max_off, row + step))
     if nxt ~= row then
         row = nxt
         paint()
@@ -242,7 +242,7 @@ on("wall_scroll", function(wheel)
 end)
 
 on("wall_pick", function(i)
-    local w = view[row * COLS + (tonumber(i) or 0) + 1]
+    local w = view[row + (tonumber(i) or 0) + 1]
     if not w then
         return
     end

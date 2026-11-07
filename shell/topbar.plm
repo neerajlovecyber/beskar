@@ -59,6 +59,10 @@ scene MacTopBar {
     fact cp_screen = -1
     fact cp_w = 360
     fact cp_h = 496
+    fact bp_on = false        // bottom: the dock island grows UP into Spotlight / the wallpaper strip
+    fact bp_screen = -1
+    fact bp_w = 680
+    fact bp_h = 300           // total height from the bottom edge of the screen
     fact rp_on = false
     fact rp_screen = -1
     fact rp_w = 372
@@ -352,6 +356,7 @@ scene MacTopBar {
         prop vis = 1 ~calm
         layer dockshow ~calm {
             empty  while mon.$screen.busy == 0 { vis: 1 }
+            panel  while bp_on and bp_screen == screen.index { vis: 1 }
             peek   for 2500ms after reveal, keep_dock { vis: 1 }
             away   { vis: 0 }
         }
@@ -368,6 +373,12 @@ scene MacTopBar {
         follow cpw = cp_w
         prop cph = 496 ~calm
         follow cph = cp_h
+        prop bv = 0 ~calm                                   // bottom: the dock island
+        follow bv = if(bp_on and bp_screen == screen.index, 1, 0)
+        prop bpw = 680 ~calm
+        follow bpw = bp_w
+        prop bph = 300 ~calm
+        follow bph = bp_h
         prop rv = 0 ~calm                                   // right
         follow rv = if(rp_on and rp_screen == screen.index, 1, 0)
         prop rpw = 372 ~calm
@@ -405,8 +416,9 @@ scene MacTopBar {
             box right_notch  { from: screen.width - rw, -14; size: rw + ext, notch_h; corner: 18; blend: fillet }
 
             //  The dock, rising from the floor.
-            //  Hidden, the dock island is zero wide as well as sunk, so no bump of its fillet is left on the floor.
-            box dock_island { from: screen.width / 2 - dw * clamp(vis * 1.25 - 0.05, 0, 1) / 2, screen.height - dock_h * vis; size: dw * clamp(vis * 1.25 - 0.05, 0, 1), dock_h + ext; corner: 24; blend: dock_fillet }
+            //  The dock island. Hidden it is zero wide as well as sunk (no bump of its fillet is left on the floor);
+            //  with a bottom panel open (Spotlight, wallpapers) it grows up and out into the panel's glass.
+            box dock_island { from: screen.width / 2 - (dw * clamp(vis * 1.25 - 0.05, 0, 1) + max(0, bpw - dw) * bv) / 2, screen.height - dock_h * vis - max(0, bph - dock_h) * bv; size: dw * clamp(vis * 1.25 - 0.05, 0, 1) + max(0, bpw - dw) * bv, dock_h + ext + max(0, bph - dock_h) * bv; corner: 24; blend: dock_fillet }
         }
 
         // ── left island: menu orb · workspace · window ───────────
@@ -552,7 +564,7 @@ scene MacTopBar {
         row dock_row {
             at: screen.width / 2, screen.height - dock_h / 2 - 1 + (1 - vis) * (dock_h + 20)
             anchor: center middle
-            opacity: vis
+            opacity: vis * (1 - bv)
             gap: 10
             align: center
 

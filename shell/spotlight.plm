@@ -2,11 +2,14 @@
 import "common/palette.plm"
 
 scene MacSpotlight {
+    let mp_sw = 680
+    let mp_sh = 520
     include "common/theme.plm"
-    include "common/here.plm"
+    include "common/morph.plm"
     surface {
-        size: 680, 500
-        anchor: center
+        size: 680, 520
+        anchor: bottom
+        margin: 0, 0, 0, 0
         level: overlay
         keyboard: exclusive while open and open_screen == screen.index
         screens: each
@@ -16,13 +19,6 @@ scene MacSpotlight {
         services: "apps", "apps.launch", "say:clipboard", "say:control_center", "say:notifications", "say:dashboard", "say:settings", "say:wallpapers", "say:topbar"
     }
 
-    fact open  = false
-
-    let spot_color = bg_color
-    let spot_glass = glass_amt
-    let spot_tint = tint_amt
-    let spot_rim = rim_amt
-    let spot_shadow = 0%
     let line_color = card_stroke
     let line_op = card_stroke_op
 
@@ -32,60 +28,34 @@ scene MacSpotlight {
     event toggle
     event launch ->
 
-    prop seen  = 0 ~quick
-    prop scale = 0.95 ~lively
-    prop tall  = 76 ~quick
-    follow tall = 76 + list.height
-
-    layer panel ~quick {
-        shown while open { seen: 1 ~quick; scale: 1 ~lively }
-        gone             { seen: 0 ~quick; scale: 0.95 ~quick }
-    }
-
-    // Click outside to dismiss
-    zone box dismiss { from: 0, 0; size: 680, 500; active: open and here }
+    //  The glass is drawn by the frame: the dock island grows UP into it (topbar.plm). This scene only draws the
+    //  content, anchored to the bottom: the results above, the search field at the bottom where the dock was.
     on press dismiss { open = false }
-    on press right dismiss { }
 
     group {
-        show: here
-        pivot: 340, 40
-        scale: scale
-        opacity: seen
+        show: mp_here
+        move: 20, 520 - ph
+        opacity: mp_fade
 
-        // Window Frame
-        body {
-            color: spot_color
-            glass: spot_glass
-            lens: false
-            frost: 100%
-            dispersion: 35%
-            refraction: 75%
-            shine: pointer
-            tint: spot_tint
-            rim: spot_rim
-            box { from: 40, 24; size: 600, tall; corner: 22 }
+        // Results List
+        column list ~quick {
+            at: 32, 14
+            gap: 2
+            for h in hits { Row(h) }
         }
 
+        // Separator Line
+        box { from: 28, ph - 74; size: 584, 1; color: line_color; opacity: line_op }
+
         // Spotlight Magnifying Glass & Search Field
-        text "󰍉" { at: 62, 52; anchor: center; size: 19; color: ink_c; opacity: 60% }
+        text "󰍉" { at: 46, ph - 38; anchor: center; size: 19; color: ink_c; opacity: 60% }
         input query {
-            at: 84, 42
+            at: 68, ph - 50
             width: 530
             size: 19
             color: ink_c
             placeholder: "Spotlight Search"
             selection: accent_c
-        }
-
-        // Separator Line
-        box { from: 60, 80; size: 560, 1; color: line_color; opacity: line_op }
-
-        // Results List
-        column list ~quick {
-            at: 52, 90
-            gap: 2
-            for h in hits { Row(h) }
         }
     }
 

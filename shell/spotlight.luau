@@ -1,5 +1,6 @@
 -- macOS Spotlight Search Logic
 local apps = {}
+local panel = require("panel")("spotlight")     -- the frame draws the glass: tell it how tall to be
 
 local function filter()
     local q = (text.query or ""):lower()
@@ -11,6 +12,7 @@ local function filter()
     end
     model.hits = hits
     fact.sel = 0
+    panel.height(94 + math.max(#hits, 1) * 44)
 end
 
 -- Watch the system apps database (.desktop files on Linux)

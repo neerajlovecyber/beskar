@@ -1,17 +1,20 @@
-// Wallpaper picker (Super+W). Scans your pictures, plus wallpapers that ship with Beskar and the system's,
+// Wallpaper strip (Super+W): it rises out of the dock. Scans your pictures, plus wallpapers that ship with Beskar and the system's,
 // shows them as thumbnails, and applies the one you click with a transition. As in Marea, the picture is
 // painted by a separate daemon (awww), so the wallpaper stays when the shell is not running.
 import "common/palette.plm"
 
 scene MacWallpapers {
+    let mp_sw = 1000
+    let mp_sh = 300
     include "common/theme.plm"
-    include "common/here.plm"
+    include "common/morph.plm"
 
     surface {
-        size: 840, 600
-        anchor: center
+        size: 1000, 300
+        anchor: bottom
+        margin: 0, 0, 0, 0
         level: overlay
-        keyboard: on_demand
+        keyboard: exclusive while open and open_screen == screen.index
         screens: each
     }
 
@@ -20,14 +23,13 @@ scene MacWallpapers {
         run: "sh", "awww", "magick", "fd"
     }
 
-    //  Painted by wallpapers.luau: the twelve on screen, 4 across.
-    model walls max 12 { name: text; thumb: image 176, 99; current: bool; ready: bool; builtin: bool }
+    //  Painted by wallpapers.luau: the five on screen, in one row.
+    model walls max 6 { name: text; thumb: image 176, 99; current: bool; ready: bool; builtin: bool }
 
-    fact open = false
     fact wall_tab = 0            // 0 all · 1 mine · 2 built in
     fact wall_total = 0          // how many match the tab
-    fact wall_row = 0            // first row on screen
-    fact wall_rows = 1           // rows in all
+    fact wall_row = 0            // the first picture on screen (0-based)
+    fact wall_rows = 1           // how far it can scroll + 1
     text wall_hint = ""
 
     event toggle
@@ -36,20 +38,12 @@ scene MacWallpapers {
     event wall_tab_set ->
     event accent_now ->
 
-    prop seen = 0 ~quick
-    prop scale = 0.96 ~quick
-    layer panel ~quick {
-        shown while open { seen: 1 ~quick; scale: 1 ~quick }
-        gone             { seen: 0 ~quick; scale: 0.96 ~quick }
-    }
-
     //  One wallpaper: the picture, its name, a ring if it is the one on now, a small lift on hover.
     component WallCard(w: record, pick: event) {
         size: 176, 120
         prop lift = 0 ~lively
         zone box touch { from: 0, 0; size: 176, 99; corner: 14; cursor: pointer }
         group {
-        show: here
             move: 0, -lift * 2
             pivot: 88, 50
             scale: 1 + 0.035 * lift
@@ -83,36 +77,22 @@ scene MacWallpapers {
         on press right hit { }
     }
 
-    zone box dismiss { from: 0, 0; size: 840, 600; active: open and here }
     on press dismiss { open = false }
-    on press right dismiss { }
 
+    //  The glass is drawn by the frame: the dock island grows up and out into the strip (topbar.plm).
     group {
-        move: 20, 20
-        pivot: 400, 270
-        scale: scale
-        opacity: seen
+        show: mp_here
+        move: 10, 300 - ph
+        opacity: mp_fade
 
-        body {
-            color: bg_color
-            glass: glass_amt
-            lens: false
-            frost: 100%
-            dispersion: 35%
-            refraction: 75%
-            tint: tint_amt
-            rim: rim_amt
-            box { from: 0, 0; size: 800, 560; corner: 30 }
-        }
-
-        //  A zone that eats clicks on the panel itself, so they do not close it
-        zone box inside { from: 0, 0; size: 800, 560 }
+        //  clicks on the strip itself do not close it
+        zone box inside { from: 0, 0; size: 980, 250 }
         on press right inside { }
 
-        text "Wallpapers" { at: 30, 38; anchor: left center; size: 18; weight: 700; color: ink_c }
-        text wall_hint { at: 140, 40; anchor: left center; size: 11.5; color: ink_sub }
+        text "Wallpapers" { at: 28, 30; anchor: left center; size: 17; weight: 700; color: ink_c }
+        text wall_hint { at: 150, 32; anchor: left center; size: 11.5; color: ink_sub }
         row {
-            at: 770, 38
+            at: 950, 30
             anchor: right middle
             gap: 8
             TabPill("All", 0, 60)
@@ -121,25 +101,23 @@ scene MacWallpapers {
         }
 
         //  The wheel goes BEFORE the cards: the last declared zone is the one on top.
-        zone box wall_wheel { from: 20, 72; size: 760, 420 }
+        zone box wall_wheel { from: 20, 56; size: 940, 140 }
         on scroll wall_wheel { emit wall_scroll(wheel) }
 
-        grid {
-            at: 30, 80
-            columns: 4
+        row {
+            at: 22, 62
             gap: 14
-            width: 740
-            row: 128
             for w in walls { WallCard(w, wall_pick) }
         }
 
         //  Nothing found
-        text "No pictures found. Put some in ~/Pictures/wallpapers." { at: 400, 270; anchor: center; size: 13; color: ink_sub; show: wall_total < 1 }
+        text "No pictures found. Put some in ~/Pictures/wallpapers." { at: 490, 120; anchor: center; size: 13; color: ink_sub; show: wall_total < 1 }
 
-        //  Where you are in a long list
-        box { from: 786, 82 + 400 * wall_row / max(1, wall_rows); size: 3, max(24, 400 / max(1, wall_rows)); corner: 1.5; color: ink_c; opacity: if(wall_rows > 3, 28%, 0%) }
+        //  Where you are in a long list: a thin bar under the cards
+        box { from: 28, 196; size: 924, 3; corner: 1.5; color: ink_c; opacity: if(wall_rows > 1, 10%, 0%) }
+        box { from: 28 + 924 * wall_row / max(1, wall_total), 196; size: max(30, 924 * 5 / max(1, wall_total)), 3; corner: 1.5; color: ink_c; opacity: if(wall_rows > 1, 45%, 0%) }
 
-        text "Scroll for more  ·  Click to apply  ·  Esc to close" { at: 400, 530; anchor: center; size: 10.5; color: ink_sub; opacity: 80% }
+        text "Scroll for more  ·  Click to apply  ·  Esc to close" { at: 490, 222; anchor: center; size: 10.5; color: ink_sub; opacity: 80% }
     }
 
     on toggle     { toggle open }
