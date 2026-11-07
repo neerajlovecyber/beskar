@@ -28,11 +28,11 @@ is named after Apple, and nothing is hard-coded to one machine.
   comes back when the pointer reaches the bottom edge.
 - Islands are as wide as their content and morph with springs when it changes.
 
-**Panels** (one open at a time, the others close):
+**Panels** (one open at a time, the others close). The power menu, Control Center and dashboard grow out of the bar's islands (*Morph*) or float just below them (*Float*), as set in Settings → Appearance → Panel style:
 
 | Panel | Opens with | What it does |
 | :--- | :--- | :--- |
-| **Control Center** | the switches icon, `Super+Shift+C` | Wi-Fi and Bluetooth (join networks with a password, connect, pair, per-app volume), Now Playing with seek, Do Not Disturb, dark mode, brightness and volume sliders, shortcuts |
+| **Control Center** | the switches icon, the Wi-Fi / Bluetooth icons, `Super+Shift+C` | Wi-Fi and Bluetooth (join networks with a password, connect, pair, per-app volume), Now Playing with seek, Do Not Disturb, dark mode, brightness and volume sliders, shortcuts |
 | **Notifications** | the bell, `Super+N` | The notification server. Cards with icon, title and body, hover ×, Clear All, a saved history ("Earlier"), a banner that drops from the island |
 | **Dashboard** | click the clock | Date, live weather, CPU / memory / disk, battery, clocks |
 | **Spotlight** | `Super+Space` | Search and launch apps |
