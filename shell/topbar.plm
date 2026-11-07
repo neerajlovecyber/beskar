@@ -43,15 +43,12 @@ scene MacTopBar {
 
     //  Reported by topbar.luau
     //  The dock is data: topbar.luau fills this from the apps you pinned plus the ones that are running.
-    //  One record per workspace (all monitors): which monitor, its number, whether it is the one shown, how many
-    //  windows, and the first six of them (icon, title, window id). Filled by topbar.luau from niri.
-    model ws_list max 12 { out: number; idx: number; active: bool; wins: number; i1: image 22, 22; t1: text; w1: number; i2: image 22, 22; t2: text; w2: number; i3: image 22, 22; t3: text; w3: number; i4: image 22, 22; t4: text; w4: number; i5: image 22, 22; t5: text; w5: number; i6: image 22, 22; t6: text; w6: number }
+    //  One record per workspace (all monitors): which monitor, its number, whether it is the one shown and how
+    //  many windows it has. Filled by topbar.luau from niri.
+    model ws_list max 12 { out: number; idx: number; active: bool; wins: number }
     //  The apps open in the workspace each monitor shows (left to right), the focused one with its name.
     model cur_apps max 20 { out: number; icon: image 20, 20; name: text; wid: number; focused: bool }
     model dock_items max 12 { icon: image 38, 38; name: text; running: bool; pinned: bool; canpin: bool }
-    fact ws_tip_row = -1       // which workspace row / app slot the pointer rests on, for the title tooltip
-    fact ws_tip_slot = 0
-    fact ws_open = -1         // which monitor's workspace overview is open (-1 none)
     fact menu_i = -1          // which dock item has its right-click menu open (-1 none)
     //  One record per monitor, in niri's output order: the workspace each one shows.
     model mon max 4 { active: number = 1; busy: number = 0; nws: number = 1 }
@@ -212,23 +209,6 @@ scene MacTopBar {
         on press right hit { }
     }
 
-    //  The little grid at the end: it opens the overview of every workspace and its apps.
-    component WsGrid() {
-        size: 24, 24
-        prop hot = 0 ~quick
-        box { from: 0, 0; size: 24, 24; corner: 8; color: ink_c; opacity: hot * 14% + if(ws_open == screen.index, 14%, 0%) }
-        box { from: 6, 6; size: 5, 5; corner: 1.5; color: ink_c; opacity: 80% }
-        box { from: 13, 6; size: 5, 5; corner: 1.5; color: ink_c; opacity: 80% }
-        box { from: 6, 13; size: 5, 5; corner: 1.5; color: ink_c; opacity: 80% }
-        box { from: 13, 13; size: 5, 5; corner: 1.5; color: ink_c; opacity: 80% }
-        zone box ws_grid_hit { from: 0, 0; size: 24, 24; corner: 8; cursor: pointer }
-        on enter ws_grid_hit { hot: 1 }
-        on leave ws_grid_hit { hot: 0 }
-        on press ws_grid_hit while ws_open == screen.index { ws_open = -1 }
-        on press ws_grid_hit while ws_open != screen.index { ws_open = screen.index }
-        on press right ws_grid_hit { }
-    }
-
     //  One app of the current workspace: just its icon; the focused one sits in a pill.
     component CurApp(it: record) {
         prop hot = 0 ~quick
@@ -253,19 +233,6 @@ scene MacTopBar {
         on enter hit { hot: 1 }
         on leave hit { hot: 0 }
         on press hit { emit ws_focus(it.wid) }
-        on press right hit { }
-    }
-
-    //  One app in the overview: its icon; the window comes to the front when pressed.
-    component WsApp(ic: image, wid: number, slot: number, row: number) {
-        size: 26, 26
-        prop hot = 0 ~quick
-        box { from: 0, 0; size: 26, 26; corner: 8; color: ink_c; opacity: hot * 16% }
-        image ic { at: 2, 2; size: 22, 22 }
-        zone box hit { from: 0, 0; size: 26, 26; corner: 8; cursor: pointer }
-        on enter hit { hot: 1; ws_tip_row = row; ws_tip_slot = slot }
-        on leave hit { hot: 0; ws_tip_slot = 0 }
-        on press hit { ws_open = -1; emit ws_focus(wid) }
         on press right hit { }
     }
 
@@ -405,12 +372,11 @@ scene MacTopBar {
                 on press logo_hit { emit open_apple_menu }
             }
 
-            //  the workspaces of THIS monitor, then the grid that opens the overview
+            //  the workspaces of THIS monitor
             row {
                 gap: 0
                 align: center
                 for w in ws_list { WsDot(w) { show: w.out == screen.index } }
-                WsGrid()
             }
 
             //  the apps open here, the focused one named
@@ -492,76 +458,6 @@ scene MacTopBar {
         zone box dock_edge { from: screen.width / 2 - 300, screen.height - 4; size: 600, 4; active: vis < 0.5 }
         on enter dock_edge { emit reveal }
         on press right dock_edge { }
-
-        // ── the workspace overview: every workspace of this monitor and the apps in it ──
-        group {
-            show: ws_open == screen.index
-            let rows_n = mon.$screen.nws
-            let ph = 20 + rows_n * 46
-            body {
-                color: bg_color
-                glass: glass_amt
-                lens: false
-                frost: 100%
-                tint: tint_amt
-                rim: rim_amt
-                box { from: 12, 46; size: 360, ph; corner: 22 }
-            }
-            zone box ws_panel { from: 12, 46; size: 360, ph; corner: 22 }
-            on press right ws_panel { }
-            on away ws_panel for 1400ms { ws_open = -1 }
-            column {
-                at: 26, 58
-                gap: 6
-                for w in ws_list {
-                    row {
-                        show: w.out == screen.index
-                        gap: 6
-                        align: center
-                        //  the number, in the accent colour while it is the one shown
-                        group {
-                            size: 34, 34
-                            box { from: 0, 0; size: 34, 34; corner: 10; color: if(w.active, accent_c, item_solid) }
-                            text "{w.idx}" { at: 17, 17; anchor: center; size: 14; weight: 700; color: if(w.active, #ffffff, ink_c) }
-                            zone box num_hit { from: 0, 0; size: 34, 34; corner: 10; cursor: pointer }
-                            on press num_hit { ws_open = -1; emit ws_go(w.out * 100 + w.idx) }
-                            on press right num_hit { }
-                        }
-                        row {
-                            gap: 4
-                            align: center
-                            WsApp(w.i1, w.w1, 1, w.idx) { show: w.w1 > 0 }
-                            WsApp(w.i2, w.w2, 2, w.idx) { show: w.w2 > 0 }
-                            WsApp(w.i3, w.w3, 3, w.idx) { show: w.w3 > 0 }
-                            WsApp(w.i4, w.w4, 4, w.idx) { show: w.w4 > 0 }
-                            WsApp(w.i5, w.w5, 5, w.idx) { show: w.w5 > 0 }
-                            WsApp(w.i6, w.w6, 6, w.idx) { show: w.w6 > 0 }
-                            text "+{w.wins - 6}" { size: 11; weight: 600; color: ink_sub; show: w.wins > 6 }
-                            text "Empty" { size: 11.5; color: ink_sub; show: w.wins < 1 }
-                        }
-                    }
-                }
-            }
-            //  The title of the app under the pointer (drawn after the rows so it sits on top)
-            column {
-                at: 26, 58
-                gap: 6
-                for w in ws_list {
-                    group {
-                        show: w.out == screen.index
-                        size: 34, 34
-                        row {
-                            at: 40 + (ws_tip_slot - 1) * 30, 40
-                            padding: 6
-                            fill: item_solid
-                            corner: 8
-                            show: ws_tip_row == w.idx and ws_tip_slot > 0
-                            text pick(ws_tip_slot, "", w.t1, w.t2, w.t3, w.t4, w.t5, w.t6) { size: 11; weight: 600; color: ink_c; width: 230; lines: 1; tight: true }
-                        }
-                    }
-                }
-            }
-        }
 
         // ── the dock ─────────────────────────────────────────────
         row dock_row {

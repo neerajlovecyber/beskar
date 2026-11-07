@@ -301,9 +301,9 @@ end
 read_pins()
 every(5000, read_pins)
 
--- ── workspaces: one capsule per workspace of each monitor, and what runs in each ──
+-- ── workspaces: one capsule per workspace of each monitor ──
 -- `model ws_list`: one record per workspace, `out` the monitor (0 = first of `niri msg outputs`, sorted by name).
--- Up to six apps per workspace (icon i1…i6, title t1…t6, window id w1…w6), `count` is how many there are.
+-- `wins` is how many windows it has.
 local OUTPUTS = {}
 local function build_ws()
     local by_ws = {}
@@ -337,19 +337,6 @@ local function build_ws()
         if o and #list < 12 then
             local wins = by_ws[ws.id] or {}
             local rec = { out = o, idx = ws.idx or 1, active = ws.is_active == true, wins = #wins }
-            for k = 1, 6 do
-                local w = wins[k]
-                if w then
-                    local e = entry_for(w.app_id)
-                    rec["i" .. k] = e and e.icon or lower(w.app_id)
-                    rec["t" .. k] = (w.title and w.title ~= "") and w.title or (w.app_id or "")
-                    rec["w" .. k] = w.id
-                else
-                    rec["i" .. k] = ""
-                    rec["t" .. k] = ""
-                    rec["w" .. k] = 0
-                end
-            end
             list[#list + 1] = rec
         end
     end

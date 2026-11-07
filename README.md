@@ -18,7 +18,7 @@ is named after Apple, and nothing is hard-coded to one machine.
 
 **The frame** (`shell/topbar.plm`) is a single glass silhouette, so every junction melts into the next:
 
-- **Left island:** menu button, a capsule per workspace of the monitor it is on (and a grid icon for an overview of every workspace and its apps), then the icons of the apps open in the current workspace (the focused one highlighted).
+- **Left island:** menu button, a capsule per workspace of the monitor it is on, then the icons of the apps open in the current workspace (the focused one highlighted).
 - **Centre island:** date, time and weather. Click it for the dashboard.
 - **Right island:** tray apps, Wi-Fi (with signal), Bluetooth while a device is connected, battery, Control
   Center, and the notification bell (with an unread count and a Do Not Disturb slash). Each icon does
