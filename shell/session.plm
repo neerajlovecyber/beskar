@@ -11,7 +11,7 @@ scene MacSession {
     }
 
     permissions {
-        services: "say:apple_menu", "say:topbar", "say:dock"
+        services: "say:topbar", "say:dock"
         run: "systemctl", "niri msg"
     }
 

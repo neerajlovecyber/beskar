@@ -11,7 +11,7 @@ Use the `pleamar` skill when touching any `.plm` / `.luau` file.
 | File | What it is |
 | :--- | :--- |
 | `shell/topbar.plm` + `topbar.luau` | The frame: one full-screen glass silhouette (ring round all four edges, three top islands, bottom dock island). Scene name `MacTopBar`. |
-| `shell/{control_center,spotlight,widgets,apple_menu,osd,settings,lock,session,capture,appswitcher,clipboard}.plm` | One scene per panel, each with its own `.luau` where it needs logic. |
+| `shell/{control_center,spotlight,notifications,dashboard,wallpapers,osd,settings,lock,session,capture,appswitcher,clipboard}.plm` | One scene per panel, each with its own `.luau` where it needs logic. |
 | `shell/common/palette.plm` | Shared colour library. |
 | `shell/start.sh` | Starts / stops every scene (one pleamar process each). |
 | `bin/pleamar` | The runtime. |

@@ -30,7 +30,7 @@ kill_all() {
 
 check_status() {
     echo "macOS / iNiR Shell Status:"
-    for comp in topbar border spotlight control_center apple_menu notifications dashboard wallpapers osd settings lock session capture appswitcher clipboard; do
+    for comp in topbar border spotlight control_center notifications dashboard wallpapers osd settings lock session capture appswitcher clipboard; do
         if pgrep -f "pleamar.*$comp\.plm" >/dev/null 2>&1; then
             echo "  ✔ $comp is RUNNING"
         else
@@ -48,16 +48,19 @@ apply_saved_theme() {
         [ -z "$ACCENT" ] && ACCENT="0"
         AUTO=$(grep -o '"accent_auto": *[a-z]*' "$CONFIG_FILE" | awk '{print $2}' || true)
         [ -z "$AUTO" ] && AUTO="false"
+        STYLE=$(grep -o '"panel_style": *[0-9]*' "$CONFIG_FILE" | awk '{print $2}' || true)
+        [ -z "$STYLE" ] && STYLE="0"
         [ -z "$DM" ] && DM="true"
         [ -z "$SKIN" ] && SKIN="0"
 
-        for comp in topbar border spotlight control_center apple_menu notifications dashboard wallpapers osd settings session capture appswitcher clipboard; do
+        for comp in topbar border spotlight control_center notifications dashboard wallpapers osd settings session capture appswitcher clipboard; do
             "$BIN" --say "$comp" "fact dark_mode $DM" >/dev/null 2>&1 || true
             "$BIN" --say "$comp" "fact skin $SKIN" >/dev/null 2>&1 || true
         done
-        for comp in topbar control_center notifications dashboard settings wallpapers spotlight apple_menu osd clipboard session capture appswitcher lock; do
+        for comp in topbar control_center notifications dashboard settings wallpapers spotlight osd clipboard session capture appswitcher lock; do
             "$BIN" --say "$comp" "fact accent $ACCENT" >/dev/null 2>&1 || true
             "$BIN" --say "$comp" "fact accent_auto $AUTO" >/dev/null 2>&1 || true
+            "$BIN" --say "$comp" "fact panel_style $STYLE" >/dev/null 2>&1 || true
         done
     fi
 }
@@ -90,8 +93,6 @@ start_shell() {
     PID_SPOTLIGHT=$!
     setsid "$BIN" --no-hud --scene "$DIR/shell/control_center.plm" </dev/null >/tmp/pleamar_cc.log 2>&1 &
     PID_CC=$!
-    setsid "$BIN" --no-hud --scene "$DIR/shell/apple_menu.plm" </dev/null >/tmp/pleamar_apple.log 2>&1 &
-    PID_APPLE=$!
     setsid "$BIN" --no-hud --scene "$DIR/shell/notifications.plm" </dev/null >/tmp/pleamar_notifications.log 2>&1 &
     PID_WIDGETS=$!
     setsid "$BIN" --no-hud --scene "$DIR/shell/dashboard.plm" </dev/null >/tmp/pleamar_dashboard.log 2>&1 &
@@ -113,7 +114,7 @@ start_shell() {
     setsid "$BIN" --no-hud --scene "$DIR/shell/clipboard.plm" </dev/null >/tmp/pleamar_clipboard.log 2>&1 &
     PID_CLIP=$!
 
-    echo "$PID_BAR $PID_BORDER $PID_SPOTLIGHT $PID_CC $PID_APPLE $PID_WIDGETS $PID_DASH $PID_WALL $PID_OSD $PID_SETTINGS $PID_LOCK $PID_SESSION $PID_CAPTURE $PID_SWITCHER $PID_CLIP" > "$PID_FILE"
+    echo "$PID_BAR $PID_BORDER $PID_SPOTLIGHT $PID_CC $PID_WIDGETS $PID_DASH $PID_WALL $PID_OSD $PID_SETTINGS $PID_LOCK $PID_SESSION $PID_CAPTURE $PID_SWITCHER $PID_CLIP" > "$PID_FILE"
     sleep 0.6
 
     apply_saved_theme
@@ -123,7 +124,7 @@ start_shell() {
     echo "  - Screen Border: PID $PID_BORDER"
     echo "  - Spotlight Search: PID $PID_SPOTLIGHT"
     echo "  - Control Center: PID $PID_CC"
-    echo "  - Apple Menu: PID $PID_APPLE"
+    echo "  - Apple Menu: PID"
     echo "  - Widgets & Notifications: PID $PID_WIDGETS"
     echo "  - Bezel OSD (HUD): PID $PID_OSD"
     echo "  - System Settings: PID $PID_SETTINGS"
@@ -142,7 +143,7 @@ start_shell() {
     echo "  - $0 capture         (Toggle Screen Capture & Record HUD)"
     echo "  - $0 spotlight       (Toggle Spotlight search)"
     echo "  - $0 control-center  (Toggle Control Center)"
-    echo "  - $0 apple-menu      (Toggle Apple menu)"
+    echo "  - $0 power-menu      (Open the power menu; the gem button in the bar does the same)"
     echo "  - $0 notifications   (Toggle Notification Center)"
     echo "  - $0 dashboard       (Toggle the dashboard under the clock)"
     echo "  - $0 wallpapers      (Toggle the wallpaper picker, Super+W)"
@@ -194,8 +195,10 @@ case "$1" in
     control-center)
         "$BIN" --say control_center "emit toggle"
         ;;
-    apple-menu)
-        "$BIN" --say apple_menu "emit toggle"
+    power-menu)
+        # the first copy of the frame (the monitor the compositor lists first)
+        "$BIN" --say topbar "fact open_screen 0"
+        "$BIN" --say topbar "fact open true"
         ;;
     notifications|widgets)
         "$BIN" --say notifications "emit toggle"
@@ -227,7 +230,7 @@ case "$1" in
     dark-mode)
         VAL="true"
         [ "$2" = "off" ] && VAL="false"
-        for comp in topbar spotlight control_center apple_menu notifications dashboard wallpapers osd settings session capture; do
+        for comp in topbar spotlight control_center notifications dashboard wallpapers osd settings session capture; do
             "$BIN" --say "$comp" "fact dark_mode $VAL"
         done
         mkdir -p "$(dirname "$CONFIG_FILE")"
@@ -236,7 +239,7 @@ case "$1" in
         ;;
     skin)
         SKIN_VAL="${2:-0}"
-        for comp in topbar spotlight control_center apple_menu notifications dashboard wallpapers osd settings session capture; do
+        for comp in topbar spotlight control_center notifications dashboard wallpapers osd settings session capture; do
             "$BIN" --say "$comp" "fact skin $SKIN_VAL"
         done
         mkdir -p "$(dirname "$CONFIG_FILE")"

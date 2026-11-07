@@ -12,11 +12,30 @@ local function toggle(panel)
     end
 end
 
-on("open_apple_menu", toggle("apple_menu"))
 on("open_control_center", toggle("control_center"))
 on("open_spotlight", toggle("spotlight"))
 on("open_notifications", toggle("notifications"))
 on("open_dashboard", toggle("dashboard"))
+
+-- ── the power menu (the gem button) ──────────────────────────────
+local function say(scene, words)
+    pcall(sys.call, "say", scene, words)
+end
+local PM = {
+    [1] = function() say("settings", "fact tab 7"); say("settings", "fact open true") end,        -- About This PC
+    [2] = function() say("settings", "fact tab 0"); say("settings", "fact open true") end,        -- System Settings
+    [3] = function() say("lock", "fact locked true") end,                                           -- Lock Screen
+    [4] = function() run("systemctl", { "suspend" }, nil, { output = false }) end,                 -- Sleep
+    [5] = function() say("session", "fact kind 2"); say("session", "fact open true") end,          -- Log Out…
+    [6] = function() say("session", "fact kind 1"); say("session", "fact open true") end,          -- Restart…
+    [7] = function() say("session", "fact kind 0"); say("session", "fact open true") end,          -- Shut Down…
+}
+on("pm_item", function(n)
+    local f = PM[tonumber(n) or 0]
+    if f then
+        f()
+    end
+end)
 
 -- Open the Control Center straight on a page (1 Wi-Fi, 2 Bluetooth).
 local function open_cc_page(n)
@@ -567,3 +586,6 @@ end
 
 refresh_weather()
 every(WEATHER_EVERY_MS, refresh_weather)
+
+-- one panel at a time
+require("exclusive")("topbar")

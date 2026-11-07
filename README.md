@@ -18,7 +18,7 @@ is named after Apple, and nothing is hard-coded to one machine.
 
 **The frame** (`shell/topbar.plm`) is a single glass silhouette, so every junction melts into the next:
 
-- **Left island:** menu button, a capsule per workspace of the monitor it is on, then the icons of the apps open in the current workspace (the focused one highlighted).
+- **Left island:** the gem button (opens the power menu: About, Settings, Lock, Sleep, Log Out, Restart, Shut Down), a capsule per workspace of the monitor it is on, then the icons of the apps open in the current workspace (the focused one highlighted).
 - **Centre island:** date, time and weather. Click it for the dashboard.
 - **Right island:** tray apps, Wi-Fi (with signal), Bluetooth while a device is connected, battery, Control
   Center, and the notification bell (with an unread count and a Do Not Disturb slash). Each icon does
@@ -39,6 +39,7 @@ is named after Apple, and nothing is hard-coded to one machine.
 | **Clipboard** | `Super+V` | Clipboard history (cliphist) |
 | **Wallpapers** | `Super+W` | Thumbnails of your wallpapers and the built-in ones; applies with a transition |
 | **Settings** | Control Center → Settings | Appearance (dark mode, glass skin, accent colour), displays, sound, Wi-Fi, Bluetooth, wallpaper, about this PC |
+| **Power menu** | the gem button | Grows out of the left island (*Morph*) or floats just below it (*Float*); choose in Settings → Appearance → Panel style |
 | **Lock screen** | `start.sh lock` | `ext-session-lock`, password checked by PAM |
 | **Also** | | App switcher, screenshot / screen-recording toolbar, volume and brightness popup, session (shut down / restart / log out) dialog |
 
@@ -88,7 +89,7 @@ binds {
 }
 ```
 
-The other commands: `settings`, `lock`, `session [0|1|2]`, `capture`, `appswitcher`, `dashboard`, `apple-menu`,
+The other commands: `settings`, `lock`, `session [0|1|2]`, `capture`, `appswitcher`, `dashboard`,
 `vol-up|vol-down|mute`, `bright-up|bright-down`, `dark-mode [on|off]`, `skin [0|1|2]`.
 
 ---

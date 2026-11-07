@@ -10,7 +10,7 @@ scene MacLock {
     }
 
     permissions {
-        services: "clock", "auth", "say:apple_menu", "say:topbar", "say:dock"
+        services: "clock", "auth", "say:topbar", "say:dock"
         run: "loginctl", "sh"
     }
 

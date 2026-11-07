@@ -24,8 +24,8 @@ scene MacTopBar {
     //  What topbar.luau may touch. `run` is only what it needs: niri for the workspace, curl for
     //  the weather, and the dock's apps. Undeclared is nothing.
     permissions {
-        services: "clock", "network", "battery", "window", "tray", "tray.*", "apps", "apps.launch", "say:control_center", "say:spotlight", "say:apple_menu", "say:notifications", "say:dashboard"
-        run: "niri msg", "curl", "sh"
+        services: "clock", "network", "battery", "window", "tray", "tray.*", "apps", "apps.launch", "say:control_center", "say:spotlight", "say:notifications", "say:dashboard", "say:settings", "say:session", "say:lock", "say:clipboard", "say:wallpapers"
+        run: "niri msg", "curl", "sh", "systemctl"
     }
 
     service clock as now { time: text = "--:--"; date: text }
@@ -49,13 +49,16 @@ scene MacTopBar {
     //  The apps open in the workspace each monitor shows (left to right), the focused one with its name.
     model cur_apps max 20 { out: number; icon: image 20, 20; name: text; wid: number; focused: bool }
     model dock_items max 12 { icon: image 38, 38; name: text; running: bool; pinned: bool; canpin: bool }
+    //  The power menu (the gem button): `open` is what shell/exclusive.luau closes, `open_screen` which monitor shows it.
+    fact open = false
+    fact open_screen = -1
     fact menu_i = -1          // which dock item has its right-click menu open (-1 none)
     //  One record per monitor, in niri's output order: the workspace each one shows.
     model mon max 4 { active: number = 1; busy: number = 0; nws: number = 1 }
     text weather_temp = "--°"
     text weather_icon = "󰖐"
 
-    event open_apple_menu ->
+    event pm_item ->
     event open_control_center ->
     event open_spotlight ->
     event open_notifications ->
@@ -236,6 +239,19 @@ scene MacTopBar {
         on press right hit { }
     }
 
+    //  One line of the power menu.
+    component PowerItem(label: text, n: number, danger: bool = false) {
+        size: pm_w - 28, 36
+        prop hot = 0 ~quick
+        box { from: 0, 0; size: pm_w - 28, 36; corner: 10; color: if(danger, danger_c, accent_c); opacity: hot * if(danger, 90%, 85%) }
+        text label { at: 14, 18; anchor: left center; size: 13; weight: 500; color: if(hot > 0.5, #ffffff, if(danger, danger_c, ink_c)) }
+        zone box hit { from: 0, 0; size: pm_w - 28, 36; corner: 10; cursor: pointer }
+        on enter hit { hot: 1 }
+        on leave hit { hot: 0 }
+        on press hit { open = false; emit pm_item(n) }
+        on press right hit { }
+    }
+
     // ── one dock app: the icon lifts and grows under the pointer ─
     // ── one dock app: the icon lifts under the pointer, a dot says it is running, right-click opens a menu ─
     component DockItem(it: record) {
@@ -325,6 +341,14 @@ scene MacTopBar {
             away   { vis: 0 }
         }
 
+        //  The power menu: `pv` is how open it is on THIS monitor; `fl` 0 morphs it out of the island, 1 lets it float.
+        prop pv = 0 ~calm
+        follow pv = if(open and open_screen == screen.index, 1, 0)
+        prop fl = 0 ~calm
+        follow fl = if(panel_style == 1, 1, 0)
+        let pm_w = 236
+        let pm_h = 312
+
         // ── the glass: ring + top islands + dock, one silhouette ──
         body {
             color: bar_color
@@ -347,6 +371,10 @@ scene MacTopBar {
 
             //  Top islands.
             box left_notch   { from: -ext, -14; size: lw + ext, notch_h; corner: 18; blend: fillet }
+            //  The power menu, as glass. Morph: the left island itself grows down (and a little wider), melted
+            //  into it. Float: a separate rounded sheet that appears below with a gap.
+            box power_m { from: -ext, -14; size: lw + (pm_w - lw) * pv * (1 - fl) + ext, notch_h + pm_h * pv * (1 - fl); corner: 18; blend: fillet }
+            box power_f { from: pad - 6, 62; size: pm_w * pv * fl, pm_h * pv * fl; corner: 20 }
             box center_notch { from: screen.width / 2 - cw / 2, -14; size: cw, notch_h; corner: 18; blend: fillet }
             box right_notch  { from: screen.width - rw, -14; size: rw + ext, notch_h; corner: 18; blend: fillet }
 
@@ -378,7 +406,8 @@ scene MacTopBar {
                 zone box logo_hit { from: 0, 0; size: 24, 24; corner: 7; cursor: pointer }
                 on enter logo_hit { hot: 1 }
                 on leave logo_hit { hot: 0 }
-                on press logo_hit { emit open_apple_menu }
+                on press logo_hit while open and open_screen == screen.index { open = false }
+                on press logo_hit while not (open and open_screen == screen.index) { open_screen = screen.index; open = true }
                 on press right logo_hit { }
             }
 
@@ -468,6 +497,29 @@ scene MacTopBar {
         zone box dock_edge { from: screen.width / 2 - 300, screen.height - 4; size: 600, 4; active: vis < 0.5 }
         on enter dock_edge { emit reveal }
         on press right dock_edge { }
+
+        // ── the power menu's items ───────────────────────────────
+        group {
+            show: pv > 0.02
+            opacity: clamp(pv * 1.6 - 0.45, 0, 1)
+            move: 14 + fl * (pad - 20), 48 + fl * 22 + (1 - pv) * -10
+            zone box pm_panel { from: -14, -4; size: pm_w, pm_h; corner: 18 }
+            on press right pm_panel { }
+            on away pm_panel for 1300ms { open = false }
+            column {
+                at: 0, 0
+                gap: 2
+                PowerItem("About This PC", 1)
+                PowerItem("System Settings…", 2)
+                box { from: 6, 0; size: pm_w - 40, 1; color: ink_c; opacity: 14% }
+                PowerItem("Lock Screen", 3)
+                PowerItem("Sleep", 4)
+                box { from: 6, 0; size: pm_w - 40, 1; color: ink_c; opacity: 14% }
+                PowerItem("Log Out…", 5)
+                PowerItem("Restart…", 6)
+                PowerItem("Shut Down…", 7, true)
+            }
+        }
 
         // ── the dock ─────────────────────────────────────────────
         row dock_row {

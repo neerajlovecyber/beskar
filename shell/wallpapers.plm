@@ -14,7 +14,7 @@ scene MacWallpapers {
     }
 
     permissions {
-        services: "say:spotlight", "say:clipboard", "say:control_center", "say:apple_menu", "say:notifications", "say:dashboard", "say:settings"
+        services: "say:spotlight", "say:clipboard", "say:control_center", "say:notifications", "say:dashboard", "say:settings", "say:topbar"
         run: "sh", "awww", "magick", "fd"
     }
 

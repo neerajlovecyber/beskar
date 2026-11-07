@@ -11,7 +11,7 @@ scene MacSpotlight {
     }
 
     permissions {
-        services: "apps", "apps.launch", "say:clipboard", "say:control_center", "say:apple_menu", "say:notifications", "say:dashboard", "say:settings", "say:wallpapers"
+        services: "apps", "apps.launch", "say:clipboard", "say:control_center", "say:notifications", "say:dashboard", "say:settings", "say:wallpapers", "say:topbar"
     }
 
     fact open  = false

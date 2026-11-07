@@ -8,11 +8,11 @@ An ultra-performant, GPU-accelerated macOS Sequoia/Sonoma desktop shell for Wayl
 
 ```
                                 [ MacTopBar ]
-         (Apple Menu · Dynamic Window Title · Status Indicators · Clock)
+         (power menu · workspaces · open apps · status indicators · clock)
                                        │
             ┌──────────────────────────┼──────────────────────────┐
             ▼                          ▼                          ▼
-     [ MacAppleMenu ]          [ MacControlCenter ]         [ MacWidgets ]
+     [ power menu ]            [ MacControlCenter ]         [ MacNotifications ]
   (About, Power, Reboot)    (Wi-Fi, BT, Sound, Display,  (Calendar, Weather,
                             Now Playing, Dark Mode,      Activity Monitor,
                             Marea Glass Customizer)       World Clock, Notices)
@@ -41,7 +41,7 @@ An ultra-performant, GPU-accelerated macOS Sequoia/Sonoma desktop shell for Wayl
 | **Dashboard** | [`shell/dashboard.plm`](dashboard.plm) | Drops from the centre island when you click the clock: date, live weather, CPU / memory / disk, world clocks. |
 | **Bezel OSD (HUD)** | [`shell/osd.plm`](osd.plm) | Centered floating bezel HUD for Volume and Brightness adjustments with auto-dismiss timer and spring physics. |
 | **Spotlight Search** | [`shell/spotlight.plm`](spotlight.plm) | Centered search bar with live fuzzy filtering of desktop applications, arrow-key navigation, and Enter to launch. |
-| **Apple Menu** | [`shell/apple_menu.plm`](apple_menu.plm) | Dropdown providing quick access to About, System Settings, Screen Lock, Reboot, and Power off. |
+| **Power menu** | [`shell/topbar.plm`](topbar.plm) | The gem button in the top bar: About This PC, System Settings, Lock, Sleep, Log Out, Restart, Shut Down. It grows out of the left island (Morph) or floats below it (Float): Settings → Appearance → Panel style. |
 | **Supervisor & CLI** | [`shell/start.sh`](start.sh) | Process supervisor, theme persistence, and CLI hotkey runner. |
 
 ---
@@ -80,7 +80,6 @@ You can bind these commands to compositor keybindings:
 ./shell/start.sh spotlight       # Toggle Spotlight search (recommend: Super+Space)
 ./shell/start.sh control-center  # Toggle Control Center (recommend: Super+C)
 ./shell/start.sh notifications         # Toggle Notification Center & Widgets (recommend: Super+N)
-./shell/start.sh apple-menu      # Toggle Apple Menu (recommend: Super+A)
 ./shell/start.sh vol-up          # Increase Volume + popup Bezel OSD (XF86AudioRaiseVolume)
 ./shell/start.sh vol-down        # Decrease Volume + popup Bezel OSD (XF86AudioLowerVolume)
 ./shell/start.sh mute            # Toggle Mute + popup Bezel OSD (XF86AudioMute)
