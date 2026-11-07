@@ -53,7 +53,15 @@ scene MacSpotlight {
     let line_color = card_stroke
     let line_op = card_stroke_op
 
-    model hits max 7 { name: text; sub: text; kind: number; glyph: text; icon: image 26, 26 }
+    //  the logos of the web searches (Google, YouTube, GitHub, Wikipedia, DuckDuckGo, Maps), picked by `site` 1..6
+    image logo_g = file "../assets/icons/web/google.svg", 26, 26
+    image logo_yt = file "../assets/icons/web/youtube.svg", 26, 26
+    image logo_gh = file "../assets/icons/web/github.svg", 26, 26
+    image logo_w = file "../assets/icons/web/wikipedia.svg", 26, 26
+    image logo_ddg = file "../assets/icons/web/duckduckgo.svg", 26, 26
+    image logo_maps = file "../assets/icons/web/maps.svg", 26, 26
+
+    model hits max 7 { name: text; sub: text; kind: number; site: number; glyph: text; icon: image 26, 26 }
     fact sel   = 0
     text query = ""
     event toggle
@@ -82,7 +90,16 @@ scene MacSpotlight {
 
         image h.icon { at: 16, 8; size: 26, 26; show: h.kind == 0 }
         group {
-            show: h.kind != 0
+            show: h.kind == 2 and h.site > 0
+            image logo_g { at: 16, 8; size: 26, 26; show: h.site == 1 }
+            image logo_yt { at: 16, 8; size: 26, 26; show: h.site == 2 }
+            image logo_gh { at: 16, 8; size: 26, 26; show: h.site == 3 }
+            image logo_w { at: 16, 8; size: 26, 26; show: h.site == 4 }
+            image logo_ddg { at: 16, 8; size: 26, 26; show: h.site == 5 }
+            image logo_maps { at: 16, 8; size: 26, 26; show: h.site == 6 }
+        }
+        group {
+            show: h.kind != 0 and not (h.kind == 2 and h.site > 0)
             ellipse { at: 29, 21; radius: 13; color: accent_c; opacity: 85% }
             text h.glyph { at: 29, 21; anchor: center; size: 14; color: #ffffff }
         }

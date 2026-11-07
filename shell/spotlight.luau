@@ -112,12 +112,12 @@ end
 
 -- ── web ──────────────────────────────────────────────────────────
 local SITES = {
-    g = { "Google", "https://www.google.com/search?q=%s" },
-    ddg = { "DuckDuckGo", "https://duckduckgo.com/?q=%s" },
-    yt = { "YouTube", "https://www.youtube.com/results?search_query=%s" },
-    gh = { "GitHub", "https://github.com/search?q=%s" },
-    w = { "Wikipedia", "https://en.wikipedia.org/w/index.php?search=%s" },
-    maps = { "Maps", "https://www.google.com/maps/search/%s" },
+    g = { "Google", "https://www.google.com/search?q=%s", 1 },
+    ddg = { "DuckDuckGo", "https://duckduckgo.com/?q=%s", 5 },
+    yt = { "YouTube", "https://www.youtube.com/results?search_query=%s", 2 },
+    gh = { "GitHub", "https://github.com/search?q=%s", 3 },
+    w = { "Wikipedia", "https://en.wikipedia.org/w/index.php?search=%s", 4 },
+    maps = { "Maps", "https://www.google.com/maps/search/%s", 6 },
 }
 -- longer names for the same sites
 SITES.google = SITES.g
@@ -143,7 +143,7 @@ end
 local function web_entry(site_key, term)
     local site = SITES[site_key]
     return {
-        name = "Search " .. site[1] .. " for “" .. term .. "”", sub = site[1], kind = 2, icon = "󰖟",
+        name = "Search " .. site[1] .. " for “" .. term .. "”", sub = site[1], kind = 2, icon = "󰖟", site = site[3],
         run = function() open_url(string.format(site[2], urlencode(term))) end,
     }
 end
@@ -175,7 +175,7 @@ local function paint()
     local rows = {}
     for i, e in ipairs(entries) do
         if i > MAX_ROWS then break end
-        rows[i] = { name = e.name, sub = e.sub or "", kind = e.kind, glyph = e.kind ~= 0 and e.icon or "", icon = e.kind == 0 and e.icon or "" }
+        rows[i] = { name = e.name, sub = e.sub or "", kind = e.kind, site = e.site or 0, glyph = e.kind ~= 0 and e.icon or "", icon = e.kind == 0 and e.icon or "" }
     end
     model.hits = rows
     fact.sel = 0
@@ -220,7 +220,7 @@ local function build()
         local site = SITES[bare]
         local home = HOMES[bare] or HOMES[(bare == "google" and "g") or (bare == "youtube" and "yt") or (bare == "github" and "gh") or (bare == "wiki" and "w") or (bare == "wikipedia" and "w") or (bare == "duckduckgo" and "ddg") or "g"]
         entries[#entries + 1] = {
-            name = "Search " .. site[1], sub = "type what to look for, e.g. “" .. bare .. " cats”", kind = 2, icon = "󰖟",
+            name = "Search " .. site[1], sub = "type what to look for, e.g. “" .. bare .. " cats”", kind = 2, icon = "󰖟", site = site[3],
             run = function() open_url(home) end,
         }
     end
