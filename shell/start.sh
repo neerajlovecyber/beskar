@@ -73,10 +73,14 @@ start_shell() {
         setsid awww-daemon </dev/null >/tmp/awww.log 2>&1 &
         sleep 0.4
     fi
-    # Clipboard history: something has to store what is copied for the clipboard panel (Super+V) to list
+    # Clipboard history: something has to store what is copied for the clipboard panel (Super+V) to list: one
+    # watcher for text and one for images (up to 100 entries, kept across restarts by cliphist)
     if command -v wl-paste >/dev/null 2>&1 && command -v cliphist >/dev/null 2>&1; then
-        pgrep -x wl-paste >/dev/null 2>&1 || \
-            { setsid wl-paste --type text --watch cliphist -max-items 100 store </dev/null >/dev/null 2>&1 & }
+        if [ "$(pgrep -xc wl-paste 2>/dev/null || echo 0)" -lt 2 ]; then
+            pkill -x wl-paste 2>/dev/null || true
+            setsid wl-paste --type text --watch cliphist -max-items 100 store </dev/null >/dev/null 2>&1 &
+            setsid wl-paste --type image --watch cliphist -max-items 100 store </dev/null >/dev/null 2>&1 &
+        fi
     fi
 
     # Wallpapers that ship with Beskar go where the picker looks for them (never overwriting)

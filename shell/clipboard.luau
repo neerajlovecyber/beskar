@@ -15,6 +15,8 @@ local history = {}      -- { raw = the line cliphist printed, preview = text }
 local pins = {}         -- { text = full text }
 local view = {}         -- what the list can show now: { kind = "pin"|"hist", idx = n, preview = text }
 local off = 0           -- first row on screen (0-based)
+local CACHE = nil       -- ~/.cache/beskar/clipboard, where image thumbnails live
+local thumb_state = {}  -- cliphist id -> "making" | "ready"
 
 -- ── pins, on disk ────────────────────────────────────────────────
 do
@@ -41,8 +43,35 @@ local function flat(s)
     return ((s or ""):gsub("[\r\n\t]+", " "):gsub("%s+", " "))
 end
 
-local function is_binary(preview)
-    return preview:find("^%[%[ binary data") ~= nil
+-- cliphist lists an image as "[[ binary data 40 KiB png 468x111 ]]": turn that into a readable label, and keep
+-- the id so a thumbnail can be made.
+local function image_label(preview)
+    local size, fmt, w, h = preview:match("^%[%[ binary data (%S+ %S+) (%a+) (%d+)x(%d+) %]%]")
+    if size then
+        return string.format("Image · %s × %s · %s", w, h, size), fmt
+    end
+end
+
+local function thumb_path(id)
+    return CACHE and (CACHE .. "/" .. id .. ".png") or ""
+end
+
+local repaint
+
+local function make_thumb(id)
+    if not CACHE or thumb_state[id] then
+        return
+    end
+    thumb_state[id] = "making"
+    local script = 'mkdir -p "$1" && { [ -f "$2" ] || cliphist decode "$3" | magick - -thumbnail 112x68 "$2"; }'
+    run("sh", { "-c", script, "x", CACHE, thumb_path(id), tostring(id) }, function(_, code)
+        if code == 0 then
+            thumb_state[id] = "ready"
+            repaint()
+        else
+            thumb_state[id] = nil
+        end
+    end)
 end
 
 local function rebuild(keep_off)
@@ -58,7 +87,7 @@ local function rebuild(keep_off)
     end
     for i, h in ipairs(history) do
         if not pinned_text[h.preview] and (q == "" or h.preview:lower():find(q, 1, true)) then
-            view[#view + 1] = { kind = "hist", idx = i, preview = flat(h.preview) }
+            view[#view + 1] = { kind = "hist", idx = i, preview = flat(h.preview), image = h.image, id = h.id }
         end
     end
     if not keep_off then
@@ -68,11 +97,18 @@ local function rebuild(keep_off)
     local rows = {}
     for k = off + 1, math.min(#view, off + MAX_SHOWN) do
         local v = view[k]
+        local is_img = v.image == true
+        if is_img then
+            make_thumb(v.id)
+        end
         rows[#rows + 1] = {
             src = k - 1,
             preview = v.preview,
             pinned = v.kind == "pin",
-            pinnable = v.kind == "pin" or not is_binary(v.preview),
+            pinnable = v.kind == "pin" or not is_img,
+            is_img = is_img,
+            ready = is_img and thumb_state[v.id] == "ready",
+            thumb = is_img and thumb_path(v.id) or "",
         }
     end
     model.clips = rows
@@ -85,13 +121,18 @@ local function rebuild(keep_off)
     panel.height(96 + math.max(#rows, 1) * 46 + 30)
 end
 
+repaint = function()
+    rebuild(true)
+end
+
 local function refresh_history()
     run("sh", { "-c", "cliphist list 2>/dev/null | head -n " .. MAX_HISTORY }, function(out)
         local items = {}
         for line in (out or ""):gmatch("[^\n]+") do
             local id_s, preview = line:match("^(%d+)%s+(.*)$")
             if id_s and preview then
-                items[#items + 1] = { raw = line, preview = preview }
+                local label = image_label(preview)
+                items[#items + 1] = { raw = line, id = tonumber(id_s), preview = label or preview, image = label ~= nil }
             end
         end
         history = items
@@ -172,6 +213,12 @@ on("clear_all", function()
     run("notify-send", { "-a", "Clipboard", "Clipboard cleared", "Pinned entries were kept" }, nil, { output = false })
 end)
 
+run("sh", { "-c", 'printf %s "$HOME"' }, function(out)
+    if out and out ~= "" then
+        CACHE = out .. "/.cache/beskar/clipboard"
+        rebuild(true)
+    end
+end)
 refresh_history()
 
 -- one panel at a time

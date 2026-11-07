@@ -78,7 +78,7 @@ scene MacClipboard {
     fact sel = 0
 
     //  Painted by clipboard.luau. `src` is where it came from in the logic's lists; `pinned` shows the pin.
-    model clips max 8 { src: number; preview: text; pinned: bool; pinnable: bool }
+    model clips max 8 { src: number; preview: text; pinned: bool; pinnable: bool; is_img: bool; ready: bool; thumb: image 56, 34 }
     text clip_q = ""
     text clip_count = ""
     text clip_empty = "Nothing copied yet"
@@ -111,13 +111,20 @@ scene MacClipboard {
         // Active indicator bar
         box { from: 0, 11; size: 3, 20; corner: 1.5; color: accent_c; opacity: on }
 
+        //  An image: its thumbnail (or a faint box until it is made) in place of the text icon
+        group {
+            show: c.is_img
+            box { from: 10, 4; size: 56, 34; corner: 6; color: item_solid }
+            image c.thumb { at: 10, 4; size: 56, 34; show: c.ready }
+        }
+
         // Clip text preview
         row {
-            at: 14, 12
+            at: if(c.is_img, 76, 14), 12
             gap: 10
             align: center
 
-            text "󰈙" { size: 14; color: if(on > 0.5, accent_c, ink_sub) }
+            text "󰈙" { size: 14; color: if(on > 0.5, accent_c, ink_sub); show: not c.is_img }
             text c.preview {
                 size: 13
                 weight: if(on > 0.5, 600, 400)
