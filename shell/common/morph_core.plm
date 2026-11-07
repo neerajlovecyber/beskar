@@ -12,6 +12,10 @@ part MorphCore {
         shown while open { seen: 1 ~calm }
         gone             { seen: 0 ~quick }
     }
+    //  Any change of `open` (a button, a `say`, or the logic setting it) is reported to panel.luau, which tells the frame:
+    //  without this, a panel the logic closes itself (copy a clip, launch an app) left its glass open and empty.
+    event panel_sync ->
+    on change open { emit panel_sync }
     let mp_here = open_screen == screen.index
     let mp_fade = clamp(seen * 1.5 - 0.5, 0, 1)
 }

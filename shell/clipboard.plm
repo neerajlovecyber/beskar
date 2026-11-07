@@ -1,15 +1,19 @@
 // Clipboard history (Super+V). It grows out of the dock, like Spotlight: the frame draws the glass (the dock island
 // rises into it, topbar.plm), this scene draws only the content on the monitor with the focus.
+//
+//   · type to search the history (up to 100 entries, kept across restarts by cliphist)
+//   · the pin on a row keeps that text for good: pinned entries stay at the top and are never removed
+//   · Enter or a click copies the entry back; Up / Down move; the wheel scrolls
 import "common/palette.plm"
 
 scene MacClipboard {
     let mp_sw = 600
-    let mp_sh = 520
+    let mp_sh = 560
     include "common/theme.plm"
     include "common/morph_core.plm"
 
     surface sheet {
-        size: 600, 520
+        size: 600, 560
         anchor: bottom
         margin: 0, 0, 0, 0
         level: overlay
@@ -17,64 +21,87 @@ scene MacClipboard {
         screens: each
         open: (open or seen > 0.02) and open_screen == screen.index
 
-        zone box dismiss { from: 0, 0; size: 600, 520; active: open }
+        zone box dismiss { from: 0, 0; size: 600, 560; active: open }
         on press dismiss { open = false }
         on press right dismiss { }
 
         group {
-            move: 20, 520 - ph
+            move: 20, 560 - ph
             opacity: mp_fade
 
+            //  clicks on the panel itself do not close it; the wheel scrolls the list
+            zone box inside { from: 0, 0; size: 560, 520 }
+            on press right inside { }
+            on scroll inside { emit clip_scroll(wheel) }
+
             // Header: title and Clear All
-            text "󰅌" { at: 36, 32; anchor: center; size: 16; color: accent_c }
-            text "Clipboard History" { at: 56, 32; anchor: left center; size: 15; weight: 700; color: ink_c }
+            text "󰅌" { at: 36, 30; anchor: center; size: 16; color: accent_c }
+            text "Clipboard History" { at: 56, 30; anchor: left center; size: 15; weight: 700; color: ink_c }
+            text clip_count { at: 440, 30; anchor: right center; size: 11; color: ink_sub }
             group {
-                move: 450, 20
+                move: 450, 17
                 box { from: 0, 0; size: 80, 26; corner: 13; color: item_solid }
                 text "Clear All" { at: 40, 13; anchor: center; size: 11; weight: 600; color: ink_sub }
                 zone box btn_clear { from: 0, 0; size: 80, 26; corner: 13; cursor: pointer }
                 on press btn_clear { emit clear_all }
                 on press right btn_clear { }
             }
-            box { from: 28, 56; size: 504, 1; color: stroke_c; opacity: stroke_op }
 
-            // Clips
+            // Search field
+            box { from: 20, 52; size: 520, 34; corner: 12; color: item_solid; opacity: 70% }
+            text "󰍉" { at: 38, 69; anchor: center; size: 15; color: ink_sub }
+            input clip_q {
+                at: 56, 60
+                width: 470
+                size: 14
+                color: ink_c
+                placeholder: "Search clipboard history"
+                selection: accent_c
+            }
+
+            // Entries: pinned first, then the most recent
             column clip_list {
-                at: 20, 66
+                at: 20, 96
                 gap: 4
                 for c in clips { ClipRow(c) }
             }
 
-            text "Nothing copied yet" { at: 280, 100; anchor: center; size: 13; color: ink_sub; show: clips.count < 1 }
+            text clip_empty { at: 280, 130; anchor: center; size: 13; color: ink_sub; show: clips.count < 1 }
         }
     }
 
     permissions {
-        services: "say:topbar", "say:spotlight", "say:control_center", "say:notifications", "say:dashboard", "say:settings", "say:wallpapers"
+        services: "say:topbar", "say:spotlight", "say:control_center", "say:notifications", "say:dashboard", "say:settings", "say:wallpapers", "files", "files.write"
         run: "cliphist", "wl-copy", "notify-send", "sh"
     }
 
     fact sel = 0
 
-    model clips max 8 { id: number; preview: text; full: text }
+    //  Painted by clipboard.luau. `src` is where it came from in the logic's lists; `pinned` shows the pin.
+    model clips max 8 { src: number; preview: text; pinned: bool; pinnable: bool }
+    text clip_q = ""
+    text clip_count = ""
+    text clip_empty = "Nothing copied yet"
 
     let stroke_c = card_stroke
     let stroke_op = card_stroke_op
 
     event toggle
     event copy_clip ->
-    event delete_clip ->
+    event pin_clip ->
     event clear_all ->
+    event clip_scroll ->
 
     component ClipRow(c: record) {
         size: 520, 42
         prop on = 0 ~quick
         follow on = if(sel == c.index, 1, 0)
+        prop pin_hot = 0 ~quick
 
         // Pill background
         box hit {
             from: 0, 0
-            size: 520, 42
+            size: 480, 42
             corner: 10
             color: accent_c
             opacity: on * 22%
@@ -95,9 +122,24 @@ scene MacClipboard {
                 size: 13
                 weight: if(on > 0.5, 600, 400)
                 color: ink_c
-                width: 460
+                width: 420
                 lines: 1
             }
+        }
+
+        //  The pin: a pushpin, filled and in the accent colour when pinned, a faint outline otherwise (shown on the
+        //  row under the pointer or the cursor, and always when pinned)
+        group {
+            show: c.pinnable
+            opacity: if(c.pinned, 100%, on * 70%)
+            move: 488, 9
+            ellipse { at: 12, 8.5; radius: 5; color: if(c.pinned, accent_c, ink_sub) }
+            ellipse { at: 12, 8.5; radius: 5; stroke: 1.5; color: if(c.pinned, accent_c, ink_sub); opacity: if(c.pinned, 0%, 100%) }
+            line { from: 12, 13.5; to: 12, 22; width: 1.8; color: if(c.pinned, accent_c, ink_sub) }
+            line { from: 7, 14; to: 17, 14; width: 1.8; color: if(c.pinned, accent_c, ink_sub) }
+            zone box pin_hit { at: 12, 12; size: 28, 28; corner: 8; cursor: pointer }
+            on press pin_hit { emit pin_clip(c.index) }
+            on press right pin_hit { }
         }
 
         on enter hit { sel = c.index }
@@ -105,7 +147,7 @@ scene MacClipboard {
         on press right hit { }
     }
 
-    on toggle     { toggle open }
+    on toggle     { toggle open; focus clip_q }
     on key Down   { sel = min(sel + 1, max(clips.count - 1, 0)) }
     on key Up     { sel = max(sel - 1, 0) }
     on key Return { emit copy_clip(sel) }

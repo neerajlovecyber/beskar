@@ -16,8 +16,15 @@ return function(name)
         pcall(sys.call, "say", "topbar", words)
     end
 
-    on("fact:open", function(v)
-        if v == true or v == 1 then
+    local reported = nil
+    local function sync()
+        local v = fact.open
+        local is_open = (v == true or v == 1)
+        if is_open == reported then
+            return
+        end
+        reported = is_open
+        if is_open then
             say("emit panel_open " .. id)
             if P.h then
                 say("emit panel_height " .. (id * 10000 + P.h))
@@ -25,7 +32,11 @@ return function(name)
         else
             say("emit panel_close " .. id)
         end
-    end)
+    end
+    -- `fact:open` covers changes made by rules and `say`; `panel_sync` (common/morph_core.plm) covers those the
+    -- logic makes itself.
+    on("fact:open", sync)
+    on("panel_sync", sync)
 
     function P.height(h)
         h = math.floor(h)

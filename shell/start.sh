@@ -75,8 +75,8 @@ start_shell() {
     fi
     # Clipboard history: something has to store what is copied for the clipboard panel (Super+V) to list
     if command -v wl-paste >/dev/null 2>&1 && command -v cliphist >/dev/null 2>&1; then
-        pgrep -f "wl-paste --type text --watch cliphist" >/dev/null 2>&1 || \
-            { setsid wl-paste --type text --watch cliphist store </dev/null >/dev/null 2>&1 & }
+        pgrep -x wl-paste >/dev/null 2>&1 || \
+            { setsid wl-paste --type text --watch cliphist -max-items 100 store </dev/null >/dev/null 2>&1 & }
     fi
 
     # Wallpapers that ship with Beskar go where the picker looks for them (never overwriting)
