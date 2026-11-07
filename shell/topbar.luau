@@ -161,6 +161,13 @@ local function save_pins(list)
     run("sh", args, nil, { output = false })
 end
 
+-- "com.t3tools.T3Code" → "T3Code", "google-chrome" → "Google chrome": a readable name for an app with no desktop entry
+local function pretty_app(id)
+    local last = (id or ""):match("([^%.]+)$") or id or ""
+    last = last:gsub("[_%-]+", " ")
+    return (last:sub(1, 1):upper() .. last:sub(2))
+end
+
 local function name_of(e)
     return (e.local_name and e.local_name ~= "") and e.local_name or e.name or e.id
 end
@@ -193,7 +200,7 @@ build_dock = function()
         if not used[key] and #list < 12 then
             local g = groups[key]
             local e = g.entry
-            list[#list + 1] = { entry = e, name = e and name_of(e) or g.app_id, icon = e and e.icon or lower(g.app_id),
+            list[#list + 1] = { entry = e, name = e and name_of(e) or pretty_app(g.app_id), icon = e and e.icon or lower(g.app_id),
                                 pinned = false, wins = g.wins }
         end
     end
@@ -366,6 +373,54 @@ on("ws_focus", function(wid)
     end
 end)
 
+-- ── the apps open in the workspace each monitor shows, left to right as niri lays them out ──
+-- `model cur_apps`: `out` the monitor, `focused` the one with the focus there (it also shows its name).
+local function build_cur()
+    local active_ws = {}                 -- output name → workspace record
+    for _, ws in ipairs(WS) do
+        if ws.is_active and ws.output then
+            active_ws[ws.output] = ws
+        end
+    end
+    local list = {}
+    for o, name in ipairs(OUTPUTS) do
+        local ws = active_ws[name]
+        if ws then
+            local wins = {}
+            for _, w in ipairs(WINS) do
+                if w.workspace_id == ws.id then
+                    wins[#wins + 1] = w
+                end
+            end
+            table.sort(wins, function(a, b)
+                local pa = a.layout and a.layout.pos_in_scrolling_layout
+                local pb = b.layout and b.layout.pos_in_scrolling_layout
+                if pa and pb then
+                    if pa[1] ~= pb[1] then return pa[1] < pb[1] end
+                    return pa[2] < pb[2]
+                end
+                if pa then return true end
+                if pb then return false end
+                return (a.id or 0) < (b.id or 0)
+            end)
+            local focus = ws.active_window_id
+            for k, w in ipairs(wins) do
+                if k <= 8 and #list < 20 then
+                    local e = entry_for(w.app_id)
+                    list[#list + 1] = {
+                        out = o - 1,
+                        icon = e and e.icon or lower(w.app_id),
+                        name = e and name_of(e) or pretty_app(w.app_id),
+                        wid = w.id,
+                        focused = w.id == focus,
+                    }
+                end
+            end
+        end
+    end
+    model.cur_apps = list
+end
+
 local function push_mon()
     local shown, busy = {}, {}
     for _, w in ipairs(WS) do
@@ -390,6 +445,7 @@ local function push_mon()
     end
     model.mon = recs
     build_ws()
+    build_cur()
 end
 
 local function refresh_running()

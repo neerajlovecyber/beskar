@@ -46,6 +46,8 @@ scene MacTopBar {
     //  One record per workspace (all monitors): which monitor, its number, whether it is the one shown, how many
     //  windows, and the first six of them (icon, title, window id). Filled by topbar.luau from niri.
     model ws_list max 12 { out: number; idx: number; active: bool; wins: number; i1: image 22, 22; t1: text; w1: number; i2: image 22, 22; t2: text; w2: number; i3: image 22, 22; t3: text; w3: number; i4: image 22, 22; t4: text; w4: number; i5: image 22, 22; t5: text; w5: number; i6: image 22, 22; t6: text; w6: number }
+    //  The apps open in the workspace each monitor shows (left to right), the focused one with its name.
+    model cur_apps max 20 { out: number; icon: image 20, 20; name: text; wid: number; focused: bool }
     model dock_items max 12 { icon: image 38, 38; name: text; running: bool; pinned: bool; canpin: bool }
     fact ws_tip_row = -1       // which workspace row / app slot the pointer rests on, for the title tooltip
     fact ws_tip_slot = 0
@@ -227,6 +229,34 @@ scene MacTopBar {
         on press right ws_grid_hit { }
     }
 
+    //  One app of the current workspace: its icon; the focused one is in a pill and says its name.
+    component CurApp(it: record) {
+        prop hot = 0 ~quick
+        //  the focused one: in a pill, with its name
+        row {
+            show: it.focused
+            padding: 3
+            gap: 6
+            align: center
+            fill: pill_fill
+            corner: 9
+            image it.icon { size: 20, 20 }
+            text it.name { size: 11.5; weight: 600; color: ink_c; tight: true; lines: 1; width: 150 }
+        }
+        //  the others: just the icon, a little dimmer until the pointer is on it
+        row {
+            show: not it.focused
+            padding: 3
+            align: center
+            image it.icon { size: 20, 20; opacity: 65% + hot * 35% }
+        }
+        zone box hit { from: 0, 0; size: 26, 26; corner: 8; cursor: pointer }
+        on enter hit { hot: 1 }
+        on leave hit { hot: 0 }
+        on press hit { emit ws_focus(it.wid) }
+        on press right hit { }
+    }
+
     //  One app in the overview: its icon; the window comes to the front when pressed.
     component WsApp(ic: image, wid: number, slot: number, row: number) {
         size: 26, 26
@@ -384,11 +414,11 @@ scene MacTopBar {
                 WsGrid()
             }
 
+            //  the apps open here, the focused one named
             row {
-                gap: 6
+                gap: 2
                 align: center
-                text "󰘔" { size: 11.5; color: ink_sub }
-                text "{win.title}" { size: 11.5; weight: 600; color: ink_c; width: 220; tight: true; lines: 1 }
+                for it in cur_apps { CurApp(it) { show: it.out == screen.index } }
             }
         }
 
