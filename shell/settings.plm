@@ -219,7 +219,17 @@ scene MacSettings {
             column {
                 gap: 12
                 ToggleRow("Wi-Fi", wifi_line, wifi_on, toggle_wifi)
-                ActionRow("Networks", "Pick a network and connect from the Control Center", "Open", open_wifi_panel)
+                row {
+                    gap: 8
+                    text "Networks" { size: 13; weight: 600; color: ink_c; width: 440 }
+                    Btn("Rescan", 90, rescan_wifi, false, 0, 0)
+                }
+                column {
+                    gap: 6
+                    for n in nets { NetRow(n) }
+                }
+                text "No networks found" { size: 12; color: ink_sub; show: nets.count < 1 and wifi_on }
+                text "Secured networks you have not used before ask for their password in the Control Center." { size: 10.5; color: ink_sub; width: 540; lines: 2; show: nets.count > 0 }
             }
         }
 
@@ -230,7 +240,13 @@ scene MacSettings {
             column {
                 gap: 12
                 ToggleRow("Bluetooth", bt_line, bt_on, toggle_bt)
-                ActionRow("Devices", "Pair and connect devices from the Control Center", "Open", open_bt_panel)
+                ToggleRow("Look for new devices", "Pairing mode: nearby devices appear below", bt_scanning, toggle_bt_scan)
+                text "Devices" { size: 13; weight: 600; color: ink_c }
+                column {
+                    gap: 6
+                    for d in devs { DevRow(d) }
+                }
+                text "No devices yet. Turn on the scan, then put the device in pairing mode." { size: 12; color: ink_sub; width: 540; lines: 2; show: devs.count < 1 and bt_on }
             }
         }
 
@@ -278,16 +294,22 @@ scene MacSettings {
             move: 254, 60
             column {
                 gap: 12
-                Card(250) {
-                    box { from: 18, 18; size: 320, 180; corner: 14; color: item_solid }
-                    group {
-                        clip box { from: 18, 18; size: 320, 180; corner: 14 }
-                        image wall_img { at: 18, 18; size: 320, 180; show: wall_ready }
-                    }
-                    text "Current wallpaper" { at: 360, 30; anchor: left center; size: 13; weight: 600; color: ink_c }
-                    text wall_name { at: 360, 52; anchor: left center; size: 11; color: ink_sub; width: 180; lines: 2 }
-                    Btn("Choose…", 100, open_wallpapers, true, 360, 150)
-                    text "Super + W opens the picker anywhere" { at: 18, 222; anchor: left center; size: 10.5; color: ink_sub }
+                Card(64) {
+                    text "Current wallpaper" { at: 18, 22; anchor: left center; size: 13; weight: 600; color: ink_c }
+                    text wall_name { at: 18, 42; anchor: left center; size: 11; color: ink_sub; width: 380; lines: 1 }
+                    Btn("Browse all…", 110, open_wallpapers, true, 428, 18)
+                }
+                row {
+                    gap: 10
+                    WallThumb(0)
+                    WallThumb(1)
+                    WallThumb(2)
+                }
+                row {
+                    gap: 10
+                    WallThumb(3)
+                    WallThumb(4)
+                    WallThumb(5)
                 }
                 ToggleRow("Match accent to the wallpaper", "Picks the closest accent each time the wallpaper changes", accent_auto, toggle_accent_auto)
             }
@@ -323,33 +345,47 @@ scene MacSettings {
         group tab_9 {
             show: tab == 9
             move: 254, 60
-            Card(120) {
-                text "" { at: 60, 60; anchor: center center; size: 54; weight: 700; color: ink_c }
-                column {
-                    at: 105, 32
-                    gap: 3
-                    text "About This PC" { size: 22; weight: 700; color: ink_c }
-                    text about_os { size: 12; color: ink_sub }
-                    text "Beskar shell · niri · Pleamar" { size: 12; weight: 500; color: ink_c }
+            column {
+                gap: 12
+                Card(100) {
+                    body {
+                        gradient: 18, 18 to 78, 78, accent_c, focus_c
+                        box { from: 18, 18; size: 64, 64; corner: 18 }
+                    }
+                    text "B" { at: 50, 50; anchor: center center; size: 32; weight: 800; color: #ffffff }
+                    column {
+                        at: 100, 22
+                        gap: 3
+                        text "About This PC" { size: 20; weight: 700; color: ink_c }
+                        text about_os { size: 12; color: ink_sub }
+                        text "Beskar shell · niri · Pleamar" { size: 12; weight: 500; color: ink_c }
+                    }
                 }
-            }
-            group {
-                move: 0, 132
-                Card(224) {
+                Card(218) {
                     text "Hardware Overview" { at: 18, 16; size: 13; weight: 600; color: ink_c }
                     column {
                         at: 18, 40
-                        gap: 8
+                        gap: 4
+                        SpecRow("Computer", about_host)
                         SpecRow("Processor", about_cpu)
                         SpecRow("Graphics", about_gpu)
                         SpecRow("Memory", about_mem)
                         SpecRow("Kernel", about_kernel)
                         SpecRow("Storage", about_disk)
+                        SpecRow("Uptime", about_up)
                     }
                 }
-            }
-            group {
-                move: 0, 368
+                Card(64) {
+                    text "Session" { at: 18, 22; anchor: left center; size: 13; weight: 600; color: ink_c }
+                    text "Lock, restart or shut down this computer" { at: 18, 42; anchor: left center; size: 10.5; color: ink_sub }
+                    row {
+                        at: 268, 18
+                        gap: 8
+                        Btn("Lock", 76, session_lock, false, 0, 0)
+                        Btn("Restart", 84, session_restart, false, 0, 0)
+                        Btn("Shut Down", 90, session_off, false, 0, 0)
+                    }
+                }
                 ActionRow("Software update", "Check for new packages", "Open", open_updates_tab)
             }
         }
@@ -413,6 +449,12 @@ scene MacSettings {
     model outs max 4 { name: text; def: bool }
     model binds max 9 { keys: text; what: text }
     model ups max 6 { name: text; ver: text }
+    model nets max 7 { ssid: text; signal: number; secure: bool; known: bool; active: bool }
+    model devs max 7 { name: text; connected: bool; paired: bool; busy: bool; word: text }
+    model walls max 6 { name: text; thumb: image 176, 99; current: bool; path: text }
+    fact bt_scanning = false
+    text about_host = "…"
+    text about_up = "…"
     fact disp_scale_i = 0
     text bind_count = ""
     text side_q = ""
@@ -485,8 +527,6 @@ scene MacSettings {
     event disp_res ->
     event disp_hz ->
     event open_wallpapers ->
-    event open_wifi_panel ->
-    event open_bt_panel ->
     event open_updates_tab ->
     event run_update ->
     event check_updates ->
@@ -498,6 +538,14 @@ scene MacSettings {
     event clear_notif_history ->
     event bind_scroll ->
     event pick_cat ->
+    event pick_net ->
+    event rescan_wifi ->
+    event pick_dev ->
+    event toggle_bt_scan ->
+    event apply_wall ->
+    event session_lock ->
+    event session_restart ->
+    event session_off ->
 
     // ==============================================================
     // COMPONENTS
@@ -679,10 +727,58 @@ scene MacSettings {
         text u.ver { at: 506, 15; anchor: right center; size: 11; color: ink_sub; width: 240; lines: 1; align: right }
     }
 
+    component NetRow(n: record) {
+        size: 556, 44
+        box { from: 0, 0; size: 556, 44; corner: 12; color: if(n.active, if(dark_mode, #283040, #eef4ff), card_fill); opacity: if(n.active, 100%, card_fill_op) }
+        box { from: 0, 0; size: 556, 44; corner: 12; stroke: if(n.active, 2, 1); color: if(n.active, accent_c, c_border); opacity: if(n.active, 100%, c_border_op) }
+        text "󰤨" { at: 26, 22; anchor: center center; size: 16; color: if(n.active, accent_c, ink_c); opacity: 0.35 + 0.65 * n.signal }
+        text n.ssid { at: 48, 22; anchor: left center; size: 12.5; weight: if(n.active, 600, 400); color: ink_c; width: 380; lines: 1 }
+        text "󰌾" { at: 506, 22; anchor: center center; size: 13; color: ink_sub; show: n.secure }
+        text "󰄬" { at: 534, 22; anchor: center center; size: 15; color: accent_c; show: n.active }
+        text "known" { at: 480, 22; anchor: right center; size: 10.5; color: ink_sub; show: n.known and not n.active }
+        zone box hit { from: 0, 0; size: 556, 44; corner: 12; cursor: pointer }
+        on press hit { emit pick_net(n.index) }
+        on press right hit { }
+    }
+
+    component DevRow(d: record) {
+        size: 556, 44
+        box { from: 0, 0; size: 556, 44; corner: 12; color: if(d.connected, if(dark_mode, #283040, #eef4ff), card_fill); opacity: if(d.connected, 100%, card_fill_op) }
+        box { from: 0, 0; size: 556, 44; corner: 12; stroke: if(d.connected, 2, 1); color: if(d.connected, accent_c, c_border); opacity: if(d.connected, 100%, c_border_op) }
+        text "󰂯" { at: 26, 22; anchor: center center; size: 16; color: if(d.connected, accent_c, ink_sub) }
+        text d.name { at: 48, 22; anchor: left center; size: 12.5; weight: if(d.connected, 600, 400); color: ink_c; width: 320; lines: 1 }
+        text pick(if(d.connected, 2, if(d.paired, 1, 0)), "New", "Paired", "Connected") { at: 534, 22; anchor: right center; size: 11; color: if(d.connected, accent_c, ink_sub); show: not d.busy }
+        text d.word { at: 534, 22; anchor: right center; size: 11; color: accent_c; show: d.busy }
+        zone box hit { from: 0, 0; size: 556, 44; corner: 12; cursor: pointer }
+        on press hit { emit pick_dev(d.index) }
+        on press right hit { }
+    }
+
+    //  A wallpaper thumbnail: click to apply.
+    component WallThumb(i: number) {
+        size: 178, 101
+        prop lift = 0 ~lively
+        group {
+            show: walls.count > i
+            move: 0, -lift * 2
+            box { from: 0, 0; size: 176, 99; corner: 12; color: item_solid }
+            group {
+                clip box { from: 0, 0; size: 176, 99; corner: 12 }
+                image walls.$i.thumb { at: 0, 0; size: 176, 99 }
+            }
+            box { from: 0, 0; size: 176, 99; corner: 12; stroke: 3; color: accent_c; opacity: if(walls.$i.current, 100%, 0%) }
+            zone box hit { from: 0, 0; size: 176, 99; corner: 12; cursor: pointer }
+            on enter hit { lift: 1 }
+            on leave hit { lift: 0 }
+            on press hit { emit apply_wall(i) }
+            on press right hit { }
+        }
+    }
+
     component SpecRow(label_t: text, val_t: text) {
-        size: 520, 26
-        text label_t { at: 0, 13; anchor: left center; size: 12; weight: 600; color: ink_sub; width: 110 }
-        text val_t { at: 120, 13; anchor: left center; size: 12; color: ink_c; width: 390; lines: 1 }
+        size: 520, 22
+        text label_t { at: 0, 11; anchor: left center; size: 12; weight: 600; color: ink_sub; width: 110 }
+        text val_t { at: 120, 11; anchor: left center; size: 12; color: ink_c; width: 390; lines: 1 }
     }
 
     //  A category in the sidebar; `c.tint` picks the icon colour.

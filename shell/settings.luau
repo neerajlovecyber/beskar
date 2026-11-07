@@ -231,6 +231,30 @@ on("brightness_set", function(val) pcall(sys.call, "brightness.level", math.max(
 
 -- ── Wi-Fi / Bluetooth ────────────────────────────────────────────
 local net_state = {}
+local shown_nets = {}
+local joining = nil
+
+local function paint_nets()
+    local list = {}
+    for _, n in ipairs(net_state.networks or {}) do
+        list[#list + 1] = n
+    end
+    table.sort(list, function(a, c)
+        if (a.active == true) ~= (c.active == true) then return a.active == true end
+        return (a.strength or 0) > (c.strength or 0)
+    end)
+    shown_nets = {}
+    local rows = {}
+    for _, n in ipairs(list) do
+        if #rows < 7 and (n.ssid or "") ~= "" then
+            shown_nets[#rows + 1] = n
+            rows[#rows + 1] = { ssid = n.ssid, signal = math.min(1, math.max(0, n.strength or 0)), secure = n.secure == true,
+                known = n.known == true, active = n.active == true }
+        end
+    end
+    model.nets = rows
+end
+
 sys.watch("network", function(n)
     net_state = n or {}
     fact.wifi_on = net_state.wifi ~= false
@@ -241,13 +265,53 @@ sys.watch("network", function(n)
     else
         text.wifi_line = "Not connected"
     end
+    paint_nets()
 end)
 on("toggle_wifi", function() pcall(sys.call, "network.wifi", net_state.wifi == false) end)
+on("rescan_wifi", function() pcall(sys.call, "network.scan") end)
+on("pick_net", function(i)
+    local n = shown_nets[(tonumber(i) or 0) + 1]
+    if not n or n.active then
+        return
+    end
+    if n.secure and not n.known then
+        fact.open = false
+        after(250, function() say("topbar", "emit open_cc_wifi") end)     -- the password is asked there
+    else
+        pcall(sys.call, "network.connect", n.ssid)
+    end
+end)
 
 local bt_state = {}
+local shown_devs = {}
+local busy_addr, busy_word = nil, ""
+
+local function paint_devs()
+    local list = {}
+    for _, d in ipairs(bt_state.devices or {}) do
+        list[#list + 1] = d
+    end
+    table.sort(list, function(a, c)
+        if (a.connected == true) ~= (c.connected == true) then return a.connected == true end
+        if (a.paired == true) ~= (c.paired == true) then return a.paired == true end
+        return (a.name or "") < (c.name or "")
+    end)
+    shown_devs = {}
+    local rows = {}
+    for _, d in ipairs(list) do
+        if #rows < 7 then
+            shown_devs[#rows + 1] = d
+            rows[#rows + 1] = { name = d.name or d.address or "Device", connected = d.connected == true, paired = d.paired == true,
+                busy = busy_addr ~= nil and d.address == busy_addr, word = busy_word }
+        end
+    end
+    model.devs = rows
+end
+
 sys.watch("bluetooth", function(s)
     bt_state = s or {}
     fact.bt_on = bt_state.powered == true
+    fact.bt_scanning = bt_state.discovering == true
     if not fact.bt_on then
         text.bt_line = "Off"
     else
@@ -259,30 +323,88 @@ sys.watch("bluetooth", function(s)
         end
         text.bt_line = #names > 0 and ("Connected: " .. table.concat(names, ", ")) or "On, nothing connected"
     end
+    busy_addr = nil
+    paint_devs()
 end)
 on("toggle_bt", function() pcall(sys.call, "bluetooth.power", not (bt_state.powered == true)) end)
+on("toggle_bt_scan", function() pcall(sys.call, "bluetooth.scan", not (bt_state.discovering == true)) end)
+on("pick_dev", function(i)
+    local d = shown_devs[(tonumber(i) or 0) + 1]
+    if not d or not d.address or busy_addr then
+        return
+    end
+    busy_addr = d.address
+    busy_word = d.connected and "Disconnecting…" or (d.paired and "Connecting…" or "Pairing…")
+    paint_devs()
+    local ok = pcall(sys.call, d.connected and "bluetooth.disconnect" or "bluetooth.connect", d.address)
+    if not ok then
+        busy_addr = nil
+        paint_devs()
+    end
+    -- a device that never answers must not stay "working"
+    after(10000, function() if busy_addr == d.address then busy_addr = nil; paint_devs() end end)
+end)
+-- stop looking for devices when the window closes
+on("fact:open", function(v)
+    if not (v == true or v == 1) and bt_state.discovering then
+        pcall(sys.call, "bluetooth.scan", false)
+    end
+end)
 
 local function open_in_cc(ev)
     fact.open = false
     after(250, function() say("topbar", "emit " .. ev) end)
 end
-on("open_wifi_panel", function() open_in_cc("open_cc_wifi") end)
-on("open_bt_panel", function() open_in_cc("open_cc_bt") end)
 
 -- ── Wallpaper ────────────────────────────────────────────────────
+local wall_list = {}
+local wall_current = ""
+
+local function paint_walls()
+    local rows = {}
+    for i, path in ipairs(wall_list) do
+        if i > 6 then break end
+        rows[#rows + 1] = { name = path:match("([^/]+)$") or path, thumb = path, current = path == wall_current, path = path }
+    end
+    model.walls = rows
+end
+
 local function load_wallpaper()
-    sh('cat "$HOME/.config/beskar/wallpaper" 2>/dev/null', function(out)
-        local path = (out or ""):match("([^\n]+)")
-        if path and path ~= "" then
-            text.wall_path = path
-            text.wall_name = path:match("([^/]+)$") or path
-            fact.wall_ready = true
-        else
-            text.wall_name = "Not chosen yet"
-            fact.wall_ready = false
+    sh([[cat "$HOME/.config/beskar/wallpaper" 2>/dev/null; echo "@@"
+for d in "$HOME/.local/share/beskar/wallpapers" "$HOME/Pictures/wallpapers" "$HOME/Pictures/Wallpapers"; do
+  [ -d "$d" ] && for f in "$d"/*; do case "$f" in *.jpg|*.jpeg|*.png|*.webp|*.JPG|*.PNG) echo "$f";; esac; done
+done | head -n 40]], function(out)
+        local cur, rest = (out or ""):match("^(.-)\n?@@\n?(.*)$")
+        wall_current = (cur or ""):match("([^\n]+)") or ""
+        text.wall_name = wall_current ~= "" and (wall_current:match("([^/]+)$") or wall_current) or "Not chosen yet"
+        local list, seen = {}, {}
+        if wall_current ~= "" then
+            list[1] = wall_current
+            seen[wall_current] = true
         end
+        for line in (rest or ""):gmatch("[^\n]+") do
+            if not seen[line] then
+                seen[line] = true
+                list[#list + 1] = line
+            end
+        end
+        wall_list = list
+        paint_walls()
     end)
 end
+
+on("apply_wall", function(i)
+    local path = wall_list[(tonumber(i) or 0) + 1]
+    if not path then
+        return
+    end
+    wall_current = path
+    text.wall_name = path:match("([^/]+)$") or path
+    paint_walls()
+    sh([[awww query >/dev/null 2>&1 || { setsid awww-daemon </dev/null >/dev/null 2>&1 & sleep 0.4; }
+awww img "$1" --transition-type grow --transition-pos 0.85,0.1 --transition-duration 1.2 --transition-fps 60
+mkdir -p "$HOME/.config/beskar" && printf '%s\n' "$1" > "$HOME/.config/beskar/wallpaper"]], nil, path)
+end)
 
 on("open_wallpapers", function()
     fact.open = false
@@ -544,6 +666,32 @@ df -h / --output=size,avail | tail -1 | awk '{print $1 " (" $2 " available)"}'
     text.about_mem = lines[4] or ""
     text.about_kernel = lines[5] or ""
     text.about_disk = lines[6] or ""
+end)
+
+sh('hostname 2>/dev/null; uptime -p 2>/dev/null | sed "s/^up //"', function(out)
+    local h, u = (out or ""):match("([^\n]*)\n([^\n]*)")
+    text.about_host = (h and h ~= "") and h or "—"
+    text.about_up = (u and u ~= "") and u or "—"
+end)
+every(60000, function()
+    sh('uptime -p 2>/dev/null | sed "s/^up //"', function(out)
+        local u = (out or ""):match("([^\n]+)")
+        if u then text.about_up = u end
+    end)
+end)
+
+local function session(kind)
+    fact.open = false
+    after(250, function()
+        say("session", "fact kind " .. kind)
+        say("topbar", "emit open_panel 5")
+    end)
+end
+on("session_restart", function() session(1) end)
+on("session_off", function() session(0) end)
+on("session_lock", function()
+    fact.open = false
+    after(250, function() say("lock", "fact locked true") end)
 end)
 
 -- one panel at a time
