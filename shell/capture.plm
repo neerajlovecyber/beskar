@@ -13,7 +13,7 @@ scene MacCapture {
 
     permissions {
         services: "clock", "say:topbar"
-        run: "grim", "slurp", "wf-recorder", "wl-copy", "magick", "pkill", "notify-send", "sh"
+        run: "grim", "slurp", "wf-recorder", "wl-copy", "magick", "pkill", "notify-send", "sh", "niri msg"
     }
 
     fact open = false

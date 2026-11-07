@@ -138,6 +138,9 @@ on("open_cc_bt", open_island_panel("control_center", 2))
 on("open_dashboard", open_island_panel("dashboard"))
 on("open_notifications", open_island_panel("notifications"))
 on("open_music", open_island_panel("music"))
+on("rec_stop", function()
+    pcall(sys.call, "say", "capture", "emit toggle_record")
+end)
 
 -- ── music in the clock pill: the cover and a few bars while a player has something ──
 pcall(sys.watch, "media", function(m)
