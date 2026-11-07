@@ -421,14 +421,12 @@ scene MacTopBar {
             box rail_r  { from: screen.width - ring, 0; size: ext + ring, screen.height; blend: curve }
             box floor   { from: -ext, screen.height - ring; size: screen.width + ext * 2, ext + ring; blend: curve }
 
-            //  Top islands.
-            box left_notch   { from: -ext, -14; size: lw + ext, notch_h; corner: 18; blend: fillet }
+            //  The three top islands ARE the panel shapes below (at rest they are just the island): drawing the island
+            //  twice made the smooth union inflate it and left bumps along the bottom edge when a panel was open.
             //  The panels' glass: each island grows downward (and wider if the panel is), melted into itself.
             box power_m { from: -ext, -14; size: lw + max(0, pm_w - lw) * pv + ext, notch_h + pm_h * pv; corner: 18; blend: fillet }
             box right_m { from: screen.width - (rw + max(0, rpw - rw) * rv), -14; size: rw + max(0, rpw - rw) * rv + ext, notch_h + rph * rv; corner: 18; blend: fillet }
             box center_m { from: screen.width / 2 - (cw + max(0, cpw - cw) * cv) / 2, -14; size: cw + max(0, cpw - cw) * cv, notch_h + cph * cv; corner: 18; blend: fillet }
-            box center_notch { from: screen.width / 2 - cw / 2, -14; size: cw, notch_h; corner: 18; blend: fillet }
-            box right_notch  { from: screen.width - rw, -14; size: rw + ext, notch_h; corner: 18; blend: fillet }
 
             //  The dock, rising from the floor.
             //  The dock island. Hidden it is zero wide as well as sunk (no bump of its fillet is left on the floor);
