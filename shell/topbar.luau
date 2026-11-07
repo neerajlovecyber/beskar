@@ -142,6 +142,18 @@ on("rec_stop", function()
     pcall(sys.call, "say", "capture", "emit toggle_record")
 end)
 
+-- ── the clock: the time only (no date), 12 hour with AM / PM unless Settings says 24 ──
+local clockfmt = require("clockfmt")
+local function paint_clock()
+    local t = clockfmt(fact.hour12)
+    if text.clock_text ~= t then
+        text.clock_text = t
+    end
+end
+paint_clock()
+every(5000, paint_clock)
+on("fact:hour12", paint_clock)
+
 -- ── music in the clock pill: the cover and a few bars while a player has something ──
 pcall(sys.watch, "media", function(m)
     m = m or {}

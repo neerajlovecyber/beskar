@@ -21,6 +21,7 @@ scene MacLock {
 
     fact locked = false
     text user_name = ""
+    text clock_text = ""
     fact checking = false
     fact with_exit = true     // Emergency Esc exit for desktop security safety
 
@@ -42,7 +43,7 @@ scene MacLock {
     }
 
     // Top: Massive macOS Sequoia Lock Screen Clock
-    text now.time {
+    text clock_text {
         at: 320, 68
         anchor: center
         size: 78

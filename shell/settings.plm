@@ -514,8 +514,8 @@ scene MacSettings {
             }
 
             // Specs Table Card
-            box { from: 0, 132; size: 556, 252; corner: 14; color: card_fill; opacity: card_fill_op }
-            box { from: 0, 132; size: 556, 252; corner: 14; stroke: 1; color: c_border; opacity: c_border_op }
+            box { from: 0, 132; size: 556, 224; corner: 14; color: card_fill; opacity: card_fill_op }
+            box { from: 0, 132; size: 556, 224; corner: 14; stroke: 1; color: c_border; opacity: c_border_op }
             text "Hardware Overview" { at: 18, 148; size: 13; weight: 600; color: ink_c }
 
             column {
@@ -530,7 +530,7 @@ scene MacSettings {
 
             // Action Buttons
             row {
-                at: 0, 396
+                at: 0, 368
                 gap: 12
                 group {
                     size: 140, 32
@@ -545,6 +545,18 @@ scene MacSettings {
                     text "System Report..." { at: 70, 16; anchor: center; size: 12; weight: 600; color: ink_c }
                 }
             }
+
+            // Clock format
+            box { from: 0, 424; size: 556, 60; corner: 14; color: card_fill; opacity: card_fill_op }
+            box { from: 0, 424; size: 556, 60; corner: 14; stroke: 1; color: c_border; opacity: c_border_op }
+            text "24-hour clock" { at: 18, 446; anchor: left center; size: 12.5; color: ink_c; width: 440 }
+            text if(hour12, "Showing 2:05 PM in the bar. Turn on for 14:05", "Showing 14:05 in the bar. Turn off for 2:05 PM") { at: 18, 464; anchor: left center; size: 10.5; color: ink_sub; width: 440 }
+            group {
+                move: 494, 442
+                SwitchToggle(not hour12)
+                zone box hour12_hit { from: 0, 0; size: 44, 24; corner: 12; cursor: pointer }
+            }
+            on press hour12_hit { emit toggle_hour12 }
         }
 
         // ──────────────────────────────────────────────────────────
@@ -672,6 +684,7 @@ scene MacSettings {
     event choose_skin ->
     event choose_accent ->
     event toggle_accent_auto ->
+    event toggle_hour12 ->
     event auto_accent ->
     event volume_set ->
     event brightness_set ->

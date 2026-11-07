@@ -61,6 +61,7 @@ scene MacTopBar {
     fact cp_h = 496
     fact rec_on = false       // a screen recording runs (capture.luau): a red dot and the time show in the pill
     text rec_time = "0:00"
+    text clock_text = ""      // the time, in the format chosen in Settings (topbar.luau)
     fact m_on = false         // something is playing: its cover and a few bars show in the clock pill
     fact m_playing = false
     fact m_has_art = false
@@ -563,8 +564,7 @@ scene MacTopBar {
                 gap: 6
                 align: center
                 cursor: pointer
-                text now.date { size: 11; weight: 600; color: ink_sub }
-                text now.time { size: 12.5; weight: 700; color: ink_c }
+                text clock_text { size: 12.5; weight: 700; color: ink_c }
             }
 
             row {

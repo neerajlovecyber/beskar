@@ -1,5 +1,16 @@
 -- Notification centre & widgets companion logic
 
+local clockfmt = require("clockfmt")
+local function paint_clock()
+    local t = clockfmt(fact.hour12)
+    if text.clock_text ~= t then
+        text.clock_text = t
+    end
+end
+paint_clock()
+every(5000, paint_clock)
+on("fact:hour12", paint_clock)
+
 local stats_cmd = [[sh -c "awk '{print int($1*15)}' /proc/loadavg; free | grep Mem | awk '{print int($3/$2*100)}'; df / | tail -1 | tr -d '%' | awk '{print $5}'; date +'%B:%d:%A'"]]
 
 local function update_stats()

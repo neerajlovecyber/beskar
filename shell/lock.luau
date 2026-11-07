@@ -1,5 +1,16 @@
 -- macOS Wayland Lock Screen Companion Logic (PAM Authentication)
 
+local clockfmt = require("clockfmt")
+local function paint_clock()
+    local t = clockfmt(fact.hour12)
+    if text.clock_text ~= t then
+        text.clock_text = t
+    end
+end
+paint_clock()
+every(5000, paint_clock)
+on("fact:hour12", paint_clock)
+
 on("fact:locked", function()
     text.password = ""
     fact.checking = false

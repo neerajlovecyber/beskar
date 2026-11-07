@@ -21,6 +21,7 @@ scene MacDashboard {
 
     service battery as bat { present: bool; percent: number; charging: bool }
     service clock as now { time: text = "--:--"; date: text }
+    text clock_text = ""
 
     fact cpu_pct = 18
     fact mem_pct = 44
@@ -153,7 +154,7 @@ scene MacDashboard {
                 column {
                     gap: 3
                     text "Local" { size: 11; color: ink_sub }
-                    text now.time { size: 16; weight: 600; color: ink_c }
+                    text clock_text { size: 16; weight: 600; color: ink_c }
                     text zone_local { size: 10.5; color: ink_sub }
                 }
 

@@ -14,9 +14,9 @@ local THEMED = { "topbar", "control_center", "notifications", "dashboard", "sett
                 "spotlight", "clipboard", "session", "capture", "appswitcher", "lock" }
 local PLAIN = {}
 
-local function save_theme(dm_str, skin_str, accent_str, auto_str)
+local function save_theme(dm_str, skin_str, accent_str, auto_str, h12_str)
     -- ~/.config/pleamar_shell.json is read by start.sh to restore the look after a restart.
-    local json_text = string.format('{"dark_mode": %s, "skin": %s, "accent": %s, "accent_auto": %s}', dm_str, skin_str, accent_str, auto_str)
+    local json_text = string.format('{"dark_mode": %s, "skin": %s, "accent": %s, "accent_auto": %s, "hour12": %s}', dm_str, skin_str, accent_str, auto_str, h12_str)
     pcall(run, "sh", { "-c", "mkdir -p \"$HOME/.config\" && printf '%s\\n' '" .. json_text .. "' > \"$HOME/.config/pleamar_shell.json\"" }, nil, { output = false })
 end
 
@@ -26,18 +26,20 @@ local function broadcast_theme()
     local skin_str = tostring(fact.skin or 0)
     local accent_str = tostring(fact.accent or 0)
     local auto_str = tostring(fact.accent_auto == true)
+    local h12_str = tostring(fact.hour12 ~= false)
 
     for _, s in ipairs(THEMED) do
         pcall(sys.call, "say", s, "fact dark_mode " .. dm_str)
         pcall(sys.call, "say", s, "fact skin " .. skin_str)
         pcall(sys.call, "say", s, "fact accent " .. accent_str)
         pcall(sys.call, "say", s, "fact accent_auto " .. auto_str)
+        pcall(sys.call, "say", s, "fact hour12 " .. h12_str)
     end
     for _, s in ipairs(PLAIN) do
         pcall(sys.call, "say", s, "fact dark_mode " .. dm_str)
         pcall(sys.call, "say", s, "fact skin " .. skin_str)
     end
-    save_theme(dm_str, skin_str, accent_str, auto_str)
+    save_theme(dm_str, skin_str, accent_str, auto_str, h12_str)
     -- GTK / libadwaita apps follow too
     pcall(run, "gsettings", { "set", "org.gnome.desktop.interface", "color-scheme", dm and "prefer-dark" or "prefer-light" }, nil, { output = false })
 end
@@ -45,6 +47,11 @@ end
 on("toggle_dark", function()
     local cur = (fact.dark_mode == true or fact.dark_mode == 1)
     fact.dark_mode = not cur
+    broadcast_theme()
+end)
+
+on("toggle_hour12", function()
+    fact.hour12 = not (fact.hour12 ~= false)
     broadcast_theme()
 end)
 
