@@ -62,7 +62,7 @@ scene MacSettings {
             box { from: 0, 0; size: 202, 54; corner: 10; color: card_fill; opacity: card_fill_op * 50% }
             box { from: 0, 0; size: 202, 54; corner: 10; stroke: 1; color: c_border; opacity: c_border_op }
             ellipse { at: 26, 27; radius: 18; color: accent_c }
-            text "󰀉" { at: 26, 27; anchor: center center; size: 18; color: #ffffff }
+            text "󰀉" { at: 23.5, 27; anchor: center center; size: 18; color: #ffffff }
             column {
                 at: 52, 17
                 gap: 2
