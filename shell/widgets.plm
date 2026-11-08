@@ -83,6 +83,7 @@ scene Widgets {
     event w_prev ->
     event w_open ->
     event w_grid ->
+    event w_tidy ->
     event w_vol ->
     event w_bri ->
     event w_reset ->
@@ -110,6 +111,16 @@ scene Widgets {
             on press right veil { }
         }
 
+        //  the grid cells, while arranging with the grid on: cards snap into these
+        group {
+            show: editing and snap_on
+            opacity: dim
+            repeat j in 0..7 {
+                repeat i in 0..11 {
+                    box { from: 48 + i * 176, 72 + j * 176; size: 160, 160; corner: 24; stroke: 1; color: #ffffff; opacity: 14% }
+                }
+            }
+        }
         for w in ws { Card(w) }
         Toolbar()
     }
@@ -360,6 +371,11 @@ scene Widgets {
             zone box grid_hit { from: 480, 14; size: 90, 34; corner: 17; cursor: pointer }
             on press grid_hit { emit w_grid }
             on press right grid_hit { }
+            box { from: 376, 14; size: 94, 34; corner: 17; color: item_bg; opacity: item_bg_op }
+            text "Tidy up" { at: 423, 31; anchor: center center; size: 13; weight: 500; color: ink_c }
+            zone box tidy_hit { from: 376, 14; size: 94, 34; corner: 17; cursor: pointer }
+            on press tidy_hit { emit w_tidy }
+            on press right tidy_hit { }
         }
     }
 

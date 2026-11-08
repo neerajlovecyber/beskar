@@ -97,47 +97,75 @@ local function changed()
 end
 
 -- ── placing ──
-local function snap(v)
-    if fact.snap_on then
-        return math.floor(v / GRID + 0.5) * GRID
-    end
-    return math.floor(v + 0.5)
-end
-
-local function clamp_card(c)
-    local sz = SIZES[c.out]
-    local w, h = width_of(c.sz), height_of(c.sz)
-    local maxx = (sz and sz[1] or 1920) - w - SIDE_SAFE
-    local maxy = (sz and sz[2] or 1080) - h - SIDE_SAFE - 60
-    c.x = math.max(SIDE_SAFE, math.min(c.x, maxx))
-    c.y = math.max(TOP_SAFE, math.min(c.y, maxy))
-end
+-- The grid is the card grid itself: cells of one small card (160) with a 16 px gap, so any two cards on it are
+-- exactly one gap apart whatever their sizes (a medium is two cells wide, a large two by two).
+local PITCH = UNIT + GAP
+local OX, OY = 48, 72
 
 local function overlaps(c, x, y, w, h)
     local cw, ch = width_of(c.sz), height_of(c.sz)
     return x < c.x + cw and x + w > c.x and y < c.y + ch and y + h > c.y
 end
 
+local function bounds(c)
+    local sz = SIZES[c.out]
+    local w, h = width_of(c.sz), height_of(c.sz)
+    return (sz and sz[1] or 1920) - w - SIDE_SAFE, (sz and sz[2] or 1080) - h - SIDE_SAFE - 60
+end
+
+local function clamp_card(c)
+    local maxx, maxy = bounds(c)
+    c.x = math.max(SIDE_SAFE, math.min(c.x, maxx))
+    c.y = math.max(TOP_SAFE, math.min(c.y, maxy))
+end
+
+local function blocked(c, x, y)
+    local w, h = width_of(c.sz), height_of(c.sz)
+    for _, o in ipairs(CARDS) do
+        if o ~= c and o.out == c.out and overlaps(o, x - GAP / 2, y - GAP / 2, w + GAP, h + GAP) then
+            return true
+        end
+    end
+    return false
+end
+
+-- Put a card on the nearest free cell to where it was dropped.
+local function snap_card(c)
+    if not fact.snap_on then
+        c.x, c.y = math.floor(c.x + 0.5), math.floor(c.y + 0.5)
+        clamp_card(c)
+        return
+    end
+    local maxx, maxy = bounds(c)
+    local cols = math.max(0, math.floor((maxx - OX) / PITCH))
+    local rows = math.max(0, math.floor((maxy - OY) / PITCH))
+    local best, bx, by = nil, c.x, c.y
+    for r = 0, rows do
+        for q = 0, cols do
+            local x, y = OX + q * PITCH, OY + r * PITCH
+            if not blocked(c, x, y) then
+                local d = (x - c.x) ^ 2 + (y - c.y) ^ 2
+                if not best or d < best then best, bx, by = d, x, y end
+            end
+        end
+    end
+    c.x, c.y = bx, by
+end
+
 local function free_spot(out, sz)
+    local probe = { out = out, sz = sz, x = 0, y = 0 }
     local w, h = width_of(sz), height_of(sz)
     local screen = SIZES[out] or { 1920, 1080 }
-    local y = 48
+    local y = OY
     while y + h < screen[2] - 80 do
-        local x = 48
+        local x = OX
         while x + w < screen[1] - 20 do
-            local hit = false
-            for _, c in ipairs(CARDS) do
-                if c.out == out and overlaps(c, x - GAP / 2, y - GAP / 2, w + GAP, h + GAP) then
-                    hit = true
-                    break
-                end
-            end
-            if not hit then return x, y end
-            x = x + GRID * 2
+            if not blocked(probe, x, y) then return x, y end
+            x = x + PITCH
         end
-        y = y + GRID * 2
+        y = y + PITCH
     end
-    return 48, 48
+    return OX, OY
 end
 
 local function add_card(out, kind, sz, x, y)
@@ -209,8 +237,8 @@ on("w_drop", function(id)
     local dx, dy = tonumber(fact.drag_dx) or 0, tonumber(fact.drag_dy) or 0
     if c and (math.abs(dx) > 2 or math.abs(dy) > 2) then
         snapshot()
-        c.x, c.y = snap(c.x + dx), snap(c.y + dy)
-        clamp_card(c)
+        c.x, c.y = c.x + dx, c.y + dy
+        snap_card(c)
         push()
         save()
     end
@@ -247,7 +275,7 @@ on("w_resize", function(id)
         if s == c.sz then at = i end
     end
     c.sz = k.sizes[at % #k.sizes + 1]
-    clamp_card(c)
+    snap_card(c)
     changed()
 end)
 
@@ -265,9 +293,34 @@ on("w_reset", function()
     changed()
 end)
 
+-- Tidy up: every card back on the grid, packed from the top left in reading order.
+local function tidy()
+    snapshot()
+    local by_out = {}
+    for _, c in ipairs(CARDS) do
+        by_out[c.out] = by_out[c.out] or {}
+        table.insert(by_out[c.out], c)
+    end
+    local was = fact.snap_on
+    fact.snap_on = true
+    for _, list in pairs(by_out) do
+        table.sort(list, function(a, b)
+            if math.abs(a.y - b.y) > 60 then return a.y < b.y end
+            return a.x < b.x
+        end)
+        for _, c in ipairs(list) do c.x, c.y = -10000, -10000 end
+        for _, c in ipairs(list) do
+            c.x, c.y = free_spot(c.out, c.sz)
+        end
+    end
+    fact.snap_on = was
+    changed()
+end
+on("w_tidy", tidy)
+
 on("w_grid", function()
     fact.snap_on = not fact.snap_on
-    save()
+    if fact.snap_on then tidy() else save() end
 end)
 
 on("w_open", function(kind)
