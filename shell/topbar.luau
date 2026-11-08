@@ -497,7 +497,7 @@ build_dock = function()
     items = list
     local rows = {}
     for i, it in ipairs(list) do
-        rows[i] = { icon = it.icon, name = it.name, running = #it.wins > 0, pinned = it.pinned, canpin = it.entry ~= nil or it.cmd ~= nil or it.pid ~= nil }
+        rows[i] = { icon = it.icon, name = it.name, running = #it.wins > 0, pinned = it.pinned, sep = (not it.pinned) and i > 1 and list[i - 1].pinned, canpin = it.entry ~= nil or it.cmd ~= nil or it.pid ~= nil }
     end
     model.dock_items = rows
 end

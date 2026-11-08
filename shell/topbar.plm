@@ -50,7 +50,7 @@ scene MacTopBar {
     model ws_list max 12 { out: number; idx: number; active: bool; wins: number }
     //  The apps open in the workspace each monitor shows (left to right), the focused one with its name.
     model cur_apps max 20 { out: number; icon: image 20, 20; name: text; wid: number; focused: bool }
-    model dock_items max 12 { icon: image 38, 38; name: text; running: bool; pinned: bool; canpin: bool }
+    model dock_items max 12 { icon: image 38, 38; name: text; running: bool; pinned: bool; canpin: bool; sep: bool }
     //  The power menu (the gem button): `open` is what shell/exclusive.luau closes, `open_screen` which monitor shows it.
     fact open = false
     fact open_screen = -1
@@ -307,6 +307,8 @@ scene MacTopBar {
         prop pin_hot = 0 ~quick
         prop quit_hot = 0 ~quick
         let rows = if(it.canpin, 1, 0) + if(it.running, 1, 0)
+        // a thin line between the pinned apps and the ones that are only running
+        box { from: -6, 6; size: 1.5, 28; corner: 1; color: ink_sub; opacity: if(it.sep, 0.6, 0) }
         group {
             pivot: 20, 38
             scale: 1 + hot * 0.22
