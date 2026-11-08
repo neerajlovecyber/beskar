@@ -15,7 +15,7 @@ import "common/palette.plm"
 scene Widgets {
     include "common/theme.plm"
     permissions {
-        services: "clock", "battery", "media", "media.*", "say:topbar", "say:settings"
+        services: "clock", "battery", "media", "media.*", "audio", "audio.*", "brightness", "brightness.*", "say:topbar", "say:settings"
         run: "sh", "curl", "cat", "niri msg"
     }
 
@@ -28,6 +28,8 @@ scene Widgets {
     }
 
     service battery as bat { present: bool; percent: number; charging: bool }
+    service audio as sound { volume: number; muted: bool }
+    service brightness as display { present: bool; level: number }
 
     // ── what the logic reports ──
     model ws max 16 { id: number; scr: number; kind: number; sz: number; x: number; y: number }
@@ -53,6 +55,8 @@ scene Widgets {
     text weather_icon = "󰖐"
     text weather_city = ""
     text weather_range = ""
+    fact day_pct = 0
+    text day_left = ""
     fact cpu_pct = 0
     fact mem_pct = 0
     fact disk_pct = 0
@@ -79,6 +83,8 @@ scene Widgets {
     event w_prev ->
     event w_open ->
     event w_grid ->
+    event w_vol ->
+    event w_bri ->
     event w_reset ->
     event w_preset ->
 
@@ -148,6 +154,8 @@ scene Widgets {
             group { show: w.kind == 5; SystemFace(cw, ch, w.sz) }
             group { show: w.kind == 6; MediaFace(cw, ch, w.sz) }
             group { show: w.kind == 7; CalFace(cw, ch, w.sz) }
+            group { show: w.kind == 8; DayFace(cw, ch, w.sz) }
+            group { show: w.kind == 9; ControlsFace(cw, ch, w.sz) }
 
             //  ── what a click does when not arranging ──
             zone box body_hit { from: 0, 0; size: cw, ch; corner: 24; cursor: pointer; label: "widget" }
@@ -280,6 +288,31 @@ scene Widgets {
         }
     }
 
+    component DayFace(cw: number, ch: number, sz: number) {
+        text "󰔟  Today" { at: 20, 24; anchor: left center; size: 13; weight: 600; color: ink_sub }
+        text "{day_pct}%" { at: 20, ch / 2 + 2; anchor: left center; size: pick(sz, 40, 54, 54); weight: 300; color: ink_c }
+        text day_left { at: 20, ch - 46; anchor: left center; size: 12; color: ink_sub }
+        box { from: 20, ch - 26; size: cw - 40, 8; corner: 4; color: item_solid }
+        box { from: 20, ch - 26; size: max((cw - 40) * day_pct / 100, 8), 8; corner: 4; color: warn_c }
+    }
+
+    component ControlsFace(cw: number, ch: number, sz: number) {
+        text "󰕾" { at: 28, 54; anchor: center center; size: 17; color: ink_c }
+        box { from: 52, 49; size: cw - 76, 10; corner: 5; color: item_solid }
+        box { from: 52, 49; size: max((cw - 76) * if(sound.muted, 0, sound.volume), 10), 10; corner: 5; color: accent_c }
+        zone box vol_hit { from: 44, 36; size: cw - 60, 36; cursor: pointer }
+        on press vol_hit while not editing { emit w_vol(clamp(local.x / (cw - 76), 0, 1)) }
+        on drag vol_hit while not editing { emit w_vol(clamp(local.x / (cw - 76), 0, 1)) }
+        on press right vol_hit { }
+        text "󰃟" { at: 28, 108; anchor: center center; size: 17; color: ink_c }
+        box { from: 52, 103; size: cw - 76, 10; corner: 5; color: item_solid }
+        box { from: 52, 103; size: max((cw - 76) * display.level, 10), 10; corner: 5; color: warn_c }
+        zone box bri_hit { from: 44, 90; size: cw - 60, 36; cursor: pointer }
+        on press bri_hit while not editing { emit w_bri(clamp(local.x / (cw - 76), 0.05, 1)) }
+        on drag bri_hit while not editing { emit w_bri(clamp(local.x / (cw - 76), 0.05, 1)) }
+        on press right bri_hit { }
+    }
+
     component CalFace(cw: number, ch: number, sz: number) {
         text cal_title { at: 24, 30; anchor: left center; size: 17; weight: 700; color: ink_c }
         repeat c in 0..7 {
@@ -295,7 +328,7 @@ scene Widgets {
     component Toolbar() {
         group {
             show: editing
-            move: screen.width / 2 - 330, screen.height - 168
+            move: screen.width / 2 - 400, screen.height - 168
             body {
                 color: bar_color
                 glass: bar_glass
@@ -305,26 +338,26 @@ scene Widgets {
                 smoke: bar_smoke
                 milk: bar_milk
                 rim: bar_rim
-                box { from: 0, 0; size: 660, 132; corner: 30 }
+                box { from: 0, 0; size: 800, 132; corner: 30 }
             }
             text "Add a widget" { at: 24, 20; anchor: left center; size: 12; weight: 600; color: ink_sub }
             for k in kinds { KindChip(k) }
             text "Layouts" { at: 24, 98; anchor: left center; size: 12; weight: 600; color: ink_sub }
             for pr in presets { PresetChip(pr) }
             //  Done · Undo · Grid
-            box { from: 520, 14; size: 124, 34; corner: 17; color: accent_c }
-            text "Done" { at: 582, 31; anchor: center center; size: 14; weight: 600; color: #ffffff }
-            zone box done_hit { from: 520, 14; size: 124, 34; corner: 17; cursor: pointer }
+            box { from: 660, 14; size: 124, 34; corner: 17; color: accent_c }
+            text "Done" { at: 722, 31; anchor: center center; size: 14; weight: 600; color: #ffffff }
+            zone box done_hit { from: 660, 14; size: 124, 34; corner: 17; cursor: pointer }
             on press done_hit { emit edit_done }
             on press right done_hit { }
-            box { from: 440, 14; size: 70, 34; corner: 17; color: item_bg; opacity: item_bg_op }
-            text "Undo" { at: 475, 31; anchor: center center; size: 13; weight: 500; color: ink_c; opacity: if(can_undo, 100%, 40%) }
-            zone box undo_hit { from: 440, 14; size: 70, 34; corner: 17; cursor: pointer; active: can_undo }
+            box { from: 580, 14; size: 70, 34; corner: 17; color: item_bg; opacity: item_bg_op }
+            text "Undo" { at: 615, 31; anchor: center center; size: 13; weight: 500; color: ink_c; opacity: if(can_undo, 100%, 40%) }
+            zone box undo_hit { from: 580, 14; size: 70, 34; corner: 17; cursor: pointer; active: can_undo }
             on press undo_hit { emit w_undo }
             on press right undo_hit { }
-            box { from: 340, 14; size: 90, 34; corner: 17; color: item_bg; opacity: item_bg_op }
-            text if(snap_on, "Grid: on", "Grid: off") { at: 385, 31; anchor: center center; size: 13; weight: 500; color: ink_c }
-            zone box grid_hit { from: 340, 14; size: 90, 34; corner: 17; cursor: pointer }
+            box { from: 480, 14; size: 90, 34; corner: 17; color: item_bg; opacity: item_bg_op }
+            text if(snap_on, "Grid: on", "Grid: off") { at: 525, 31; anchor: center center; size: 13; weight: 500; color: ink_c }
+            zone box grid_hit { from: 480, 14; size: 90, 34; corner: 17; cursor: pointer }
             on press grid_hit { emit w_grid }
             on press right grid_hit { }
         }

@@ -19,6 +19,8 @@ local KINDS = {
     { id = 5, name = "System",   icon = "󰍹", sizes = { 0, 1, 2 }, def = 1 },
     { id = 6, name = "Music",    icon = "󰎆", sizes = { 1 },       def = 1 },
     { id = 7, name = "Calendar", icon = "󰸗", sizes = { 2 },       def = 2 },
+    { id = 8, name = "Day",      icon = "󰔟", sizes = { 0, 1 },    def = 0 },
+    { id = 9, name = "Controls", icon = "󰕾", sizes = { 1 },       def = 1 },
 }
 local function kind_of(id)
     return KINDS[id]
@@ -287,6 +289,8 @@ sys.watch("media", function(m)
     text.track_artist = m.artist or ""
     text.cover_art = m.art or ""
 end)
+on("w_vol", function(v) sys.call("audio.volume", v) end)
+on("w_bri", function(v) sys.call("brightness.level", math.max(0.05, tonumber(v) or 1)) end)
 on("w_play", function() sys.call("media.toggle") end)
 on("w_next", function() sys.call("media.next") end)
 on("w_prev", function() sys.call("media.previous") end)
@@ -298,6 +302,11 @@ local function paint_clock()
     local time, ampm = t:match("^(%d+:%d+)%s*(%a*)$")
     text.w_time = time or t
     text.w_ampm = ampm or ""
+    local hh, mm, ss = tonumber(os.date("%H")), tonumber(os.date("%M")), tonumber(os.date("%S"))
+    local used = hh * 3600 + mm * 60 + ss
+    fact.day_pct = math.floor(used * 100 / 86400)
+    local left = 86400 - used
+    text.day_left = string.format("%dh %dm left", math.floor(left / 3600), math.floor(left % 3600 / 60))
     local day = os.date("%Y-%m-%d")
     if day ~= last_day then
         last_day = day
