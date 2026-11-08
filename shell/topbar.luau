@@ -293,6 +293,7 @@ end
 local PM = {
     [1] = function() say("settings", "fact tab 6"); show_on_menu_monitor("settings") end,         -- About This PC
     [2] = function() say("settings", "fact tab 0"); show_on_menu_monitor("settings") end,         -- System Settings
+    [8] = function() say("widgets", "emit edit_toggle") end,                                     -- Edit Widgets…
     [3] = function() say("lock", "fact locked true") end,                                           -- Lock Screen
     [4] = function() run("systemctl", { "suspend" }, nil, { output = false }) end,                 -- Sleep
     [5] = function() say("session", "fact kind 2"); show_on_menu_monitor("session") end,          -- Log Out…

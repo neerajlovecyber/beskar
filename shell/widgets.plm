@@ -1,0 +1,343 @@
+// Desktop widgets: glass cards that sit on the wallpaper (under every window), like iNiR's iRiS desktop.
+//
+//   · ONE scene, one background-level surface per monitor; only the cards catch the mouse, the rest is click-through
+//   · `model ws` holds the cards on the desktop (kind, size class, position, monitor); widgets.luau owns it,
+//     loads and saves it (~/.config/beskar/widgets.json) and feeds every face
+//   · a card is a `component` that draws the glass plate and ONE face chosen by its kind. No fixed slot pool:
+//     a card exists only while its record does, so an empty desktop costs nothing
+//   · Edit mode (`editing`): the surface rises above windows, the desktop dims, cards can be dragged (snapped to a grid),
+//     resized (small / medium / large), removed, and new ones added from the toolbar. Nothing here is done
+//     with the desktop's own right-click (the desktop is click-through): use the Apple menu, Spotlight or Super+Shift+W
+//
+// Kinds: 1 clock · 2 date · 3 weather · 4 battery · 5 system · 6 media · 7 month calendar
+import "common/palette.plm"
+
+scene Widgets {
+    include "common/theme.plm"
+    permissions {
+        services: "clock", "battery", "media", "media.*", "say:topbar", "say:settings"
+        run: "sh", "curl", "cat", "niri msg"
+    }
+
+    surface {
+        size: full, full
+        anchor: top_left
+        level: background, top while editing
+        screens: each
+        keyboard: none
+    }
+
+    service battery as bat { present: bool; percent: number; charging: bool }
+
+    // ── what the logic reports ──
+    model ws max 16 { id: number; scr: number; kind: number; sz: number; x: number; y: number }
+    model kinds max 12 { id: number; name: text; icon: text }
+    fact editing = false
+    fact nscreens = 1
+    fact can_undo = false
+    fact drag_id = 0
+    fact drag_dx = 0
+    fact drag_dy = 0
+    fact snap_on = true
+
+    text w_time = ""
+    text w_ampm = ""
+    text w_dow = ""
+    text w_month = ""
+    text w_day = ""
+    text w_datelong = ""
+    text weather_temp = "--°"
+    text weather_cond = ""
+    text weather_icon = "󰖐"
+    text weather_city = ""
+    text weather_range = ""
+    fact cpu_pct = 0
+    fact mem_pct = 0
+    fact disk_pct = 0
+    text up_text = ""
+    fact has_player = false
+    fact is_playing = false
+    text track_title = ""
+    text track_artist = ""
+    text cover_art = ""
+    image cover = from cover_art, 120, 120
+    text cal_title = ""
+    repeat k in 0..42 { text cd.$k = "" }
+    repeat k in 0..42 { fact cm.$k = 0 }      // 0 this month · 1 other month · 2 today
+
+    event w_drop ->
+    event w_add ->
+    event w_remove ->
+    event w_resize ->
+    event edit_toggle ->
+    event edit_done ->
+    event w_undo ->
+    event w_play ->
+    event w_next ->
+    event w_prev ->
+    event w_open ->
+    event w_grid ->
+
+    // ── the glass, as in the frame ──
+    let bar_color = if(dark_mode, if(skin == 2, #181a20, if(skin == 1, #161820, #14161d)), if(skin == 2, #f2f3f7, if(skin == 1, #eaecf2, #f6f7fb)))
+    let bar_glass = if(skin == 2, 0%, if(skin == 1, 45%, 55%))
+    let bar_tint  = if(skin == 2, 0%, if(dark_mode, 60%, 45%))
+    let bar_rim   = if(skin == 2, 0%, 16%)
+    let bar_smoke = if(dark_mode, 75%, 0%)
+    let bar_milk  = if(dark_mode, 0%, 70%)
+    let unit = 160
+    let gap  = 16
+
+    prop dim = 0 ~calm
+    follow dim = if(editing, 1, 0)
+
+    component Desk() {
+        // the dimming veil in edit mode
+        box { from: 0, 0; size: screen.width, screen.height; color: #000000; opacity: dim * 38%; show: dim > 0.01 }
+        group {
+            show: editing
+            zone box veil { from: 0, 0; size: screen.width, screen.height }
+            on press right veil { }
+        }
+
+        for w in ws { Card(w) }
+        Toolbar()
+    }
+
+    // ── a card ──
+    component Card(w: record) {
+        prop px = 0 ~calm
+        prop py = 0 ~calm
+        prop appear = 0 ~calm
+        prop hot = 0 ~quick
+        follow px = w.x + if(drag_id == w.id, drag_dx, 0)
+        follow py = w.y + if(drag_id == w.id, drag_dy, 0)
+        follow appear = 1
+        let cw = pick(w.sz, 160, 336, 336)
+        let ch = pick(w.sz, 160, 160, 336)
+        group {
+            show: w.scr == screen.index
+            move: px, py
+            opacity: appear
+            pivot: cw / 2, ch / 2
+            scale: 0.94 + appear * 0.06 + if(drag_id == w.id, 0.025, 0)
+
+            body {
+                color: bar_color
+                glass: bar_glass
+                lens: false
+                frost: 100%
+                tint: bar_tint
+                smoke: bar_smoke
+                milk: bar_milk
+                rim: bar_rim
+                refraction: 50%
+                box { from: 0, 0; size: cw, ch; corner: 24 }
+            }
+            box { from: 0, 0; size: cw, ch; corner: 24; stroke: 1; color: card_stroke; opacity: 14% }
+
+            //  ── faces ──
+            group { show: w.kind == 1; ClockFace(cw, ch, w.sz) }
+            group { show: w.kind == 2; DateFace(cw, ch, w.sz) }
+            group { show: w.kind == 3; WeatherFace(cw, ch, w.sz) }
+            group { show: w.kind == 4; BatteryFace(cw, ch, w.sz) }
+            group { show: w.kind == 5; SystemFace(cw, ch, w.sz) }
+            group { show: w.kind == 6; MediaFace(cw, ch, w.sz) }
+            group { show: w.kind == 7; CalFace(cw, ch, w.sz) }
+
+            //  ── what a click does when not arranging ──
+            zone box body_hit { from: 0, 0; size: cw, ch; corner: 24; cursor: pointer; label: "widget" }
+            on press body_hit while not editing { emit w_open(w.kind) }
+            on press right body_hit { }
+            on drag body_hit while editing { drag_id = w.id; drag_dx = drag.dx; drag_dy = drag.dy }
+            on release body_hit while editing { emit w_drop(w.id) }
+
+            //  ── edit chrome ──
+            group {
+                show: editing
+                box { from: 0, 0; size: cw, ch; corner: 24; stroke: 2; color: accent_c; opacity: 85% }
+                //  remove
+                ellipse { at: 4, 4; radius: 12; color: danger_c }
+                text "󰅖" { at: 4, 4; anchor: center center; size: 13; color: #ffffff }
+                zone box rm_hit { from: -10, -10; size: 28, 28; corner: 14; cursor: pointer }
+                on press rm_hit { emit w_remove(w.id) }
+                on press right rm_hit { }
+                //  size
+                ellipse { at: cw - 4, ch - 4; radius: 13; color: accent_c }
+                text "󰩨" { at: cw - 4, ch - 4; anchor: center center; size: 14; color: #ffffff }
+                zone box rs_hit { from: cw - 20, ch - 20; size: 32, 32; corner: 16; cursor: pointer }
+                on press rs_hit { emit w_resize(w.id) }
+                on press right rs_hit { }
+            }
+        }
+    }
+
+    // ── faces: each draws inside a cw × ch card ──
+    component ClockFace(cw: number, ch: number, sz: number) {
+        text w_time { at: cw / 2, ch / 2 - pick(sz, 6, 10, 34); anchor: center center; size: pick(sz, 31, 58, 76); weight: 300; color: ink_c }
+        text w_ampm { at: cw / 2, ch / 2 + pick(sz, 22, 30, 38); anchor: center center; size: pick(sz, 12, 15, 18); weight: 600; color: accent_c }
+        group {
+            show: sz > 0
+            text w_datelong { at: cw / 2, ch / 2 + pick(sz, 40, 52, 78); anchor: center center; size: pick(sz, 11, 14, 16); color: ink_sub }
+        }
+    }
+
+    component DateFace(cw: number, ch: number, sz: number) {
+        text w_month { at: 20, 22; anchor: left center; size: 13; weight: 700; color: danger_c }
+        text w_day { at: 20, ch / 2 + 10; anchor: left center; size: 74; weight: 300; color: ink_c }
+        text w_dow { at: 22, ch - 20; anchor: left center; size: 14; weight: 500; color: ink_sub }
+    }
+
+    component WeatherFace(cw: number, ch: number, sz: number) {
+        text weather_icon { at: 22, 40; anchor: left center; size: pick(sz, 30, 36, 44); color: warn_c }
+        text weather_temp { at: 22, ch - 52; anchor: left center; size: pick(sz, 34, 38, 52); weight: 300; color: ink_c }
+        text weather_cond { at: 22, ch - 24; anchor: left center; size: 13; weight: 500; color: ink_c }
+        group {
+            show: sz > 0
+            text weather_city { at: cw - 22, 26; anchor: right center; size: 12; weight: 600; color: ink_sub }
+            text weather_range { at: cw - 22, ch - 24; anchor: right center; size: 12; color: ink_sub }
+        }
+    }
+
+    component BatteryFace(cw: number, ch: number, sz: number) {
+        let c = if(bat.charging, ok_c, if(bat.percent < 20, danger_c, accent_c))
+        let cx = if(sz == 0, cw / 2, 80)
+        let cy = ch / 2
+        group {
+            show: bat.present
+            ellipse { at: cx, cy; radius: 52; stroke: 9; color: ink_c; opacity: 12% }
+            arc { at: cx, cy; radius: 52; span: bat.percent * 3.6deg; rotate: bat.percent * 1.8deg; width: 9; color: c }
+            text "{bat.percent}%" { at: cx, cy - 2; anchor: center center; size: 24; weight: 600; color: ink_c }
+            text if(bat.charging, "󱐋", "") { at: cx, cy + 22; anchor: center center; size: 14; color: ok_c }
+        }
+        group {
+            show: not bat.present
+            text "󰂄" { at: cw / 2, ch / 2 - 10; anchor: center center; size: 38; color: ink_sub }
+            text "AC power" { at: cw / 2, ch / 2 + 26; anchor: center center; size: 13; color: ink_sub }
+        }
+        group {
+            show: sz > 0 and bat.present
+            text "Battery" { at: 160, cy - 14; anchor: left center; size: 16; weight: 600; color: ink_c }
+            text if(bat.charging, "Charging", "On battery") { at: 160, cy + 10; anchor: left center; size: 13; color: ink_sub }
+        }
+    }
+
+    component SystemFace(cw: number, ch: number, sz: number) {
+        text "󰍹  System" { at: 20, 24; anchor: left center; size: 13; weight: 600; color: ink_sub }
+        group {
+            move: 0, 0
+            text "CPU" { at: 20, 54; anchor: left center; size: 11; weight: 600; color: ink_c }
+            text "{cpu_pct}%" { at: cw - 20, 54; anchor: right center; size: 11; weight: 600; color: accent_c }
+            box { from: 20, 66; size: cw - 40, 6; corner: 3; color: item_solid }
+            box { from: 20, 66; size: max((cw - 40) * cpu_pct / 100, 6), 6; corner: 3; color: accent_c }
+            text "Memory" { at: 20, 90; anchor: left center; size: 11; weight: 600; color: ink_c }
+            text "{mem_pct}%" { at: cw - 20, 90; anchor: right center; size: 11; weight: 600; color: ok_c }
+            box { from: 20, 102; size: cw - 40, 6; corner: 3; color: item_solid }
+            box { from: 20, 102; size: max((cw - 40) * mem_pct / 100, 6), 6; corner: 3; color: ok_c }
+        }
+        group {
+            show: sz > 0 or ch > 150
+            text "Disk" { at: 20, 126; anchor: left center; size: 11; weight: 600; color: ink_c }
+            text "{disk_pct}%" { at: cw - 20, 126; anchor: right center; size: 11; weight: 600; color: focus_c }
+            box { from: 20, 138; size: cw - 40, 6; corner: 3; color: item_solid }
+            box { from: 20, 138; size: max((cw - 40) * disk_pct / 100, 6), 6; corner: 3; color: focus_c }
+        }
+        group {
+            show: sz == 2
+            text "Uptime" { at: 20, 190; anchor: left center; size: 12; color: ink_sub }
+            text up_text { at: cw - 20, 190; anchor: right center; size: 12; weight: 600; color: ink_c }
+        }
+    }
+
+    component MediaFace(cw: number, ch: number, sz: number) {
+        group {
+            show: has_player
+            clip box { from: 18, 18; size: 96, 96; corner: 18 }
+            image cover { at: 18, 18; size: 96, 96 }
+            text track_title { at: 130, 44; anchor: left center; size: 15; weight: 600; color: ink_c; width: cw - 150 }
+            text track_artist { at: 130, 66; anchor: left center; size: 12; color: ink_sub; width: cw - 150 }
+            text "󰒮" { at: 150, 112; anchor: center center; size: 20; color: ink_c }
+            text if(is_playing, "󰏤", "󰐊") { at: 200, 112; anchor: center center; size: 26; color: ink_c }
+            text "󰒭" { at: 250, 112; anchor: center center; size: 20; color: ink_c }
+            zone box pv_hit { from: 134, 96; size: 32, 32; corner: 16; cursor: pointer }
+            zone box pp_hit { from: 182, 94; size: 36, 36; corner: 18; cursor: pointer }
+            zone box nx_hit { from: 234, 96; size: 32, 32; corner: 16; cursor: pointer }
+            on press pv_hit while not editing { emit w_prev }
+            on press pp_hit while not editing { emit w_play }
+            on press nx_hit while not editing { emit w_next }
+            on press right pv_hit { }
+            on press right pp_hit { }
+            on press right nx_hit { }
+        }
+        group {
+            show: not has_player
+            text "󰎆" { at: cw / 2, ch / 2 - 10; anchor: center center; size: 38; color: ink_sub }
+            text "Nothing playing" { at: cw / 2, ch / 2 + 26; anchor: center center; size: 13; color: ink_sub }
+        }
+    }
+
+    component CalFace(cw: number, ch: number, sz: number) {
+        text cal_title { at: 24, 30; anchor: left center; size: 17; weight: 700; color: ink_c }
+        repeat c in 0..7 {
+            text pick(c, "M", "T", "W", "T", "F", "S", "S") { at: 28 + c * 43.4, 66; anchor: center center; size: 11; weight: 600; color: ink_sub }
+        }
+        repeat k in 0..42 {
+            ellipse { at: 28 + mod(k, 7) * 43.4, 98 + (k - mod(k, 7)) / 7 * 38; radius: 15; color: accent_c; show: cm.$k == 2 }
+            text cd.$k { at: 28 + mod(k, 7) * 43.4, 98 + (k - mod(k, 7)) / 7 * 38; anchor: center center; size: 13; weight: if(cm.$k == 2, 700, 500); color: if(cm.$k == 2, #ffffff, ink_c); opacity: if(cm.$k == 1, 35%, 100%) }
+        }
+    }
+
+    // ── the toolbar of edit mode, at the bottom of the screen ──
+    component Toolbar() {
+        group {
+            show: editing
+            move: screen.width / 2 - 330, screen.height - 128
+            body {
+                color: bar_color
+                glass: bar_glass
+                lens: false
+                frost: 100%
+                tint: bar_tint
+                smoke: bar_smoke
+                milk: bar_milk
+                rim: bar_rim
+                box { from: 0, 0; size: 660, 92; corner: 30 }
+            }
+            text "Add a widget" { at: 24, 20; anchor: left center; size: 12; weight: 600; color: ink_sub }
+            for k in kinds { KindChip(k) }
+            //  Done · Undo · Grid
+            box { from: 520, 14; size: 124, 34; corner: 17; color: accent_c }
+            text "Done" { at: 582, 31; anchor: center center; size: 14; weight: 600; color: #ffffff }
+            zone box done_hit { from: 520, 14; size: 124, 34; corner: 17; cursor: pointer }
+            on press done_hit { emit edit_done }
+            on press right done_hit { }
+            box { from: 440, 14; size: 70, 34; corner: 17; color: item_bg; opacity: item_bg_op }
+            text "Undo" { at: 475, 31; anchor: center center; size: 13; weight: 500; color: ink_c; opacity: if(can_undo, 100%, 40%) }
+            zone box undo_hit { from: 440, 14; size: 70, 34; corner: 17; cursor: pointer; active: can_undo }
+            on press undo_hit { emit w_undo }
+            on press right undo_hit { }
+            box { from: 340, 14; size: 90, 34; corner: 17; color: item_bg; opacity: item_bg_op }
+            text if(snap_on, "Grid: on", "Grid: off") { at: 385, 31; anchor: center center; size: 13; weight: 500; color: ink_c }
+            zone box grid_hit { from: 340, 14; size: 90, 34; corner: 17; cursor: pointer }
+            on press grid_hit { emit w_grid }
+            on press right grid_hit { }
+        }
+    }
+
+    component KindChip(k: record) {
+        prop hot = 0 ~quick
+        group {
+            move: 24 + (k.id - 1) * 86, 52
+            box { from: 0, 0; size: 78, 30; corner: 15; color: item_bg; opacity: item_bg_op + hot * 8% }
+            text k.icon { at: 16, 15; anchor: center center; size: 14; color: accent_c }
+            text k.name { at: 50, 15; anchor: center center; size: 11; weight: 500; color: ink_c }
+            zone box add_hit { from: 0, 0; size: 78, 30; corner: 15; cursor: pointer }
+            on enter add_hit { hot: 1 }
+            on leave add_hit { hot: 0 }
+            on press add_hit { emit w_add(screen.index * 100 + k.id) }
+            on press right add_hit { }
+        }
+    }
+
+    Desk()
+}

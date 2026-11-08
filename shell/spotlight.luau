@@ -164,6 +164,7 @@ local COMMANDS = {
     { "Record Screen", "record", function() say("capture", "emit toggle_record") end },
     { "Clipboard History", "clipboard", function() say("topbar", "emit open_panel 2") end },
     { "Wallpapers", "wallpapers", function() say("topbar", "emit open_panel 3") end },
+    { "Edit Widgets", "widgets", function() say("widgets", "emit edit_toggle") end },
     { "Settings", "settings", function() say("topbar", "emit open_panel 4") end },
     { "Notifications", "notifications", function() say("topbar", "emit open_notifications") end },
     { "Control Center", "control", function() say("topbar", "emit open_control_center") end },
