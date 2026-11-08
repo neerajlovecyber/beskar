@@ -144,6 +144,8 @@ local function load_palette()
             after(3000, push_palette)
             after(8000, push_palette)
         end
+        -- a palette left from another wallpaper must not outlive a restart: look at the one on now
+        after(2500, function() if fact.accent_auto == true then extract_current() end end)
     end)
 end
 
@@ -301,7 +303,7 @@ end)
 on("toggle_accent_auto", function()
     fact.accent_auto = not (fact.accent_auto == true)
     broadcast_theme()
-    if fact.accent_auto == true and not PAL then extract_current() end
+    if fact.accent_auto == true then extract_current() end        -- always from the wallpaper that is on now
 end)
 
 -- ── Menu bar & dock ──────────────────────────────────────────────
@@ -709,3 +711,16 @@ local function load_user_name()
 end
 load_user_name()
 load_palette()
+
+-- A Settings that was restarted on its own starts with the defaults; it must take the saved look first, or the next
+-- change would save (and broadcast) those defaults over the user's theme.
+sh('cat "$HOME/.config/pleamar_shell.json" 2>/dev/null', function(out)
+    local ok, t = pcall(json.decode, out or "")
+    if ok and type(t) == "table" then
+        if t.dark_mode ~= nil then fact.dark_mode = t.dark_mode == true end
+        if t.skin ~= nil then fact.skin = tonumber(t.skin) or 0 end
+        if t.accent ~= nil then fact.accent = tonumber(t.accent) or 0 end
+        if t.accent_auto ~= nil then fact.accent_auto = t.accent_auto == true end
+        if t.hour12 ~= nil then fact.hour12 = t.hour12 ~= false end
+    end
+end)
