@@ -11,6 +11,7 @@ scene Wallpaper {
         size: full, full
         anchor: top_left
         level: background
+        reserve: -1          // ignore the bar's reserved strip: cover the whole monitor, ring and bar included
         screens: each
         keyboard: none
     }
