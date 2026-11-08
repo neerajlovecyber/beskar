@@ -134,8 +134,17 @@ scene MacSettings {
                         SkinPill(2, "Classic Solid", "Opaque, high contrast")
                     }
                 }
-                Card(78) {
+                ToggleRow("Colours from the wallpaper", "Accent, highlights and glass tint follow the picture (matugen)", accent_auto, toggle_accent_auto)
+                Card(112) {
                     text "Accent colour" { at: 18, 16; size: 13; weight: 600; color: ink_c }
+                    text "Palette from the wallpaper" { at: 18, 82; anchor: left center; size: 11.5; weight: 600; color: if(accent_auto, ink_c, ink_sub) }
+                    row {
+                        at: 250, 68
+                        gap: 6
+                        Seg("Tonal", 0, pal_style, pal_style_pick, 76)
+                        Seg("Vibrant", 1, pal_style, pal_style_pick, 76)
+                        Seg("Neutral", 2, pal_style, pal_style_pick, 76)
+                    }
                     row {
                         at: 18, 38
                         gap: 14
@@ -148,7 +157,6 @@ scene MacSettings {
                         AccentCircle(6, #8e8e93)
                     }
                 }
-                ToggleRow("Match accent to the wallpaper", "Picks the closest accent each time the wallpaper changes", accent_auto, toggle_accent_auto)
             }
         }
 
@@ -383,7 +391,7 @@ scene MacSettings {
 
     permissions {
         services: "clock", "audio", "audio.*", "brightness", "brightness.*", "network", "network.*", "bluetooth", "bluetooth.*", "say:topbar", "say:spotlight", "say:control_center", "say:notifications", "say:dashboard", "say:clipboard", "say:music", "say:wallpapers", "say:widget_bar", "say:lock", "say:capture", "say:session", "say:appswitcher", "say:widgets"
-        run: "awww", "awww-daemon", "gsettings", "systemctl", "loginctl", "kitty", "pacman", "yay", "paru", "checkupdates", "sh", "niri msg"
+        run: "matugen", "awww", "awww-daemon", "gsettings", "systemctl", "loginctl", "kitty", "pacman", "yay", "paru", "checkupdates", "sh", "niri msg"
     }
 
     service audio as sound { volume: number; muted: bool }
@@ -423,6 +431,8 @@ scene MacSettings {
     fact pref_seconds = false
     fact pref_weather = true
     fact pref_tray = true
+    fact pal_style = 0
+    text pal_src = ""
     fact pref_widgets = true
     fact pref_dock_auto = true
 
@@ -465,6 +475,7 @@ scene MacSettings {
     event toggle_weather ->
     event toggle_tray ->
     event toggle_widgets ->
+    event pal_style_pick ->
     event widgets_edit ->
     event widgets_reset ->
     event toggle_dock_auto ->

@@ -201,26 +201,9 @@ local function accent_index(r, g, b)
     return idx, s, mx
 end
 
+-- The palette engine lives in settings.luau (matugen on the wallpaper, sent to every scene).
 local function accent_from(path)
-    run("magick", { path, "-resize", "120x120", "-colors", "8", "-format", "%c", "histogram:info:-" }, function(out, code)
-        if code ~= 0 or not out then
-            return
-        end
-        local best, best_score = 6, -1
-        for line in out:gmatch("[^\n]+") do
-            local count, hex = line:match("(%d+):.-#(%x%x%x%x%x%x)")
-            if count then
-                local r, g, b = tonumber(hex:sub(1, 2), 16), tonumber(hex:sub(3, 4), 16), tonumber(hex:sub(5, 6), 16)
-                local idx, sat, val = accent_index(r, g, b)
-                local lively = (val > 0.28 and val < 0.97) and 1 or 0.25
-                local score = tonumber(count) * sat * sat * lively
-                if score > best_score then
-                    best, best_score = idx, score
-                end
-            end
-        end
-        pcall(sys.call, "say", "settings", "emit auto_accent " .. best)
-    end)
+    pcall(sys.call, "say", "settings", "text pal_src " .. path)
 end
 
 on("accent_now", function()

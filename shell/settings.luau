@@ -4,7 +4,7 @@
 --   system    sound, brightness, displays (niri msg), Wi-Fi, Bluetooth, updates, shortcuts (read from niri's config)
 
 local THEMED = { "topbar", "control_center", "notifications", "dashboard", "settings", "wallpapers",
-                "spotlight", "clipboard", "session", "capture", "appswitcher", "lock", "music" }
+                "spotlight", "clipboard", "session", "capture", "appswitcher", "lock", "music", "widgets" }
 
 local function say(scene, words)
     pcall(sys.call, "say", scene, words)
@@ -40,6 +40,113 @@ end
 paint_cats()
 on("text:side_q", paint_cats)
 
+
+-- ── the palette engine ───────────────────────────────────────────
+-- "Colours from the wallpaper": matugen (Material You, Rust) reads the wallpaper once and gives a whole palette for
+-- light and for dark; we keep an accent (primary tone 60 dark / 50 light), a second colour (tertiary) and the
+-- surface, and send the ones for the current mode to every scene as pal_* facts (theme.plm turns them into
+-- accent_c, focus_c and bg_color). Saved in ~/.config/beskar/palette.json so a restart needs no extraction.
+local PAL = nil
+local PAL_STYLES = { [0] = "scheme-tonal-spot", [1] = "scheme-vibrant", [2] = "scheme-neutral" }
+
+local function rgb01(hex)
+    local r, g, b = tostring(hex or ""):match("#(%x%x)(%x%x)(%x%x)")
+    if not r then return 0, 0, 0 end
+    return tonumber(r, 16) / 255, tonumber(g, 16) / 255, tonumber(b, 16) / 255
+end
+
+local function palette_words()
+    if not PAL then return nil end
+    local dm = (fact.dark_mode == true or fact.dark_mode == 1)
+    local set = dm and PAL.dark or PAL.light
+    if not set then return nil end
+    local words = {}
+    for _, k in ipairs({ { "a", "pal_a" }, { "b", "pal_b" }, { "s", "pal_s" } }) do
+        local r, g, b = rgb01(set[k[1]])
+        words[#words + 1] = string.format("fact %sr %.4f", k[2], r)
+        words[#words + 1] = string.format("fact %sg %.4f", k[2], g)
+        words[#words + 1] = string.format("fact %sb %.4f", k[2], b)
+    end
+    return words
+end
+
+local function push_palette()
+    local words = palette_words()
+    if not words then return end
+    for _, s in ipairs(THEMED) do
+        for _, w in ipairs(words) do
+            if s == "settings" then
+                local name, val = w:match("fact (%S+) (%S+)")
+                fact[name] = tonumber(val)
+            else
+                say(s, w)
+            end
+        end
+    end
+end
+
+local function save_palette()
+    if not PAL then return end
+    local j = json.encode({ style = tonumber(fact.pal_style) or 0, dark = PAL.dark, light = PAL.light })
+    sh('mkdir -p "$HOME/.config/beskar" && printf "%s\\n" "$1" > "$HOME/.config/beskar/palette.json"', nil, j)
+end
+
+local function extract_palette(path)
+    if not path or path == "" then return end
+    local style = PAL_STYLES[tonumber(fact.pal_style) or 0] or PAL_STYLES[0]
+    run("matugen", { "image", path, "--json", "hex", "--dry-run", "--prefer", "saturation", "-m", "dark", "-t", style }, function(out, code)
+        if code ~= 0 or not out then return end
+        local at = out:find("{", 1, true)
+        local ok, d = pcall(json.decode, at and out:sub(at) or "")
+        if not ok or type(d) ~= "table" or type(d.palettes) ~= "table" or type(d.colors) ~= "table" then return end
+        local function tone(name, t)
+            local p = d.palettes[name]
+            return p and p[tostring(t)] and p[tostring(t)].color
+        end
+        local function surface(mode)
+            local c = d.colors.surface
+            return c and c[mode] and c[mode].color
+        end
+        PAL = {
+            dark = { a = tone("primary", 60), b = tone("tertiary", 60), s = surface("dark") },
+            light = { a = tone("primary", 50), b = tone("tertiary", 50), s = surface("light") },
+        }
+        save_palette()
+        push_palette()
+    end)
+end
+
+local function extract_current()
+    sh('cat "$HOME/.config/beskar/wallpaper" 2>/dev/null | head -1', function(out)
+        extract_palette((out or ""):gsub("%s+$", ""))
+    end)
+end
+
+on("text:pal_src", function(path)
+    if fact.accent_auto == true then
+        extract_palette(path)
+    end
+end)
+
+on("pal_style_pick", function(n)
+    fact.pal_style = tonumber(n) or 0
+    extract_current()
+end)
+
+local function load_palette()
+    sh('cat "$HOME/.config/beskar/palette.json" 2>/dev/null', function(out)
+        local ok, d = pcall(json.decode, out or "")
+        if ok and type(d) == "table" and type(d.dark) == "table" and type(d.light) == "table" then
+            PAL = { dark = d.dark, light = d.light }
+            fact.pal_style = tonumber(d.style) or 0
+            -- the other scenes may still be starting: send now and again a little later
+            push_palette()
+            after(3000, push_palette)
+            after(8000, push_palette)
+        end
+    end)
+end
+
 -- ── theme: mode, glass, accent, clock format ─────────────────────
 local function save_theme(dm_str, skin_str, accent_str, auto_str, h12_str)
     -- ~/.config/pleamar_shell.json is read by start.sh to restore the look after a restart.
@@ -64,6 +171,7 @@ local function broadcast_theme()
         end
     end
     save_theme(dm_str, skin_str, accent_str, auto_str, h12_str)
+    push_palette()
     -- GTK / libadwaita apps follow too
     pcall(run, "gsettings", { "set", "org.gnome.desktop.interface", "color-scheme", dm and "prefer-dark" or "prefer-light" }, nil, { output = false })
 end
@@ -193,6 +301,7 @@ end)
 on("toggle_accent_auto", function()
     fact.accent_auto = not (fact.accent_auto == true)
     broadcast_theme()
+    if fact.accent_auto == true and not PAL then extract_current() end
 end)
 
 -- ── Menu bar & dock ──────────────────────────────────────────────
@@ -599,4 +708,4 @@ local function load_user_name()
     end)
 end
 load_user_name()
-
+load_palette()

@@ -17,21 +17,34 @@ part Theme {
     fact skin = 0            // 0 liquid glass · 1 light acrylic · 2 classic solid
     fact accent = 0          // 0 blue · 1 purple · 2 pink · 3 red · 4 orange · 5 green · 6 graphite
     fact hour12 = true       // clock format: true 2:05 PM · false 14:05 (Settings → Appearance)
-    fact accent_auto = false // true: Beskar picks `accent` from the wallpaper (wallpapers.luau)
+    fact accent_auto = false // true: the colours come from the wallpaper (palette engine in settings.luau)
+    //  The wallpaper palette (settings.luau runs matugen on the wallpaper and sends the colours for the current
+    //  light / dark mode as 0..1 numbers; -1 until there is one): accent, a second colour, and the surface tint.
+    fact pal_ar = -1
+    fact pal_ag = 0
+    fact pal_ab = 0
+    fact pal_br = 0
+    fact pal_bg = 0
+    fact pal_bb = 0
+    fact pal_sr = 0
+    fact pal_sg = 0
+    fact pal_sb = 0
+    let pal_on = accent_auto and pal_ar >= 0
 
     // ── the accent, and what colours mean ────────────────────────
-    let accent_c = pick(accent, #007aff, #af52de, #ff2d55, #ff3b30, #ff9500, #34c759, #8e8e93)
+    let accent_c = if(pal_on, rgb(pal_ar, pal_ag, pal_ab), pick(accent, #007aff, #af52de, #ff2d55, #ff3b30, #ff9500, #34c759, #8e8e93))
     let ok_c     = #30d158     // connected, charging, healthy
     let warn_c   = #ff9f0a     // attention, light mode sun
     let danger_c = #ff453a     // errors, low battery, unread badge, disconnect
-    let focus_c  = #5e5ce6     // Do Not Disturb, dark mode
+    let focus_c  = if(pal_on, rgb(pal_br, pal_bg, pal_bb), #5e5ce6)    // Do Not Disturb, dark mode
 
     // ── text ─────────────────────────────────────────────────────
     let ink_c   = if(dark_mode, #f5f7f5, #1d1d1f)
     let ink_sub = if(dark_mode, #9a9ea7, #6e6e73)
 
     // ── glass panels ─────────────────────────────────────────────
-    let bg_color  = if(dark_mode, if(skin == 2, #1e2026, if(skin == 1, #181a20, #14161d)), if(skin == 2, #f2f3f7, if(skin == 1, #f0f2f6, #f8f9fc)))
+    let surf_c    = rgb(pal_sr, pal_sg, pal_sb)       // the wallpaper-tinted surface (only meaningful when pal_on)
+    let bg_color  = if(pal_on, surf_c, if(dark_mode, if(skin == 2, #1e2026, if(skin == 1, #181a20, #14161d)), if(skin == 2, #f2f3f7, if(skin == 1, #f0f2f6, #f8f9fc))))
     let glass_amt = if(skin == 2, 0%, if(skin == 1, 45%, 70%))
     let tint_amt  = if(skin == 2, 0%, if(dark_mode, 35%, 20%))
     let rim_amt   = if(skin == 2, 0%, 12%)
