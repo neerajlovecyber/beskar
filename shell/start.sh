@@ -30,7 +30,7 @@ kill_all() {
 
 check_status() {
     echo "macOS / iNiR Shell Status:"
-    for comp in topbar border spotlight control_center notifications dashboard wallpapers settings lock session capture appswitcher clipboard music; do
+    for comp in topbar border spotlight control_center notifications dashboard wallpapers settings lock session capture appswitcher clipboard music overview; do
         if pgrep -f "pleamar.*$comp\.plm" >/dev/null 2>&1; then
             echo "  ✔ $comp is RUNNING"
         else
@@ -53,11 +53,11 @@ apply_saved_theme() {
         [ -z "$DM" ] && DM="true"
         [ -z "$SKIN" ] && SKIN="0"
 
-        for comp in topbar border spotlight control_center notifications dashboard wallpapers settings session capture appswitcher clipboard music; do
+        for comp in topbar border spotlight control_center notifications dashboard wallpapers settings session capture appswitcher clipboard music overview; do
             "$BIN" --say "$comp" "fact dark_mode $DM" >/dev/null 2>&1 || true
             "$BIN" --say "$comp" "fact skin $SKIN" >/dev/null 2>&1 || true
         done
-        for comp in topbar control_center notifications dashboard settings wallpapers spotlight clipboard music session capture appswitcher lock; do
+        for comp in topbar control_center notifications dashboard settings wallpapers spotlight clipboard music session capture appswitcher lock overview; do
             "$BIN" --say "$comp" "fact accent $ACCENT" >/dev/null 2>&1 || true
             "$BIN" --say "$comp" "fact accent_auto $AUTO" >/dev/null 2>&1 || true
             "$BIN" --say "$comp" "fact hour12 $H12" >/dev/null 2>&1 || true
@@ -122,6 +122,8 @@ start_shell() {
     setsid "$BIN" --no-hud --scene "$DIR/shell/polkit.plm" </dev/null >/tmp/pleamar_polkit.log 2>&1 &
     # First-run welcome (it opens itself once, when ~/.config/beskar/welcome-done does not exist)
     setsid "$BIN" --no-hud --scene "$DIR/shell/welcome.plm" </dev/null >/tmp/pleamar_welcome.log 2>&1 &
+    # Window overview (Mission Control HUD grid)
+    setsid "$BIN" --no-hud --scene "$DIR/shell/overview.plm" </dev/null >/tmp/pleamar_overview.log 2>&1 &
 
     echo "$PID_BAR $PID_BORDER $PID_SPOTLIGHT $PID_CC $PID_WIDGETS $PID_DASH $PID_WALL $PID_SETTINGS $PID_LOCK $PID_SESSION $PID_CAPTURE $PID_SWITCHER $PID_CLIP" > "$PID_FILE"
     sleep 0.6
@@ -156,6 +158,7 @@ start_shell() {
     echo ""
     echo "Commands & Hotkey Triggers:"
     echo "  - $0 appswitcher     (Toggle Cmd+Tab Application Switcher)"
+    echo "  - $0 overview        (Toggle Window Overview grid)"
     echo "  - $0 clipboard       (Toggle Clipboard History Manager)"
     echo "  - $0 settings        (Toggle System Settings)"
     echo "  - $0 shortcuts       (Settings on the keyboard shortcuts list)"
@@ -192,6 +195,9 @@ case "$1" in
         ;;
     appswitcher)
         "$BIN" --say topbar "emit open_panel 6"
+        ;;
+    overview)
+        "$BIN" --say topbar "emit open_panel 10"
         ;;
     clipboard)
         "$BIN" --say topbar "emit open_panel 2"
@@ -262,7 +268,7 @@ case "$1" in
     dark-mode)
         VAL="true"
         [ "$2" = "off" ] && VAL="false"
-        for comp in topbar spotlight control_center notifications dashboard wallpapers settings session capture; do
+        for comp in topbar spotlight control_center notifications dashboard wallpapers settings session capture overview; do
             "$BIN" --say "$comp" "fact dark_mode $VAL"
         done
         mkdir -p "$(dirname "$CONFIG_FILE")"
@@ -271,7 +277,7 @@ case "$1" in
         ;;
     skin)
         SKIN_VAL="${2:-0}"
-        for comp in topbar spotlight control_center notifications dashboard wallpapers settings session capture; do
+        for comp in topbar spotlight control_center notifications dashboard wallpapers settings session capture overview; do
             "$BIN" --say "$comp" "fact skin $SKIN_VAL"
         done
         mkdir -p "$(dirname "$CONFIG_FILE")"

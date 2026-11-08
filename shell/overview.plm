@@ -1,0 +1,176 @@
+// macOS Window Overview (Mission Control HUD)
+import "common/palette.plm"
+
+scene MacOverview {
+    include "common/theme.plm"
+    include "common/here.plm"
+    surface sheet {
+        size: 1280, 860
+        anchor: center
+        level: overlay
+        keyboard: exclusive while open
+        screens: each
+        open: (open or seen > 0.02) and open_screen == screen.index
+
+        zone box dismiss { from: 0, 0; size: 1280, 860; active: open }
+
+        group {
+            move: 0, 0
+            pivot: 640, 430
+            scale: scale
+            opacity: seen
+
+            // Floating Glass Modal Surface
+            body {
+                color: bg_color
+                glass: glass_amt
+                lens: false
+                frost: 100%
+                dispersion: 0
+                refraction: 0
+                tint: tint_amt
+                rim: rim_amt
+                box { from: 40, 30; size: 1200, 800; corner: 28 }
+            }
+            box { from: 40, 30; size: 1200, 800; corner: 28; stroke: 1; color: stroke_c; opacity: stroke_op }
+
+            // Header Row
+            group {
+                move: 70, 56
+                ellipse { at: 14, 14; radius: 14; color: accent_c; opacity: 20% }
+                text "󰕰" { at: 14, 14; anchor: center center; size: 15; color: accent_c }
+                text "Window Overview" { at: 38, 14; anchor: left center; size: 16; weight: 700; color: ink_c }
+                text win_count_text { at: 200, 14; anchor: left center; size: 12; color: ink_sub }
+                text "esc to close  ·  ↵ to focus  ·  arrows to select" { at: 1100, 14; anchor: right center; size: 11; color: ink_sub }
+            }
+
+            // Grid of Window Previews
+            grid {
+                at: 68, 96
+                columns: 4
+                gap: 16
+                width: 1144
+                row: 165
+
+                for w in wins {
+                    OverviewTile(w)
+                }
+            }
+
+            // Empty state if no windows are open
+            group {
+                show: wins.count < 1
+                move: 640, 430
+                text "No open windows" { at: 0, 0; anchor: center center; size: 15; weight: 600; color: ink_sub }
+            }
+        }
+        on press dismiss { open = false }
+        on press right dismiss { }
+    }
+
+    permissions {
+        services: "apps", "window", "thumbnails", "thumbnails.*", "say:topbar", "say:spotlight", "say:clipboard", "say:control_center", "say:notifications", "say:dashboard", "say:settings", "say:wallpapers", "say:music", "say:widget_bar"
+        run: "niri msg"
+    }
+
+    fact open = false
+    fact sel = 0
+    text win_count_text = ""
+
+    model wins max 16 { id: number; title: text; app_id: text; ws: number; ws_label: text; icon: image 48, 48; thumb: image 264, 120; has_thumb: bool }
+
+    prop seen = 0 ~quick
+    prop scale = 0.95 ~lively
+
+    layer overview ~quick {
+        shown while open { seen: 1 ~quick; scale: 1 ~lively }
+        gone             { seen: 0 ~quick; scale: 0.95 ~quick }
+    }
+
+    let stroke_c = card_stroke
+    let stroke_op = card_stroke_op
+
+    event toggle
+    event next_win ->
+    event prev_win ->
+    event up_win ->
+    event down_win ->
+    event switch_to ->
+
+    component OverviewTile(w: record) {
+        size: 274, 165
+        prop on = 0 ~quick
+        follow on = if(sel == w.index, 1, 0)
+
+        // Card base & selection highlight
+        box hit {
+            from: 0, 0
+            size: 274, 165
+            corner: 14
+            color: if(sel == w.index, accent_c, item_solid)
+            opacity: if(sel == w.index, 24%, 40%)
+            cursor: pointer
+        }
+        box {
+            from: 0, 0
+            size: 274, 165
+            corner: 14
+            stroke: if(sel == w.index, 2, 1)
+            color: if(sel == w.index, accent_c, stroke_c)
+            opacity: if(sel == w.index, 90%, stroke_op)
+        }
+
+        // Preview thumbnail area (clipped)
+        group {
+            move: 5, 5
+            clip box { from: 0, 0; size: 264, 120; corner: 10 }
+            box { from: 0, 0; size: 264, 120; corner: 10; color: bg_color; opacity: 50% }
+            image w.thumb { at: 0, 0; size: 264, 120; fit: cover; show: w.has_thumb }
+            group {
+                show: not w.has_thumb
+                move: 132, 60
+                image w.icon { at: -24, -24; size: 48, 48 }
+            }
+        }
+
+        // App Icon Badge in corner of preview
+        group {
+            move: 10, 10
+            box { from: 0, 0; size: 24, 24; corner: 6; color: bg_color; opacity: 90% }
+            box { from: 0, 0; size: 24, 24; corner: 6; stroke: 1; color: stroke_c; opacity: stroke_op }
+            image w.icon { at: 3, 3; size: 18, 18 }
+        }
+
+        // Workspace Pill Badge in top-right of preview
+        group {
+            move: 206, 10
+            show: w.ws > 0
+            box { from: 0, 0; size: 58, 20; corner: 10; color: bg_color; opacity: 90% }
+            box { from: 0, 0; size: 58, 20; corner: 10; stroke: 1; color: stroke_c; opacity: stroke_op }
+            text w.ws_label { at: 29, 10; anchor: center center; size: 9.5; weight: 600; color: ink_sub }
+        }
+
+        // Window Title below preview
+        text w.title {
+            at: 137, 145
+            anchor: center center
+            size: 11
+            weight: if(sel == w.index, 600, 400)
+            color: if(sel == w.index, ink_c, ink_sub)
+            width: 254
+            align: center
+            lines: 1
+        }
+
+        on press hit { emit switch_to(w.index) }
+    }
+
+    on toggle     { toggle open }
+    on key Tab    { emit next_win }
+    on key Left   { emit prev_win }
+    on key Right  { emit next_win }
+    on key Up     { emit up_win }
+    on key Down   { emit down_win }
+    on key Return { emit switch_to(sel) }
+    on key Escape { open = false }
+}

@@ -266,7 +266,7 @@ end)
 -- switcher) open on ONE monitor: the one with the focus. They are `screens: each` scenes that show their content
 -- only where `open_screen` says (common/here.plm). Everything that wants one asks us (`open_panel N`): a niri key
 -- through start.sh, a button in another panel. The toggle is the panel's own.
-local FOCUS_PANELS = { [1] = "spotlight", [2] = "clipboard", [3] = "wallpapers", [4] = "settings", [5] = "session", [6] = "appswitcher", [7] = "widget_bar", [8] = "polkit", [9] = "welcome" }
+local FOCUS_PANELS = { [1] = "spotlight", [2] = "clipboard", [3] = "wallpapers", [4] = "settings", [5] = "session", [6] = "appswitcher", [7] = "widget_bar", [8] = "polkit", [9] = "welcome", [10] = "overview" }
 on("open_panel", function(n)
     local name = FOCUS_PANELS[tonumber(n) or 0]
     if not name then
@@ -381,6 +381,22 @@ local pinned = nil          -- list of desktop ids, nil = the defaults
 local entries = {}          -- desktop entries (apps service)
 local by_key = {}           -- lower-case id / wmclass / last part of the id → entry
 local items = {}            -- what the dock shows now, in model order
+local thumbnails_by_id = {}
+local thumbnails_list = {}
+local hovered_dock_idx = -1
+
+sys.watch("thumbnails", function(info)
+    thumbnails_list = (info and info.list) or {}
+    thumbnails_by_id = {}
+    for _, t in ipairs(thumbnails_list) do
+        if t.id and t.id ~= "" then
+            thumbnails_by_id[t.id] = t
+        end
+    end
+    if hovered_dock_idx >= 0 and build_dock then
+        build_dock()
+    end
+end)
 
 local function lower(s)
     return string.lower(s or "")
@@ -497,10 +513,62 @@ build_dock = function()
     items = list
     local rows = {}
     for i, it in ipairs(list) do
-        rows[i] = { icon = it.icon, name = it.name, running = #it.wins > 0, pinned = it.pinned, sep = (not it.pinned) and i > 1 and list[i - 1].pinned, canpin = it.entry ~= nil or it.cmd ~= nil or it.pid ~= nil }
+        local win_title = ""
+        local win_thumb = ""
+        local has_thumb = false
+        if #it.wins > 0 then
+            for _, w in ipairs(WINS) do
+                if w.id == it.wins[1] then
+                    win_title = w.title or ""
+                    break
+                end
+            end
+            local sid = tostring(it.wins[1])
+            local t = thumbnails_by_id[sid]
+            if not t then
+                local w_app = lower(it.app_id or (it.entry and it.entry.id) or "")
+                for _, cand in ipairs(thumbnails_list) do
+                    if cand.title == win_title or lower(cand.app or "") == w_app then
+                        t = cand
+                        break
+                    end
+                end
+            end
+            if t and t.picture and t.picture ~= "" then
+                win_thumb = t.picture
+                has_thumb = true
+            end
+        end
+        rows[i] = {
+            icon = it.icon,
+            name = it.name,
+            running = #it.wins > 0,
+            pinned = it.pinned,
+            sep = (not it.pinned) and i > 1 and list[i - 1].pinned,
+            canpin = it.entry ~= nil or it.cmd ~= nil or it.pid ~= nil,
+            preview_thumb = win_thumb,
+            preview_title = (win_title ~= "") and win_title or it.name,
+            preview_has = has_thumb,
+        }
     end
     model.dock_items = rows
 end
+
+on("dock_hover", function(idx)
+    local i = tonumber(idx) or -1
+    hovered_dock_idx = i
+    local it = items[i + 1]
+    if it and #it.wins > 0 then
+        local sid = tostring(it.wins[1])
+        pcall(sys.call, "thumbnails.want", { sid })
+        if build_dock then build_dock() end
+    end
+end)
+
+on("dock_unhover", function()
+    hovered_dock_idx = -1
+    pcall(sys.call, "thumbnails.want")
+end)
 
 local function launch(entry)
     local exec = (entry.exec or ""):gsub("%%[%a%%]", ""):gsub("%s+$", "")

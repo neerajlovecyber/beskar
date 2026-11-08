@@ -24,7 +24,7 @@ scene MacTopBar {
     //  What topbar.luau may touch. `run` is only what it needs: niri for the workspace, curl for
     //  the weather, and the dock's apps. Undeclared is nothing.
     permissions {
-        services: "clock", "network", "battery", "window", "tray", "tray.*", "apps", "apps.launch", "audio", "audio.*", "brightness", "brightness.*", "media", "media.*", "say:music", "say:capture", "say:control_center", "say:spotlight", "say:notifications", "say:dashboard", "say:settings", "say:session", "say:appswitcher", "say:lock", "say:clipboard", "say:wallpapers", "say:widget_bar", "say:polkit", "say:welcome", "say:widgets"
+        services: "clock", "network", "battery", "window", "tray", "tray.*", "apps", "apps.launch", "audio", "audio.*", "brightness", "brightness.*", "media", "media.*", "thumbnails", "thumbnails.*", "say:music", "say:capture", "say:control_center", "say:spotlight", "say:notifications", "say:dashboard", "say:settings", "say:session", "say:appswitcher", "say:lock", "say:clipboard", "say:wallpapers", "say:widget_bar", "say:polkit", "say:welcome", "say:widgets", "say:overview"
         run: "niri msg", "curl", "sh", "systemctl"
     }
 
@@ -50,7 +50,7 @@ scene MacTopBar {
     model ws_list max 12 { out: number; idx: number; active: bool; wins: number }
     //  The apps open in the workspace each monitor shows (left to right), the focused one with its name.
     model cur_apps max 20 { out: number; icon: image 20, 20; name: text; wid: number; focused: bool }
-    model dock_items max 12 { icon: image 38, 38; name: text; running: bool; pinned: bool; canpin: bool; sep: bool }
+    model dock_items max 12 { icon: image 38, 38; name: text; running: bool; pinned: bool; canpin: bool; sep: bool; preview_thumb: image 160, 96; preview_title: text; preview_has: bool }
     //  The power menu (the gem button): `open` is what shell/exclusive.luau closes, `open_screen` which monitor shows it.
     fact open = false
     fact open_screen = -1
@@ -120,6 +120,8 @@ scene MacTopBar {
     event dock_click ->
     event dock_pin ->
     event dock_quit ->
+    event dock_hover ->
+    event dock_unhover ->
     event reveal ->        // pointer reached the bottom edge
     event keep_dock ->     // pointer is on the dock
 
@@ -306,6 +308,7 @@ scene MacTopBar {
         prop hot = 0 ~quick
         prop pin_hot = 0 ~quick
         prop quit_hot = 0 ~quick
+        prop preview_on = 0 ~quick
         let rows = if(it.canpin, 1, 0) + if(it.running, 1, 0)
         // a thin line between the pinned apps and the ones that are only running
         box { from: -6, 6; size: 1.5, 28; corner: 1; color: ink_sub; opacity: if(it.sep, 0.6, 0) }
@@ -324,15 +327,48 @@ scene MacTopBar {
             padding: 6
             fill: item_solid
             corner: 9
-            opacity: if(menu_i == it.index, 0, hot)
+            opacity: if(menu_i == it.index or (it.running and preview_on > 0.05), 0, hot)
             text it.name { size: 11; weight: 600; color: ink_c; tight: true }
         }
 
         zone box hit { from: 0, 0; size: 40, 44; cursor: pointer }
         on enter hit { hot: 1; emit keep_dock }
-        on leave hit { hot: 0 }
-        on press hit { menu_i = -1; emit dock_click(it.index) }
-        on press right hit { menu_i = it.index; emit keep_dock }
+        on hover hit for 400ms { preview_on: if(it.running and menu_i == -1, 1, 0); emit dock_hover(it.index) }
+        on leave hit { hot: 0; preview_on: 0; emit dock_unhover }
+        on press hit { menu_i = -1; preview_on: 0; emit dock_click(it.index) }
+        on press right hit { menu_i = it.index; preview_on: 0; emit keep_dock }
+
+        //  floating preview card above the dock (thumbnail + title) for its first window
+        group {
+            show: preview_on > 0.05 and it.running and menu_i != it.index
+            move: 20, -18
+            opacity: preview_on
+            box { from: -84, -132; size: 168, 128; corner: 14; color: bg_color }
+            box { from: -84, -132; size: 168, 128; corner: 14; stroke: 1; color: stroke_c; opacity: card_stroke_op }
+            // Preview thumbnail
+            group {
+                move: -80, -128
+                clip box { from: 0, 0; size: 160, 96; corner: 10 }
+                box { from: 0, 0; size: 160, 96; corner: 10; color: item_solid; opacity: 50% }
+                image it.preview_thumb { at: 0, 0; size: 160, 96; fit: cover; show: it.preview_has }
+                group {
+                    show: not it.preview_has
+                    move: 80, 48
+                    image it.icon { at: -20, -20; size: 40, 40 }
+                }
+            }
+            // Window title
+            text it.preview_title {
+                at: 0, -18
+                anchor: center center
+                size: 10
+                weight: 600
+                color: ink_c
+                width: 156
+                lines: 1
+                align: center
+            }
+        }
 
         //  the menu: Keep in Dock / Remove from Dock, and Quit while it has windows
         group {

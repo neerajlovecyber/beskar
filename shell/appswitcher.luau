@@ -1,9 +1,12 @@
--- App switcher logic: the windows come from `niri msg -j windows` (most recently used first), their icons from the
--- apps service. Opened by Super+Tab (start.sh appswitcher → the frame picks the monitor with the focus); Tab / arrows
--- move, Enter or a click focuses, Esc closes.
+-- App switcher logic: windows from `niri msg -j windows` (most recently used first),
+-- previews from pleamar `thumbnails` service, icons from `apps` service.
+-- Opened by Super+Tab (start.sh appswitcher -> topbar picks monitor with focus).
+-- Tab / arrows move selection, Enter or click focuses window, Esc closes.
 
 local window_list = {}
 local by_key = {}
+local thumbnails_list = {}
+local thumbnails_by_id = {}
 
 local function lower(s)
     return string.lower(s or "")
@@ -44,6 +47,83 @@ local function focus_secs(w)
     return 0
 end
 
+local function match_thumbnail(w, used_ids)
+    -- 1. Try matching by string ID first (in niri, toplevel identifier is the window ID)
+    local sid = tostring(w.id)
+    if thumbnails_by_id[sid] and not used_ids[sid] then
+        used_ids[sid] = true
+        return thumbnails_by_id[sid]
+    end
+    -- 2. Match by title and app
+    local w_title = w.title or ""
+    local w_app = lower(w.app_id or "")
+    for _, t in ipairs(thumbnails_list) do
+        if not used_ids[t.id] then
+            if lower(t.app or "") == w_app and (t.title or "") == w_title then
+                used_ids[t.id] = true
+                return t
+            end
+        end
+    end
+    -- 3. Match by app only
+    for _, t in ipairs(thumbnails_list) do
+        if not used_ids[t.id] then
+            if lower(t.app or "") == w_app then
+                used_ids[t.id] = true
+                return t
+            end
+        end
+    end
+    return nil
+end
+
+local function request_visible_thumbnails()
+    local want_ids = {}
+    for _, w in ipairs(window_list) do
+        if w.thumb_id and w.thumb_id ~= "" then
+            table.insert(want_ids, w.thumb_id)
+        end
+    end
+    if #want_ids > 0 then
+        pcall(sys.call, "thumbnails.want", want_ids)
+    end
+end
+
+local function update_window_thumbs()
+    if #window_list == 0 then return end
+    local used_ids = {}
+    local changed = false
+    for _, w in ipairs(window_list) do
+        local t = match_thumbnail(w, used_ids)
+        local pic = (t and t.picture) or ""
+        local thumb_id = (t and t.id) or tostring(w.id)
+        local has = (pic ~= "")
+        if w.thumb ~= pic or w.has_thumb ~= has or w.thumb_id ~= thumb_id then
+            w.thumb = pic
+            w.has_thumb = has
+            w.thumb_id = thumb_id
+            changed = true
+        end
+    end
+    if changed then
+        model.wins = window_list
+        request_visible_thumbnails()
+    end
+end
+
+sys.watch("thumbnails", function(info)
+    thumbnails_list = (info and info.list) or {}
+    thumbnails_by_id = {}
+    for _, t in ipairs(thumbnails_list) do
+        if t.id and t.id ~= "" then
+            thumbnails_by_id[t.id] = t
+        end
+    end
+    if fact.open == true or fact.open == 1 then
+        update_window_thumbs()
+    end
+end)
+
 local function refresh_windows()
     run("niri", { "msg", "-j", "windows" }, function(out)
         local ok, all = pcall(json.decode, out or "")
@@ -54,16 +134,38 @@ local function refresh_windows()
         for _, w in ipairs(all) do
             local app = w.app_id or ""
             if app ~= "" and app ~= "pleamar" then
-                wins[#wins + 1] = { id = w.id, title = w.title or "", app_id = app, icon = icon_for(app), t = focus_secs(w) }
+                wins[#wins + 1] = {
+                    id = w.id,
+                    title = w.title or "",
+                    app_id = app,
+                    icon = icon_for(app),
+                    t = focus_secs(w),
+                    thumb = "",
+                    has_thumb = false,
+                    thumb_id = tostring(w.id),
+                }
             end
         end
-        table.sort(wins, function(a, b) return a.t > b.t end)      -- most recent first
+        table.sort(wins, function(a, b) return a.t > b.t end) -- most recent first
         while #wins > 7 do
             table.remove(wins)
         end
+
+        local used_ids = {}
+        for _, w in ipairs(wins) do
+            local t = match_thumbnail(w, used_ids)
+            if t then
+                w.thumb_id = t.id
+                w.thumb = t.picture or ""
+                w.has_thumb = (w.thumb ~= "")
+            end
+        end
+
         window_list = wins
         model.wins = wins
-        -- the first press goes to the previous window (the current one is first)
+        request_visible_thumbnails()
+
+        -- the first press goes to the previous window (current one is first)
         local first = (#wins > 1) and 1 or 0
         fact.sel = first
         show_title(first)
@@ -73,6 +175,8 @@ end
 on("fact:open", function(v)
     if v == true or v == 1 then
         refresh_windows()
+    else
+        pcall(sys.call, "thumbnails.want") -- stop asking when closed
     end
 end)
 
@@ -92,6 +196,7 @@ end)
 
 on("switch_to", function(idx)
     fact.open = false
+    pcall(sys.call, "thumbnails.want")
     local i = tonumber(idx) or fact.sel or 0
     local target = window_list[i + 1]
     if target and target.id then

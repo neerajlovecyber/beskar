@@ -169,6 +169,7 @@ local COMMANDS = {
     { "Notifications", "notifications", function() say("topbar", "emit open_notifications") end },
     { "Control Center", "control", function() say("topbar", "emit open_control_center") end },
     { "Music", "music", function() say("topbar", "emit open_music") end },
+    { "Window Overview", "overview", function() say("topbar", "emit open_panel 10") end },
 }
 
 -- ── the list ─────────────────────────────────────────────────────

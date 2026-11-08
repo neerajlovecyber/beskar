@@ -5,75 +5,75 @@ scene MacAppSwitcher {
     include "common/theme.plm"
     include "common/here.plm"
     surface sheet {
-        size: 700, 160
+        size: 1160, 220
         anchor: center
         level: overlay
         keyboard: exclusive while open
         screens: each
         open: (open or seen > 0.02) and open_screen == screen.index
 
-    zone box dismiss { from: 0, 0; size: 700, 160; active: open }
+        zone box dismiss { from: 0, 0; size: 1160, 220; active: open }
 
-    group {
-        move: 40, 20
-        pivot: 310, 60
-        scale: scale
-        opacity: seen
+        group {
+            move: 0, 24
+            pivot: 580, 86
+            scale: scale
+            opacity: seen
 
-        // Floating Capsule
-        body {
-            color: bg_color
-            glass: glass_amt
-            lens: false
-            frost: 100%
-            dispersion: 0
-            refraction: 0
-            tint: tint_amt
-            rim: rim_amt
-            box { from: 310 - bw / 2, 0; size: bw, 132; corner: 26 }
-        }
-        box { from: 310 - bw / 2, 0; size: bw, 132; corner: 26; stroke: 1; color: stroke_c; opacity: stroke_op }
+            // Floating Capsule
+            body {
+                color: bg_color
+                glass: glass_amt
+                lens: false
+                frost: 100%
+                dispersion: 0
+                refraction: 0
+                tint: tint_amt
+                rim: rim_amt
+                box { from: 580 - bw / 2, 0; size: bw, 172; corner: 24 }
+            }
+            box { from: 580 - bw / 2, 0; size: bw, 172; corner: 24; stroke: 1; color: stroke_c; opacity: stroke_op }
 
-        //  the title of the window that is selected
-        text sel_title {
-            at: 310, 112
-            anchor: center center
-            size: 12
-            weight: 600
-            color: ink_c
-            width: bw - 40
-            align: center
-            lines: 1
-        }
+            // Horizontal Strip of Window Cards
+            row app_strip {
+                at: 580, 16
+                gap: 12
+                anchor: center top
+                align: center
 
-        // Horizontal Icons Strip
-        row app_strip {
-            at: 310, 18
-            gap: 12
-            anchor: center top
-            align: center
+                for w in wins {
+                    AppTile(w)
+                }
+            }
 
-            for w in wins {
-                AppTile(w)
+            // Title of the selected window
+            text sel_title {
+                at: 580, 148
+                anchor: center center
+                size: 12
+                weight: 600
+                color: ink_c
+                width: bw - 40
+                align: center
+                lines: 1
             }
         }
-    }
         on press dismiss { open = false }
-    on press right dismiss { }
+        on press right dismiss { }
     }
 
     permissions {
-        services: "apps", "window", "say:topbar"
+        services: "apps", "window", "thumbnails", "thumbnails.*", "say:topbar"
         run: "niri msg"
     }
 
     fact open = false
     fact sel = 0
     text sel_title = ""
-    prop bw = 200 ~calm
-    follow bw = max(200, wins.count * 84 + 32)
+    prop bw = 260 ~calm
+    follow bw = max(260, wins.count * 152 + 32)
 
-    model wins max 7 { id: number; title: text; app_id: text; icon: image 48, 48 }
+    model wins max 7 { id: number; title: text; app_id: text; icon: image 48, 48; thumb: image 132, 78; has_thumb: bool }
 
     prop seen = 0 ~quick
     prop scale = 0.95 ~lively
@@ -91,40 +91,60 @@ scene MacAppSwitcher {
     event prev_app ->
     event switch_to ->
 
-    // Outside dismiss
-    // A scene that never uses the right button is closed by pleamar on any right click
-    // (its prototype emergency exit). This empty rule says the right button is ours: nothing happens.
-
-
     component AppTile(w: record) {
-        size: 72, 72
+        size: 140, 112
         prop on = 0 ~quick
         follow on = if(sel == w.index, 1, 0)
 
-        // Blue highlight capsule
+        // Blue highlight capsule / background card
         box hit {
             from: 0, 0
-            size: 72, 72
+            size: 140, 112
             corner: 14
-            color: accent_c
-            opacity: on * 28%
+            color: if(sel == w.index, accent_c, item_solid)
+            opacity: if(sel == w.index, 24%, 40%)
             cursor: pointer
         }
         box {
             from: 0, 0
-            size: 72, 72
+            size: 140, 112
             corner: 14
-            stroke: 1.5
-            color: accent_c
-            opacity: on * 90%
+            stroke: if(sel == w.index, 2, 1)
+            color: if(sel == w.index, accent_c, stroke_c)
+            opacity: if(sel == w.index, 90%, stroke_op)
         }
 
-        // App Icon or Fallback
+        // Preview thumbnail area (clipped)
         group {
-            move: 36, 32
-            image w.icon { at: -24, -24; size: 48, 48 }
-            // Running indicator dot
-            ellipse { at: 0, 30; radius: 2.5; color: ink_c; opacity: 75% }
+            move: 4, 4
+            clip box { from: 0, 0; size: 132, 78; corner: 10 }
+            box { from: 0, 0; size: 132, 78; corner: 10; color: bg_color; opacity: 50% }
+            image w.thumb { at: 0, 0; size: 132, 78; fit: cover; show: w.has_thumb }
+            group {
+                show: not w.has_thumb
+                move: 66, 39
+                image w.icon { at: -22, -22; size: 44, 44 }
+            }
+        }
+
+        // App Icon Badge in corner of preview
+        group {
+            move: 8, 56
+            box { from: 0, 0; size: 22, 22; corner: 6; color: bg_color; opacity: 90% }
+            box { from: 0, 0; size: 22, 22; corner: 6; stroke: 1; color: stroke_c; opacity: stroke_op }
+            image w.icon { at: 2, 2; size: 18, 18 }
+        }
+
+        // Window Title below preview
+        text w.title {
+            at: 70, 96
+            anchor: center center
+            size: 10.5
+            weight: if(sel == w.index, 600, 400)
+            color: if(sel == w.index, ink_c, ink_sub)
+            width: 126
+            align: center
+            lines: 1
         }
 
         on press hit { emit switch_to(w.index) }
