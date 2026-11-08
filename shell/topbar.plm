@@ -25,7 +25,7 @@ scene MacTopBar {
     //  the weather, and the dock's apps. Undeclared is nothing.
     permissions {
         services: "clock", "network", "battery", "window", "tray", "tray.*", "apps", "apps.launch", "audio", "audio.*", "brightness", "brightness.*", "media", "media.*", "thumbnails", "thumbnails.*", "say:music", "say:capture", "say:control_center", "say:spotlight", "say:notifications", "say:dashboard", "say:settings", "say:session", "say:appswitcher", "say:lock", "say:clipboard", "say:wallpapers", "say:widget_bar", "say:polkit", "say:welcome", "say:widgets", "say:overview"
-        run: "niri msg", "curl", "sh", "systemctl"
+        run: "niri msg", "curl", "sh", "systemctl", "xdg-open", "notify-send"
     }
 
     service clock as now { time: text = "--:--"; date: text }
@@ -93,6 +93,23 @@ scene MacTopBar {
     model mon max 4 { active: number = 1; busy: number = 0; nws: number = 1 }
     text weather_temp = "--°"
     text weather_icon = "󰖐"
+
+    //  Centre pill live activities: 0 ambient · 1 charging · 2 screenshot · 3 timer done · 4 privacy
+    fact act_kind = 0
+    fact bat_charging = false
+    fact bat_percent = 0
+    text shot_path = ""
+    image shot_thumb = from shot_path, 20, 20
+    fact timer_on = false
+    text timer_text = "0:00"
+    fact priv_act_cam = false
+    text priv_act_text = ""
+
+    event timer_start ->
+    event timer_cancel ->
+    event dismiss_timer_done ->
+    event screenshot_taken ->
+    event open_screenshot ->
 
     event pm_item ->
     event osd_vol_up ->
@@ -570,24 +587,82 @@ scene MacTopBar {
             text if(osd_muted and osd_kind == 0, "0", "{osd_level * 100, 0}") { at: 244, cy; anchor: right center; size: 12; weight: 700; color: ink_c }
         }
 
-        // ── centre island: clock · weather · sound ───────────────
+        // ── centre island: clock · weather · sound · live activities ───────────────
         row center_row {
             at: screen.width / 2, cy
             anchor: center middle
             opacity: 1 - max(bnv, ov)
-            gap: 12
+            gap: 10
             align: center
 
+            // ── 1. Live activity: Charging ──
+            row act_charge {
+                show: act_kind == 1
+                gap: 6
+                align: center
+                text "󱐋" { size: 13; color: if(bat_charging, ok_c, ink_sub) }
+                text if(bat_charging, "Charging", "On battery") { size: 12.5; weight: 600; color: ink_c }
+                text "{bat_percent}%" { size: 12.5; weight: 700; color: hint_c }
+            }
+
+            // ── 2. Live activity: Screenshot saved ──
+            row act_shot {
+                show: act_kind == 2
+                gap: 8
+                align: center
+                cursor: pointer
+                group {
+                    size: 20, 20
+                    clip box { from: 0, 0; size: 20, 20; corner: 4 }
+                    box { from: 0, 0; size: 20, 20; corner: 4; color: item_solid }
+                    image shot_thumb { at: 0, 0; size: 20, 20; fit: cover }
+                }
+                text "Screenshot saved" { size: 12.5; weight: 600; color: ink_c }
+            }
+
+            // ── 3. Live activity: Timer done ──
+            row act_timer_done {
+                show: act_kind == 3
+                gap: 7
+                align: center
+                cursor: pointer
+                ellipse { at: 6, 6; radius: 5; color: warn_c }
+                text "Timer done" { size: 12.5; weight: 700; color: ink_c }
+            }
+
+            // ── 4. Live activity: Camera / Microphone in use ──
+            row act_privacy {
+                show: act_kind == 4
+                gap: 7
+                align: center
+                group {
+                    size: 10, 10
+                    let dot_col = if(priv_act_cam, ok_c, warn_c)
+                    ellipse { at: 5, 5; radius: 5; color: dot_col; opacity: 30% }
+                    ellipse { at: 5, 5; radius: 3.4; color: dot_col }
+                }
+                text priv_act_text { size: 12.5; weight: 600; color: ink_c }
+            }
+
+            // ── Ambient activities (visible when no takeover activity is active) ──
             row rec_chip {
-                show: rec_on
+                show: act_kind == 0 and rec_on
                 gap: 6
                 align: center
                 cursor: pointer
                 ellipse { at: 4.5, 4.5; radius: 4.5; color: danger_c; opacity: 0.55 + 0.45 * (0.5 + 0.5 * rdot) }
                 text rec_time { size: 12; weight: 700; color: ink_c }
             }
+            row timer_chip {
+                show: act_kind == 0 and timer_on
+                gap: 6
+                align: center
+                cursor: pointer
+                ellipse { at: 6, 6; radius: 4.5; stroke: 1.5; color: warn_c }
+                text timer_text { size: 12; weight: 700; color: ink_c }
+            }
             row music_chip {
-                show: m_on
+                show: act_kind == 0 and m_on
                 gap: 7
                 align: center
                 cursor: pointer
@@ -607,6 +682,7 @@ scene MacTopBar {
                 }
             }
             row clock {
+                show: act_kind == 0
                 gap: 6
                 align: center
                 cursor: pointer
@@ -614,7 +690,7 @@ scene MacTopBar {
             }
 
             row {
-                show: pref_weather
+                show: act_kind == 0 and pref_weather
                 gap: 4
                 align: center
                 text weather_icon { size: 12; color: hint_c }
@@ -625,10 +701,16 @@ scene MacTopBar {
         on press clock { last_screen = screen.index; emit open_dashboard }
         on press rec_chip { emit rec_stop }
         on press right rec_chip { }
+        on press timer_chip { emit timer_cancel }
+        on press right timer_chip { }
         on press music_chip { last_screen = screen.index; emit open_music }
         on press right music_chip { }
-        //  Right button is ours (see the tray): a right click on anything here does nothing
-        //  instead of quitting the shell.
+        on press act_shot { emit open_screenshot }
+        on press right act_shot { }
+        on press act_timer_done { emit dismiss_timer_done }
+        on press right act_timer_done { }
+        on press right act_charge { }
+        on press right act_privacy { }
         on press right clock { }
 
         // ── right island: tray · network · battery · control centre · notifications ──

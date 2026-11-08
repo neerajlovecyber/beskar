@@ -268,7 +268,16 @@ sys.watch("notifications", function(list)
     if first_list then
         first_list = false               -- what was already waiting when we started is not news
     elseif #fresh > 0 then
-        banner_show()
+        local show_b = false
+        for _, n in ipairs(fresh) do
+            if n.app ~= "Timer" then
+                show_b = true
+                break
+            end
+        end
+        if show_b then
+            banner_show()
+        end
     end
 end)
 

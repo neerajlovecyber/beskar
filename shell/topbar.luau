@@ -37,23 +37,64 @@ end
 local owner = {}        -- island → id of the panel that owns its glass
 local heights = {}      -- id → last height it reported
 
+local PRIORITIES = {
+    [3] = 100,  -- dashboard panel
+    [9] = 100,  -- music panel
+    [7] = 70,   -- banner
+    [8] = 60,   -- volume / brightness
+    [11] = 50,  -- timer done
+    [12] = 40,  -- charging
+    [13] = 30,  -- screenshot
+    [14] = 20,  -- privacy (camera/mic)
+}
+
+local charging_timer = nil
+local shot_timer = nil
+local timer_done_timer = nil
+local priv_timer = nil
+local last_shot_file = ""
+
+local osd_release      -- forward declaration
+
+local function cancel_activity(id)
+    if id == 8 and osd_release then
+        osd_release()
+    elseif id == 11 then
+        if timer_done_timer then cancel(timer_done_timer); timer_done_timer = nil end
+    elseif id == 12 then
+        if charging_timer then cancel(charging_timer); charging_timer = nil end
+    elseif id == 13 then
+        if shot_timer then cancel(shot_timer); shot_timer = nil end
+    elseif id == 14 then
+        if priv_timer then cancel(priv_timer); priv_timer = nil end
+    elseif id == 7 then
+        pcall(sys.call, "say", "notifications", "fact banner_on false")
+    end
+    if owner.cp == id then
+        owner.cp = nil
+    end
+    fact.act_kind = 0
+end
+
 local last_toast_screen = nil      -- the monitor with the focus (kept up to date below)
 
 on("panel_open", function(id)
     local p = BY_ID[tonumber(id) or 0]
     if p then
         if p.kind == 1 then
-            -- a banner never takes the island from a panel that is open there
-            if owner[p.island] and owner[p.island] ~= p.id then
+            -- a banner never takes the island from a panel that is open there or something higher priority
+            if owner[p.island] and (PRIORITIES[owner[p.island]] or 0) >= 70 then
                 pcall(sys.call, "say", "notifications", "fact banner_on false")
                 return
             end
+            if owner[p.island] and owner[p.island] ~= p.id then
+                cancel_activity(owner[p.island])
+            end
             fact[p.island .. "_screen"] = last_toast_screen or 0
-        elseif owner[p.island] == 7 then
-            pcall(sys.call, "say", "notifications", "fact banner_on false")      -- a real panel opens: the banner leaves
-        end
-        if owner[p.island] == 8 and p.kind ~= 1 then
-            owner[p.island] = nil                                                -- … and so does the volume feedback
+        else
+            if owner[p.island] and owner[p.island] ~= p.id then
+                cancel_activity(owner[p.island])
+            end
         end
         if p.island == "cp" then
             fact.cp_kind = p.kind or 0
@@ -84,6 +125,7 @@ on("panel_close", function(id)
     if p and owner[p.island] == p.id then
         owner[p.island] = nil
         fact[p.island .. "_on"] = false
+        fact.act_kind = 0
     end
 end)
 
@@ -174,7 +216,7 @@ local OSD_ID = 8
 local OSD_MS = 1500
 local osd_timer = nil
 
-local function osd_release()
+osd_release = function()
     if osd_timer then
         cancel(osd_timer)
         osd_timer = nil
@@ -186,11 +228,11 @@ local function osd_release()
 end
 
 local function osd_show(kind, level, muted)
-    if owner.cp and owner.cp ~= OSD_ID and owner.cp ~= 7 then
-        return                                       -- the dashboard has the island
+    if owner.cp and (PRIORITIES[owner.cp] or 0) > 60 then
+        return                                       -- panel (100) or banner (70) has the island
     end
-    if owner.cp == 7 then
-        pcall(sys.call, "say", "notifications", "fact banner_on false")
+    if owner.cp and owner.cp ~= OSD_ID then
+        cancel_activity(owner.cp)
     end
     fact.osd_kind = kind
     fact.osd_level = math.min(1, math.max(0, level or 0))
@@ -246,6 +288,149 @@ on("osd_br_down", function()
 end)
 on("osd_popup", function()
     osd_show(0, last_vol or 0.5, last_mute)
+end)
+
+-- ── live activity: charging ──────────────────────────────────────
+local function show_charging_activity(ch, pct)
+    if owner.cp and (PRIORITIES[owner.cp] or 0) > 40 then
+        return
+    end
+    if owner.cp and owner.cp ~= 12 then
+        cancel_activity(owner.cp)
+    end
+    owner.cp = 12
+    fact.bat_charging = ch
+    fact.bat_percent = pct
+    fact.act_kind = 1
+    if charging_timer then cancel(charging_timer) end
+    charging_timer = after(3000, function()
+        charging_timer = nil
+        if owner.cp == 12 then
+            owner.cp = nil
+            fact.act_kind = 0
+        end
+    end)
+end
+
+local last_charging = nil
+pcall(sys.watch, "battery", function(b)
+    if b and b.charging ~= nil then
+        local ch = b.charging == true
+        local pct = math.floor((b.percent or 0) + 0.5)
+        if last_charging ~= nil and ch ~= last_charging then
+            show_charging_activity(ch, pct)
+        end
+        last_charging = ch
+    end
+end)
+
+-- ── live activity: screenshot taken ──────────────────────────────
+local function show_screenshot_activity(file)
+    if owner.cp and (PRIORITIES[owner.cp] or 0) > 30 then
+        return
+    end
+    if owner.cp and owner.cp ~= 13 then
+        cancel_activity(owner.cp)
+    end
+    owner.cp = 13
+    last_shot_file = file
+    text.shot_path = file
+    fact.act_kind = 2
+    if shot_timer then cancel(shot_timer) end
+    shot_timer = after(3000, function()
+        shot_timer = nil
+        if owner.cp == 13 then
+            owner.cp = nil
+            fact.act_kind = 0
+        end
+    end)
+end
+
+on("text:shot_path", function(file)
+    if file and file ~= "" then
+        show_screenshot_activity(tostring(file))
+    end
+end)
+
+on("screenshot_taken", function(file)
+    local f = (file and tostring(file) ~= "" and tostring(file) ~= "nil") and tostring(file) or text.shot_path
+    if f and f ~= "" then
+        show_screenshot_activity(f)
+    end
+end)
+
+on("open_screenshot", function()
+    if last_shot_file and last_shot_file ~= "" then
+        run("xdg-open", { last_shot_file }, nil, { output = false })
+        if owner.cp == 13 then
+            cancel_activity(13)
+        end
+    end
+end)
+
+-- ── live activity: timer countdown and done alert ────────────────
+local timer_remaining = 0
+local timer_timer = nil
+
+local function fmt_timer(s)
+    if s >= 3600 then
+        return string.format("%d:%02d:%02d", s // 3600, (s % 3600) // 60, s % 60)
+    else
+        return string.format("%d:%02d", s // 60, s % 60)
+    end
+end
+
+local function timer_tick()
+    if timer_remaining <= 0 then
+        timer_remaining = 0
+        fact.timer_on = false
+        timer_timer = nil
+        -- Alert with sound-free notification
+        run("notify-send", { "-a", "Timer", "-i", "alarm", "-u", "critical", "-h", "string:sound-name:none", "Timer done", "Time's up!" }, nil, { output = false })
+        -- Show Timer done in pill for 5 s (priority 50)
+        if not (owner.cp and (PRIORITIES[owner.cp] or 0) > 50) then
+            if owner.cp and owner.cp ~= 11 then
+                cancel_activity(owner.cp)
+            end
+            owner.cp = 11
+            fact.act_kind = 3
+            if timer_done_timer then cancel(timer_done_timer) end
+            timer_done_timer = after(5000, function()
+                timer_done_timer = nil
+                if owner.cp == 11 then
+                    owner.cp = nil
+                    fact.act_kind = 0
+                end
+            end)
+        end
+        return
+    end
+    text.timer_text = fmt_timer(timer_remaining)
+    timer_remaining = timer_remaining - 1
+    timer_timer = after(1000, timer_tick)
+end
+
+on("timer_start", function(sec)
+    sec = tonumber(sec) or 0
+    if sec <= 0 then return end
+    if timer_timer then cancel(timer_timer); timer_timer = nil end
+    if timer_done_timer then cancel(timer_done_timer); timer_done_timer = nil end
+    if owner.cp == 11 then owner.cp = nil; fact.act_kind = 0 end
+    timer_remaining = sec
+    fact.timer_on = true
+    timer_tick()
+end)
+
+on("timer_cancel", function()
+    if timer_timer then cancel(timer_timer); timer_timer = nil end
+    fact.timer_on = false
+    timer_remaining = 0
+end)
+
+on("dismiss_timer_done", function()
+    if owner.cp == 11 then
+        cancel_activity(11)
+    end
 end)
 
 -- Keep the notification banner on the monitor with the focus: ask niri now and then, tell it when it changes.
@@ -959,12 +1144,45 @@ mic=$(pactl list short source-outputs 2>/dev/null | wc -l)
 [ "$mic" -gt 0 ] && mic=1
 echo "$cam $mic"
 ]]
+
+local last_cam, last_mic = nil, nil
+
+local function show_privacy_activity(is_cam)
+    if owner.cp and (PRIORITIES[owner.cp] or 0) > 20 then
+        return
+    end
+    if owner.cp and owner.cp ~= 14 then
+        cancel_activity(owner.cp)
+    end
+    owner.cp = 14
+    fact.priv_act_cam = is_cam
+    text.priv_act_text = is_cam and "Camera in use" or "Microphone in use"
+    fact.act_kind = 4
+    if priv_timer then cancel(priv_timer) end
+    priv_timer = after(2500, function()
+        priv_timer = nil
+        if owner.cp == 14 then
+            owner.cp = nil
+            fact.act_kind = 0
+        end
+    end)
+end
+
 local function poll_privacy()
     run("sh", { "-c", PRIVACY }, function(out)
         local cam, mic = (out or ""):match("(%d) (%d)")
         if cam then
-            fact.priv_cam = cam == "1"
-            fact.priv_mic = mic == "1"
+            local is_cam = cam == "1"
+            local is_mic = mic == "1"
+            fact.priv_cam = is_cam
+            fact.priv_mic = is_mic
+            if last_cam ~= nil and (not last_cam) and is_cam then
+                show_privacy_activity(true)
+            elseif last_mic ~= nil and (not last_mic) and is_mic then
+                show_privacy_activity(false)
+            end
+            last_cam = is_cam
+            last_mic = is_mic
         end
     end)
 end

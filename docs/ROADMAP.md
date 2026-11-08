@@ -23,7 +23,7 @@ What is missing compared with iNiR / iRiS 3.0, in the order we want to do it. Ti
 
 ## 2. Big visible features
 - [x] **Window overview and live previews** (pleamar `thumbnails` service) in the app switcher, an overview and the dock
-- [ ] **The Island, second round**: timers, charging, screenshots, camera / mic as live activities in the centre pill
+- [x] **The Island, second round**: timers, charging, screenshots, camera / mic as live activities in the centre pill
 - [ ] **Widgets, second round**
   - [ ] Notes and to-do (saved to a file)
   - [ ] World clock and timers

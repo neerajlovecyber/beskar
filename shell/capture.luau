@@ -42,7 +42,7 @@ end
 
 local function finish_still(file, title)
     run("sh", { "-c", 'wl-copy --type image/png < "$1"', "x", file }, nil, { output = false })
-    notify(title, "Saved to Pictures/Screenshots and copied to the clipboard")
+    to_topbar("text shot_path " .. file)
 end
 
 on("capture", function()

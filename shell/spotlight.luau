@@ -153,7 +153,55 @@ local function say(scene, words)
     pcall(sys.call, "say", scene, words)
 end
 
+local function parse_timer_spec(s)
+    local raw = s:lower():gsub("%s+", "")
+    if raw == "" then return nil end
+    if raw:match("^%d+$") then
+        local m = tonumber(raw)
+        if m and m > 0 then
+            return m * 60, string.format("%d min", m)
+        end
+    end
+    local h, m = raw:match("^(%d+)h(%d+)m?$")
+    if h and m then
+        local nh, nm = tonumber(h), tonumber(m)
+        if nh and nm then
+            return nh * 3600 + nm * 60, string.format("%dh %dm", nh, nm)
+        end
+    end
+    local only_h = raw:match("^(%d+)h$")
+    if only_h then
+        local nh = tonumber(only_h)
+        if nh and nh > 0 then return nh * 3600, string.format("%d hour", nh) end
+    end
+    local only_m = raw:match("^(%d+)m$")
+    if only_m then
+        local nm = tonumber(only_m)
+        if nm and nm > 0 then return nm * 60, string.format("%d min", nm) end
+    end
+    local only_s = raw:match("^(%d+)s$")
+    if only_s then
+        local ns = tonumber(only_s)
+        if ns and ns > 0 then return ns, string.format("%d sec", ns) end
+    end
+    local hours = tonumber(raw:match("(%d+)h")) or 0
+    local mins = tonumber(raw:match("(%d+)m")) or 0
+    local secs = tonumber(raw:match("(%d+)s")) or 0
+    if hours > 0 or mins > 0 or secs > 0 then
+        local total = hours * 3600 + mins * 60 + secs
+        local parts = {}
+        if hours > 0 then parts[#parts + 1] = hours .. "h" end
+        if mins > 0 then parts[#parts + 1] = mins .. "m" end
+        if secs > 0 then parts[#parts + 1] = secs .. "s" end
+        return total, table.concat(parts, " ")
+    end
+    return nil
+end
+
 local COMMANDS = {
+    { "Timer 5 min", "timer 5", function() say("topbar", "emit timer_start 300") end },
+    { "Timer 10 min", "timer 10", function() say("topbar", "emit timer_start 600") end },
+    { "Timer 25 min", "timer 25", function() say("topbar", "emit timer_start 1500") end },
     { "Lock Screen", "lock", function() say("lock", "fact locked true") end },
     { "Sleep", "suspend", function() run("systemctl", { "suspend" }, nil, { output = false }) end },
     { "Log Out…", "logout", function() say("session", "fact kind 2"); say("topbar", "emit open_panel 5") end },
@@ -199,6 +247,23 @@ local function build()
             end
         end
         return
+    end
+
+    -- a timer countdown: `timer 7`, `timer 1h30`, `timer 25m`
+    local tspec = low:match("^timer%s*(.*)$")
+    if tspec and tspec ~= "" then
+        local sec, desc = parse_timer_spec(tspec)
+        if sec and sec > 0 then
+            entries[#entries + 1] = {
+                name = "Timer " .. desc,
+                sub = "Start countdown · Enter to start",
+                kind = 3,
+                icon = "󰔛",
+                run = function()
+                    say("topbar", "emit timer_start " .. sec)
+                end,
+            }
+        end
     end
 
     -- a sum
