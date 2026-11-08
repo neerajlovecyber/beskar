@@ -461,7 +461,7 @@ build_dock = function()
         local key = e and lower(e.id) or ("app:" .. lower(w.app_id))
         local g = groups[key]
         if not g then
-            g = { entry = e, app_id = w.app_id or "", wins = {} }
+            g = { entry = e, app_id = w.app_id or "", wins = {}, pid = w.pid }
             groups[key] = g
             order[#order + 1] = key
         end
@@ -470,7 +470,16 @@ build_dock = function()
     local list, used = {}, {}
     for _, id in ipairs(pins) do
         local e = by_key[lower(id)]
-        if e and not used[lower(e.id)] and #list < 12 then
+        local aid, cmd = id:match("^app:([^|]+)|(.*)$")
+        if aid then
+            -- an app with no (visible) desktop entry, pinned from its running window: we keep how to start it
+            local key = "app:" .. lower(aid)
+            if not used[key] and #list < 12 then
+                used[key] = true
+                list[#list + 1] = { name = pretty_app(aid), icon = lower(aid), pinned = true, cmd = cmd, pinstr = id,
+                                    wins = groups[key] and groups[key].wins or {} }
+            end
+        elseif e and not used[lower(e.id)] and #list < 12 then
             local key = lower(e.id)
             used[key] = true
             list[#list + 1] = { entry = e, name = name_of(e), icon = e.icon or "", pinned = true,
@@ -482,13 +491,13 @@ build_dock = function()
             local g = groups[key]
             local e = g.entry
             list[#list + 1] = { entry = e, name = e and name_of(e) or pretty_app(g.app_id), icon = e and e.icon or lower(g.app_id),
-                                pinned = false, wins = g.wins }
+                                pinned = false, wins = g.wins, app_id = g.app_id, pid = g.pid }
         end
     end
     items = list
     local rows = {}
     for i, it in ipairs(list) do
-        rows[i] = { icon = it.icon, name = it.name, running = #it.wins > 0, pinned = it.pinned, canpin = it.entry ~= nil }
+        rows[i] = { icon = it.icon, name = it.name, running = #it.wins > 0, pinned = it.pinned, canpin = it.entry ~= nil or it.cmd ~= nil or it.pid ~= nil }
     end
     model.dock_items = rows
 end
@@ -509,12 +518,36 @@ on("dock_click", function(i)
         run("niri", { "msg", "action", "focus-window", "--id", tostring(it.wins[1]) }, nil, { output = false })
     elseif it.entry then
         launch(it.entry)
+    elseif it.cmd and it.cmd ~= "" then
+        run("sh", { "-c", "setsid -f " .. it.cmd .. " >/dev/null 2>&1" }, nil, { output = false })
     end
 end)
 
 on("dock_pin", function(i)
     local it = items[(i or 0) + 1]
-    if not it or not it.entry then
+    if not it then
+        return
+    end
+    if not it.entry then
+        if it.cmd then            -- unpin an app we pinned by its window
+            local out = {}
+            for _, id in ipairs(pinned or default_pins()) do
+                if id ~= it.pinstr then out[#out + 1] = id end
+            end
+            save_pins(out)
+            build_dock()
+        elseif it.pid then        -- pin: learn the command line from /proc
+            local aid = it.app_id
+            run("sh", { "-c", 'P=/proc/' .. tostring(it.pid) .. '; A=$(tr "\\0" "\\n" < $P/environ 2>/dev/null | sed -n "s/^APPIMAGE=//p" | head -1); if [ -n "$A" ]; then echo "$A"; else tr "\\0" " " < $P/cmdline; fi' }, function(out)
+                local cmd = (out or ""):gsub("%s+$", ""):gsub("[\n|]", " ")
+                if cmd == "" then return end
+                local list = {}
+                for _, id in ipairs(pinned or default_pins()) do list[#list + 1] = id end
+                list[#list + 1] = "app:" .. aid .. "|" .. cmd
+                save_pins(list)
+                build_dock()
+            end)
+        end
         return
     end
     local current = {}
