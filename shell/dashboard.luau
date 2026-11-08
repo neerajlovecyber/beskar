@@ -11,7 +11,16 @@ paint_clock()
 every(5000, paint_clock)
 on("fact:hour12", paint_clock)
 
-local stats_cmd = [[sh -c "awk '{print int($1*15)}' /proc/loadavg; free | grep Mem | awk '{print int($3/$2*100)}'; df / | tail -1 | tr -d '%' | awk '{print $5}'; date +'%B:%d:%A'"]]
+-- Real CPU use: /proc/stat read twice, 0.4 s apart. (The old command was wrapped in a second `sh -c "…"`, so the
+-- outer shell ate every $1 / $2 / $5 and the numbers were always the defaults.)
+local stats_cmd = [[
+a=$(awk '/^cpu /{print $2+$3+$4+$5+$6+$7+$8, $5+$6}' /proc/stat); sleep 0.4
+b=$(awk '/^cpu /{print $2+$3+$4+$5+$6+$7+$8, $5+$6}' /proc/stat)
+echo "$a $b" | awk '{d=$3-$1; i=$4-$2; print (d>0) ? int((d-i)*100/d+0.5) : 0}'
+awk '/MemTotal/{t=$2} /MemAvailable/{a=$2} END{print int((t-a)*100/t+0.5)}' /proc/meminfo
+df / | awk 'NR==2{gsub("%","",$5); print $5}'
+date +'%B:%d:%A'
+]]
 
 local function update_stats()
     pcall(run, "sh", {"-c", stats_cmd}, function(output, code)
@@ -21,9 +30,9 @@ local function update_stats()
                 lines[#lines + 1] = line
             end
             if #lines >= 3 then
-                local cpu = tonumber(lines[1]) or 15
-                local mem = tonumber(lines[2]) or 42
-                local disk = tonumber(lines[3]) or 55
+                local cpu = tonumber(lines[1]) or 0
+                local mem = tonumber(lines[2]) or 0
+                local disk = tonumber(lines[3]) or 0
                 fact.cpu_pct = math.min(100, math.max(0, cpu))
                 fact.mem_pct = math.min(100, math.max(0, mem))
                 fact.disk_pct = math.min(100, math.max(0, disk))
