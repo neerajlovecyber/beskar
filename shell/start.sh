@@ -71,11 +71,6 @@ start_shell() {
 
     echo "Starting macOS / iNiR Shell components (Pleamar daemon mode)..."
 
-    # Ensure wallpaper daemon is running and wallpaper is displayed
-    if ! awww query >/dev/null 2>&1; then
-        setsid awww-daemon </dev/null >/tmp/awww.log 2>&1 &
-        sleep 0.4
-    fi
     # Clipboard history: something has to store what is copied for the clipboard panel (Super+V) to list: one
     # watcher for text and one for images (up to 100 entries, kept across restarts by cliphist)
     if command -v wl-paste >/dev/null 2>&1 && command -v cliphist >/dev/null 2>&1; then
@@ -89,11 +84,10 @@ start_shell() {
     # Wallpapers that ship with Beskar go where the picker looks for them (never overwriting)
     mkdir -p "$HOME/.local/share/beskar/wallpapers"
     cp -n "$DIR"/assets/wallpapers/*.jpg "$HOME/.local/share/beskar/wallpapers/" 2>/dev/null || true
-    # The wallpaper chosen in the picker (Super+W) is put back; none chosen yet leaves what awww shows
-    WALLPAPER=$(cat "$HOME/.config/beskar/wallpaper" 2>/dev/null || true)
-    if [ -n "$WALLPAPER" ] && [ -f "$WALLPAPER" ]; then
-        awww img "$WALLPAPER" --transition-type none >/dev/null 2>&1 || true
-    fi
+    # The wallpaper (chosen in the picker, Super+W) is painted by pleamar itself: shell/wallpaper.plm, first, so the
+    # desktop is never bare. The old awww daemon is not used any more; stop one left from before.
+    pkill -x awww-daemon 2>/dev/null || true
+    setsid "$BIN" --no-hud --scene "$DIR/shell/wallpaper.plm" </dev/null >/tmp/pleamar_wallpaper.log 2>&1 &
 
     setsid "$BIN" --no-hud --scene "$DIR/shell/topbar.plm" </dev/null >/tmp/pleamar_topbar.log 2>&1 &
     PID_BAR=$!

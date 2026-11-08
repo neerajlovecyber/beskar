@@ -53,7 +53,7 @@ scene. The accent can follow your wallpaper.
 - **niri** (workspaces, windows and outputs are read with `niri msg`)
 - **[pleamar](https://github.com/k4ditano/pleamar)**, built from source: needs a Rust toolchain. `start.sh` builds it
   into `bin/` the first time if it is missing (expects a checkout at `cloned_repos/pleamar`)
-- **awww** (wallpaper daemon), **ImageMagick** (`magick`), **fd**, **curl**
+- **matugen** (colours from the wallpaper), **ImageMagick** (`magick`), **fd**, **curl**
 - **grim**, **slurp** and **wf-recorder** (screenshots and recording), **wl-clipboard** and **cliphist** (clipboard)
 - A **Nerd Font** (a few status glyphs), and a PipeWire/PulseAudio, NetworkManager and BlueZ desktop for the
   audio, Wi-Fi and Bluetooth pages

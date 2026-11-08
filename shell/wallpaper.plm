@@ -1,0 +1,50 @@
+// The wallpaper, painted by pleamar itself (no awww): one background-level surface per monitor under every window.
+// wallpaper.luau keeps ~/.config/beskar/wallpaper in step; the picker (wallpapers.luau) only says
+// `text wp_new <path>`. A new picture is revealed over the old one (fx 0 grows a circle from the top right, 1 fades,
+// 2 wipes from the left), then it becomes the old one.
+scene Wallpaper {
+    permissions {
+        run: "sh"
+    }
+
+    surface {
+        size: full, full
+        anchor: top_left
+        level: background
+        screens: each
+        keyboard: none
+    }
+
+    text wp_a_path = ""        // what is shown
+    text wp_b_path = ""        // what is coming in
+    text wp_new = ""           // the picker says what to show next
+    fact wp_fx = 0
+    fact wp_go = false
+    image wp_a = from wp_a_path, 0, 0
+    image wp_b = from wp_b_path, 0, 0
+
+    prop rv = 0
+    on change wp_go while wp_go { rv: 1 ~1300ms }
+    on change wp_go while not wp_go { rv: 0 }
+
+    box { from: 0, 0; size: screen.width, screen.height; color: #0b0c0f }
+    image wp_a { at: 0, 0; size: screen.width, screen.height; fit: cover }
+    group {
+        show: rv > 0.001
+        group {
+            show: wp_fx == 0
+            clip ellipse { at: screen.width * 0.85, screen.height * 0.1; radius: rv * (screen.width + screen.height) }
+            image wp_b { at: 0, 0; size: screen.width, screen.height; fit: cover }
+        }
+        group {
+            show: wp_fx == 1
+            opacity: rv
+            image wp_b { at: 0, 0; size: screen.width, screen.height; fit: cover }
+        }
+        group {
+            show: wp_fx == 2
+            clip box { from: 0, 0; size: screen.width * rv, screen.height }
+            image wp_b { at: 0, 0; size: screen.width, screen.height; fit: cover }
+        }
+    }
+}

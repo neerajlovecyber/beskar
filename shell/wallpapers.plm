@@ -1,6 +1,6 @@
 // Wallpaper strip (Super+W): it rises out of the dock. Scans your pictures, plus wallpapers that ship with Beskar and the system's,
 // shows them as thumbnails, and applies the one you click with a transition. As in Marea, the picture is
-// painted by a separate daemon (awww), so the wallpaper stays when the shell is not running.
+// painted by the wallpaper scene (wallpaper.plm, pleamar itself).
 import "common/palette.plm"
 
 scene MacWallpapers {
@@ -71,8 +71,8 @@ scene MacWallpapers {
     }
 
     permissions {
-        services: "say:spotlight", "say:clipboard", "say:music", "say:control_center", "say:notifications", "say:dashboard", "say:settings", "say:widget_bar", "say:topbar"
-        run: "sh", "awww", "magick", "fd"
+        services: "say:spotlight", "say:clipboard", "say:music", "say:control_center", "say:notifications", "say:dashboard", "say:settings", "say:widget_bar", "say:wallpaper", "say:topbar"
+        run: "sh", "magick", "fd"
     }
 
     //  Painted by wallpapers.luau: the five on screen, in one row.

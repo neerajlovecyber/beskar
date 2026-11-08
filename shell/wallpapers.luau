@@ -1,5 +1,5 @@
 -- Wallpaper picker logic. Like Marea's: the folders are scanned, small copies are made once and cached,
--- and the picture is painted by a daemon that outlives the shell (here `awww`, with a transition).
+-- and the picture is painted by the wallpaper scene (wallpaper.plm), with a transition.
 --
 --   Mine      ~/Pictures/wallpapers, ~/Pictures/Wallpapers, ~/Wallpapers (never the rest of ~/Pictures, and never
 --             files named screenshot / mock)
@@ -107,9 +107,9 @@ end
 
 -- ── what is on now ───────────────────────────────────────────────
 local function read_current(then_)
-    run("sh", { "-c", "awww query 2>/dev/null | head -1" }, function(out)
-        local p = out and out:match("image: ([^\n]+)")
-        if p and p ~= "" then
+    run("sh", { "-c", 'cat "$HOME/.config/beskar/wallpaper" 2>/dev/null | head -1' }, function(out)
+        local p = (out or ""):gsub("%s+$", "")
+        if p ~= "" then
             current = p
         end
         if then_ then
@@ -234,16 +234,9 @@ local function apply(w)
     end
     current = w.path
     paint()
-    local script = [[
-awww query >/dev/null 2>&1 || { setsid awww-daemon </dev/null >/dev/null 2>&1 & sleep 0.4; }
-awww img "$1" --transition-type grow --transition-pos 0.85,0.1 --transition-duration 1.4 --transition-fps 60
-mkdir -p "$HOME/.config/beskar" && printf '%s\n' "$1" > "$HOME/.config/beskar/wallpaper"
-]]
-    run("sh", { "-c", script, "x", w.path }, function(_, code)
-        if code ~= 0 then
-            log("wallpaper · awww failed for", w.path)
-        end
-    end)
+    -- Remember it (start.sh and the lock screen read this file) and let the wallpaper scene reveal it.
+    run("sh", { "-c", 'mkdir -p "$HOME/.config/beskar" && printf "%s\\n" "$1" > "$HOME/.config/beskar/wallpaper"', "x", w.path }, nil, { output = false })
+    pcall(sys.call, "say", "wallpaper", "text wp_new " .. w.path)
     if fact.accent_auto == true then
         accent_from(w.path)
     end
