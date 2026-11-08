@@ -11,17 +11,8 @@ local UNIT, GAP = 160, 16
 local GRID = 16
 local TOP_SAFE, SIDE_SAFE = 40, 12     -- the frame's ring and top bar
 
-local KINDS = {
-    { id = 1, name = "Clock",    icon = "󰥔", sizes = { 0, 1, 2 }, def = 1 },
-    { id = 2, name = "Date",     icon = "󰃭", sizes = { 0, 1 },    def = 0 },
-    { id = 3, name = "Weather",  icon = "󰖙", sizes = { 0, 1, 2 }, def = 0 },
-    { id = 4, name = "Battery",  icon = "󰁹", sizes = { 0, 1 },    def = 0 },
-    { id = 5, name = "System",   icon = "󰍹", sizes = { 0, 1, 2 }, def = 1 },
-    { id = 6, name = "Music",    icon = "󰎆", sizes = { 1 },       def = 1 },
-    { id = 7, name = "Calendar", icon = "󰸗", sizes = { 2 },       def = 2 },
-    { id = 8, name = "Day",      icon = "󰔟", sizes = { 0, 1 },    def = 0 },
-    { id = 9, name = "Controls", icon = "󰕾", sizes = { 1 },       def = 1 },
-}
+local DATA = require("widgets_data")
+local KINDS, PRESETS = DATA.KINDS, DATA.PRESETS
 local function kind_of(id)
     return KINDS[id]
 end
@@ -39,6 +30,7 @@ local SIZES = {}            -- name → { w, h } logical
 local CARDS = {}
 local NEXT_ID = 1
 local HISTORY = {}
+local push_bar
 local loaded = false
 
 local function width_of(sz) return sz == 0 and UNIT or (UNIT * 2 + GAP) end
@@ -88,9 +80,16 @@ local function snapshot()
     HISTORY[#HISTORY + 1] = copy
     if #HISTORY > 20 then table.remove(HISTORY, 1) end
     fact.can_undo = #HISTORY > 0
+    push_bar()
+end
+
+function push_bar()
+    say("widget_bar", "fact snap_on " .. tostring(fact.snap_on and true or false))
+    say("widget_bar", "fact can_undo " .. tostring(fact.can_undo and true or false))
 end
 
 local function changed()
+    push_bar()
     push()
     start_feeds()
     save()
@@ -188,13 +187,6 @@ local function defaults()
 end
 
 -- ── presets: whole desktops in one click (applied to every monitor) ──
-local PRESETS = {
-    { name = "Glance",    cards = { { 1, 1, 48, 72 }, { 3, 0, 48, 248 }, { 4, 0, 224, 248 } } },
-    { name = "Dashboard", cards = { { 1, 1, 48, 72 }, { 2, 0, 400, 72 }, { 3, 0, 576, 72 }, { 5, 2, 48, 248 }, { 7, 2, 400, 248 } } },
-    { name = "Focus",     cards = { { 1, 2, 48, 72 }, { 2, 0, 400, 72 } } },
-    { name = "Listening", cards = { { 6, 1, 48, 72 }, { 1, 0, 400, 72 }, { 3, 0, 576, 72 } } },
-    { name = "Bare",      cards = {} },
-}
 on("w_preset", function(n)
     local p = PRESETS[tonumber(n) or 0]
     if not p then return end
@@ -206,19 +198,16 @@ on("w_preset", function(n)
     for _, c in ipairs(CARDS) do clamp_card(c) end
     changed()
 end)
-model.presets = (function()
-    local r = {}
-    for i, p in ipairs(PRESETS) do r[#r + 1] = { id = i, name = p.name } end
-    return r
-end)()
 
 -- ── edit mode ──
 local function set_editing(on)
+    if (fact.editing == true or fact.editing == 1) == on then return end
     fact.editing = on
     if on then
         HISTORY = {}
         fact.can_undo = false
     else
+        say("widget_bar", "fact open false")
         save_now()
     end
 end
@@ -229,7 +218,19 @@ local function find(id)
     end
 end
 
-on("edit_toggle", function() set_editing(not fact.editing) end)
+-- Edit mode and the widget bar (widget_bar.plm, grown out of the dock) open and close together: the bar opening
+-- starts edit mode (`w_bar_open`), and asking for edit mode opens the bar through the frame (it picks the monitor).
+on("edit_toggle", function()
+    if fact.editing == true or fact.editing == 1 then
+        set_editing(false)
+    else
+        say("topbar", "emit open_panel 7")
+    end
+end)
+on("w_bar_open", function()
+    set_editing(true)
+    push_bar()
+end)
 on("edit_done", function() set_editing(false) end)
 
 on("w_drop", function(id)
@@ -320,6 +321,7 @@ on("w_tidy", tidy)
 
 on("w_grid", function()
     fact.snap_on = not fact.snap_on
+    push_bar()
     if fact.snap_on then tidy() else save() end
 end)
 
@@ -533,9 +535,4 @@ local function learn(tries)
         end
     end)
 end
-model.kinds = (function()
-    local r = {}
-    for _, k in ipairs(KINDS) do r[#r + 1] = { id = k.id, name = k.name, icon = k.icon } end
-    return r
-end)()
 after(1200, function() learn(8) end)

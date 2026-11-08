@@ -1,0 +1,106 @@
+// The widget bar: edit mode's toolbar, grown out of the dock like Spotlight and the wallpaper strip (the frame,
+// topbar.plm, draws the glass; this scene draws only the content). Open with edit mode (widgets.luau asks the
+// frame for it) and closed with Done, Esc, or by leaving edit mode. Every button just tells the widgets scene.
+import "common/palette.plm"
+
+scene MacWidgetBar {
+    let mp_sw = 820
+    let mp_sh = 170
+    include "common/theme.plm"
+    include "common/morph_core.plm"
+
+    permissions {
+        services: "say:widgets", "say:topbar", "say:spotlight", "say:clipboard", "say:music", "say:control_center", "say:notifications", "say:dashboard", "say:settings", "say:wallpapers"
+    }
+
+    model kinds max 12 { id: number; name: text; icon: text }
+    model presets max 8 { id: number; name: text }
+    fact snap_on = true
+    fact can_undo = false
+
+    event toggle
+    event wb_add ->
+    event wb_preset ->
+    event wb_undo ->
+    event wb_tidy ->
+    event wb_grid ->
+    event wb_done ->
+
+    surface sheet {
+        size: 820, 170
+        anchor: bottom
+        margin: 0, 0, 0, 0
+        level: overlay
+        keyboard: exclusive while open
+        screens: each
+        open: (open or seen > 0.02) and open_screen == screen.index
+
+        zone box dismiss { from: 0, 0; size: 820, 170; active: open }
+
+        group {
+            move: 10, 170 - ph
+            opacity: mp_fade
+
+            //  clicks on the bar itself do nothing
+            zone box inside { from: 0, 0; size: 800, 132 }
+            on press right inside { }
+
+            text "Add a widget" { at: 24, 31; anchor: left center; size: 12; weight: 600; color: ink_sub }
+            for k in kinds { KindChip(k) }
+            text "Layouts" { at: 24, 98; anchor: left center; size: 12; weight: 600; color: ink_sub }
+            for pr in presets { PresetChip(pr) }
+
+            Pill("Tidy up", 376, 14, 94, wb_tidy, false, true)
+            Pill(if(snap_on, "Grid: on", "Grid: off"), 480, 14, 90, wb_grid, false, true)
+            Pill("Undo", 580, 14, 70, wb_undo, false, can_undo)
+            Pill("Done", 660, 14, 124, wb_done, true, true)
+        }
+        on press dismiss { open = false }
+    }
+
+    component Pill(label: text, x: number, y: number, w: number, tap: event, primary: bool, on_: bool) {
+        prop hot = 0 ~quick
+        group {
+            move: x, y
+            box { from: 0, 0; size: w, 34; corner: 17; color: if(primary, accent_c, item_bg); opacity: if(primary, 100%, item_bg_op + hot * 6%) }
+            text label { at: w / 2, 17; anchor: center center; size: 13; weight: if(primary, 600, 500); color: if(primary, #ffffff, ink_c); opacity: if(on_, 100%, 40%) }
+            zone box hit { from: 0, 0; size: w, 34; corner: 17; cursor: pointer; active: on_ }
+            on enter hit { hot: 1 }
+            on leave hit { hot: 0 }
+            on press hit { emit tap }
+            on press right hit { }
+        }
+    }
+
+    component KindChip(k: record) {
+        prop hot = 0 ~quick
+        group {
+            move: 24 + (k.id - 1) * 86, 52
+            box { from: 0, 0; size: 78, 30; corner: 15; color: item_bg; opacity: item_bg_op + hot * 8% }
+            text k.icon { at: 16, 15; anchor: center center; size: 14; color: accent_c }
+            text k.name { at: 50, 15; anchor: center center; size: 11; weight: 500; color: ink_c }
+            zone box add_hit { from: 0, 0; size: 78, 30; corner: 15; cursor: pointer }
+            on enter add_hit { hot: 1 }
+            on leave add_hit { hot: 0 }
+            on press add_hit { emit wb_add(open_screen * 100 + k.id) }
+            on press right add_hit { }
+        }
+    }
+
+    component PresetChip(pr: record) {
+        prop hot = 0 ~quick
+        group {
+            move: 92 + (pr.id - 1) * 106, 84
+            box { from: 0, 0; size: 98, 28; corner: 14; color: item_bg; opacity: item_bg_op + hot * 8% }
+            text pr.name { at: 49, 14; anchor: center center; size: 12; weight: 500; color: ink_c }
+            zone box pr_hit { from: 0, 0; size: 98, 28; corner: 14; cursor: pointer }
+            on enter pr_hit { hot: 1 }
+            on leave pr_hit { hot: 0 }
+            on press pr_hit { emit wb_preset(pr.id) }
+            on press right pr_hit { }
+        }
+    }
+
+    on toggle     { toggle open }
+    on key Escape { open = false }
+}

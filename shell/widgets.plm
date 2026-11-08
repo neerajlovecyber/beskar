@@ -15,7 +15,7 @@ import "common/palette.plm"
 scene Widgets {
     include "common/theme.plm"
     permissions {
-        services: "clock", "battery", "media", "media.*", "audio", "audio.*", "brightness", "brightness.*", "say:topbar", "say:settings"
+        services: "clock", "battery", "media", "media.*", "audio", "audio.*", "brightness", "brightness.*", "say:topbar", "say:settings", "say:widget_bar"
         run: "sh", "curl", "cat", "niri msg"
     }
 
@@ -33,8 +33,6 @@ scene Widgets {
 
     // ── what the logic reports ──
     model ws max 16 { id: number; scr: number; kind: number; sz: number; x: number; y: number }
-    model kinds max 12 { id: number; name: text; icon: text }
-    model presets max 8 { id: number; name: text }
     fact editing = false
     fact widgets_on = true
     fact nscreens = 1
@@ -77,6 +75,7 @@ scene Widgets {
     event w_resize ->
     event edit_toggle ->
     event edit_done ->
+    event w_bar_open ->
     event w_undo ->
     event w_play ->
     event w_next ->
@@ -122,7 +121,6 @@ scene Widgets {
             }
         }
         for w in ws { Card(w) }
-        Toolbar()
     }
 
     // ── a card ──
@@ -332,79 +330,6 @@ scene Widgets {
         repeat k in 0..42 {
             ellipse { at: 28 + mod(k, 7) * 43.4, 98 + (k - mod(k, 7)) / 7 * 38; radius: 15; color: accent_c; show: cm.$k == 2 }
             text cd.$k { at: 28 + mod(k, 7) * 43.4, 98 + (k - mod(k, 7)) / 7 * 38; anchor: center center; size: 13; weight: if(cm.$k == 2, 700, 500); color: if(cm.$k == 2, #ffffff, ink_c); opacity: if(cm.$k == 1, 35%, 100%) }
-        }
-    }
-
-    // ── the toolbar of edit mode, at the bottom of the screen ──
-    component Toolbar() {
-        group {
-            show: editing
-            move: screen.width / 2 - 400, screen.height - 168
-            body {
-                color: bar_color
-                glass: bar_glass
-                lens: false
-                frost: 100%
-                tint: bar_tint
-                smoke: bar_smoke
-                milk: bar_milk
-                rim: bar_rim
-                box { from: 0, 0; size: 800, 132; corner: 30 }
-            }
-            text "Add a widget" { at: 24, 20; anchor: left center; size: 12; weight: 600; color: ink_sub }
-            for k in kinds { KindChip(k) }
-            text "Layouts" { at: 24, 98; anchor: left center; size: 12; weight: 600; color: ink_sub }
-            for pr in presets { PresetChip(pr) }
-            //  Done · Undo · Grid
-            box { from: 660, 14; size: 124, 34; corner: 17; color: accent_c }
-            text "Done" { at: 722, 31; anchor: center center; size: 14; weight: 600; color: #ffffff }
-            zone box done_hit { from: 660, 14; size: 124, 34; corner: 17; cursor: pointer }
-            on press done_hit { emit edit_done }
-            on press right done_hit { }
-            box { from: 580, 14; size: 70, 34; corner: 17; color: item_bg; opacity: item_bg_op }
-            text "Undo" { at: 615, 31; anchor: center center; size: 13; weight: 500; color: ink_c; opacity: if(can_undo, 100%, 40%) }
-            zone box undo_hit { from: 580, 14; size: 70, 34; corner: 17; cursor: pointer; active: can_undo }
-            on press undo_hit { emit w_undo }
-            on press right undo_hit { }
-            box { from: 480, 14; size: 90, 34; corner: 17; color: item_bg; opacity: item_bg_op }
-            text if(snap_on, "Grid: on", "Grid: off") { at: 525, 31; anchor: center center; size: 13; weight: 500; color: ink_c }
-            zone box grid_hit { from: 480, 14; size: 90, 34; corner: 17; cursor: pointer }
-            on press grid_hit { emit w_grid }
-            on press right grid_hit { }
-            box { from: 376, 14; size: 94, 34; corner: 17; color: item_bg; opacity: item_bg_op }
-            text "Tidy up" { at: 423, 31; anchor: center center; size: 13; weight: 500; color: ink_c }
-            zone box tidy_hit { from: 376, 14; size: 94, 34; corner: 17; cursor: pointer }
-            on press tidy_hit { emit w_tidy }
-            on press right tidy_hit { }
-        }
-    }
-
-    component PresetChip(pr: record) {
-        prop hot = 0 ~quick
-        group {
-            move: 92 + (pr.id - 1) * 106, 84
-            box { from: 0, 0; size: 98, 28; corner: 14; color: item_bg; opacity: item_bg_op + hot * 8% }
-            text pr.name { at: 49, 14; anchor: center center; size: 12; weight: 500; color: ink_c }
-            zone box pr_hit { from: 0, 0; size: 98, 28; corner: 14; cursor: pointer }
-            on enter pr_hit { hot: 1 }
-            on leave pr_hit { hot: 0 }
-            on press pr_hit { emit w_preset(pr.id) }
-            on press right pr_hit { }
-        }
-    }
-
-    component KindChip(k: record) {
-        prop hot = 0 ~quick
-        group {
-            move: 24 + (k.id - 1) * 86, 52
-            box { from: 0, 0; size: 78, 30; corner: 15; color: item_bg; opacity: item_bg_op + hot * 8% }
-            text k.icon { at: 16, 15; anchor: center center; size: 14; color: accent_c }
-            text k.name { at: 50, 15; anchor: center center; size: 11; weight: 500; color: ink_c }
-            zone box add_hit { from: 0, 0; size: 78, 30; corner: 15; cursor: pointer }
-            on enter add_hit { hot: 1 }
-            on leave add_hit { hot: 0 }
-            on press add_hit { emit w_add(screen.index * 100 + k.id) }
-            on press right add_hit { }
         }
     }
 

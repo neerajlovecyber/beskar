@@ -123,6 +123,7 @@ start_shell() {
     setsid "$BIN" --no-hud --scene "$DIR/shell/music.plm" </dev/null >/tmp/pleamar_music.log 2>&1 &
     PID_CLIP=$!
     setsid "$BIN" --no-hud --scene "$DIR/shell/widgets.plm" </dev/null >/tmp/pleamar_widgets.log 2>&1 &
+    setsid "$BIN" --no-hud --scene "$DIR/shell/widget_bar.plm" </dev/null >/tmp/pleamar_widget_bar.log 2>&1 &
 
     echo "$PID_BAR $PID_BORDER $PID_SPOTLIGHT $PID_CC $PID_WIDGETS $PID_DASH $PID_WALL $PID_SETTINGS $PID_LOCK $PID_SESSION $PID_CAPTURE $PID_SWITCHER $PID_CLIP" > "$PID_FILE"
     sleep 0.6
