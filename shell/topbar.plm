@@ -463,7 +463,7 @@ scene MacTopBar {
             //  The dock, rising from the floor.
             //  The dock island. Hidden it is zero wide as well as sunk (no bump of its fillet is left on the floor);
             //  with a bottom panel open (Spotlight, wallpapers) it grows up and out into the panel's glass.
-            box dock_island { from: screen.width / 2 - (dw * clamp(vis * 1.25 - 0.05, 0, 1) + max(0, bpw - dw) * bv) / 2, screen.height - dock_h * vis - max(0, bph - dock_h) * bv; size: dw * clamp(vis * 1.25 - 0.05, 0, 1) + max(0, bpw - dw) * bv, dock_h + ext + max(0, bph - dock_h) * bv; corner: 24; blend: dock_fillet }
+            box dock_island { from: screen.width / 2 - (dw * clamp((vis - 0.3) * 1.8, 0, 1) + max(0, bpw - dw) * bv) / 2, screen.height - dock_h * vis - max(0, bph - dock_h) * bv; size: dw * clamp((vis - 0.3) * 1.8, 0, 1) + max(0, bpw - dw) * bv, dock_h + ext + max(0, bph - dock_h) * bv; corner: 24; blend: dock_fillet }
         }
 
         // ── left island: menu orb · workspace · window ───────────
