@@ -322,7 +322,7 @@ on("w_tidy", tidy)
 on("w_grid", function()
     fact.snap_on = not fact.snap_on
     push_bar()
-    if fact.snap_on then tidy() else save() end
+    save()
 end)
 
 on("w_open", function(kind)
