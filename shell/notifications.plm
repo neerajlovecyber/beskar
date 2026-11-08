@@ -149,6 +149,7 @@ scene MacNotifications {
         show: mp_here
         move: 26, -2
         opacity: mp_fade
+        clip box { from: -60, -20; size: mp_sw + 120, mp_rh + 20 }
 
         text "Notifications" { at: 24, 32; anchor: left center; size: 17; weight: 700; color: ink_c }
         //  Clear all

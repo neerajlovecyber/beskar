@@ -172,6 +172,7 @@ scene MacControlCenter {
         show: mp_here
         move: 74, -2
         opacity: mp_fade
+        clip box { from: -60, -20; size: mp_sw + 120, mp_rh + 20 }
 
         // ==========================================================
         // PAGE 0: MAIN CONTROL CENTER OVERVIEW

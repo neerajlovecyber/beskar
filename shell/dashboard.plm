@@ -52,6 +52,7 @@ scene MacDashboard {
         show: mp_here
         move: 16, -2
         opacity: mp_fade
+        clip box { from: -60, -20; size: mp_sw + 120, mp_rh + 20 }
 
         // ── Top Header ────────────────────────────────────────────
         row {
