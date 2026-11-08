@@ -33,6 +33,7 @@ scene MacLock {
     fact notif_count = 0
     fact checking = false
     fact wrong = false
+    fact lockout = false       // three wrong ones in a row: the system itself may refuse for a few minutes (pam_faillock)
     text password = ""
     text lbl_restart = "Restart"
     text lbl_off = "Shut Down"
@@ -107,7 +108,7 @@ scene MacLock {
             on press btn_submit { emit unlock }
             on press right btn_submit { }
         }
-        text pick(if(wrong, 2, if(checking, 1, 0)), "Enter your password to unlock", "Checking…", "Incorrect password, try again") { at: 320, 434; anchor: center center; size: 13; color: if(wrong, danger_c, #ffffff); opacity: if(wrong, 100%, 65%) }
+        text pick(if(wrong, if(lockout, 3, 2), if(checking, 1, 0)), "Enter your password to unlock", "Checking…", "Incorrect password, try again", "Too many tries: wait a few minutes, then try again") { at: 320, 434; anchor: center center; size: 13; color: if(wrong, danger_c, #ffffff); opacity: if(wrong, 100%, 65%) }
 
         //  ── sleep / restart / shut down ──
         row {

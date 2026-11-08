@@ -51,6 +51,7 @@ load_wallpaper()
 
 -- ── locking and unlocking ──
 local wrong_timer = nil
+local fails = 0
 
 on("fact:locked", function()
     text.password = ""
@@ -67,6 +68,7 @@ end)
 on("unlock", function()
     if fact.locked ~= true or fact.checking == true then return end
     local pwd = text.password
+    log("lock · unlock pressed, password is " .. tostring(pwd and #pwd or -1) .. " characters")
     if pwd == nil or pwd == "" then return end
 
     fact.checking = true
@@ -74,14 +76,19 @@ on("unlock", function()
     local ok, valid = pcall(sys.ask, "auth.check", pwd)      -- a wrong one takes a couple of seconds, on purpose
     text.password = ""
     fact.checking = false
+    log("lock · auth.check answered", tostring(ok), tostring(valid))
 
     if ok and valid == true then
+        fails = 0
+        fact.lockout = false
         fact.locked = false
     else
+        fails = fails + 1
+        fact.lockout = fails >= 3
         fact.wrong = true
         emit("wrong_password")
         if wrong_timer then cancel(wrong_timer) end
-        wrong_timer = after(3000, function() fact.wrong = false; wrong_timer = nil end)
+        wrong_timer = after(fails >= 3 and 6000 or 3000, function() fact.wrong = false; wrong_timer = nil end)
     end
 end)
 
