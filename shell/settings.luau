@@ -91,28 +91,52 @@ local function save_palette()
     sh('mkdir -p "$HOME/.config/beskar" && printf "%s\\n" "$1" > "$HOME/.config/beskar/palette.json"', nil, j)
 end
 
+-- Which colour of the picture the palette is built from. matugen's own pick ("--prefer saturation") takes the most
+-- saturated pixels even when they are a speck, so a grey-blue wallpaper came out yellow. Instead: 12 colours of the
+-- picture (ImageMagick), each scored by how much of the picture it covers, a little by how colourful it is, and not
+-- at all when it is nearly black or white; the best one is the source (a grey wallpaper gives a grey-blue palette).
+local function pick_source(hist)
+    local best, best_score = nil, -1
+    for line in (hist or ""):gmatch("[^\n]+") do
+        local count, hex = line:match("(%d+):.-#(%x%x%x%x%x%x)")
+        if count then
+            local r, g, b = tonumber(hex:sub(1, 2), 16) / 255, tonumber(hex:sub(3, 4), 16) / 255, tonumber(hex:sub(5, 6), 16) / 255
+            local mx, mn = math.max(r, g, b), math.min(r, g, b)
+            local sat = mx > 0 and (mx - mn) / mx or 0
+            local lively = (mx > 0.22 and mx < 0.97) and 1 or 0.2
+            local score = tonumber(count) * (0.2 + sat) * lively
+            if score > best_score then best, best_score = "#" .. hex, score end
+        end
+    end
+    return best
+end
+
 local function extract_palette(path)
     if not path or path == "" then return end
     local style = PAL_STYLES[tonumber(fact.pal_style) or 0] or PAL_STYLES[0]
-    run("matugen", { "image", path, "--json", "hex", "--dry-run", "--prefer", "saturation", "-m", "dark", "-t", style }, function(out, code)
-        if code ~= 0 or not out then return end
-        local at = out:find("{", 1, true)
-        local ok, d = pcall(json.decode, at and out:sub(at) or "")
-        if not ok or type(d) ~= "table" or type(d.palettes) ~= "table" or type(d.colors) ~= "table" then return end
-        local function tone(name, t)
-            local p = d.palettes[name]
-            return p and p[tostring(t)] and p[tostring(t)].color
-        end
-        local function surface(mode)
-            local c = d.colors.surface
-            return c and c[mode] and c[mode].color
-        end
-        PAL = {
-            dark = { a = tone("primary", 60), b = tone("tertiary", 60), s = surface("dark") },
-            light = { a = tone("primary", 50), b = tone("tertiary", 50), s = surface("light") },
-        }
-        save_palette()
-        push_palette()
+    run("magick", { path, "-resize", "120x120", "-colors", "12", "-format", "%c", "histogram:info:-" }, function(hist, hcode)
+        local source = hcode == 0 and pick_source(hist) or nil
+        if not source then return end
+        run("matugen", { "color", "hex", source, "--json", "hex", "--dry-run", "-m", "dark", "-t", style }, function(out, code)
+            if code ~= 0 or not out then return end
+            local at = out:find("{", 1, true)
+            local ok, d = pcall(json.decode, at and out:sub(at) or "")
+            if not ok or type(d) ~= "table" or type(d.palettes) ~= "table" or type(d.colors) ~= "table" then return end
+            local function tone(name, t)
+                local p = d.palettes[name]
+                return p and p[tostring(t)] and p[tostring(t)].color
+            end
+            local function surface(mode)
+                local c = d.colors.surface
+                return c and c[mode] and c[mode].color
+            end
+            PAL = {
+                dark = { a = tone("primary", 60), b = tone("tertiary", 60), s = surface("dark") },
+                light = { a = tone("primary", 50), b = tone("tertiary", 50), s = surface("light") },
+            }
+            save_palette()
+            push_palette()
+        end)
     end)
 end
 
