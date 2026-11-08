@@ -1,0 +1,183 @@
+#!/usr/bin/env bash
+# beskar: install, check, update and run the Beskar shell.
+#
+#   ./beskar doctor      check everything the shell needs and say what is missing (changes nothing)
+#   ./beskar install     build pleamar if needed, wire the shell into niri (an include file, with a backup), first run
+#   ./beskar update      pull the newest Beskar (and pleamar), rebuild if it changed, restart the shell
+#   ./beskar start | stop | restart | status | lock | settings | ...   (everything else goes to shell/start.sh)
+set -u
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+START="$DIR/shell/start.sh"
+PLEAMAR_URL="https://github.com/k4ditano/pleamar"
+NIRI_DIR="$HOME/.config/niri"
+NIRI_CFG="$NIRI_DIR/config.kdl"
+
+if [ -t 1 ]; then G=$'\e[32m'; R=$'\e[31m'; Y=$'\e[33m'; B=$'\e[1m'; N=$'\e[0m'; else G=""; R=""; Y=""; B=""; N=""; fi
+ok()   { printf '  %s✓%s %s\n' "$G" "$N" "$1"; }
+bad()  { printf '  %s✗%s %s\n' "$R" "$N" "$1"; MISSING=$((MISSING + 1)); }
+warn() { printf '  %s!%s %s\n' "$Y" "$N" "$1"; }
+head_() { printf '\n%s%s%s\n' "$B" "$1" "$N"; }
+
+# command → package (Arch names; the command names are the same everywhere)
+pkg_for() {
+    case "$1" in
+        magick) echo imagemagick ;; wl-copy) echo wl-clipboard ;; checkupdates) echo pacman-contrib ;;
+        *) echo "$1" ;;
+    esac
+}
+
+MISSING=0
+NEED_PKGS=""
+need() { # command  what-it-is-for  [optional]
+    if command -v "$1" >/dev/null 2>&1; then ok "$1  ($2)"; else
+        if [ "${3:-}" = optional ]; then warn "$1 missing, optional: $2"; else bad "$1 missing: $2"; NEED_PKGS="$NEED_PKGS $(pkg_for "$1")"; fi
+    fi
+}
+
+doctor() {
+    MISSING=0; NEED_PKGS=""
+    head_ "Compositor and runtime"
+    need niri "the compositor (26.04 or newer for config includes)"
+    if [ -x "$DIR/bin/pleamar" ]; then ok "pleamar  ($("$DIR/bin/pleamar" --version 2>/dev/null | head -1))"
+    else bad "pleamar is not built: run ./beskar install"; fi
+    need cargo "builds pleamar (only needed once)" optional
+
+    head_ "Colours and apps"
+    need matugen "colours from the wallpaper and the apps' themes"
+    need magick "picks the wallpaper's colour, makes wallpaper thumbnails"
+    need fd "finds wallpapers"
+    need curl "weather, wallpaper location"
+    if fc-list 2>/dev/null | grep -qi "nerd font\| NF"; then ok "a Nerd Font  (status glyphs)"; else bad "no Nerd Font found: install a Nerd Font (Arch: ttf-jetbrains-mono-nerd)"; fi
+
+    head_ "Capture, clipboard and system"
+    need grim "screenshots"
+    need slurp "region selection"
+    need wf-recorder "screen recording"
+    need wl-copy "clipboard (wl-clipboard)"
+    need cliphist "clipboard history"
+    need hypridle "lock when away / before sleep" optional
+    need checkupdates "the Software Update page (pacman-contrib)" optional
+    for svc in NetworkManager bluetooth; do
+        if systemctl is-active --quiet "$svc" 2>/dev/null; then ok "$svc running"; else warn "$svc is not running (the Wi-Fi / Bluetooth pages need it)"; fi
+    done
+    if command -v wpctl >/dev/null 2>&1 || command -v pactl >/dev/null 2>&1; then ok "PipeWire / PulseAudio tools"; else warn "no wpctl / pactl: the sound pages need PipeWire or PulseAudio"; fi
+
+    head_ "Session"
+    local other
+    other=$(pgrep -a -f 'polkit-gnome-authentication|lxpolkit|mate-polkit|hyprpolkitagent|polkit-kde-authentication|polkit-mate' 2>/dev/null | grep -v "pgrep" | head -1)
+    if [ -n "$other" ]; then warn "another polkit agent is running ($other): Beskar's own password dialog cannot take over while it runs"; else ok "no other polkit agent in the way"; fi
+    if pgrep -x awww-daemon >/dev/null 2>&1; then warn "awww-daemon is running: Beskar paints the wallpaper itself (start.sh stops it)"; fi
+    if [ -f "$NIRI_CFG" ]; then
+        grep -q "start.sh" "$NIRI_CFG" "$NIRI_DIR"/*.kdl 2>/dev/null && ok "niri starts the shell and has its shortcuts" || bad "niri does not start the shell yet: run ./beskar install"
+        niri validate >/dev/null 2>&1 && ok "niri config is valid" || bad "niri config does not validate (niri validate)"
+    else bad "no niri config at $NIRI_CFG"; fi
+    if "$START" status >/dev/null 2>&1; then ok "shell status ok"; fi
+
+    echo
+    if [ "$MISSING" -eq 0 ]; then printf '%sAll set.%s\n' "$G" "$N"; else
+        printf '%s%d thing(s) missing.%s' "$R" "$MISSING" "$N"
+        if [ -n "$NEED_PKGS" ] && command -v pacman >/dev/null 2>&1; then printf '  On Arch:  sudo pacman -S --needed%s' "$NEED_PKGS"; fi
+        echo
+    fi
+    return $((MISSING > 0))
+}
+
+install_() {
+    head_ "Beskar install"
+    # 1. the runtime
+    if [ ! -x "$DIR/bin/pleamar" ]; then
+        if [ ! -d "$DIR/cloned_repos/pleamar" ]; then
+            command -v git >/dev/null 2>&1 || { echo "git is needed"; exit 1; }
+            mkdir -p "$DIR/cloned_repos"
+            git clone --depth 1 "$PLEAMAR_URL" "$DIR/cloned_repos/pleamar" || exit 1
+        fi
+        command -v cargo >/dev/null 2>&1 || { echo "cargo (the Rust toolchain) is needed to build pleamar once: install rustup or your distro's rust"; exit 1; }
+        (cd "$DIR/cloned_repos/pleamar" && cargo build --release) || exit 1
+        mkdir -p "$DIR/bin"
+        ln -sf "$DIR/cloned_repos/pleamar/target/release/pleamar" "$DIR/bin/pleamar"
+        ok "pleamar built"
+    else ok "pleamar is there"; fi
+
+    # 2. niri: one include file of ours, one line in the user's config (backup first)
+    mkdir -p "$NIRI_DIR"
+    if grep -q "start.sh" "$NIRI_CFG" "$NIRI_DIR"/*.kdl 2>/dev/null; then
+        ok "niri already starts the shell and has the shortcuts (left alone)"
+    else
+        cat > "$NIRI_DIR/beskar.kdl" <<KDL
+// Beskar shell (written by ./beskar install; change the shortcuts here, they are yours)
+spawn-at-startup "$DIR/shell/start.sh"
+
+// keep windows clear of the 6 px glass ring (the top is reserved by the bar)
+layout {
+    struts {
+        left 6
+        right 6
+        bottom 6
+    }
+}
+
+environment {
+    QT_QPA_PLATFORMTHEME "qt6ct"
+}
+
+binds {
+    Mod+Space hotkey-overlay-title="Spotlight" { spawn "$DIR/shell/start.sh" "spotlight"; }
+    Mod+V hotkey-overlay-title="Clipboard" { spawn "$DIR/shell/start.sh" "clipboard"; }
+    Mod+N hotkey-overlay-title="Notifications" { spawn "$DIR/shell/start.sh" "notifications"; }
+    Mod+W hotkey-overlay-title="Wallpapers" { spawn "$DIR/shell/start.sh" "wallpapers"; }
+    Mod+Shift+C hotkey-overlay-title="Control Center" { spawn "$DIR/shell/start.sh" "control-center"; }
+    Mod+Tab hotkey-overlay-title="App Switcher" { spawn "$DIR/shell/start.sh" "appswitcher"; }
+    Mod+Comma hotkey-overlay-title="Settings" { spawn "$DIR/shell/start.sh" "settings"; }
+    Mod+Shift+W hotkey-overlay-title="Edit Widgets" { spawn "$DIR/shell/start.sh" "widgets"; }
+    Mod+Slash hotkey-overlay-title="Keyboard Shortcuts" { spawn "$DIR/shell/start.sh" "shortcuts"; }
+    XF86AudioRaiseVolume allow-when-locked=true { spawn "$DIR/shell/start.sh" "vol-up"; }
+    XF86AudioLowerVolume allow-when-locked=true { spawn "$DIR/shell/start.sh" "vol-down"; }
+    XF86AudioMute allow-when-locked=true { spawn "$DIR/shell/start.sh" "mute"; }
+    XF86MonBrightnessUp allow-when-locked=true { spawn "$DIR/shell/start.sh" "bright-up"; }
+    XF86MonBrightnessDown allow-when-locked=true { spawn "$DIR/shell/start.sh" "bright-down"; }
+}
+KDL
+        if [ -f "$NIRI_CFG" ]; then
+            [ -f "$NIRI_CFG.beskar-bak" ] || cp "$NIRI_CFG" "$NIRI_CFG.beskar-bak"
+            grep -q 'beskar.kdl' "$NIRI_CFG" || printf '\n// Beskar shell\ninclude "beskar.kdl"\n' >> "$NIRI_CFG"
+        else
+            printf 'include "beskar.kdl"\n' > "$NIRI_CFG"
+        fi
+        if niri validate >/dev/null 2>&1; then ok "niri wired up (~/.config/niri/beskar.kdl, included from config.kdl; backup config.kdl.beskar-bak)"
+        else warn "niri says the config is not valid now: see 'niri validate'; your original is config.kdl.beskar-bak"; fi
+    fi
+
+    # 3. a first-run marker is NOT written here: the welcome screen appears the first time the shell starts
+    echo
+    doctor
+    echo
+    printf '%sDone.%s Log out and back in, or run  ./beskar start  to start the shell now.\n' "$B" "$N"
+}
+
+update_() {
+    head_ "Beskar update"
+    git -C "$DIR" rev-parse --git-dir >/dev/null 2>&1 || { echo "this is not a git checkout"; exit 1; }
+    local before after
+    before=$(git -C "$DIR" rev-parse HEAD)
+    git -C "$DIR" pull --ff-only || { echo "could not fast-forward (you have local changes?)"; exit 1; }
+    after=$(git -C "$DIR" rev-parse HEAD)
+    [ "$before" = "$after" ] && ok "already the newest Beskar" || { ok "updated:"; git -C "$DIR" --no-pager log --oneline "$before..$after" | sed 's/^/      /'; }
+    if [ -d "$DIR/cloned_repos/pleamar/.git" ]; then
+        local pb pa
+        pb=$(git -C "$DIR/cloned_repos/pleamar" rev-parse HEAD)
+        git -C "$DIR/cloned_repos/pleamar" pull --ff-only >/dev/null 2>&1 || warn "pleamar could not be updated"
+        pa=$(git -C "$DIR/cloned_repos/pleamar" rev-parse HEAD)
+        if [ "$pb" != "$pa" ]; then
+            (cd "$DIR/cloned_repos/pleamar" && cargo build --release) && ok "pleamar rebuilt" || warn "pleamar build failed (the old one stays)"
+        fi
+    fi
+    "$START" restart
+}
+
+case "${1:-help}" in
+    doctor) doctor ;;
+    install) install_ ;;
+    update) update_ ;;
+    help|-h|--help) sed -n '2,8p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//' ;;
+    *) exec "$START" "$@" ;;
+esac

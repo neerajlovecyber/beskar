@@ -64,16 +64,17 @@ scene. The accent can follow your wallpaper.
 ```bash
 git clone https://github.com/neerajlovecyber/beskar
 cd beskar
-git clone https://github.com/k4ditano/pleamar cloned_repos/pleamar   # the runtime
-./shell/start.sh                                                     # builds pleamar if needed, starts everything
+./beskar install      # builds pleamar if needed, wires the shell into niri (a backup is kept), checks everything
+./beskar start        # or log out and back in
 ```
 
-`./shell/start.sh stop` stops it; `status` and `restart` do what they say. To start it with your session,
-run `start.sh` from niri's `spawn-at-startup`.
+`./beskar doctor` lists what is installed and what is missing (with the pacman line for Arch), `./beskar update` pulls
+the newest Beskar and pleamar, rebuilds if needed and restarts the shell, `./beskar welcome` shows the first-run
+welcome again. `start`, `stop`, `restart`, `status`, `lock`, `settings`, … go to `shell/start.sh`.
 
 ### niri configuration
 
-Add the shortcuts (use your own path) and keep windows clear of the 6 px ring:
+`./beskar install` writes this for you into `~/.config/niri/beskar.kdl` and includes it from `config.kdl` (it leaves a config that already starts the shell alone). To do it by hand, add the shortcuts (use your own path) and keep windows clear of the 6 px ring:
 
 ```kdl
 layout {

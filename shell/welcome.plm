@@ -1,0 +1,203 @@
+// First-run welcome: three pages (what this is, make it yours, the shortcuts). Shown once, the first time the shell
+// starts (welcome.luau checks ~/.config/beskar/welcome-done); Settings → General → "Show the welcome again", and
+// `./beskar welcome`, bring it back. Its choices go straight to Settings (say), which owns the look.
+import "common/palette.plm"
+
+scene MacWelcome {
+    include "common/theme.plm"
+    include "common/here.plm"
+
+    permissions {
+        services: "say:settings", "say:topbar", "say:spotlight", "say:wallpapers"
+        run: "sh"
+    }
+
+    surface sheet {
+        size: 720, 520
+        anchor: center
+        level: overlay
+        keyboard: exclusive while open
+        screens: each
+        open: (open or seen > 0.02) and open_screen == screen.index
+
+        zone box scrim { from: 0, 0; size: 720, 520; active: open }
+
+        group {
+            move: 40, 30
+            pivot: 320, 230
+            scale: scale
+            opacity: seen
+
+            body {
+                color: bg_color
+                glass: glass_amt
+                lens: false
+                frost: 100%
+                dispersion: 0
+                refraction: 0
+                tint: tint_amt
+                rim: rim_amt
+                box { from: 0, 0; size: 640, 460; corner: 22 }
+            }
+            box { from: 0, 0; size: 640, 460; corner: 22; stroke: 1; color: card_stroke; opacity: card_stroke_op }
+
+            //  ── page 0: hello ──
+            group {
+                show: page == 0
+                ellipse { at: 320, 92; radius: 38; color: accent_c }
+                text "󰣇" { at: 320, 92; anchor: center center; size: 38; color: #ffffff }
+                text "Welcome to Beskar" { at: 320, 168; anchor: center center; size: 26; weight: 700; color: ink_c }
+                text "A glass desktop for niri" { at: 320, 200; anchor: center center; size: 14; color: ink_sub }
+                Tip(60, 226, "󰍜", "The bar", "The clock opens the dashboard, the bell your notifications, the switches icon the Control Center.")
+                Tip(60, 288, "󰀻", "The dock", "Your apps. Spotlight (Super + Space) finds apps, does sums and runs commands.")
+                Tip(60, 350, "󰖲", "Widgets", "Clock, weather, system and more on the desktop. Super + Shift + W arranges them.")
+            }
+
+            //  ── page 1: make it yours ──
+            group {
+                show: page == 1
+                text "Make it yours" { at: 320, 62; anchor: center center; size: 22; weight: 700; color: ink_c }
+                text "You can change all of this later in Settings." { at: 320, 90; anchor: center center; size: 12.5; color: ink_sub }
+                Choice(60, 132, "󰖔", "Dark", mode == 1, choose_dark)
+                Choice(228, 132, "󰖨", "Light", mode == 0, choose_light)
+                Choice(396, 132, "󰔎", "Automatic", mode == 2, choose_auto)
+                Switch(60, 250, "Colours from the wallpaper", "The accent, highlights and glass tint follow the picture you choose.", wall_colours, toggle_colours)
+                Switch(60, 318, "Theme other apps", "Terminals, Files and other GTK and Qt apps wear the same colours.", theme_apps, toggle_apps_pref)
+            }
+
+            //  ── page 2: shortcuts ──
+            group {
+                show: page == 2
+                text "Good to know" { at: 320, 62; anchor: center center; size: 22; weight: 700; color: ink_c }
+                Keys(100, 112, "Super + Space", "Spotlight")
+                Keys(100, 148, "Super + V", "Clipboard history")
+                Keys(100, 184, "Super + W", "Wallpapers")
+                Keys(100, 220, "Super + Tab", "Switch apps")
+                Keys(100, 256, "Super + ,", "Settings")
+                Keys(100, 292, "Super + Shift + W", "Arrange the widgets")
+                Keys(100, 328, "Super + /", "All shortcuts")
+                text "Everything else is in the bar and the Control Center." { at: 320, 380; anchor: center center; size: 12.5; color: ink_sub }
+            }
+
+            //  ── footer: dots, Back, Next / Start, Skip ──
+            repeat d in 0..3 {
+                ellipse { at: 296 + d * 24, 424; radius: 4; color: if(page == d, accent_c, ink_c); opacity: if(page == d, 100%, 25%) }
+            }
+            group {
+                show: page > 0
+                text "Back" { at: 60, 424; anchor: left center; size: 13; weight: 500; color: ink_sub }
+                zone box back_hit { from: 40, 408; size: 70, 32; corner: 10; cursor: pointer }
+                on press back_hit { emit wl_back }
+                on press right back_hit { }
+            }
+            group {
+                show: page < 2
+                box { from: 500, 408; size: 100, 32; corner: 16; color: accent_c }
+                text "Next" { at: 550, 424; anchor: center center; size: 13; weight: 600; color: #ffffff }
+                zone box next_hit { from: 500, 408; size: 100, 32; corner: 16; cursor: pointer }
+                on press next_hit { emit wl_next }
+                on press right next_hit { }
+            }
+            group {
+                show: page == 2
+                box { from: 480, 408; size: 120, 32; corner: 16; color: accent_c }
+                text "Start using Beskar" { at: 540, 424; anchor: center center; size: 12.5; weight: 600; color: #ffffff; width: 116; lines: 1; align: center }
+                zone box done_hit { from: 480, 408; size: 120, 32; corner: 16; cursor: pointer }
+                on press done_hit { emit wl_done }
+                on press right done_hit { }
+            }
+            group {
+                show: page < 2
+                text "Skip" { at: 440, 424; anchor: right center; size: 12.5; color: ink_sub }
+                zone box skip_hit { from: 380, 408; size: 70, 32; corner: 10; cursor: pointer }
+                on press skip_hit { emit wl_done }
+                on press right skip_hit { }
+            }
+        }
+        on press scrim { }
+        on press right scrim { }
+    }
+
+    fact open = false
+    fact page = 0
+    fact mode = 1            // 0 light · 1 dark · 2 auto (mirrors Settings)
+    fact wall_colours = false
+    fact theme_apps = true
+
+    prop seen = 0 ~quick
+    prop scale = 0.96 ~lively
+    layer modal ~quick {
+        shown while open { seen: 1 ~quick; scale: 1 ~lively }
+        gone             { seen: 0 ~quick; scale: 0.96 ~quick }
+    }
+
+    event toggle
+    event show_again ->
+    event wl_next ->
+    event wl_back ->
+    event wl_done ->
+    event choose_dark ->
+    event choose_light ->
+    event choose_auto ->
+    event toggle_colours ->
+    event toggle_apps_pref ->
+
+    on toggle { toggle open }
+    on key Right { emit wl_next }
+    on key Left { emit wl_back }
+    on key Return { emit wl_next }
+    on key Escape { emit wl_done }
+
+    //  an icon, a title and a sentence
+    component Tip(x: number, y: number, icon: text, title: text, body: text) {
+        group {
+            move: x, y
+            ellipse { at: 22, 24; radius: 22; color: accent_c; opacity: 18% }
+            text icon { at: 22, 24; anchor: center center; size: 20; color: accent_c }
+            text title { at: 58, 8; anchor: left center; size: 14; weight: 600; color: ink_c }
+            text body { at: 58, 34; anchor: left top; size: 12; color: ink_sub; width: 500; lines: 2 }
+        }
+    }
+
+    //  Light / Dark / Automatic
+    component Choice(x: number, y: number, icon: text, label: text, on_: bool, tap: event) {
+        prop hot = 0 ~quick
+        group {
+            move: x, y
+            box { from: 0, 0; size: 160, 96; corner: 16; color: item_bg; opacity: item_bg_op + hot * 6% }
+            box { from: 0, 0; size: 160, 96; corner: 16; stroke: 2; color: accent_c; opacity: if(on_, 100%, 0%) }
+            text icon { at: 80, 38; anchor: center center; size: 26; color: if(on_, accent_c, ink_c) }
+            text label { at: 80, 72; anchor: center center; size: 13; weight: 600; color: ink_c }
+            zone box hit { from: 0, 0; size: 160, 96; corner: 16; cursor: pointer }
+            on enter hit { hot: 1 }
+            on leave hit { hot: 0 }
+            on press hit { emit tap }
+            on press right hit { }
+        }
+    }
+
+    //  a row with a switch
+    component Switch(x: number, y: number, title: text, body: text, on_: bool, tap: event) {
+        group {
+            move: x, y
+            box { from: 0, 0; size: 520, 58; corner: 14; color: item_bg; opacity: item_bg_op }
+            text title { at: 18, 20; anchor: left center; size: 13.5; weight: 600; color: ink_c }
+            text body { at: 18, 40; anchor: left center; size: 11.5; color: ink_sub; width: 420; lines: 1 }
+            box { from: 454, 17; size: 46, 26; corner: 13; color: if(on_, accent_c, item_solid) }
+            ellipse { at: if(on_, 487, 467), 30; radius: 10; color: #ffffff }
+            zone box hit { from: 0, 0; size: 520, 58; corner: 14; cursor: pointer }
+            on press hit { emit tap }
+            on press right hit { }
+        }
+    }
+
+    //  a shortcut line
+    component Keys(x: number, y: number, keys: text, what: text) {
+        group {
+            move: x, y
+            box { from: 0, 0; size: 180, 26; corner: 8; color: item_bg; opacity: item_bg_op }
+            text keys { at: 90, 13; anchor: center center; size: 12; weight: 600; color: ink_c }
+            text what { at: 204, 13; anchor: left center; size: 13; color: ink_c }
+        }
+    }
+}

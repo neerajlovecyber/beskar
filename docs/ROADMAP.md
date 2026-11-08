@@ -14,7 +14,7 @@ What is missing compared with iNiR / iRiS 3.0, in the order we want to do it. Ti
 
 ## 1. Things that break or confuse in daily use
 - [x] **Polkit agent**: a password dialog when an app needs admin rights (`polkit.plm`; tested with `pkexec true`: dialog, wrong password, cancel)
-- [ ] **First run and install**: welcome / setup steps, dependency check (`doctor`), `beskar update`, one-command install
+- [x] **First run and install**: `./beskar install | doctor | update | welcome`, first-run welcome (3 pages), niri wired through an include file
 - [ ] **Power and display basics**
   - [ ] Night light
   - [ ] Power profiles (performance / balanced / saver) in the Control Center

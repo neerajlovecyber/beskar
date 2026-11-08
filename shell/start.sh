@@ -120,6 +120,8 @@ start_shell() {
     setsid "$BIN" --no-hud --scene "$DIR/shell/widget_bar.plm" </dev/null >/tmp/pleamar_widget_bar.log 2>&1 &
     # The session's polkit authentication agent: the password dialog for programs that need administrator rights
     setsid "$BIN" --no-hud --scene "$DIR/shell/polkit.plm" </dev/null >/tmp/pleamar_polkit.log 2>&1 &
+    # First-run welcome (it opens itself once, when ~/.config/beskar/welcome-done does not exist)
+    setsid "$BIN" --no-hud --scene "$DIR/shell/welcome.plm" </dev/null >/tmp/pleamar_welcome.log 2>&1 &
 
     echo "$PID_BAR $PID_BORDER $PID_SPOTLIGHT $PID_CC $PID_WIDGETS $PID_DASH $PID_WALL $PID_SETTINGS $PID_LOCK $PID_SESSION $PID_CAPTURE $PID_SWITCHER $PID_CLIP" > "$PID_FILE"
     sleep 0.6
@@ -189,6 +191,9 @@ case "$1" in
         ;;
     settings)
         "$BIN" --say topbar "emit open_panel 4"
+        ;;
+    welcome)
+        "$BIN" --say welcome "emit show_again"
         ;;
     shortcuts)
         "$BIN" --say settings "fact tab 5" >/dev/null 2>&1 || true
