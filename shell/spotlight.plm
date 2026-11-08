@@ -20,6 +20,7 @@ scene MacSpotlight {
     group {
         move: 20, 520 - ph
         opacity: mp_fade
+        clip box { from: -60, ph - mp_bh - 4; size: mp_sw + 120, mp_bh + 90 }
 
         // Results List
         column list ~quick {
