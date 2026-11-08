@@ -135,6 +135,7 @@ scene MacSettings {
                     }
                 }
                 ToggleRow("Colours from the wallpaper", "Accent, highlights and glass tint follow the picture (matugen)", accent_auto, toggle_accent_auto)
+                ToggleRow("Theme other apps", "Terminals, Files (Nautilus) and other GTK / Qt apps wear the same colours", pref_apps, toggle_apps)
                 Card(112) {
                     text "Accent colour" { at: 18, 16; size: 13; weight: 600; color: ink_c }
                     text "Palette from the wallpaper" { at: 18, 82; anchor: left center; size: 11.5; weight: 600; color: if(accent_auto, ink_c, ink_sub) }
@@ -435,6 +436,7 @@ scene MacSettings {
     fact pal_style = 0
     text pal_src = ""
     fact pref_widgets = true
+    fact pref_apps = true
     fact pref_dock_auto = true
 
 
@@ -476,6 +478,7 @@ scene MacSettings {
     event toggle_weather ->
     event toggle_tray ->
     event toggle_widgets ->
+    event toggle_apps ->
     event pal_style_pick ->
     event widgets_edit ->
     event widgets_reset ->

@@ -47,6 +47,7 @@ on("text:side_q", paint_cats)
 -- surface, and send the ones for the current mode to every scene as pal_* facts (theme.plm turns them into
 -- accent_c, focus_c and bg_color). Saved in ~/.config/beskar/palette.json so a restart needs no extraction.
 local PAL = nil
+local apply_apps          -- defined below (other apps' colours)
 -- 0 Tonal · 1 Vibrant · 2 Neutral are matugen's own schemes; 3 Soft (pastel) is Tonal with lighter tones, a little
 -- of the colour taken out and the surface kept quiet. (matugen has no chroma setting of its own: the schemes and
 -- `--contrast` are all it offers.)
@@ -99,7 +100,7 @@ end
 
 local function save_palette()
     if not PAL then return end
-    local j = json.encode({ style = tonumber(fact.pal_style) or 0, dark = PAL.dark, light = PAL.light })
+    local j = json.encode({ style = tonumber(fact.pal_style) or 0, src = PAL.src, dark = PAL.dark, light = PAL.light })
     sh('mkdir -p "$HOME/.config/beskar" && printf "%s\\n" "$1" > "$HOME/.config/beskar/palette.json"', nil, j)
 end
 
@@ -142,6 +143,7 @@ local function extract_palette(path)
                 local c = d.colors.surface
                 return c and c[mode] and c[mode].color
             end
+            local src = source
             if (tonumber(fact.pal_style) or 0) == 3 then
                 -- Soft: lighter tones, 22 % of the colour taken out
                 PAL = {
@@ -154,8 +156,10 @@ local function extract_palette(path)
                     light = { a = tone("primary", 50), b = tone("tertiary", 50), s = surface("light") },
                 }
             end
+            PAL.src = src
             save_palette()
             push_palette()
+            apply_apps()
         end)
     end)
 end
@@ -181,7 +185,7 @@ local function load_palette()
     sh('cat "$HOME/.config/beskar/palette.json" 2>/dev/null', function(out)
         local ok, d = pcall(json.decode, out or "")
         if ok and type(d) == "table" and type(d.dark) == "table" and type(d.light) == "table" then
-            PAL = { dark = d.dark, light = d.light }
+            PAL = { dark = d.dark, light = d.light, src = d.src }
             fact.pal_style = tonumber(d.style) or 0
             -- the other scenes may still be starting: send now and again a little later
             push_palette()
@@ -190,6 +194,28 @@ local function load_palette()
         end
         -- a palette left from another wallpaper must not outlive a restart: look at the one on now
         after(2500, function() if fact.accent_auto == true then extract_current() end end)
+    end)
+end
+
+-- ── other apps: terminals, GTK / libadwaita (Nautilus), Qt ───────
+-- shell/appthemes.sh renders matugen templates (assets/matugen) from one source colour and the mode, and adds one
+-- include line to each app's own config. The source is the wallpaper's colour when "Colours from the wallpaper" is on,
+-- else the chosen accent. Debounced: a theme change fires several broadcasts.
+local ACCENT_HEX = { [0] = "#007aff", "#af52de", "#ff2d55", "#ff3b30", "#ff9500", "#34c759", "#8e8e93" }
+local apps_timer = nil
+
+function apply_apps()
+    if apps_timer then cancel(apps_timer) end
+    apps_timer = after(900, function()
+        apps_timer = nil
+        if fact.pref_apps ~= true then return end
+        local dm = (fact.dark_mode == true or fact.dark_mode == 1)
+        local src = ACCENT_HEX[tonumber(fact.accent) or 0] or ACCENT_HEX[0]
+        if fact.accent_auto == true and PAL and PAL.src then src = PAL.src end
+        local scheme = (PAL_STYLES[tonumber(fact.pal_style) or 0]) or "scheme-tonal-spot"
+        if fact.accent_auto ~= true then scheme = "scheme-tonal-spot" end
+        sh('D=$(cat "$HOME/.config/beskar/shell-dir" 2>/dev/null) || exit 0; sh "$D/shell/appthemes.sh" setup; sh "$D/shell/appthemes.sh" apply "$1" "$2" "$3"',
+            nil, dm and "dark" or "light", src, scheme)
     end)
 end
 
@@ -218,6 +244,7 @@ local function broadcast_theme()
     end
     save_theme(dm_str, skin_str, accent_str, auto_str, h12_str)
     push_palette()
+    apply_apps()
     -- GTK / libadwaita apps follow too
     pcall(run, "gsettings", { "set", "org.gnome.desktop.interface", "color-scheme", dm and "prefer-dark" or "prefer-light" }, nil, { output = false })
 end
@@ -234,9 +261,9 @@ local LOCK_MINUTES = { [0] = 0, 3, 5, 10, 15 }
 
 local function save_prefs()
     local j = string.format(
-        '{"appearance": %d, "seconds": %s, "weather": %s, "tray": %s, "dock_auto": %s, "widgets": %s, "banners": %s, "banner_i": %d, "group": %s, "lock_min": %d}',
+        '{"appearance": %d, "seconds": %s, "weather": %s, "tray": %s, "dock_auto": %s, "widgets": %s, "apps": %s, "banners": %s, "banner_i": %d, "group": %s, "lock_min": %d}',
         tonumber(fact.appearance) or 1, tostring(b(fact.pref_seconds)), tostring(b(fact.pref_weather)), tostring(b(fact.pref_tray)),
-        tostring(b(fact.pref_dock_auto)), tostring(b(fact.pref_widgets)), tostring(b(fact.banners)), tonumber(fact.banner_i) or 1, tostring(b(fact.group_apps)), LOCK_MINUTES[tonumber(fact.lock_i) or 0] or 0)
+        tostring(b(fact.pref_dock_auto)), tostring(b(fact.pref_widgets)), tostring(b(fact.pref_apps)), tostring(b(fact.banners)), tonumber(fact.banner_i) or 1, tostring(b(fact.group_apps)), LOCK_MINUTES[tonumber(fact.lock_i) or 0] or 0)
     sh('mkdir -p "$HOME/.config/beskar" && printf "%s\\n" "$1" > "$HOME/.config/beskar/prefs.json"', nil, j)
 end
 
@@ -267,6 +294,7 @@ local function load_prefs()
             if p.tray ~= nil then fact.pref_tray = p.tray == true end
             if p.dock_auto ~= nil then fact.pref_dock_auto = p.dock_auto == true end
             if p.widgets ~= nil then fact.pref_widgets = p.widgets == true end
+            if p.apps ~= nil then fact.pref_apps = p.apps == true end
             if p.banners ~= nil then fact.banners = p.banners == true end
             if p.group ~= nil then fact.group_apps = p.group == true end
             if p.lock_min ~= nil then
@@ -357,6 +385,15 @@ on("toggle_hour12", function()
 end)
 on("toggle_seconds", function() fact.pref_seconds = not b(fact.pref_seconds); changed_pref() end)
 on("toggle_weather", function() fact.pref_weather = not b(fact.pref_weather); changed_pref() end)
+on("toggle_apps", function()
+    fact.pref_apps = not b(fact.pref_apps)
+    changed_pref()
+    if fact.pref_apps == true then
+        apply_apps()
+    else
+        sh('D=$(cat "$HOME/.config/beskar/shell-dir" 2>/dev/null) || exit 0; sh "$D/shell/appthemes.sh" remove')
+    end
+end)
 on("toggle_widgets", function() fact.pref_widgets = not b(fact.pref_widgets); changed_pref() end)
 on("widgets_edit", function() fact.open = false; say("widgets", "emit edit_toggle") end)
 on("widgets_reset", function() say("widgets", "emit w_reset") end)
@@ -768,3 +805,4 @@ sh('cat "$HOME/.config/pleamar_shell.json" 2>/dev/null', function(out)
         if t.hour12 ~= nil then fact.hour12 = t.hour12 ~= false end
     end
 end)
+after(5000, apply_apps)

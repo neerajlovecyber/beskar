@@ -1,0 +1,27 @@
+# Beskar's own matugen config (shell/appthemes.sh fills @DIR@ and runs matugen with it). It only ever writes inside
+# ~/.config/beskar/themes/; the apps pick those files up through one include line each (appthemes.sh setup).
+[config]
+
+[templates.kitty]
+input_path = '@DIR@/assets/matugen/templates/kitty.conf'
+output_path = '~/.config/beskar/themes/kitty.conf'
+
+[templates.alacritty]
+input_path = '@DIR@/assets/matugen/templates/alacritty.toml'
+output_path = '~/.config/beskar/themes/alacritty.toml'
+
+[templates.ghostty]
+input_path = '@DIR@/assets/matugen/templates/ghostty.conf'
+output_path = '~/.config/beskar/themes/ghostty.conf'
+
+[templates.foot]
+input_path = '@DIR@/assets/matugen/templates/foot.ini'
+output_path = '~/.config/beskar/themes/foot.ini'
+
+[templates.gtk]
+input_path = '@DIR@/assets/matugen/templates/gtk.css'
+output_path = '~/.config/beskar/themes/gtk.css'
+
+[templates.qt]
+input_path = '@DIR@/assets/matugen/templates/qt-colors.conf'
+output_path = '~/.config/beskar/themes/qt-colors.conf'
