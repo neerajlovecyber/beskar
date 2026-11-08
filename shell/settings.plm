@@ -139,11 +139,12 @@ scene MacSettings {
                     text "Accent colour" { at: 18, 16; size: 13; weight: 600; color: ink_c }
                     text "Palette from the wallpaper" { at: 18, 82; anchor: left center; size: 11.5; weight: 600; color: if(accent_auto, ink_c, ink_sub) }
                     row {
-                        at: 250, 68
+                        at: 262, 68
                         gap: 6
-                        Seg("Tonal", 0, pal_style, pal_style_pick, 76)
-                        Seg("Vibrant", 1, pal_style, pal_style_pick, 76)
-                        Seg("Neutral", 2, pal_style, pal_style_pick, 76)
+                        Seg("Tonal", 0, pal_style, pal_style_pick, 66)
+                        Seg("Vibrant", 1, pal_style, pal_style_pick, 70)
+                        Seg("Neutral", 2, pal_style, pal_style_pick, 70)
+                        Seg("Soft", 3, pal_style, pal_style_pick, 60)
                     }
                     row {
                         at: 18, 38

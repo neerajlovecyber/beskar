@@ -47,7 +47,19 @@ on("text:side_q", paint_cats)
 -- surface, and send the ones for the current mode to every scene as pal_* facts (theme.plm turns them into
 -- accent_c, focus_c and bg_color). Saved in ~/.config/beskar/palette.json so a restart needs no extraction.
 local PAL = nil
-local PAL_STYLES = { [0] = "scheme-tonal-spot", [1] = "scheme-vibrant", [2] = "scheme-neutral" }
+-- 0 Tonal · 1 Vibrant · 2 Neutral are matugen's own schemes; 3 Soft (pastel) is Tonal with lighter tones, a little
+-- of the colour taken out and the surface kept quiet. (matugen has no chroma setting of its own: the schemes and
+-- `--contrast` are all it offers.)
+local PAL_STYLES = { [0] = "scheme-tonal-spot", [1] = "scheme-vibrant", [2] = "scheme-neutral", [3] = "scheme-tonal-spot" }
+
+local function soften(hex, amount)
+    local r, g, b = hex:match("#(%x%x)(%x%x)(%x%x)")
+    if not r then return hex end
+    r, g, b = tonumber(r, 16), tonumber(g, 16), tonumber(b, 16)
+    local grey = 0.299 * r + 0.587 * g + 0.114 * b
+    local function mix(c) return math.floor(c + (grey - c) * amount + 0.5) end
+    return string.format("#%02x%02x%02x", mix(r), mix(g), mix(b))
+end
 
 local function rgb01(hex)
     local r, g, b = tostring(hex or ""):match("#(%x%x)(%x%x)(%x%x)")
@@ -130,10 +142,18 @@ local function extract_palette(path)
                 local c = d.colors.surface
                 return c and c[mode] and c[mode].color
             end
-            PAL = {
-                dark = { a = tone("primary", 60), b = tone("tertiary", 60), s = surface("dark") },
-                light = { a = tone("primary", 50), b = tone("tertiary", 50), s = surface("light") },
-            }
+            if (tonumber(fact.pal_style) or 0) == 3 then
+                -- Soft: lighter tones, 22 % of the colour taken out
+                PAL = {
+                    dark = { a = soften(tone("primary", 70), 0.22), b = soften(tone("tertiary", 70), 0.22), s = surface("dark") },
+                    light = { a = soften(tone("primary", 60), 0.22), b = soften(tone("tertiary", 60), 0.22), s = surface("light") },
+                }
+            else
+                PAL = {
+                    dark = { a = tone("primary", 60), b = tone("tertiary", 60), s = surface("dark") },
+                    light = { a = tone("primary", 50), b = tone("tertiary", 50), s = surface("light") },
+                }
+            end
             save_palette()
             push_palette()
         end)
