@@ -22,7 +22,7 @@ scene Widgets {
     surface {
         size: full, full
         anchor: top_left
-        level: background, top while editing
+        level: bottom, top while editing
         screens: each
         keyboard: none
     }
