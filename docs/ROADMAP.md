@@ -13,7 +13,7 @@ What is missing compared with iNiR / iRiS 3.0, in the order we want to do it. Ti
 - [x] Other apps wear the theme: kitty, alacritty, ghostty, foot, GTK 3/4 + libadwaita (Files), Qt
 
 ## 1. Things that break or confuse in daily use
-- [ ] **Polkit agent**: a password dialog when an app needs admin rights (pleamar has a `polkit` service; today these fail silently)
+- [x] **Polkit agent**: a password dialog when an app needs admin rights (`polkit.plm`; tested with `pkexec true`: dialog, wrong password, cancel)
 - [ ] **First run and install**: welcome / setup steps, dependency check (`doctor`), `beskar update`, one-command install
 - [ ] **Power and display basics**
   - [ ] Night light

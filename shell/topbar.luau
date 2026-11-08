@@ -266,7 +266,7 @@ end)
 -- switcher) open on ONE monitor: the one with the focus. They are `screens: each` scenes that show their content
 -- only where `open_screen` says (common/here.plm). Everything that wants one asks us (`open_panel N`): a niri key
 -- through start.sh, a button in another panel. The toggle is the panel's own.
-local FOCUS_PANELS = { [1] = "spotlight", [2] = "clipboard", [3] = "wallpapers", [4] = "settings", [5] = "session", [6] = "appswitcher", [7] = "widget_bar" }
+local FOCUS_PANELS = { [1] = "spotlight", [2] = "clipboard", [3] = "wallpapers", [4] = "settings", [5] = "session", [6] = "appswitcher", [7] = "widget_bar", [8] = "polkit" }
 on("open_panel", function(n)
     local name = FOCUS_PANELS[tonumber(n) or 0]
     if not name then
