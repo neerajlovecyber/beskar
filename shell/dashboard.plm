@@ -48,11 +48,7 @@ scene MacDashboard {
     on press dismiss { open = false }
 
     //  The glass behind this is drawn by the frame (topbar.plm), melting out of the centre island.
-    group {
-        show: mp_here
-        move: 16, -2
-        opacity: mp_fade
-        clip box { from: -60, -20; size: mp_sw + 120, mp_rh + 20 }
+    PanelBody(16, -2) {
 
         // ── Top Header ────────────────────────────────────────────
         row {

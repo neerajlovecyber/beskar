@@ -17,10 +17,7 @@ scene MacSpotlight {
 
     zone box dismiss { from: 0, 0; size: 680, 520; active: open }
 
-    group {
-        move: 20, 520 - ph
-        opacity: mp_fade
-        clip box { from: -60, ph - mp_bh - 4; size: mp_sw + 120, mp_bh + 90 }
+    PanelBody(20, 520, 1) {
 
         // Results List
         column list ~quick {

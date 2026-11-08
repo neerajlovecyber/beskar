@@ -168,11 +168,7 @@ scene MacControlCenter {
 
     //  The glass behind this is drawn by the frame (topbar.plm), so it can melt out of the right island:
     //  this scene only draws the content, placed where the card is.
-    group {
-        show: mp_here
-        move: 74, -2
-        opacity: mp_fade
-        clip box { from: -60, -20; size: mp_sw + 120, mp_rh + 20 }
+    PanelBody(74, -2) {
 
         // ==========================================================
         // PAGE 0: MAIN CONTROL CENTER OVERVIEW

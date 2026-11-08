@@ -37,10 +37,7 @@ scene MacWidgetBar {
 
         zone box dismiss { from: 0, 0; size: 820, 170; active: open }
 
-        group {
-            move: 10, 170 - ph
-            opacity: mp_fade
-            clip box { from: -60, ph - mp_bh - 4; size: mp_sw + 120, mp_bh + 90 }
+        PanelBody(10, 170, 1) {
 
             //  clicks on the bar itself do nothing
             zone box inside { from: 0, 0; size: 800, 132 }

@@ -42,11 +42,7 @@ scene MacMusic {
 
     on press dismiss { open = false }
 
-    group {
-        show: mp_here
-        move: 16, -2
-        opacity: mp_fade
-        clip box { from: -60, -20; size: mp_sw + 120, mp_rh + 20 }
+    PanelBody(16, -2) {
 
         //  clicks on the card itself do not close it
         zone box inside { from: 0, 0; size: 348, 200 }
