@@ -32,7 +32,9 @@ scene Widgets {
     // ── what the logic reports ──
     model ws max 16 { id: number; scr: number; kind: number; sz: number; x: number; y: number }
     model kinds max 12 { id: number; name: text; icon: text }
+    model presets max 8 { id: number; name: text }
     fact editing = false
+    fact widgets_on = true
     fact nscreens = 1
     fact can_undo = false
     fact drag_id = 0
@@ -77,6 +79,8 @@ scene Widgets {
     event w_prev ->
     event w_open ->
     event w_grid ->
+    event w_reset ->
+    event w_preset ->
 
     // ── the glass, as in the frame ──
     let bar_color = if(dark_mode, if(skin == 2, #181a20, if(skin == 1, #161820, #14161d)), if(skin == 2, #f2f3f7, if(skin == 1, #eaecf2, #f6f7fb)))
@@ -116,7 +120,7 @@ scene Widgets {
         let cw = pick(w.sz, 160, 336, 336)
         let ch = pick(w.sz, 160, 160, 336)
         group {
-            show: w.scr == screen.index
+            show: w.scr == screen.index and (widgets_on or editing)
             move: px, py
             opacity: appear
             pivot: cw / 2, ch / 2
@@ -291,7 +295,7 @@ scene Widgets {
     component Toolbar() {
         group {
             show: editing
-            move: screen.width / 2 - 330, screen.height - 128
+            move: screen.width / 2 - 330, screen.height - 168
             body {
                 color: bar_color
                 glass: bar_glass
@@ -301,10 +305,12 @@ scene Widgets {
                 smoke: bar_smoke
                 milk: bar_milk
                 rim: bar_rim
-                box { from: 0, 0; size: 660, 92; corner: 30 }
+                box { from: 0, 0; size: 660, 132; corner: 30 }
             }
             text "Add a widget" { at: 24, 20; anchor: left center; size: 12; weight: 600; color: ink_sub }
             for k in kinds { KindChip(k) }
+            text "Layouts" { at: 24, 98; anchor: left center; size: 12; weight: 600; color: ink_sub }
+            for pr in presets { PresetChip(pr) }
             //  Done · Undo · Grid
             box { from: 520, 14; size: 124, 34; corner: 17; color: accent_c }
             text "Done" { at: 582, 31; anchor: center center; size: 14; weight: 600; color: #ffffff }
@@ -321,6 +327,20 @@ scene Widgets {
             zone box grid_hit { from: 340, 14; size: 90, 34; corner: 17; cursor: pointer }
             on press grid_hit { emit w_grid }
             on press right grid_hit { }
+        }
+    }
+
+    component PresetChip(pr: record) {
+        prop hot = 0 ~quick
+        group {
+            move: 92 + (pr.id - 1) * 106, 84
+            box { from: 0, 0; size: 98, 28; corner: 14; color: item_bg; opacity: item_bg_op + hot * 8% }
+            text pr.name { at: 49, 14; anchor: center center; size: 12; weight: 500; color: ink_c }
+            zone box pr_hit { from: 0, 0; size: 98, 28; corner: 14; cursor: pointer }
+            on enter pr_hit { hot: 1 }
+            on leave pr_hit { hot: 0 }
+            on press pr_hit { emit w_preset(pr.id) }
+            on press right pr_hit { }
         }
     }
 

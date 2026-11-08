@@ -157,6 +157,31 @@ local function defaults()
     end
 end
 
+-- ── presets: whole desktops in one click (applied to every monitor) ──
+local PRESETS = {
+    { name = "Glance",    cards = { { 1, 1, 48, 72 }, { 3, 0, 48, 248 }, { 4, 0, 224, 248 } } },
+    { name = "Dashboard", cards = { { 1, 1, 48, 72 }, { 2, 0, 400, 72 }, { 3, 0, 576, 72 }, { 5, 2, 48, 248 }, { 7, 2, 400, 248 } } },
+    { name = "Focus",     cards = { { 1, 2, 48, 72 }, { 2, 0, 400, 72 } } },
+    { name = "Listening", cards = { { 6, 1, 48, 72 }, { 1, 0, 400, 72 }, { 3, 0, 576, 72 } } },
+    { name = "Bare",      cards = {} },
+}
+on("w_preset", function(n)
+    local p = PRESETS[tonumber(n) or 0]
+    if not p then return end
+    snapshot()
+    CARDS = {}
+    for _, out in ipairs(OUTPUTS) do
+        for _, c in ipairs(p.cards) do add_card(out, c[1], c[2], c[3], c[4]) end
+    end
+    for _, c in ipairs(CARDS) do clamp_card(c) end
+    changed()
+end)
+model.presets = (function()
+    local r = {}
+    for i, p in ipairs(PRESETS) do r[#r + 1] = { id = i, name = p.name } end
+    return r
+end)()
+
 -- ── edit mode ──
 local function set_editing(on)
     fact.editing = on
@@ -229,6 +254,12 @@ on("w_undo", function()
     if not last then return end
     CARDS = last
     fact.can_undo = #HISTORY > 0
+    changed()
+end)
+
+on("w_reset", function()
+    snapshot()
+    defaults()
     changed()
 end)
 

@@ -247,6 +247,17 @@ scene MacSettings {
                 ToggleRow("Show weather", "Temperature next to the clock", pref_weather, toggle_weather)
                 ToggleRow("Show system tray", "Icons of running applications in the top right", pref_tray, toggle_tray)
                 ToggleRow("Hide the dock automatically", "It rises when the pointer reaches the bottom edge", pref_dock_auto, toggle_dock_auto)
+                ToggleRow("Desktop widgets", "Clock, weather, system and more on the wallpaper", pref_widgets, toggle_widgets)
+                Card(64) {
+                    text "Arrange widgets" { at: 18, 22; anchor: left center; size: 13; weight: 600; color: ink_c }
+                    text "Drag, resize, add or remove them (Super + Shift + W)" { at: 18, 42; anchor: left center; size: 10.5; color: ink_sub }
+                    row {
+                        at: 332, 18
+                        gap: 8
+                        Btn("Edit", 90, widgets_edit, true, 0, 0)
+                        Btn("Reset layout", 112, widgets_reset, false, 0, 0)
+                    }
+                }
             }
         }
 
@@ -371,7 +382,7 @@ scene MacSettings {
     }
 
     permissions {
-        services: "clock", "audio", "audio.*", "brightness", "brightness.*", "network", "network.*", "bluetooth", "bluetooth.*", "say:topbar", "say:spotlight", "say:control_center", "say:notifications", "say:dashboard", "say:clipboard", "say:music", "say:wallpapers", "say:lock", "say:capture", "say:session", "say:appswitcher"
+        services: "clock", "audio", "audio.*", "brightness", "brightness.*", "network", "network.*", "bluetooth", "bluetooth.*", "say:topbar", "say:spotlight", "say:control_center", "say:notifications", "say:dashboard", "say:clipboard", "say:music", "say:wallpapers", "say:lock", "say:capture", "say:session", "say:appswitcher", "say:widgets"
         run: "awww", "awww-daemon", "gsettings", "systemctl", "loginctl", "kitty", "pacman", "yay", "paru", "checkupdates", "sh", "niri msg"
     }
 
@@ -412,6 +423,7 @@ scene MacSettings {
     fact pref_seconds = false
     fact pref_weather = true
     fact pref_tray = true
+    fact pref_widgets = true
     fact pref_dock_auto = true
 
 
@@ -452,6 +464,9 @@ scene MacSettings {
     event toggle_seconds ->
     event toggle_weather ->
     event toggle_tray ->
+    event toggle_widgets ->
+    event widgets_edit ->
+    event widgets_reset ->
     event toggle_dock_auto ->
     event auto_accent ->
     event volume_set ->

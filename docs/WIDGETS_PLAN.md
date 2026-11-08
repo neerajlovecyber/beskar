@@ -1,5 +1,7 @@
 # Beskar desktop widgets: architecture and implementation plan
 
+> **Status (built):** Phases 0–3 and most of 4–5 are done, in a simpler form than planned below: one `widgets.plm` scene, cards driven by `model ws` (no fixed slot pool; Phase 0 showed idle cost ≈ 0.2 % CPU), 7 widget kinds, edit mode with drag / grid snap / resize / remove / undo, an add-toolbar and 5 layout presets (no separate shelf scene), a Settings switch and entry points (Apple menu, Spotlight, `Super+Shift+W`). **Not done:** stacks (Phase 6), template custom widgets (Phase 7), lock-screen widgets, magnet guides, per-resolution layouts, to-do / notes / world clock / timers. See `AGENTS.md` rule 27.
+
 Goal: widgets on the desktop like iNiR 3.0 (iRiS): a set of small glass cards that sit on the wallpaper, an **edit mode** to arrange them, **sizes**, **stacks**, **saved layouts**, and a way to **add your own**. Built the pleamar way: `.plm` scenes + Luau, no Rust, no QML.
 
 ---

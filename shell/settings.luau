@@ -80,9 +80,9 @@ local LOCK_MINUTES = { [0] = 0, 3, 5, 10, 15 }
 
 local function save_prefs()
     local j = string.format(
-        '{"appearance": %d, "seconds": %s, "weather": %s, "tray": %s, "dock_auto": %s, "banners": %s, "banner_i": %d, "group": %s, "lock_min": %d}',
+        '{"appearance": %d, "seconds": %s, "weather": %s, "tray": %s, "dock_auto": %s, "widgets": %s, "banners": %s, "banner_i": %d, "group": %s, "lock_min": %d}',
         tonumber(fact.appearance) or 1, tostring(b(fact.pref_seconds)), tostring(b(fact.pref_weather)), tostring(b(fact.pref_tray)),
-        tostring(b(fact.pref_dock_auto)), tostring(b(fact.banners)), tonumber(fact.banner_i) or 1, tostring(b(fact.group_apps)), LOCK_MINUTES[tonumber(fact.lock_i) or 0] or 0)
+        tostring(b(fact.pref_dock_auto)), tostring(b(fact.pref_widgets)), tostring(b(fact.banners)), tonumber(fact.banner_i) or 1, tostring(b(fact.group_apps)), LOCK_MINUTES[tonumber(fact.lock_i) or 0] or 0)
     sh('mkdir -p "$HOME/.config/beskar" && printf "%s\\n" "$1" > "$HOME/.config/beskar/prefs.json"', nil, j)
 end
 
@@ -91,6 +91,7 @@ local function push_prefs()
     say("topbar", "fact pref_weather " .. tostring(b(fact.pref_weather)))
     say("topbar", "fact pref_tray " .. tostring(b(fact.pref_tray)))
     say("topbar", "fact pref_dock_auto " .. tostring(b(fact.pref_dock_auto)))
+    say("widgets", "fact widgets_on " .. tostring(b(fact.pref_widgets)))
     say("notifications", "fact banners " .. tostring(b(fact.banners)))
     say("notifications", "fact banner_ms " .. tostring(BANNER_MS[tonumber(fact.banner_i) or 1] or 5500))
     say("notifications", "fact group_apps " .. tostring(b(fact.group_apps)))
@@ -111,6 +112,7 @@ local function load_prefs()
             if p.weather ~= nil then fact.pref_weather = p.weather == true end
             if p.tray ~= nil then fact.pref_tray = p.tray == true end
             if p.dock_auto ~= nil then fact.pref_dock_auto = p.dock_auto == true end
+            if p.widgets ~= nil then fact.pref_widgets = p.widgets == true end
             if p.banners ~= nil then fact.banners = p.banners == true end
             if p.group ~= nil then fact.group_apps = p.group == true end
             if p.lock_min ~= nil then
@@ -200,6 +202,9 @@ on("toggle_hour12", function()
 end)
 on("toggle_seconds", function() fact.pref_seconds = not b(fact.pref_seconds); changed_pref() end)
 on("toggle_weather", function() fact.pref_weather = not b(fact.pref_weather); changed_pref() end)
+on("toggle_widgets", function() fact.pref_widgets = not b(fact.pref_widgets); changed_pref() end)
+on("widgets_edit", function() fact.open = false; say("widgets", "emit edit_toggle") end)
+on("widgets_reset", function() say("widgets", "emit w_reset") end)
 on("toggle_tray", function() fact.pref_tray = not b(fact.pref_tray); changed_pref() end)
 on("toggle_dock_auto", function() fact.pref_dock_auto = not b(fact.pref_dock_auto); changed_pref() end)
 
