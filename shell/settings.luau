@@ -19,9 +19,10 @@ local CATS = {
     { 0, "󰏘", 0, "Appearance" }, { 1, "󰍹", 1, "Displays" }, { 2, "󰕾", 2, "Sound" },
     { 3, "󰒎", 3, "Notifications" }, { 4, "󰍜", 4, "Menu Bar & Dock" },
     { 5, "󰌌", 5, "Shortcuts" }, { 6, "󰋚", 6, "General" }, { 7, "󰚰", 7, "Software Update" },
+    { 8, "󰌵", 8, "Night Light & Power" },
 }
 -- Nerd-font glyphs are not drawn symmetrically in their box: how far each one sits right of the middle (measured)
-local GLYPH_DX = { [0] = 1, 1.5, 0.5, 1.5, 1, 1.5, 2, 2 }
+local GLYPH_DX = { [0] = 1, 1.5, 0.5, 1.5, 1, 1.5, 2, 2, 1 }
 local TITLES = {}
 for _, c in ipairs(CATS) do
     TITLES[c[1]] = c[4]
@@ -261,9 +262,9 @@ local LOCK_MINUTES = { [0] = 0, 3, 5, 10, 15 }
 
 local function save_prefs()
     local j = string.format(
-        '{"appearance": %d, "seconds": %s, "weather": %s, "tray": %s, "dock_auto": %s, "widgets": %s, "apps": %s, "banners": %s, "banner_i": %d, "group": %s, "lock_min": %d}',
+        '{"appearance": %d, "seconds": %s, "weather": %s, "tray": %s, "dock_auto": %s, "widgets": %s, "apps": %s, "night": %d, "night_t": %d, "banners": %s, "banner_i": %d, "group": %s, "lock_min": %d}',
         tonumber(fact.appearance) or 1, tostring(b(fact.pref_seconds)), tostring(b(fact.pref_weather)), tostring(b(fact.pref_tray)),
-        tostring(b(fact.pref_dock_auto)), tostring(b(fact.pref_widgets)), tostring(b(fact.pref_apps)), tostring(b(fact.banners)), tonumber(fact.banner_i) or 1, tostring(b(fact.group_apps)), LOCK_MINUTES[tonumber(fact.lock_i) or 0] or 0)
+        tostring(b(fact.pref_dock_auto)), tostring(b(fact.pref_widgets)), tostring(b(fact.pref_apps)), tonumber(fact.nl_mode_i) or 0, tonumber(fact.nl_temp_i) or 1, tostring(b(fact.banners)), tonumber(fact.banner_i) or 1, tostring(b(fact.group_apps)), LOCK_MINUTES[tonumber(fact.lock_i) or 0] or 0)
     sh('mkdir -p "$HOME/.config/beskar" && printf "%s\\n" "$1" > "$HOME/.config/beskar/prefs.json"', nil, j)
 end
 
@@ -295,6 +296,8 @@ local function load_prefs()
             if p.dock_auto ~= nil then fact.pref_dock_auto = p.dock_auto == true end
             if p.widgets ~= nil then fact.pref_widgets = p.widgets == true end
             if p.apps ~= nil then fact.pref_apps = p.apps == true end
+            if p.night ~= nil then fact.nl_mode_i = tonumber(p.night) or 0 end
+            if p.night_t ~= nil then fact.nl_temp_i = tonumber(p.night_t) or 1 end
             if p.banners ~= nil then fact.banners = p.banners == true end
             if p.group ~= nil then fact.group_apps = p.group == true end
             if p.lock_min ~= nil then
@@ -806,3 +809,53 @@ sh('cat "$HOME/.config/pleamar_shell.json" 2>/dev/null', function(out)
     end
 end)
 after(5000, apply_apps)
+
+-- ── Night light and power profile ────────────────────────────────
+-- shell/nightlight.sh runs wlsunset (start.sh brings the saved choice back at login); the power profile is
+-- power-profiles-daemon's, through powerprofilesctl.
+local NL_MODES = { [0] = "off", "on", "auto" }
+local NL_TEMPS = { [0] = 4500, 3800, 3200 }
+local PROFILES = { [0] = "power-saver", "balanced", "performance" }
+
+local function apply_night()
+    local mode = NL_MODES[tonumber(fact.nl_mode_i) or 0] or "off"
+    local k = NL_TEMPS[tonumber(fact.nl_temp_i) or 1] or 3800
+    sh('D=$(cat "$HOME/.config/beskar/shell-dir" 2>/dev/null) || exit 0; sh "$D/shell/nightlight.sh" "$1" "$2"', nil, mode, tostring(k))
+end
+
+on("nl_mode_pick", function(n)
+    fact.nl_mode_i = tonumber(n) or 0
+    apply_night()
+    changed_pref()
+end)
+on("nl_temp_pick", function(n)
+    fact.nl_temp_i = tonumber(n) or 1
+    if (tonumber(fact.nl_mode_i) or 0) > 0 then apply_night() end
+    changed_pref()
+end)
+
+local function read_profile()
+    sh("powerprofilesctl get 2>/dev/null", function(out)
+        local cur = (out or ""):gsub("%s+", "")
+        if cur == "" then
+            fact.pp_ok = false
+            return
+        end
+        fact.pp_ok = true
+        for i = 0, 2 do
+            if PROFILES[i] == cur then fact.pp_i = i end
+        end
+    end)
+end
+on("pp_pick", function(n)
+    local i = tonumber(n) or 1
+    sh("powerprofilesctl set " .. PROFILES[i] .. " 2>&1", function(out, code)
+        if code ~= 0 then
+            text.pp_note = "That mode is not available on this computer."
+        else
+            text.pp_note = ""
+        end
+        read_profile()
+    end)
+end)
+read_profile()

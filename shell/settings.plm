@@ -358,6 +358,46 @@ scene MacSettings {
             }
         }
 
+        // 8 ── Night Light & Power ─────────────────────────────
+        group tab_8 {
+            show: tab == 8
+            move: 254, 60
+            column {
+                gap: 12
+                Card(130) {
+                    text "Night Light" { at: 18, 22; anchor: left center; size: 13; weight: 600; color: ink_c }
+                    text "Warms the screen so it is easier on the eyes in the evening" { at: 18, 42; anchor: left center; size: 10.5; color: ink_sub; width: 520 }
+                    row {
+                        at: 18, 62
+                        gap: 6
+                        Seg("Off", 0, nl_mode_i, nl_mode_pick, 90)
+                        Seg("Always on", 1, nl_mode_i, nl_mode_pick, 110)
+                        Seg("Sunset to sunrise", 2, nl_mode_i, nl_mode_pick, 150)
+                    }
+                    text "Warmth" { at: 18, 108; anchor: left center; size: 11.5; weight: 600; color: if(nl_mode_i > 0, ink_c, ink_sub) }
+                    row {
+                        at: 150, 94
+                        gap: 6
+                        Seg("Warm", 0, nl_temp_i, nl_temp_pick, 80)
+                        Seg("Warmer", 1, nl_temp_i, nl_temp_pick, 80)
+                        Seg("Candle", 2, nl_temp_i, nl_temp_pick, 80)
+                    }
+                }
+                Card(104) {
+                    text "Power mode" { at: 18, 22; anchor: left center; size: 13; weight: 600; color: ink_c }
+                    text pick(if(pp_ok, 0, 1), "Saver stretches the battery; Performance gives the processor more room", "No power-profiles-daemon here: install and start it to choose a mode") { at: 18, 42; anchor: left center; size: 10.5; color: ink_sub; width: 520 }
+                    row {
+                        at: 18, 62
+                        gap: 6
+                        Seg("Saver", 0, pp_i, pp_pick, 100)
+                        Seg("Balanced", 1, pp_i, pp_pick, 110)
+                        Seg("Performance", 2, pp_i, pp_pick, 130)
+                    }
+                    text pp_note { at: 400, 76; anchor: left center; size: 10.5; color: danger_c; width: 140 }
+                }
+            }
+        }
+
         // 7 ── Software Update ─────────────────────────────────
         group tab_7 {
             show: tab == 7
@@ -393,7 +433,7 @@ scene MacSettings {
 
     permissions {
         services: "clock", "audio", "audio.*", "brightness", "brightness.*", "network", "network.*", "bluetooth", "bluetooth.*", "say:topbar", "say:spotlight", "say:control_center", "say:notifications", "say:dashboard", "say:clipboard", "say:music", "say:wallpapers", "say:widget_bar", "say:lock", "say:capture", "say:session", "say:appswitcher", "say:widgets"
-        run: "matugen", "magick", "gsettings", "systemctl", "loginctl", "kitty", "pacman", "yay", "paru", "checkupdates", "sh", "niri msg"
+        run: "matugen", "powerprofilesctl", "magick", "gsettings", "systemctl", "loginctl", "kitty", "pacman", "yay", "paru", "checkupdates", "sh", "niri msg"
     }
 
     service audio as sound { volume: number; muted: bool }
@@ -437,6 +477,11 @@ scene MacSettings {
     text pal_src = ""
     fact pref_widgets = true
     fact pref_apps = true
+    fact nl_mode_i = 0
+    fact nl_temp_i = 1
+    fact pp_i = 1
+    fact pp_ok = true
+    text pp_note = ""
     fact pref_dock_auto = true
 
 
@@ -479,6 +524,9 @@ scene MacSettings {
     event toggle_tray ->
     event toggle_widgets ->
     event toggle_apps ->
+    event nl_mode_pick ->
+    event nl_temp_pick ->
+    event pp_pick ->
     event pal_style_pick ->
     event widgets_edit ->
     event widgets_reset ->

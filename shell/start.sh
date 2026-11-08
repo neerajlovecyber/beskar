@@ -129,6 +129,13 @@ start_shell() {
     apply_saved_theme
 
     mkdir -p "$HOME/.config/beskar" && printf '%s\n' "$DIR" > "$HOME/.config/beskar/shell-dir"
+    # Night light: the choice made in Settings comes back at login (0 off, 1 always, 2 sunset to sunrise)
+    NIGHT=$(grep -o '"night": *[0-9]*' "$HOME/.config/beskar/prefs.json" 2>/dev/null | awk '{print $2}')
+    NIGHT_T=$(grep -o '"night_t": *[0-9]*' "$HOME/.config/beskar/prefs.json" 2>/dev/null | awk '{print $2}')
+    case "${NIGHT:-0}" in
+        1) "$DIR/shell/nightlight.sh" on "$(echo "${NIGHT_T:-1}" | awk '{split("4500 3800 3200", a, " "); print a[$1+1]}')" ;;
+        2) "$DIR/shell/nightlight.sh" auto "$(echo "${NIGHT_T:-1}" | awk '{split("4500 3800 3200", a, " "); print a[$1+1]}')" ;;
+    esac
     # Lock when away (minutes chosen in Settings, off by default) and before sleep
     LOCK_MIN=$(grep -o '"lock_min": *[0-9]*' "$HOME/.config/beskar/prefs.json" 2>/dev/null | awk '{print $2}')
     "$DIR/shell/idle.sh" "${LOCK_MIN:-0}" >/dev/null 2>&1 || true

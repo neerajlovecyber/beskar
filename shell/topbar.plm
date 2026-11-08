@@ -37,6 +37,8 @@ scene MacTopBar {
     //  not also be a `service tray` here: the tray has one listener, and two would fight over it.
     model icons max 8 { icon: image 18, 18 }
 
+    fact priv_cam = false       // a program is using the camera (topbar.luau polls)
+    fact priv_mic = false       // a program is recording from a microphone
     fact bt_connected = false   // set by control_center.luau: a Bluetooth device is connected
     fact dnd = false            // Do Not Disturb, from the Control Center
     fact notif_count = 0       // set by notifications.luau: how many are waiting
@@ -614,6 +616,25 @@ scene MacTopBar {
                         //  in a scene, a right click ANYWHERE on it quits the whole process.
                         on press right tray_hit { emit tray_context(i.index) }
                     }
+                }
+            }
+
+            //  Privacy: a green dot while the camera is in use, an orange one while something records the microphone.
+            row {
+                show: priv_cam or priv_mic
+                gap: 5
+                align: center
+                group {
+                    show: priv_cam
+                    size: 10, 10
+                    ellipse { at: 5, 5; radius: 5; color: ok_c; opacity: 30% }
+                    ellipse { at: 5, 5; radius: 3.4; color: ok_c }
+                }
+                group {
+                    show: priv_mic
+                    size: 10, 10
+                    ellipse { at: 5, 5; radius: 5; color: warn_c; opacity: 30% }
+                    ellipse { at: 5, 5; radius: 3.4; color: warn_c }
                 }
             }
 

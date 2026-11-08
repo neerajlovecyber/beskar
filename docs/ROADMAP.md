@@ -16,10 +16,10 @@ What is missing compared with iNiR / iRiS 3.0, in the order we want to do it. Ti
 - [x] **Polkit agent**: a password dialog when an app needs admin rights (`polkit.plm`; tested with `pkexec true`: dialog, wrong password, cancel)
 - [x] **First run and install**: `./beskar install | doctor | update | welcome`, first-run welcome (3 pages), niri wired through an include file
 - [ ] **Power and display basics**
-  - [ ] Night light
-  - [ ] Power profiles (performance / balanced / saver) in the Control Center
+  - [x] Night light (Settings → Night Light & Power: off / always / sunset to sunrise, three warmths; wlsunset)
+  - [x] Power profiles (saver / balanced / performance) in Settings → Night Light & Power (a Control Center tile is still to do)
   - [ ] Game mode (quiet the shell while a game runs)
-  - [ ] Privacy dots: camera / microphone in use
+  - [x] Privacy dots: camera / microphone in use (bar)
 
 ## 2. Big visible features
 - [ ] **Window overview and live previews** (pleamar `thumbnails` service) in the app switcher, an overview and the dock

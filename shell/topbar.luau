@@ -848,5 +848,27 @@ end
 refresh_weather()
 every(WEATHER_EVERY_MS, refresh_weather)
 
+-- ── privacy: camera and microphone in use ───────────────────────
+-- The camera is "in use" while some process has a /dev/video* node open (fuser); the microphone while some program
+-- is recording from a source (PipeWire / PulseAudio source-outputs). Nothing is recorded or logged here.
+local PRIVACY = [[
+cam=0
+for d in /dev/video*; do [ -e "$d" ] && fuser "$d" >/dev/null 2>&1 && cam=1; done
+mic=$(pactl list short source-outputs 2>/dev/null | wc -l)
+[ "$mic" -gt 0 ] && mic=1
+echo "$cam $mic"
+]]
+local function poll_privacy()
+    run("sh", { "-c", PRIVACY }, function(out)
+        local cam, mic = (out or ""):match("(%d) (%d)")
+        if cam then
+            fact.priv_cam = cam == "1"
+            fact.priv_mic = mic == "1"
+        end
+    end)
+end
+poll_privacy()
+every(4000, poll_privacy)
+
 -- one panel at a time
 require("exclusive")("topbar")
