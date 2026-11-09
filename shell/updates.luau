@@ -53,8 +53,10 @@ local function update()
     fact.running = true
     fact.failed = false
     text.status = "Waiting for your password…"
+    local last_error = nil
     spawn("pkexec", { "pacman", "-Syu", "--noconfirm" }, function(line)
         line = (line or ""):gsub("%c%[[%d;]*%a", ""):gsub("^%s+", ""):gsub("%s+$", "")
+        if line:match("^error") then last_error = line end
         if line ~= "" then text.status = line:sub(1, 60) end
     end, function(_, code)
         fact.running = false
@@ -63,9 +65,9 @@ local function update()
             check()
         else
             fact.failed = true
-            text.status = (code == 126 or code == 127) and "The password was not given" or ("pacman stopped (code " .. tostring(code) .. ")")
+            text.status = (code == 126 or code == 127) and "The password was not given" or (last_error and last_error:sub(1, 70)) or ("pacman stopped (code " .. tostring(code) .. ")")
         end
-    end, { env = { LC_ALL = "C" } })
+    end, { env = { LC_ALL = "C" }, errors = true })
 end
 
 on("do_check", check)
