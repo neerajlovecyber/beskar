@@ -183,6 +183,24 @@ on("do_screen", function()
     end)
 end)
 
+-- A screenshot of the whole monitor WITH the shell (grim sees every layer; niri's own screenshot-window draws the
+-- window alone, without the bar, ring and dock). No picker: Ctrl+Print / Alt+Print and the picker's Window mode.
+local function shot_now()
+    focused_info(function(name)
+        still_name(function(dest)
+            local args = name ~= "" and { "-o", name, dest } or { dest }
+            run("grim", args, function(_, code)
+                if code == 0 then
+                    finish_still(dest, "Screenshot taken")
+                else
+                    notify("Screenshot failed", "grim could not capture the screen", "dialog-error")
+                end
+            end)
+        end)
+    end)
+end
+on("shot_now", shot_now)
+
 on("do_window", function()
     fact.open = false
     local k = fact.kind or 0
@@ -190,7 +208,7 @@ on("do_window", function()
         if k == 1 then
             start_recording(nil)
         else
-            run("niri", { "msg", "action", "screenshot-window" }, nil, { output = false })
+            shot_now()
         end
     end)
 end)

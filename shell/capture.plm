@@ -116,7 +116,7 @@ scene MacCapture {
                 move: -190, -20
                 Plate(380, 40, 20)
             }
-            text pick(mode, "Drag to select an area", "Click to capture the focused window", "Click to capture the whole screen") { at: 0, 0; anchor: center center; size: 14; weight: 600; color: ink_c }
+            text pick(mode, "Drag to select an area", "Click to capture the screen with the focused window", "Click to capture the whole screen") { at: 0, 0; anchor: center center; size: 14; weight: 600; color: ink_c }
         }
 
         // ── the toolbar ──────────────────────────────────────────────
@@ -205,6 +205,7 @@ scene MacCapture {
     event toggle_record ->
     event do_region ->
     event do_window ->
+    event shot_now ->
     event do_screen ->
 
     component ModeChip(x: number, idx: number, icon_t: text, name_t: text) {

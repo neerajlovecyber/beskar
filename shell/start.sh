@@ -228,6 +228,9 @@ case "$1" in
         "$BIN" --say session "fact kind $K_VAL"
         "$BIN" --say topbar "emit open_panel 5"
         ;;
+    shot)
+        "$BIN" --say capture "emit shot_now"
+        ;;
     capture)
         "$BIN" --say topbar "emit open_panel 11"
         ;;
