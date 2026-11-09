@@ -1144,7 +1144,7 @@ local function icon_for(code)
     if code == 0 then
         return "󰖙"
     elseif code <= 3 then
-        return "󰖐"
+        return "󰅟"
     elseif code == 45 or code == 48 then
         return "󰖑"
     elseif (code >= 51 and code <= 67) or (code >= 80 and code <= 82) then
@@ -1154,7 +1154,7 @@ local function icon_for(code)
     elseif code >= 95 then
         return "󰙾"
     end
-    return "󰖐"
+    return "󰅟"
 end
 
 local function refresh_weather()

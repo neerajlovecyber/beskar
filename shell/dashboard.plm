@@ -33,7 +33,7 @@ scene MacDashboard {
     text zone_local = "Local"
     text zone_utc = "--:--"
     text zone_off = ""
-    text weather_icon = "󰖐"
+    text weather_icon = "󰅟"
     text weather_range = "H: –° · L: –°"
     text cal_month = "NOVEMBER"
     text cal_day = "6"

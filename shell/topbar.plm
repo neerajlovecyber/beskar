@@ -104,7 +104,7 @@ scene MacTopBar {
     //  One record per monitor, in niri's output order: the workspace each one shows.
     model mon max 4 { active: number = 1; busy: number = 0; nws: number = 1 }
     text weather_temp = "--°"
-    text weather_icon = "󰖐"
+    text weather_icon = "󰅟"
 
     //  Centre pill live activities: 0 ambient · 1 charging · 2 screenshot · 3 timer done · 4 privacy
     fact act_kind = 0
@@ -727,7 +727,7 @@ scene MacTopBar {
                 cursor: pointer
                 gap: 4
                 align: center
-                text weather_icon { family: "JetBrainsMono Nerd Font Mono"; size: 12; color: hint_c }
+                group { size: 16, 18; Sym(weather_icon, 8, 9, 14, hint_c) }
                 text weather_temp { size: t_cap; weight: 600; color: ink_c }
             }
 

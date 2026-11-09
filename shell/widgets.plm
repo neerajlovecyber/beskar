@@ -51,7 +51,7 @@ scene Widgets {
     text w_datelong = ""
     text weather_temp = "--°"
     text weather_cond = ""
-    text weather_icon = "󰖐"
+    text weather_icon = "󰅟"
     text weather_city = ""
     text weather_range = ""
     fact day_pct = 0

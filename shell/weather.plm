@@ -37,7 +37,7 @@ scene MacWeather {
     text w_temp = "--°"
     text w_feels = ""
     text w_range = ""
-    text w_icon = "󰖐"
+    text w_icon = "󰅟"
     text w_hum = "--"
     text w_wind = "--"
     text w_uv = "--"
@@ -142,7 +142,7 @@ scene MacWeather {
             }
 
             //  nothing yet
-            group { show: not loaded; EmptyState(194, 300, "󰖐", "Loading the forecast", "Needs a network connection") }
+            group { show: not loaded; EmptyState(194, 300, "󰅟", "Loading the forecast", "Needs a network connection") }
         }
 
         // ═══ view 1: choose a place ═════════════════════════════════
