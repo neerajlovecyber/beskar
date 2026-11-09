@@ -19,6 +19,11 @@ kill_all() {
     echo "Stopping the Pleamar shell components on ${WAYLAND_DISPLAY:-this display}..."
     # Only the pleamar processes that belong to THIS Wayland display (their own WAYLAND_DISPLAY says so),
     # so a shell running in a nested compositor does not kill the one on the real desktop, nor the reverse.
+    # the supervisors first (they would start every scene again), then the scenes themselves
+    for pid in $(pgrep -f "shell/supervise.sh" 2>/dev/null); do
+        theirs=$(tr '\0' '\n' < "/proc/$pid/environ" 2>/dev/null | sed -n 's/^WAYLAND_DISPLAY=//p' | head -1)
+        [ "${theirs:-wayland-0}" = "${WAYLAND_DISPLAY:-wayland-0}" ] && kill "$pid" 2>/dev/null || true
+    done
     for pid in $(pgrep -x pleamar 2>/dev/null); do
         theirs=$(tr '\0' '\n' < "/proc/$pid/environ" 2>/dev/null | sed -n 's/^WAYLAND_DISPLAY=//p' | head -1)
         if [ "${theirs:-wayland-0}" = "${WAYLAND_DISPLAY:-wayland-0}" ]; then
@@ -87,43 +92,43 @@ start_shell() {
     # The wallpaper (chosen in the picker, Super+W) is painted by pleamar itself: shell/wallpaper.plm, first, so the
     # desktop is never bare. The old awww daemon is not used any more; stop one left from before.
     pkill -x awww-daemon 2>/dev/null || true
-    setsid "$BIN" --no-hud --scene "$DIR/shell/wallpaper.plm" </dev/null >/tmp/pleamar_wallpaper.log 2>&1 &
+    setsid "$DIR/shell/supervise.sh" "$DIR/shell/wallpaper.plm" /tmp/pleamar_wallpaper.log </dev/null >/dev/null 2>&1 &
 
-    setsid "$BIN" --no-hud --scene "$DIR/shell/topbar.plm" </dev/null >/tmp/pleamar_topbar.log 2>&1 &
+    setsid "$DIR/shell/supervise.sh" "$DIR/shell/topbar.plm" /tmp/pleamar_topbar.log </dev/null >/dev/null 2>&1 &
     PID_BAR=$!
     # Border neutralized - window borders handled natively by compositor
     PID_BORDER=""
-    setsid "$BIN" --no-hud --scene "$DIR/shell/spotlight.plm" </dev/null >/tmp/pleamar_spotlight.log 2>&1 &
+    setsid "$DIR/shell/supervise.sh" "$DIR/shell/spotlight.plm" /tmp/pleamar_spotlight.log </dev/null >/dev/null 2>&1 &
     PID_SPOTLIGHT=$!
-    setsid "$BIN" --no-hud --scene "$DIR/shell/control_center.plm" </dev/null >/tmp/pleamar_cc.log 2>&1 &
+    setsid "$DIR/shell/supervise.sh" "$DIR/shell/control_center.plm" /tmp/pleamar_cc.log </dev/null >/dev/null 2>&1 &
     PID_CC=$!
-    setsid "$BIN" --no-hud --scene "$DIR/shell/notifications.plm" </dev/null >/tmp/pleamar_notifications.log 2>&1 &
+    setsid "$DIR/shell/supervise.sh" "$DIR/shell/notifications.plm" /tmp/pleamar_notifications.log </dev/null >/dev/null 2>&1 &
     PID_WIDGETS=$!
-    setsid "$BIN" --no-hud --scene "$DIR/shell/dashboard.plm" </dev/null >/tmp/pleamar_dashboard.log 2>&1 &
+    setsid "$DIR/shell/supervise.sh" "$DIR/shell/dashboard.plm" /tmp/pleamar_dashboard.log </dev/null >/dev/null 2>&1 &
     PID_DASH=$!
-    setsid "$BIN" --no-hud --scene "$DIR/shell/wallpapers.plm" </dev/null >/tmp/pleamar_wallpapers.log 2>&1 &
+    setsid "$DIR/shell/supervise.sh" "$DIR/shell/wallpapers.plm" /tmp/pleamar_wallpapers.log </dev/null >/dev/null 2>&1 &
     PID_WALL=$!
-    setsid "$BIN" --no-hud --scene "$DIR/shell/settings.plm" </dev/null >/tmp/pleamar_settings.log 2>&1 &
+    setsid "$DIR/shell/supervise.sh" "$DIR/shell/settings.plm" /tmp/pleamar_settings.log </dev/null >/dev/null 2>&1 &
     PID_SETTINGS=$!
-    setsid "$BIN" --no-hud --scene "$DIR/shell/lock.plm" </dev/null >/tmp/pleamar_lock.log 2>&1 &
+    setsid "$DIR/shell/supervise.sh" "$DIR/shell/lock.plm" /tmp/pleamar_lock.log </dev/null >/dev/null 2>&1 &
     PID_LOCK=$!
-    setsid "$BIN" --no-hud --scene "$DIR/shell/session.plm" </dev/null >/tmp/pleamar_session.log 2>&1 &
+    setsid "$DIR/shell/supervise.sh" "$DIR/shell/session.plm" /tmp/pleamar_session.log </dev/null >/dev/null 2>&1 &
     PID_SESSION=$!
-    setsid "$BIN" --no-hud --scene "$DIR/shell/capture.plm" </dev/null >/tmp/pleamar_capture.log 2>&1 &
+    setsid "$DIR/shell/supervise.sh" "$DIR/shell/capture.plm" /tmp/pleamar_capture.log </dev/null >/dev/null 2>&1 &
     PID_CAPTURE=$!
-    setsid "$BIN" --no-hud --scene "$DIR/shell/appswitcher.plm" </dev/null >/tmp/pleamar_switcher.log 2>&1 &
+    setsid "$DIR/shell/supervise.sh" "$DIR/shell/appswitcher.plm" /tmp/pleamar_switcher.log </dev/null >/dev/null 2>&1 &
     PID_SWITCHER=$!
-    setsid "$BIN" --no-hud --scene "$DIR/shell/clipboard.plm" </dev/null >/tmp/pleamar_clipboard.log 2>&1 &
-    setsid "$BIN" --no-hud --scene "$DIR/shell/music.plm" </dev/null >/tmp/pleamar_music.log 2>&1 &
+    setsid "$DIR/shell/supervise.sh" "$DIR/shell/clipboard.plm" /tmp/pleamar_clipboard.log </dev/null >/dev/null 2>&1 &
+    setsid "$DIR/shell/supervise.sh" "$DIR/shell/music.plm" /tmp/pleamar_music.log </dev/null >/dev/null 2>&1 &
     PID_CLIP=$!
-    setsid "$BIN" --no-hud --scene "$DIR/shell/widgets.plm" </dev/null >/tmp/pleamar_widgets.log 2>&1 &
-    setsid "$BIN" --no-hud --scene "$DIR/shell/widget_bar.plm" </dev/null >/tmp/pleamar_widget_bar.log 2>&1 &
+    setsid "$DIR/shell/supervise.sh" "$DIR/shell/widgets.plm" /tmp/pleamar_widgets.log </dev/null >/dev/null 2>&1 &
+    setsid "$DIR/shell/supervise.sh" "$DIR/shell/widget_bar.plm" /tmp/pleamar_widget_bar.log </dev/null >/dev/null 2>&1 &
     # The session's polkit authentication agent: the password dialog for programs that need administrator rights
-    setsid "$BIN" --no-hud --scene "$DIR/shell/polkit.plm" </dev/null >/tmp/pleamar_polkit.log 2>&1 &
+    setsid "$DIR/shell/supervise.sh" "$DIR/shell/polkit.plm" /tmp/pleamar_polkit.log </dev/null >/dev/null 2>&1 &
     # First-run welcome (it opens itself once, when ~/.config/beskar/welcome-done does not exist)
-    setsid "$BIN" --no-hud --scene "$DIR/shell/welcome.plm" </dev/null >/tmp/pleamar_welcome.log 2>&1 &
+    setsid "$DIR/shell/supervise.sh" "$DIR/shell/welcome.plm" /tmp/pleamar_welcome.log </dev/null >/dev/null 2>&1 &
     # Window overview (Mission Control HUD grid)
-    setsid "$BIN" --no-hud --scene "$DIR/shell/overview.plm" </dev/null >/tmp/pleamar_overview.log 2>&1 &
+    setsid "$DIR/shell/supervise.sh" "$DIR/shell/overview.plm" /tmp/pleamar_overview.log </dev/null >/dev/null 2>&1 &
 
     echo "$PID_BAR $PID_BORDER $PID_SPOTLIGHT $PID_CC $PID_WIDGETS $PID_DASH $PID_WALL $PID_SETTINGS $PID_LOCK $PID_SESSION $PID_CAPTURE $PID_SWITCHER $PID_CLIP" > "$PID_FILE"
     sleep 0.6
