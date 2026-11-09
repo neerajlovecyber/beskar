@@ -690,6 +690,7 @@ local function check_updates()
         end
         model.ups = rows
         fact.up_n = n
+        if code == 0 or code == 2 then pcall(sys.call, "say", "topbar", "fact upd_n " .. n) end
         if n == 0 then
             text.up_title = "Your system is up to date"
             text.up_sub = (code ~= 0 and code ~= 2) and "Could not reach the package servers" or "Nothing to install"

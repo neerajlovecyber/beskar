@@ -40,6 +40,7 @@ scene MacTopBar {
 
     fact priv_cam = false       // a program is using the camera (topbar.luau polls)
     fact priv_mic = false       // a program is recording from a microphone
+    fact upd_n = 0              // pacman updates waiting (topbar.luau polls checkupdates; settings reports its own check too)
     fact bt_connected = false   // set by control_center.luau: a Bluetooth device is connected
     fact dnd = false            // Do Not Disturb, from the Control Center
     fact notif_count = 0       // set by notifications.luau: how many are waiting
@@ -138,6 +139,7 @@ scene MacTopBar {
     event open_control_center ->
     event open_panel ->      // a number: which separate panel to toggle on the focused monitor (see topbar.luau)
     event open_notifications ->
+    event open_updates ->
     event open_dashboard ->
     event open_music ->
     event open_weather ->
@@ -271,6 +273,21 @@ scene MacTopBar {
         line { from: 5, 5; to: 19, 19; width: 1.8; color: ink_c; opacity: if(dnd, 100%, 0%) }
         ellipse { at: 19, 5; radius: 5.5; color: danger_c; opacity: if(notif_count > 0, 100%, 0%) }
         text "{notif_count}" { at: 19, 5; anchor: center; size: 7.5; weight: 700; color: on_accent; opacity: if(notif_count > 0, 100%, 0%) }
+        zone box hit { from: 0, 0; size: 24, 24; corner: 8; cursor: pointer }
+        on enter hit { hot: 1 }
+        on leave hit { hot: 0 }
+        on press hit { emit tap }
+        on press right hit { }
+    }
+
+    //  Updates: a small download arrow with the count, only while pacman has something to install; opens Settings → Software Update.
+    component UpdateIcon(tap: event) {
+        size: 24, 24
+        prop hot = 0 ~quick
+        box { from: 0, 0; size: 24, 24; corner: 8; color: ink_c; opacity: hot * 14% }
+        Sym("󰇚", 11, 13, 17, accent_c)
+        ellipse { at: 19, 5; radius: 5.5; color: accent_c }
+        text "{min(upd_n, 99)}" { at: 19, 5; anchor: center; size: 7.5; weight: 700; color: on_accent }
         zone box hit { from: 0, 0; size: 24, 24; corner: 8; cursor: pointer }
         on enter hit { hot: 1 }
         on leave hit { hot: 0 }
@@ -788,6 +805,10 @@ scene MacTopBar {
                 }
             }
 
+            group {
+                show: upd_n > 0
+                UpdateIcon(open_updates)
+            }
             WifiIcon(open_cc_wifi)
             //  Bluetooth only while something is connected.
             group {

@@ -1226,5 +1226,19 @@ end
 poll_privacy()
 every(4000, poll_privacy)
 
+-- ── updates: an icon with the count while pacman has something to install ──
+local function poll_updates()
+    run("sh", { "-c", "timeout 60 checkupdates 2>/dev/null | wc -l" }, function(out)
+        local n = tonumber((out or ""):match("%d+"))
+        if n then fact.upd_n = n end
+    end)
+end
+after(45000, poll_updates)
+every(30 * 60 * 1000, poll_updates)
+on("open_updates", function()
+    say("settings", "fact tab 7")
+    show_on_menu_monitor("settings")
+end)
+
 -- one panel at a time
 require("exclusive")("topbar")
