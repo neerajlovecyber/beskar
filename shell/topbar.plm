@@ -291,7 +291,7 @@ scene MacTopBar {
         zone box hit { from: 0, 0; size: 24, 24; corner: 8; cursor: pointer }
         on enter hit { hot: 1 }
         on leave hit { hot: 0 }
-        on press hit { emit tap }
+        on press hit { last_screen = screen.index; emit tap }
         on press right hit { }
     }
 

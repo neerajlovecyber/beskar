@@ -1236,8 +1236,11 @@ end
 after(45000, poll_updates)
 every(30 * 60 * 1000, poll_updates)
 on("open_updates", function()
-    say("settings", "fact tab 7")
-    show_on_menu_monitor("settings")
+    monitor_of_click(function(scr)
+        say("settings", "fact tab 7")
+        say("settings", "fact open_screen " .. scr)
+        say("settings", "fact open true")
+    end)
 end)
 
 -- one panel at a time
