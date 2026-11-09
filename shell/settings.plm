@@ -651,7 +651,7 @@ scene MacSettings {
 
     component SkinPill(idx: number, title_t: text, desc_t: text) {
         size: 166, 40
-        box { from: 0, 0; size: 166, 40; corner: r_s; color: if(skin == idx, if(dark_mode, #2c3240, #ebf2ff), if(dark_mode, #1e2026, #f3f4f6)) }
+        box { from: 0, 0; size: 166, 40; corner: r_s; color: if(skin == idx, sel_bg, field_bg) }
         box { from: 0, 0; size: 166, 40; corner: r_s; stroke: if(skin == idx, 2, 1); color: if(skin == idx, accent_c, c_border) }
         text title_t { at: 12, 14; anchor: left center; size: t_sub; weight: 600; color: if(skin == idx, accent_c, ink_c) }
         text desc_t { at: 12, 29; anchor: left center; size: t_micro; color: ink_sub; width: 146; lines: 1 }
@@ -685,7 +685,7 @@ scene MacSettings {
 
     component OutRow(o: record) {
         size: 556, 44
-        box { from: 0, 0; size: 556, 44; corner: r_m; color: if(o.def, if(dark_mode, #283040, #eef4ff), card_fill); opacity: if(o.def, 100%, card_fill_op) }
+        box { from: 0, 0; size: 556, 44; corner: r_m; color: if(o.def, sel_bg, card_fill); opacity: if(o.def, 100%, card_fill_op) }
         box { from: 0, 0; size: 556, 44; corner: r_m; stroke: if(o.def, 2, 1); color: if(o.def, accent_c, c_border); opacity: if(o.def, 100%, c_border_op) }
         Sym("󰓃", 26, 22, 16, if(o.def, accent_c, ink_sub))
         text o.name { at: 48, 22; anchor: left center; size: t_sub; color: ink_c; width: 440; lines: 1 }
@@ -704,7 +704,7 @@ scene MacSettings {
 
     component UpdateRow(u: record) {
         size: 520, 30
-        box { from: 0, 0; size: 520, 30; corner: 8; color: if(dark_mode, #1e2026, #f3f4f6) }
+        box { from: 0, 0; size: 520, 30; corner: 8; color: field_bg }
         Sym("󰏗", 18, 15, 14, accent_c)
         text u.name { at: 38, 15; anchor: left center; size: t_sub; weight: 600; color: ink_c; width: 220; lines: 1 }
         text u.ver { at: 506, 15; anchor: right center; size: t_cap; color: ink_sub; width: 240; lines: 1; align: right }

@@ -83,4 +83,9 @@ part Theme {
     let t_sub   = 12
     let t_cap   = 11.5
     let t_micro = 10.5
+
+    // ── the frame's glass colour (bar, ring, dock, widget cards) and form fields / selected rows ──
+    let bar_color = if(pal_on, surf_c, if(dark_mode, if(skin == 2, #181a20, if(skin == 1, #161820, #14161d)), if(skin == 2, #f2f3f7, if(skin == 1, #eaecf2, #f6f7fb))))
+    let field_bg = if(dark_mode, #1e2026, #f3f4f6)      // a text field or inset well
+    let sel_bg   = if(dark_mode, #283040, #eef4ff)      // a chosen row
 }
