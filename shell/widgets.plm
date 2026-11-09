@@ -101,6 +101,14 @@ scene Widgets {
     prop dim = 0 ~calm
     follow dim = if(editing, 1, 0)
 
+    component GridCells() {
+        repeat j in 0..7 {
+            repeat i in 0..11 {
+                box { from: 48 + i * 176, 72 + j * 176; size: 160, 160; corner: 24; stroke: 1; color: #ffffff; opacity: 14% }
+            }
+        }
+    }
+
     component Desk() {
         // the dimming veil in edit mode
         box { from: 0, 0; size: screen.width, screen.height; color: #000000; opacity: dim * 38%; show: dim > 0.01 }
@@ -110,15 +118,23 @@ scene Widgets {
             on press right veil { }
         }
 
-        //  the grid cells, while arranging with the grid on: cards snap into these
+        //  the grid cells, while arranging with the grid on: cards snap into these. They are drawn in three clipped
+        //  pieces (above the widget bar, left of it, right of it) so the lines stop at the bar's edge, as if the bar
+        //  were in front: this surface is above the bar's glass, and with the solid skin lines over it looked see-through.
         group {
             show: editing and snap_on
             opacity: dim
-            repeat j in 0..7 {
-                repeat i in 0..11 {
-                    //  every cell is drawn; the ones under the widget bar (800 x 132 at the bottom centre) are only a faint hint, so they do not fight its buttons
-                    box { from: 48 + i * 176, 72 + j * 176; size: 160, 160; corner: 24; stroke: 1; color: #ffffff; opacity: if(72 + j * 176 + 160 > screen.height - 140 and 48 + i * 176 + 160 > screen.width / 2 - 400 and 48 + i * 176 < screen.width / 2 + 400, 5%, 14%) }
-                }
+            group {
+                clip box { from: 0, 0; size: screen.width, screen.height - 132 }
+                GridCells()
+            }
+            group {
+                clip box { from: 0, screen.height - 132; size: screen.width / 2 - 400, 132 }
+                GridCells()
+            }
+            group {
+                clip box { from: screen.width / 2 + 400, screen.height - 132; size: screen.width / 2 - 400, 132 }
+                GridCells()
             }
         }
         for w in ws { Card(w) }
