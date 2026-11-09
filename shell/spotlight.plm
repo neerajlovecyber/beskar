@@ -22,11 +22,13 @@ scene MacSpotlight {
 
         // Results List
         //  seven rows are seen; more results scroll (wheel, or the arrow keys carry the selection)
-        clip box { from: 20, 10; size: 600, 314; corner: 8 }
-        column list {
-            at: 32, 14 - sc
-            gap: 2
-            for h in hits { Row(h) }
+        group {
+            clip box { from: 20, 10; size: 600, 314; corner: 8 }     // ends with this group: the search field below is not clipped
+            column list {
+                at: 32, 14 - sc
+                gap: 2
+                for h in hits { Row(h) }
+            }
         }
         zone box list_wheel { from: 20, 10; size: 600, 314; active: hits.count > 7 }
         on scroll list_wheel { sc_t = clamp(sc_t - wheel * 44, 0, max(0, hits.count * 44 - 308)) }
