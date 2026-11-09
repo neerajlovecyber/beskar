@@ -534,8 +534,8 @@ scene MacTopBar {
             box center_m {
                 from: screen.width / 2 - (cw + max(0, cpw - cw) * cv) / 2, -14
                 size: cw + max(0, cpw - cw) * cv, (notch_h - s_strip * 2) + cph * cv * if(cp_kind == 2, 1 - s_strip, 1)
-                corner: 18 * (1 - s_strip + s_strip * clamp(cv * 12, 0, 1))
-                blend: fillet * (1 - s_strip + s_strip * clamp(cv * 12, 0, 1))
+                corner: 18 * (1 - s_strip + s_strip * clamp(cv * 12, 0, 1) * (1 - ov))
+                blend: fillet * (1 - s_strip + s_strip * clamp(cv * 12, 0, 1) * (1 - ov))
             }
 
             //  The dock, rising from the floor.
