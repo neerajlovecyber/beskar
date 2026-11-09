@@ -1,5 +1,5 @@
--- Updates panel logic: `checkupdates` (official repos) → the list, and "Update all" = pkexec pacman -Syu in the
--- background (the polkit popup asks for the password). Tells the top bar the count (the arrow only shows when > 0).
+-- Updates panel logic: `checkupdates` (official repos) → the list, and "Update all" = one terminal with the update (see below).
+-- Tells the top bar the count (the arrow only shows when > 0).
 local panel = require("panel")("updates")
 
 local function sh(script, cb, ...)
@@ -8,8 +8,7 @@ end
 
 local function resize()
     local n = tonumber(fact.n) or 0
-    local rows = fact.show_log and 8 or math.min(math.max(n, 1), 8)
-    panel.height(70 + rows * 34 + 24 + ((n < 1 and not fact.show_log) and 70 or 0) + 36 + 20)
+    panel.height(70 + math.min(math.max(n, 1), 8) * 34 + 24 + (n < 1 and 70 or 0) + 36 + 20)
 end
 
 local function tell_bar(n)
@@ -17,7 +16,6 @@ local function tell_bar(n)
 end
 
 local fresh = false          -- checked within the last 5 minutes
-local n_official, n_aur = 0, 0   -- from the last check: a step with nothing to do is skipped (no password for it)
 local helper = nil            -- the AUR helper found on this machine: paru, else yay (nil: no AUR part)
 sh("command -v paru >/dev/null && echo paru || { command -v yay >/dev/null && echo yay; }", function(out)
     local h = (out or ""):match("%a+")
@@ -40,7 +38,6 @@ local function check()
     if fact.checking then return end
     fact.checking = true
     fact.failed = false
-    if not fact.running then fact.show_log = false end
     sh("timeout 60 checkupdates 2>/dev/null", function(out, code)
         local rows = {}
         local n = parse(out, false, rows)
@@ -49,7 +46,6 @@ local function check()
             fact.checking = false
             if official_ok then
                 model.pkgs = rows
-                n_official, n_aur = n, aur_n
                 fact.n = n + aur_n
                 fact.known = true
                 tell_bar(n + aur_n)
@@ -75,64 +71,40 @@ local function check()
     end)
 end
 
--- Update all: pacman -Syu (official), then the AUR helper (-Sua). Both run as root through pkexec (our popup asks):
--- the helper builds as you and calls `--sudo pkexec` for its installs, so no terminal and no sudo are involved.
-local LOG = {}
-local function log_line(l)
-    LOG[#LOG + 1] = { t = l:sub(1, 70) }
-    while #LOG > 14 do table.remove(LOG, 1) end
-    model.logl = LOG
-end
-
-local function run_step(cmd, args, label, on_done)
-    local last_error = nil
-    text.status = "Waiting for your password…"
-    spawn(cmd, args, function(line)
-        line = (line or ""):gsub("%c%[[%d;]*%a", ""):gsub("^.*\r", ""):gsub("^%s+", ""):gsub("%s+$", "")
-        if line:match("^error") then last_error = line end
-        if line ~= "" then
-            log_line(line)
-            text.status = (label .. line):sub(1, 60)
-        end
-    end, function(_, code)
-        on_done(code, last_error)
-    end, { env = { LC_ALL = "C" }, errors = true })
-end
-
-local function finish_update(code, err)
-    fact.running = false
-    if code == 0 then
-        text.status = "System updated"
-        fact.show_log = false
-        check()
-    else
-        fact.failed = true
-        text.status = (code == 126 or code == 127) and "The password was not given" or (err and err:sub(1, 70)) or ("The update stopped (code " .. tostring(code) .. ")")
-    end
-end
+-- Update all: ONE terminal with one `sudo` session for everything (like iNiR): the AUR helper's -Syu does the official
+-- packages and the AUR ones (paru, else yay); without a helper, sudo pacman -Syu. The list is checked again when the
+-- terminal closes. (A polkit popup cannot do this with one password: pkexec asks again for every command.)
+local TERMINAL = [[
+run_in() {
+    case "$1" in
+        wezterm) wezterm start -- sh -c "$2" ;;
+        foot|kitty|alacritty|ghostty|konsole|xterm|gnome-terminal|xfce4-terminal) "$1" -e sh -c "$2" ;;
+    esac
+}
+CMD="$1"
+for t in "$TERMINAL" kitty foot alacritty ghostty wezterm konsole gnome-terminal xfce4-terminal xterm; do
+    [ -n "$t" ] && command -v "$t" >/dev/null 2>&1 && { run_in "$t" "$CMD"; exit $?; }
+done
+exit 127
+]]
 
 local function update()
     if fact.running then return end
+    local cmd = helper and (helper .. " -Syu") or "sudo pacman -Syu"
+    cmd = cmd .. "; echo; read -r -p 'Done. Press Enter to close.' _"
     fact.running = true
-    fact.failed = false
-    LOG = {}
-    model.logl = LOG
-    fact.show_log = true
-    resize()
-    local function aur_step(code, err)
-        if code == 0 and helper and n_aur > 0 then
-            local args = { "-Sua", "--noconfirm", "--batchinstall", "--sudo", "pkexec" }
-            if helper == "paru" then args[#args + 1] = "--skipreview" end
-            run_step(helper, args, "AUR: ", finish_update)
+    text.status = "Updating in the terminal…"
+    spawn("sh", { "-c", TERMINAL, "x", cmd }, function() end, function(_, code)
+        fact.running = false
+        if code == 127 then
+            fact.failed = true
+            text.status = "No terminal found (kitty, foot, alacritty…)"
         else
-            finish_update(code, err)
+            fact.checking = false
+            fresh = false
+            check()
         end
-    end
-    if n_official > 0 then
-        run_step("pkexec", { "pacman", "-Syu", "--noconfirm" }, "", aur_step)
-    else
-        aur_step(0, nil)       -- only AUR packages waiting: no pacman step, no extra password
-    end
+    end)
 end
 
 on("do_check", check)
