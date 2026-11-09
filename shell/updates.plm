@@ -70,7 +70,7 @@ scene MacUpdates {
         group {
             move: 0, 70 + min(max(n, 1), 8) * 34 + 24 + if(n < 1, 70, 0)
             show: n > 0
-            Pill(if(running, "Updating…", "Update all  ·  asks for your password"), 340, do_update, 1, 36, true)
+            Pill(if(running, "Updating…", "Update all"), 340, do_update, 1, 36, true)
         }
     }
 
