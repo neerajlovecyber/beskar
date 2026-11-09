@@ -33,7 +33,7 @@ scene MacMusic {
     text cover_art = ""
     text time_pos = "0:00"
     text time_len = "0:00"
-    image cover = from cover_art, 84, 84
+    image cover = from cover_art, 150, 84      // a wide cell: a 16:9 thumbnail fills it, a square cover sits in the middle; the tile shows the middle
 
     event toggle
     event play_pause ->
@@ -69,7 +69,7 @@ scene MacMusic {
             }
             group {
                 clip box { from: 16, 14; size: 84, 84; corner: r_l }
-                image cover { at: 16, 14; size: 84, 84; fit: cover; show: has_art }
+                image cover { at: -17, 14; size: 150, 84; show: has_art }
             }
             text track_title { at: 116, 36; anchor: left center; size: t_title; weight: 700; color: ink_c; width: 216; lines: 1 }
             text track_artist { at: 116, 58; anchor: left center; size: t_sub; color: ink_sub; width: 216; lines: 1 }
