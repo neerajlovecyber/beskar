@@ -522,20 +522,20 @@ scene MacTopBar {
             box power_m {
                 from: -ext, -14
                 size: lw + max(0, pm_w - lw) * pv + ext, (notch_h - s_strip * 2) + pm_h * pv
-                corner: 18 * (1 - s_strip + s_strip * pv)
-                blend: fillet * (1 - s_strip + s_strip * pv)
+                corner: 18 * (1 - s_strip + s_strip * clamp(pv * 12, 0, 1))
+                blend: fillet * (1 - s_strip + s_strip * clamp(pv * 12, 0, 1))
             }
             box right_m {
                 from: screen.width - (rw + max(0, rpw - rw) * rv), -14
                 size: rw + max(0, rpw - rw) * rv + ext, (notch_h - s_strip * 2) + rph * rv
-                corner: 18 * (1 - s_strip + s_strip * rv)
-                blend: fillet * (1 - s_strip + s_strip * rv)
+                corner: 18 * (1 - s_strip + s_strip * clamp(rv * 12, 0, 1))
+                blend: fillet * (1 - s_strip + s_strip * clamp(rv * 12, 0, 1))
             }
             box center_m {
                 from: screen.width / 2 - (cw + max(0, cpw - cw) * cv) / 2, -14
                 size: cw + max(0, cpw - cw) * cv, (notch_h - s_strip * 2) + cph * cv
-                corner: 18 * (1 - s_strip + s_strip * cv)
-                blend: fillet * (1 - s_strip + s_strip * cv)
+                corner: 18 * (1 - s_strip + s_strip * clamp(cv * 12, 0, 1))
+                blend: fillet * (1 - s_strip + s_strip * clamp(cv * 12, 0, 1))
             }
 
             //  The dock, rising from the floor.
