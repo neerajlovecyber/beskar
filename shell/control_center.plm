@@ -123,7 +123,7 @@ scene MacControlCenter {
     //  what it controls differ. The fill never gets narrower than the icon.
     component LevelSlider(title: text, level: number, pct: text, kind: number, set: event, more: event) {
         size: 328, 54
-        box { from: 0, 0; size: 328, 54; corner: r_l; color: card_fill; opacity: card_fill_op }
+        CardBg(328, 54, r_l)
         box { from: 0, 0; size: 328, 54; corner: r_l; stroke: 1; color: card_stroke; opacity: card_stroke_op }
         text title { at: 14, 14; anchor: left center; size: t_cap; weight: 600; color: ink_sub }
         text pct { at: 314, 14; anchor: right center; size: t_micro; color: ink_sub }
@@ -166,7 +166,7 @@ scene MacControlCenter {
             group {
                 move: 16, 16
                 size: 158, 60
-                box { from: 0, 0; size: 158, 60; corner: 30; color: card_fill; opacity: card_fill_op }
+                CardBg(158, 60, 30)
                 box { from: 0, 0; size: 158, 60; corner: 30; color: accent_c; opacity: if(net.online, 100%, 0%) }
                 box { from: 0, 0; size: 158, 60; corner: 30; stroke: 1; color: card_stroke; opacity: card_stroke_op }
                 ellipse { at: 30, 30; radius: 20; color: if(net.online, on_accent, item_solid) }
@@ -184,7 +184,7 @@ scene MacControlCenter {
             group {
                 move: 16, 88
                 size: 158, 60
-                box { from: 0, 0; size: 158, 60; corner: 30; color: card_fill; opacity: card_fill_op }
+                CardBg(158, 60, 30)
                 box { from: 0, 0; size: 158, 60; corner: 30; color: accent_c; opacity: if(bt_on, 100%, 0%) }
                 box { from: 0, 0; size: 158, 60; corner: 30; stroke: 1; color: card_stroke; opacity: card_stroke_op }
                 ellipse { at: 30, 30; radius: 20; color: if(bt_on, on_accent, item_solid) }
@@ -199,7 +199,7 @@ scene MacControlCenter {
             group {
                 move: 186, 16
                 size: 158, 132
-                box { from: 0, 0; size: 158, 132; corner: 26; color: card_fill; opacity: card_fill_op }
+                CardBg(158, 132, 26)
                 box { from: 0, 0; size: 158, 132; corner: 26; stroke: 1; color: card_stroke; opacity: card_stroke_op }
 
                 group {
@@ -248,7 +248,7 @@ scene MacControlCenter {
             group {
                 move: 16, 160
                 size: 158, 60
-                box { from: 0, 0; size: 158, 60; corner: 30; color: card_fill; opacity: card_fill_op }
+                CardBg(158, 60, 30)
                 box { from: 0, 0; size: 158, 60; corner: 30; color: focus_c; opacity: if(dnd, 100%, 0%) }
                 box { from: 0, 0; size: 158, 60; corner: 30; stroke: 1; color: card_stroke; opacity: card_stroke_op }
                 ellipse { at: 30, 30; radius: 20; color: if(dnd, on_accent, item_solid) }
@@ -264,7 +264,7 @@ scene MacControlCenter {
             group {
                 move: 186, 160
                 size: 73, 60
-                box { from: 0, 0; size: 73, 60; corner: r_l; color: card_fill; opacity: card_fill_op }
+                CardBg(73, 60, r_l)
                 box { from: 0, 0; size: 73, 60; corner: r_l; stroke: 1; color: card_stroke; opacity: card_stroke_op }
                 ellipse { at: 36.5, 30; radius: 19; color: if(dark_mode, focus_c, warn_c) }
                 group {
@@ -284,7 +284,7 @@ scene MacControlCenter {
             group {
                 move: 271, 160
                 size: 73, 60
-                box { from: 0, 0; size: 73, 60; corner: r_l; color: card_fill; opacity: card_fill_op }
+                CardBg(73, 60, r_l)
                 box { from: 0, 0; size: 73, 60; corner: r_l; stroke: 1; color: card_stroke; opacity: card_stroke_op }
                 ellipse { at: 36.5, 30; radius: 19; color: item_solid }
                 line { from: 26, 23; to: 47, 23; width: 1.8; color: ink_c }
@@ -366,7 +366,7 @@ scene MacControlCenter {
             group {
                 show: not asking
                 move: 16, 62
-                box { from: 0, 0; size: 328, 64; corner: r_m; color: card_fill; opacity: card_fill_op }
+                CardBg(328, 64, r_m)
                 box { from: 0, 0; size: 328, 64; corner: r_m; color: accent_c; opacity: if(wifi_state == 2 or wifi_state == 3, 100%, 0%) }
                 box { from: 0, 0; size: 328, 64; corner: r_m; stroke: 1; color: card_stroke; opacity: card_stroke_op }
                 group {
@@ -408,7 +408,7 @@ scene MacControlCenter {
                     for n in wifi_rows {
                         group {
                             size: 328, 36
-                            box { from: 0, 0; size: 328, 36; corner: r_s; color: card_fill; opacity: card_fill_op }
+                            CardBg(328, 36, r_s)
                             box { from: 0, 0; size: 328, 36; corner: r_s; color: accent_c; opacity: if(n.active, 100%, 0%) }
                             box { from: 0, 0; size: 328, 36; corner: r_s; stroke: 1; color: card_stroke; opacity: card_stroke_op }
                             group {
@@ -437,7 +437,7 @@ scene MacControlCenter {
             group {
                 show: asking
                 move: 16, 62
-                box { from: 0, 0; size: 328, 150; corner: r_m; color: card_fill; opacity: card_fill_op }
+                CardBg(328, 150, r_m)
                 box { from: 0, 0; size: 328, 150; corner: r_m; stroke: 1; color: card_stroke; opacity: card_stroke_op }
                 text "Join" { at: 164, 24; anchor: center; size: t_micro; color: ink_sub }
                 text ask_name { at: 164, 44; anchor: center; size: t_title; weight: 600; color: ink_c; width: 290; lines: 1; tight: true }
@@ -493,7 +493,7 @@ scene MacControlCenter {
                 for g in bt_rows {
                     group {
                         size: 328, 46
-                        box { from: 0, 0; size: 328, 46; corner: r_m; color: card_fill; opacity: card_fill_op }
+                        CardBg(328, 46, r_m)
                         box { from: 0, 0; size: 328, 46; corner: r_m; color: accent_c; opacity: if(g.state == 1, 100%, 0%) }
                         box { from: 0, 0; size: 328, 46; corner: r_m; stroke: 1; color: card_stroke; opacity: card_stroke_op }
                         ellipse { at: 24, 23; radius: 15; color: if(g.state == 1, on_accent, item_bg); opacity: if(g.state == 1, 100%, item_bg_op) }
@@ -542,7 +542,7 @@ scene MacControlCenter {
                 for o in outs {
                     group {
                         size: 328, 36
-                        box { from: 0, 0; size: 328, 36; corner: r_s; color: card_fill; opacity: card_fill_op }
+                        CardBg(328, 36, r_s)
                         box { from: 0, 0; size: 328, 36; corner: r_s; color: accent_c; opacity: if(o.default, 100%, 0%) }
                         box { from: 0, 0; size: 328, 36; corner: r_s; stroke: 1; color: card_stroke; opacity: card_stroke_op }
                         ellipse { at: 22, 18; radius: 12; color: if(o.default, on_accent, item_bg); opacity: if(o.default, 100%, item_bg_op) }
@@ -565,7 +565,7 @@ scene MacControlCenter {
                     for a in app_rows {
                         group {
                             size: 328, 50
-                            box { from: 0, 0; size: 328, 50; corner: r_m; color: card_fill; opacity: card_fill_op }
+                            CardBg(328, 50, r_m)
                             box { from: 0, 0; size: 328, 50; corner: r_m; stroke: 1; color: card_stroke; opacity: card_stroke_op }
                             text a.name { at: 14, 14; anchor: left center; size: t_cap; weight: 600; color: ink_c; width: 220; lines: 1 }
                             text "{a.volume * 100, 0}%" { at: 314, 14; anchor: right center; size: t_micro; color: ink_sub }

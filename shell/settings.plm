@@ -301,7 +301,7 @@ scene MacSettings {
         group tab_5 {
             show: tab == 5
             move: 254, 60
-            box { from: 0, 0; size: 556, 34; corner: 10; color: card_fill; opacity: card_fill_op }
+            CardBg(556, 34, 10)
             box { from: 0, 0; size: 556, 34; corner: 10; stroke: 1; color: c_border; opacity: c_border_op }
             Sym("󰍉", 18, 17, 13, ink_sub)
             input bind_q {
@@ -600,7 +600,7 @@ scene MacSettings {
     //  A rounded card, 556 wide; what goes between its braces is drawn inside.
     component Card(h: number = 56) {
         size: 556, h
-        box { from: 0, 0; size: 556, h; corner: 14; color: card_fill; opacity: card_fill_op }
+        CardBg(556, h, 14)
         box { from: 0, 0; size: 556, h; corner: 14; stroke: 1; color: c_border; opacity: c_border_op }
         children
     }
@@ -608,7 +608,7 @@ scene MacSettings {
     //  A row with a button on its right.
     component ActionRow(title: text, sub: text, label: text, tap: event) {
         size: 556, 56
-        box { from: 0, 0; size: 556, 56; corner: r_m; color: card_fill; opacity: card_fill_op }
+        CardBg(556, 56, r_m)
         box { from: 0, 0; size: 556, 56; corner: r_m; stroke: 1; color: c_border; opacity: c_border_op }
         text title { at: 18, 20; anchor: left center; size: t_body; weight: 600; color: ink_c; width: 400; lines: 1 }
         text sub { at: 18, 38; anchor: left center; size: t_micro; color: ink_sub; width: 400; lines: 1 }
@@ -621,7 +621,7 @@ scene MacSettings {
     //  A slider you can drag.
     component SliderRow(title: text, level: number, set: event, kind: number, live: bool) {
         size: 556, 64
-        box { from: 0, 0; size: 556, 64; corner: r_m; color: card_fill; opacity: card_fill_op }
+        CardBg(556, 64, r_m)
         box { from: 0, 0; size: 556, 64; corner: r_m; stroke: 1; color: c_border; opacity: c_border_op }
         text title { at: 18, 20; anchor: left center; size: t_body; weight: 600; color: ink_c }
         text "{clamp(level, 0, 1) * 100, 0}%" { at: 538, 20; anchor: right center; size: t_cap; color: ink_sub }
@@ -672,7 +672,7 @@ scene MacSettings {
     //  A display: pick it to change its scale and mode.
     component DispTile(d: record) {
         size: 270, 78
-        box { from: 0, 0; size: 270, 78; corner: r_m; color: card_fill; opacity: card_fill_op }
+        CardBg(270, 78, r_m)
         box { from: 0, 0; size: 270, 78; corner: r_m; stroke: if(d.sel, 2, 1); color: if(d.sel, accent_c, c_border); opacity: if(d.sel, 100%, c_border_op) }
         Sym("󰍹", 34, 39, 30, if(d.sel, accent_c, ink_sub))
         text d.title { at: 66, 28; anchor: left center; size: t_sub; weight: 600; color: ink_c; width: 190; lines: 1 }

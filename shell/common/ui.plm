@@ -14,6 +14,7 @@
 //   Slider(w, level, set, tone, thick, floor)   a draggable level (emits set(0..1))
 //   SectionLabel(x, y, LABEL) / KeyHint(x, y, text)   a small caps label above rows / the keys line of a modal panel
 //   SelectCard(w, h, selected)   a selectable card (switcher, overview); the scene adds its hit zone
+//   CardBg(w, h, r, edge)   the fill (and edge) of a card; use it instead of a hand-drawn box
 //   Divider(len)                   a 1 px line
 //   ScrollBar(sc, ct, h)           a thin scroll bar for a `view:` layout (list.scroll, list.content, the seen height)
 part Ui {
@@ -182,5 +183,11 @@ part Ui {
     component SelectCard(w: number, h: number, selected: bool) {
         box { from: 0, 0; size: w, h; corner: r_l; color: if(selected, accent_c, item_solid); opacity: if(selected, 24%, 40%) }
         box { from: 0, 0; size: w, h; corner: r_l; stroke: if(selected, 2, 1); color: if(selected, accent_c, card_stroke); opacity: if(selected, 90%, card_stroke_op) }
+    }
+
+    //  The fill of a card (and its 1 px edge when `edge`): ONE place for the look of every card in every panel.
+    component CardBg(w: number, h: number, r: number, edge: bool = false) {
+        box { from: 0, 0; size: w, h; corner: r; color: card_fill; opacity: card_fill_op }
+        box { from: 0, 0; size: w, h; corner: r; stroke: 1; color: card_stroke; opacity: if(edge, card_stroke_op, 0%) }
     }
 }

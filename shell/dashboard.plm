@@ -5,6 +5,7 @@ scene MacDashboard {
     let mp_sw = 380
     let mp_sh = 560
     include "common/theme.plm"
+    include "common/ui.plm"
     include "common/morph.plm"
     surface {
         size: 380, 560
@@ -67,7 +68,7 @@ scene MacDashboard {
             // Calendar Widget
             group {
                 size: 154, 134
-                box { from: 0, 0; size: 154, 134; corner: r_l; color: card_fill; opacity: card_fill_op }
+                CardBg(154, 134, r_l)
                 box { from: 0, 0; size: 154, 134; corner: r_l; stroke: 1; color: card_stroke; opacity: card_stroke_op }
 
                 // Red Accent Header
@@ -80,7 +81,7 @@ scene MacDashboard {
             // Weather Widget
             group {
                 size: 154, 134
-                box { from: 0, 0; size: 154, 134; corner: r_l; color: card_fill; opacity: card_fill_op }
+                CardBg(154, 134, r_l)
                 box { from: 0, 0; size: 154, 134; corner: r_l; stroke: 1; color: card_stroke; opacity: card_stroke_op }
 
                 text weather_city { at: 14, 14; size: t_body; weight: 600; color: ink_c; width: 126; lines: 1 }
@@ -95,7 +96,7 @@ scene MacDashboard {
         group {
             move: 14, 192
             size: 320, 116
-            box { from: 0, 0; size: 320, 116; corner: r_l; color: card_fill; opacity: card_fill_op }
+            CardBg(320, 116, r_l)
             box { from: 0, 0; size: 320, 116; corner: r_l; stroke: 1; color: card_stroke; opacity: card_stroke_op }
 
             // Header
@@ -126,7 +127,7 @@ scene MacDashboard {
             show: bat.present
             move: 14, 320
             size: 320, 64
-            box { from: 0, 0; size: 320, 64; corner: r_l; color: card_fill; opacity: card_fill_op }
+            CardBg(320, 64, r_l)
             box { from: 0, 0; size: 320, 64; corner: r_l; stroke: 1; color: card_stroke; opacity: card_stroke_op }
             //  the cell
             box { from: 16, 20; size: 34, 17; corner: 5; stroke: 1.8; color: ink_c }
@@ -141,7 +142,7 @@ scene MacDashboard {
         group {
             move: 14, if(bat.present, 396, 320)
             size: 320, 84
-            box { from: 0, 0; size: 320, 84; corner: r_l; color: card_fill; opacity: card_fill_op }
+            CardBg(320, 84, r_l)
             box { from: 0, 0; size: 320, 84; corner: r_l; stroke: 1; color: card_stroke; opacity: card_stroke_op }
 
             row {

@@ -55,7 +55,7 @@ scene MacNotifications {
         prop hot = 0 ~quick
         group {
             show: not flat
-            box { from: 0, 0; size: 352, 92; corner: 26; color: card_fill; opacity: card_fill_op }
+            CardBg(352, 92, 26)
             box { from: 0, 0; size: 352, 92; corner: 26; stroke: 1; color: card_stroke; opacity: card_stroke_op }
         }
 
