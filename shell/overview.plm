@@ -15,7 +15,7 @@ scene MacOverview {
         zone box dismiss { from: 0, 0; size: 1280, 860; active: open }
 
         group {
-            move: 0, 0
+            move: (1200 - ov_w) / 2, (800 - ov_h) / 2
             pivot: 640, 430
             scale: scale
             opacity: seen
@@ -30,9 +30,9 @@ scene MacOverview {
                 refraction: 0
                 tint: tint_amt
                 rim: rim_amt
-                box { from: 40, 30; size: 1200, 800; corner: 28 }
+                box { from: 40, 30; size: ov_w, ov_h; corner: 28 }
             }
-            box { from: 40, 30; size: 1200, 800; corner: 28; stroke: 1; color: stroke_c; opacity: stroke_op }
+            box { from: 40, 30; size: ov_w, ov_h; corner: 28; stroke: 1; color: stroke_c; opacity: stroke_op }
 
             // Header Row
             group {
@@ -41,7 +41,7 @@ scene MacOverview {
                 text "󰕰" { at: 14, 14; anchor: center center; size: 15; color: accent_c }
                 text "Window Overview" { at: 38, 14; anchor: left center; size: 16; weight: 700; color: ink_c }
                 text win_count_text { at: 200, 14; anchor: left center; size: 12; color: ink_sub }
-                text "esc to close  ·  ↵ to focus  ·  arrows to select" { at: 1100, 14; anchor: right center; size: 11; color: ink_sub }
+                text "esc to close  ·  ↵ to focus  ·  arrows to select" { at: ov_w - 100, 14; anchor: right center; size: 11; color: ink_sub }
             }
 
             // Grid of Window Previews
@@ -87,6 +87,10 @@ scene MacOverview {
         gone             { seen: 0 ~quick; scale: 0.95 ~quick }
     }
 
+    // the sheet is as tall as its rows (a few windows no longer sit in a huge empty panel)
+    let ov_rows = max(1, ceil(wins.count / 4))
+    let ov_w = max(560, 56 + min(4, max(1, wins.count)) * 290)
+    let ov_h = min(800, 80 + ov_rows * 181)
     let stroke_c = card_stroke
     let stroke_op = card_stroke_op
 
