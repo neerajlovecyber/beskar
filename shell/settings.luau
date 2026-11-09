@@ -262,13 +262,14 @@ local LOCK_MINUTES = { [0] = 0, 3, 5, 10, 15 }
 
 local function save_prefs()
     local j = string.format(
-        '{"appearance": %d, "seconds": %s, "weather": %s, "tray": %s, "dock_auto": %s, "widgets": %s, "apps": %s, "night": %d, "night_t": %d, "banners": %s, "banner_i": %d, "group": %s, "lock_min": %d}',
-        tonumber(fact.appearance) or 1, tostring(b(fact.pref_seconds)), tostring(b(fact.pref_weather)), tostring(b(fact.pref_tray)),
+        '{"appearance": %d, "bar_style": %d, "seconds": %s, "weather": %s, "tray": %s, "dock_auto": %s, "widgets": %s, "apps": %s, "night": %d, "night_t": %d, "banners": %s, "banner_i": %d, "group": %s, "lock_min": %d}',
+        tonumber(fact.appearance) or 1, tonumber(fact.bar_style) or 0, tostring(b(fact.pref_seconds)), tostring(b(fact.pref_weather)), tostring(b(fact.pref_tray)),
         tostring(b(fact.pref_dock_auto)), tostring(b(fact.pref_widgets)), tostring(b(fact.pref_apps)), tonumber(fact.nl_mode_i) or 0, tonumber(fact.nl_temp_i) or 1, tostring(b(fact.banners)), tonumber(fact.banner_i) or 1, tostring(b(fact.group_apps)), LOCK_MINUTES[tonumber(fact.lock_i) or 0] or 0)
     sh('mkdir -p "$HOME/.config/beskar" && printf "%s\\n" "$1" > "$HOME/.config/beskar/prefs.json"', nil, j)
 end
 
 local function push_prefs()
+    say("topbar", "fact bar_style " .. tostring(tonumber(fact.bar_style) or 0))
     say("topbar", "fact pref_seconds " .. tostring(b(fact.pref_seconds)))
     say("topbar", "fact pref_weather " .. tostring(b(fact.pref_weather)))
     say("topbar", "fact pref_tray " .. tostring(b(fact.pref_tray)))
@@ -290,6 +291,7 @@ local function load_prefs()
         local ok, p = pcall(json.decode, out or "")
         if ok and type(p) == "table" then
             if p.appearance ~= nil then fact.appearance = tonumber(p.appearance) or 1 end
+            if p.bar_style ~= nil then fact.bar_style = tonumber(p.bar_style) or 0 end
             if p.seconds ~= nil then fact.pref_seconds = p.seconds == true end
             if p.weather ~= nil then fact.pref_weather = p.weather == true end
             if p.tray ~= nil then fact.pref_tray = p.tray == true end
@@ -402,6 +404,7 @@ on("widgets_edit", function() fact.open = false; say("widgets", "emit edit_toggl
 on("widgets_reset", function() say("widgets", "emit w_reset") end)
 on("toggle_tray", function() fact.pref_tray = not b(fact.pref_tray); changed_pref() end)
 on("toggle_dock_auto", function() fact.pref_dock_auto = not b(fact.pref_dock_auto); changed_pref() end)
+on("bar_style_pick", function(n) fact.bar_style = tonumber(n) or 0; changed_pref() end)
 
 -- ── Notifications ────────────────────────────────────────────────
 on("toggle_dnd", function() fact.dnd = not b(fact.dnd); changed_pref() end)

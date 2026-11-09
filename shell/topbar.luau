@@ -5,6 +5,17 @@
 local locate = require("location")      -- where you are (see location.luau)
 local WEATHER_EVERY_MS = 15 * 60 * 1000
 
+-- Load saved bar style from prefs.json
+local function load_bar_style()
+    run("sh", { "-c", 'cat "$HOME/.config/beskar/prefs.json" 2>/dev/null' }, function(out)
+        local ok, p = pcall(json.decode, out or "")
+        if ok and type(p) == "table" and p.bar_style ~= nil then
+            fact.bar_style = tonumber(p.bar_style) or 0
+        end
+    end)
+end
+load_bar_style()
+
 -- ── panels ───────────────────────────────────────────────────────
 local function toggle(panel)
     return function()

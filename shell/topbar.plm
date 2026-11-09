@@ -66,6 +66,7 @@ scene MacTopBar {
     fact pref_weather = true
     fact pref_tray = true
     fact pref_dock_auto = true
+    fact bar_style = 0       // 0 Notch · 1 Strip
     fact rec_on = false       // a screen recording runs (capture.luau): a red dot and the time show in the pill
     text rec_time = "0:00"
     text clock_text = ""      // the time, in the format chosen in Settings (topbar.luau)
@@ -488,6 +489,10 @@ scene MacTopBar {
         prop rph = 434 ~calm
         follow rph = rp_h
 
+        //  Top bar style morph spring: 0 Notch · 1 Strip
+        prop s_strip = 0 ~calm
+        follow s_strip = if(bar_style == 1, 1, 0)
+
         // ── the glass: ring + top islands + dock, one silhouette ──
         body {
             color: bar_color
@@ -508,12 +513,30 @@ scene MacTopBar {
             box rail_r  { from: screen.width - ring, 0; size: ext + ring, screen.height; blend: curve }
             box floor   { from: -ext, screen.height - ring; size: screen.width + ext * 2, ext + ring; blend: curve }
 
+            //  Style 1 (Strip): full-width flat bar like macOS menu bar (flat bottom edge, NO notch shape and NO fillets)
+            box strip_bar { from: -ext, -ext; size: screen.width + ext * 2, ext + ring + 32 * s_strip }
+
             //  The three top islands ARE the panel shapes below (at rest they are just the island): drawing the island
             //  twice made the smooth union inflate it and left bumps along the bottom edge when a panel was open.
             //  The panels' glass: each island grows downward (and wider if the panel is), melted into itself.
-            box power_m { from: -ext, -14; size: lw + max(0, pm_w - lw) * pv + ext, notch_h + pm_h * pv; corner: 18; blend: fillet }
-            box right_m { from: screen.width - (rw + max(0, rpw - rw) * rv), -14; size: rw + max(0, rpw - rw) * rv + ext, notch_h + rph * rv; corner: 18; blend: fillet }
-            box center_m { from: screen.width / 2 - (cw + max(0, cpw - cw) * cv) / 2, -14; size: cw + max(0, cpw - cw) * cv, notch_h + cph * cv; corner: 18; blend: fillet }
+            box power_m {
+                from: -ext, -14
+                size: lw + max(0, pm_w - lw) * pv + ext, (notch_h - s_strip * 2) + pm_h * pv
+                corner: 18 * (1 - s_strip + s_strip * pv)
+                blend: fillet * (1 - s_strip + s_strip * pv)
+            }
+            box right_m {
+                from: screen.width - (rw + max(0, rpw - rw) * rv), -14
+                size: rw + max(0, rpw - rw) * rv + ext, (notch_h - s_strip * 2) + rph * rv
+                corner: 18 * (1 - s_strip + s_strip * rv)
+                blend: fillet * (1 - s_strip + s_strip * rv)
+            }
+            box center_m {
+                from: screen.width / 2 - (cw + max(0, cpw - cw) * cv) / 2, -14
+                size: cw + max(0, cpw - cw) * cv, (notch_h - s_strip * 2) + cph * cv
+                corner: 18 * (1 - s_strip + s_strip * cv)
+                blend: fillet * (1 - s_strip + s_strip * cv)
+            }
 
             //  The dock, rising from the floor.
             //  The dock island. Hidden it is zero wide as well as sunk (no bump of its fillet is left on the floor);

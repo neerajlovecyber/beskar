@@ -252,6 +252,15 @@ scene MacSettings {
             move: 254, 60
             column {
                 gap: 12
+                Card(54) {
+                    text "Top bar style" { at: 18, 27; anchor: left center; size: 13; weight: 600; color: ink_c }
+                    row {
+                        at: 360, 13
+                        gap: 6
+                        Seg("Notch", 0, bar_style, bar_style_pick, 86)
+                        Seg("Strip", 1, bar_style, bar_style_pick, 86)
+                    }
+                }
                 ToggleRow("24-hour clock", "Shows 14:05 instead of 2:05 PM", not hour12, toggle_hour12)
                 ToggleRow("Show seconds", "2:05:09 PM", pref_seconds, toggle_seconds)
                 ToggleRow("Show weather", "Temperature next to the clock", pref_weather, toggle_weather)
@@ -483,6 +492,7 @@ scene MacSettings {
     fact pp_ok = true
     text pp_note = ""
     fact pref_dock_auto = true
+    fact bar_style = 0
 
 
     fact up_n = 0
@@ -531,6 +541,7 @@ scene MacSettings {
     event widgets_edit ->
     event widgets_reset ->
     event toggle_dock_auto ->
+    event bar_style_pick ->
     event auto_accent ->
     event volume_set ->
     event input_set ->
