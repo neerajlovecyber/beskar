@@ -215,7 +215,7 @@ scene MacControlCenter {
                         gradient: 0, 0 to 46, 46, #e8a048, #7f52ff
                         box { from: 14, 14; size: 46, 46; corner: 11 }
                     }
-                    image cover { at: 14, 14; size: 46, 46; show: has_art }
+                    image cover { at: 14, 14; size: 46, 46; fit: cover; show: has_art }
                     text track_title { at: 14, 74; anchor: left center; size: t_sub; weight: 600; color: ink_c; width: 132; lines: 1 }
                     text track_artist { at: 14, 90; anchor: left center; size: t_micro; color: ink_sub; width: 132; lines: 1 }
 

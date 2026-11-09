@@ -292,7 +292,7 @@ scene Widgets {
         group {
             show: has_player
             clip box { from: 18, 18; size: 96, 96; corner: r_l }
-            image cover { at: 18, 18; size: 96, 96 }
+            image cover { at: 18, 18; size: 96, 96; fit: cover }
             text track_title { at: 130, 44; anchor: left center; size: t_title; weight: 600; color: ink_c; width: cw - 150 }
             text track_artist { at: 130, 66; anchor: left center; size: t_sub; color: ink_sub; width: cw - 150 }
             Sym("󰒮", 150, 112, 20, ink_c)

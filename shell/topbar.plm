@@ -75,7 +75,9 @@ scene MacTopBar {
     fact m_playing = false
     fact m_has_art = false
     text m_art = ""
-    image m_cover = from m_art, 22, 22
+    //  the cover is decoded into a wide cell (40 x 22): a 16:9 thumbnail fills it, a square cover sits in the middle, and the
+    //  22 px circle shows the middle either way, so it is always full (no bars)
+    image m_cover = from m_art, 40, 22
     fact cp_kind = 0          // what owns the centre island: 0 the dashboard · 1 a notification banner (the clock gives way)
     fact bp_keep = false      // the open bottom panel must survive a click outside (the widget bar: you drag cards while it is up)
     fact bp_on = false        // bottom: the dock island grows UP into Spotlight / the wallpaper strip
@@ -701,7 +703,7 @@ scene MacTopBar {
                     ellipse { at: 11, 11; radius: 11; color: accent_c }
                     group {
                         clip box { from: 0, 0; size: 22, 22; corner: 11 }
-                        image m_cover { at: 0, 0; size: 22, 22; show: m_has_art }
+                        image m_cover { at: -9, 0; size: 40, 22; show: m_has_art }
                     }
                 }
                 group {
