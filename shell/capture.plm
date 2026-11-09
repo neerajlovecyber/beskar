@@ -158,9 +158,8 @@ scene MacCapture {
         }
 
         on key Escape { open = false }
-        on key Return while has_sel and mode == 0 { scr_w = screen.width; scr_h = screen.height; emit do_region }
-        on key Return while mode == 1 { emit do_window }
-        on key Return while mode == 2 { emit do_screen }
+        on key Return { emit confirm }
+        on key KP_Enter { emit confirm }
         on key r { kind = 1 }
         on key p { kind = 0 }
     }
@@ -204,6 +203,7 @@ scene MacCapture {
     event toggle ->
     event toggle_record ->
     event do_region ->
+    event confirm ->
     event do_window ->
     event shot_now ->
     event do_screen ->

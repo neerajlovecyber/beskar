@@ -56,7 +56,7 @@ scene MacClipboard {
                 for c in clips { ClipRow(c) }
             }
 
-            group { show: clips.count < 1; EmptyState(280, 100, "󰅌", "Nothing copied yet", "Copy something and it shows up here") }
+            group { show: clips.count < 1; EmptyState(280, 92, "󰅌", "Nothing copied yet", "Copy something and it shows up here") }
         }
     }
 

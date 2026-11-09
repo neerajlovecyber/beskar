@@ -51,16 +51,16 @@ local function focused_info(cb)
         local ok, o = pcall(json.decode, out or "")
         if ok and type(o) == "table" then
             local l = o.logical or {}
-            cb(o.name or "", l.x or 0, l.y or 0)
+            cb(o.name or "", l.x or 0, l.y or 0, l.width or 0)
         else
-            cb("", 0, 0)
+            cb("", 0, 0, 0)
         end
     end)
 end
 
 local frozen = nil      -- the picture shown behind the picker
 local frozen_out = nil  -- its monitor, and where that monitor sits (for recording a region)
-local frozen_x, frozen_y = 0, 0
+local frozen_x, frozen_y, frozen_w = 0, 0, 0
 
 local function drop_frozen()
     if frozen then
@@ -74,6 +74,8 @@ local function still_name(cb)
         cb(string.format("%s/Screen_Shot_%s.png", dir, stamp()))
     end)
 end
+
+local do_screen_fn, do_window_fn, do_region_fn
 
 local function stop_recording()
     if timer_id then
@@ -148,7 +150,7 @@ on("toggle", function()
         stop_recording()
         return
     end
-    focused_info(function(name, lx, ly)
+    focused_info(function(name, lx, ly, lw)
         local file = string.format("/tmp/beskar-cap-%d.png", os.time())
         local args = name ~= "" and { "-o", name, file } or { file }
         run("grim", args, function(_, code)
@@ -157,7 +159,7 @@ on("toggle", function()
                 return
             end
             drop_frozen()
-            frozen, frozen_out, frozen_x, frozen_y = file, name, lx, ly
+            frozen, frozen_out, frozen_x, frozen_y, frozen_w = file, name, lx, ly, lw
             text.shot_path = file
             fact.has_sel = false
             fact.sel_w = 0
@@ -167,7 +169,7 @@ on("toggle", function()
     end)
 end)
 
-on("do_screen", function()
+do_screen_fn = function()
     fact.open = false
     local k = fact.kind or 0
     after(350, function()
@@ -181,7 +183,8 @@ on("do_screen", function()
             end)
         end
     end)
-end)
+end
+on("do_screen", do_screen_fn)
 
 -- A screenshot of the whole monitor WITH the shell (grim sees every layer; niri's own screenshot-window draws the
 -- window alone, without the bar, ring and dock). No picker: Ctrl+Print / Alt+Print and the picker's Window mode.
@@ -201,7 +204,7 @@ local function shot_now()
 end
 on("shot_now", shot_now)
 
-on("do_window", function()
+do_window_fn = function()
     fact.open = false
     local k = fact.kind or 0
     after(350, function()
@@ -211,12 +214,19 @@ on("do_window", function()
             shot_now()
         end
     end)
-end)
+end
+on("do_window", do_window_fn)
 
-on("do_region", function()
+local region_busy = false
+do_region_fn = function()
     local x, y = math.floor(fact.sel_x or 0), math.floor(fact.sel_y or 0)
     local w, h = math.floor(fact.sel_w or 0), math.floor(fact.sel_h or 0)
-    local sw = math.floor(fact.scr_w or 1920)
+    -- the monitor's logical width, known from niri (a key press cannot read `screen.width` in the scene: it is 0 there)
+    local sw = frozen_w > 0 and frozen_w or math.floor(fact.scr_w or 0)
+    if sw <= 0 then sw = 1920 end
+    if region_busy then return end            -- one press can arrive from every copy of the surface
+    region_busy = true
+    after(1500, function() region_busy = false end)
     local k = fact.kind or 0
     fact.open = false
     if w < 4 or h < 4 then return end
@@ -238,6 +248,19 @@ on("do_region", function()
                 end
             end)
     end)
+end
+on("do_region", do_region_fn)
+
+-- Enter: take what the picker is set up for (a selected region, the focused window, or the whole screen)
+on("confirm", function()
+    local mode = fact.mode or 0
+    if mode == 1 then
+        do_window_fn()
+    elseif mode == 2 then
+        do_screen_fn()
+    elseif fact.has_sel == true then
+        do_region_fn()
+    end
 end)
 
 on("toggle_record", function()
