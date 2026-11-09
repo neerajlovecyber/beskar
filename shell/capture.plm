@@ -7,6 +7,7 @@ scene MacCapture {
     include "common/theme.plm"
     include "common/here.plm"
     include "common/icons.plm"
+    include "common/ui.plm"
 
     surface picker {
         size: full, full
@@ -205,22 +206,6 @@ scene MacCapture {
     event do_region ->
     event do_window ->
     event do_screen ->
-
-    // the shell's own plate (glass / light acrylic / solid, light or dark, as Settings says)
-    component Plate(w: number, h: number, r: number) {
-        body {
-            color: bg_color
-            glass: glass_amt
-            lens: false
-            frost: 100%
-            dispersion: 0
-            refraction: 0
-            tint: tint_amt
-            rim: rim_amt
-            box { from: 0, 0; size: w, h; corner: r }
-        }
-        box { from: 0, 0; size: w, h; corner: r; stroke: 1; color: stroke_c; opacity: stroke_op }
-    }
 
     component ModeChip(x: number, idx: number, icon_t: text, name_t: text) {
         group {

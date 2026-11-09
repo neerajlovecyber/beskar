@@ -7,6 +7,7 @@ import "common/palette.plm"
 scene MacSettings {
     include "common/theme.plm"
     include "common/icons.plm"
+    include "common/ui.plm"
     include "common/here.plm"
     surface sheet {
         size: 900, 620
@@ -580,16 +581,6 @@ scene MacSettings {
         children
     }
 
-    //  The switch (it carries its own click).
-    component Switch(state: bool, tap: event) {
-        size: 44, 24
-        box { from: 0, 0; size: 44, 24; corner: 12; color: if(state, accent_c, if(dark_mode, #3a3d46, #d1d5db)) }
-        ellipse { at: if(state, 32, 12), 12; radius: 9.5; color: #ffffff }
-        zone box hit { from: 0, 0; size: 44, 24; corner: 12; cursor: pointer }
-        on press hit { emit tap }
-        on press right hit { }
-    }
-
     component ToggleRow(title: text, sub: text, state: bool, tap: event) {
         size: 556, 56
         box { from: 0, 0; size: 556, 56; corner: 14; color: card_fill; opacity: card_fill_op }
@@ -615,22 +606,6 @@ scene MacSettings {
         }
     }
 
-    //  A button; `x, y` places it when it sits inside a Card.
-    component Btn(label: text, w: number, tap: event, primary: bool = false, x: number = 0, y: number = 0) {
-        size: w, 28
-        prop hot = 0 ~quick
-        group {
-            move: x, y
-            box { from: 0, 0; size: w, 28; corner: 8; color: if(primary, accent_c, if(dark_mode, #2a2e38, #e5e7eb)); opacity: 0.85 + hot * 0.15 }
-            text label { at: w / 2, 14; anchor: center center; size: 12; weight: 600; color: if(primary, #ffffff, ink_c) }
-            zone box hit { from: 0, 0; size: w, 28; corner: 8; cursor: pointer }
-            on enter hit { hot: 1 }
-            on leave hit { hot: 0 }
-            on press hit { emit tap }
-            on press right hit { }
-        }
-    }
-
     //  A slider you can drag.
     component SliderRow(title: text, level: number, set: event, kind: number, live: bool) {
         size: 556, 64
@@ -643,26 +618,6 @@ scene MacSettings {
         zone box hit { from: 18, 32; size: 520, 22; cursor: pointer }
         on press hit { emit set(clamp(local.x / 520, 0, 1)) }
         on drag hit { emit set(clamp(local.x / 520, 0, 1)) }
-        on press right hit { }
-    }
-
-    //  A segment of a row of choices.
-    component Seg(label: text, n: number, cur: number, pick: event, w: number = 52) {
-        size: w, 28
-        box { from: 0, 0; size: w, 28; corner: 8; color: if(cur == n, accent_c, if(dark_mode, #2a2e38, #e5e7eb)) }
-        text label { at: w / 2, 14; anchor: center center; size: 11.5; weight: 600; color: if(cur == n, #ffffff, ink_c) }
-        zone box hit { from: 0, 0; size: w, 28; corner: 8; cursor: pointer }
-        on press hit { emit pick(n) }
-        on press right hit { }
-    }
-
-    //  A chip chosen from a list (resolution, refresh rate).
-    component Chip(label: text, on: bool, pick: event, n: number, w: number = 80) {
-        size: w, 28
-        box { from: 0, 0; size: w, 28; corner: 8; color: if(on, accent_c, if(dark_mode, #2a2e38, #e5e7eb)) }
-        text label { at: w / 2, 14; anchor: center center; size: 11.5; weight: 600; color: if(on, #ffffff, ink_c) }
-        zone box hit { from: 0, 0; size: w, 28; corner: 8; cursor: pointer }
-        on press hit { emit pick(n) }
         on press right hit { }
     }
 

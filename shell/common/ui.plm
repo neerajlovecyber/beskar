@@ -1,0 +1,77 @@
+// Shared UI parts: ONE look for the controls every scene uses. `include "common/ui.plm"` after theme.plm and use these
+// instead of drawing a toggle, button, chip or glass plate by hand (and never a hard-coded colour: they read the theme).
+//
+//   Plate(w, h, r)                 a glass plate (the shell's own: glass / acrylic / solid, light or dark) with its edge
+//   Switch(state, tap)             on / off switch, 44 x 24, emits `tap`
+//   Btn(label, w, tap, primary)    a 28 px button; `primary` = accent
+//   Seg(label, n, cur, pick, w)    one segment of a row of choices (`pick(n)` when pressed); highlighted when cur == n
+//   Chip(label, on, pick, n, w)    a chip chosen from a list; highlighted when `on`
+//   Divider(len)                   a 1 px line
+part Ui {
+    //  The shell's own glass plate.
+    component Plate(w: number, h: number, r: number) {
+        body {
+            color: bg_color
+            glass: glass_amt
+            lens: false
+            frost: 100%
+            dispersion: 0
+            refraction: 0
+            tint: tint_amt
+            rim: rim_amt
+            box { from: 0, 0; size: w, h; corner: r }
+        }
+        box { from: 0, 0; size: w, h; corner: r; stroke: 1; color: card_stroke; opacity: card_stroke_op }
+    }
+
+    component Divider(len: number) {
+        box { from: 0, 0; size: len, 1; color: card_stroke; opacity: card_stroke_op }
+    }
+
+    //  The switch (it carries its own click).
+    component Switch(state: bool, tap: event) {
+        size: 44, 24
+        box { from: 0, 0; size: 44, 24; corner: 12; color: if(state, accent_c, if(dark_mode, #3a3d46, #d1d5db)) }
+        ellipse { at: if(state, 32, 12), 12; radius: 9.5; color: #ffffff }
+        zone box hit { from: 0, 0; size: 44, 24; corner: 12; cursor: pointer }
+        on press hit { emit tap }
+        on press right hit { }
+    }
+
+    //  A button; `x, y` places it when it sits inside a Card.
+    component Btn(label: text, w: number, tap: event, primary: bool = false, x: number = 0, y: number = 0) {
+        size: w, 28
+        prop hot = 0 ~quick
+        group {
+            move: x, y
+            box { from: 0, 0; size: w, 28; corner: 8; color: if(primary, accent_c, if(dark_mode, #2a2e38, #e5e7eb)); opacity: 0.85 + hot * 0.15 }
+            text label { at: w / 2, 14; anchor: center center; size: 12; weight: 600; color: if(primary, #ffffff, ink_c) }
+            zone box hit { from: 0, 0; size: w, 28; corner: 8; cursor: pointer }
+            on enter hit { hot: 1 }
+            on leave hit { hot: 0 }
+            on press hit { emit tap }
+            on press right hit { }
+        }
+    }
+
+    //  A segment of a row of choices.
+    component Seg(label: text, n: number, cur: number, pick: event, w: number = 52) {
+        size: w, 28
+        box { from: 0, 0; size: w, 28; corner: 8; color: if(cur == n, accent_c, if(dark_mode, #2a2e38, #e5e7eb)) }
+        text label { at: w / 2, 14; anchor: center center; size: 11.5; weight: 600; color: if(cur == n, #ffffff, ink_c) }
+        zone box hit { from: 0, 0; size: w, 28; corner: 8; cursor: pointer }
+        on press hit { emit pick(n) }
+        on press right hit { }
+    }
+
+    //  A chip chosen from a list (resolution, refresh rate).
+    component Chip(label: text, on: bool, pick: event, n: number, w: number = 80) {
+        size: w, 28
+        box { from: 0, 0; size: w, 28; corner: 8; color: if(on, accent_c, if(dark_mode, #2a2e38, #e5e7eb)) }
+        text label { at: w / 2, 14; anchor: center center; size: 11.5; weight: 600; color: if(on, #ffffff, ink_c) }
+        zone box hit { from: 0, 0; size: w, 28; corner: 8; cursor: pointer }
+        on press hit { emit pick(n) }
+        on press right hit { }
+    }
+
+}
