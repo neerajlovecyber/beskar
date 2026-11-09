@@ -6,6 +6,7 @@ import "common/palette.plm"
 
 scene MacPolkit {
     include "common/theme.plm"
+    include "common/icons.plm"
     include "common/here.plm"
 
     permissions {
@@ -43,7 +44,7 @@ scene MacPolkit {
 
             //  the icon
             ellipse { at: 220, 50; radius: 26; color: accent_c }
-            text "󰌾" { at: 220, 50; anchor: center center; size: 26; color: #ffffff }
+            Sym("󰌾", 220, 50, 26, #ffffff)
 
             text "Authentication required" { at: 220, 98; anchor: center center; size: 15; weight: 700; color: ink_c; width: 400; lines: 1; align: center }
             //  what the program wants, as polkit words it

@@ -14,6 +14,7 @@ import "common/palette.plm"
 
 scene MacTopBar {
     include "common/theme.plm"
+    include "common/icons.plm"
     surface {
         size: full, full
         anchor: top
@@ -603,19 +604,19 @@ scene MacTopBar {
             box { from: 18, 49; size: 40, 40; corner: 12; color: if(osd_kind == 2 and osd_muted, danger_c, ink_c); opacity: if(osd_kind == 2 and osd_muted, 22%, 12%) }
             group {
                 show: osd_kind == 0
-                text if(osd_muted or osd_level < 0.02, "󰝟", "󰕾") { at: 38, 69; anchor: center center; size: 20; color: if(osd_muted, danger_c, ink_c) }
+                text if(osd_muted or osd_level < 0.02, "󰝟", "󰕾") { family: "JetBrainsMono Nerd Font Mono"; at: 38, 69; anchor: center center; size: 20; color: if(osd_muted, danger_c, ink_c) }
                 text "Volume" { at: 70, 60; anchor: left center; size: 13.5; weight: 700; color: ink_c }
                 text if(osd_muted, "Muted", "{osd_level * 100, 0} %") { at: 362, 60; anchor: right center; size: 12.5; weight: 600; color: if(osd_muted, danger_c, ink_sub) }
             }
             group {
                 show: osd_kind == 1
-                text "󰃟" { at: 38, 69; anchor: center center; size: 20; color: ink_c }
+                Sym("󰃟", 38, 69, 20, ink_c)
                 text "Brightness" { at: 70, 60; anchor: left center; size: 13.5; weight: 700; color: ink_c }
                 text "{osd_level * 100, 0} %" { at: 362, 60; anchor: right center; size: 12.5; weight: 600; color: ink_sub }
             }
             group {
                 show: osd_kind == 2
-                text if(osd_muted, "󰍭", "󰍬") { at: 38, 69; anchor: center center; size: 20; color: if(osd_muted, danger_c, ink_c) }
+                text if(osd_muted, "󰍭", "󰍬") { family: "JetBrainsMono Nerd Font Mono"; at: 38, 69; anchor: center center; size: 20; color: if(osd_muted, danger_c, ink_c) }
                 text "Microphone" { at: 70, 60; anchor: left center; size: 13.5; weight: 700; color: ink_c }
                 text if(osd_muted, "Muted", "On") { at: 362, 60; anchor: right center; size: 12.5; weight: 600; color: if(osd_muted, danger_c, ink_sub) }
             }
@@ -644,7 +645,7 @@ scene MacTopBar {
                 show: act_kind == 1
                 gap: 6
                 align: center
-                text "󱐋" { size: 13; color: if(bat_charging, ok_c, ink_sub) }
+                text "󱐋" { family: "JetBrainsMono Nerd Font Mono"; size: 13; color: if(bat_charging, ok_c, ink_sub) }
                 text if(bat_charging, "Charging", "On battery") { size: 12.5; weight: 600; color: ink_c }
                 text "{bat_percent}%" { size: 12.5; weight: 700; color: hint_c }
             }
@@ -737,7 +738,7 @@ scene MacTopBar {
                 show: act_kind == 0 and pref_weather
                 gap: 4
                 align: center
-                text weather_icon { size: 12; color: hint_c }
+                text weather_icon { family: "JetBrainsMono Nerd Font Mono"; size: 12; color: hint_c }
                 text weather_temp { size: 11; weight: 600; color: ink_c }
             }
 

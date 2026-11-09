@@ -55,7 +55,7 @@ scene MacDashboard {
             at: 16, 16
             gap: 8
             align: center
-            text "󰃭" { size: 16; color: accent_c }
+            text "󰃭" { family: "JetBrainsMono Nerd Font Mono"; size: 16; color: accent_c }
             text "Today" { size: 15; weight: 600; color: ink_c }
         }
 
@@ -85,7 +85,7 @@ scene MacDashboard {
 
                 text weather_city { at: 14, 14; size: 13; weight: 600; color: ink_c; width: 126; lines: 1 }
                 text weather_temp { at: 14, 34; size: 34; weight: 600; color: ink_c }
-                text weather_icon { at: 122, 42; anchor: center; size: 28; color: #ff9500 }
+                text weather_icon { family: "JetBrainsMono Nerd Font Mono"; at: 122, 42; anchor: center; size: 28; color: #ff9500 }
                 text weather_cond { at: 14, 82; size: 11.5; weight: 500; color: ink_c; width: 126; lines: 1 }
                 text weather_range { at: 14, 102; size: 10.5; color: ink_sub }
             }
@@ -99,7 +99,7 @@ scene MacDashboard {
             box { from: 0, 0; size: 320, 116; corner: 16; stroke: 1; color: card_stroke; opacity: card_stroke_op }
 
             // Header
-            text "󰍹" { at: 16, 16; size: 14; color: accent_c }
+            text "󰍹" { family: "JetBrainsMono Nerd Font Mono"; at: 16, 16; size: 14; color: accent_c }
             text "Activity & Resources" { at: 36, 16; size: 12; weight: 600; color: ink_c }
 
             // CPU Metric

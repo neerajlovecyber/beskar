@@ -30,7 +30,7 @@ scene MacSpotlight {
         box { from: 28, ph - 74; size: 584, 1; color: line_color; opacity: line_op }
 
         // Spotlight Magnifying Glass & Search Field
-        text "󰍉" { at: 46, ph - 38; anchor: center; size: 19; color: ink_c; opacity: 60% }
+        text "󰍉" { family: "JetBrainsMono Nerd Font Mono"; at: 46, ph - 38; anchor: center; size: 19; color: ink_c; opacity: 60% }
         input query {
             at: 68, ph - 50
             width: 530
@@ -99,7 +99,7 @@ scene MacSpotlight {
         group {
             show: h.kind != 0 and not (h.kind == 2 and h.site > 0)
             ellipse { at: 29, 21; radius: 13; color: accent_c; opacity: 85% }
-            text h.glyph { at: 29, 21; anchor: center; size: 14; color: #ffffff }
+            text h.glyph { family: "JetBrainsMono Nerd Font Mono"; at: 29, 21; anchor: center; size: 14; color: #ffffff }
         }
         text h.sub { at: 560, 21; anchor: right center; size: 11.5; color: ink_sub; width: 200; lines: 1; align: right }
         text h.name {

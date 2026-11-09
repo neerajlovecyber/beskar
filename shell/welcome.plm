@@ -5,6 +5,7 @@ import "common/palette.plm"
 
 scene MacWelcome {
     include "common/theme.plm"
+    include "common/icons.plm"
     include "common/here.plm"
 
     permissions {
@@ -45,7 +46,7 @@ scene MacWelcome {
             group {
                 show: page == 0
                 ellipse { at: 320, 92; radius: 38; color: accent_c }
-                text "󰣇" { at: 320, 92; anchor: center center; size: 38; color: #ffffff }
+                Sym("󰣇", 320, 92, 38, #ffffff)
                 text "Welcome to Beskar" { at: 320, 168; anchor: center center; size: 26; weight: 700; color: ink_c }
                 text "A glass desktop for niri" { at: 320, 200; anchor: center center; size: 14; color: ink_sub }
                 Tip(60, 226, "󰍜", "The bar", "The clock opens the dashboard, the bell your notifications, the switches icon the Control Center.")
@@ -153,7 +154,7 @@ scene MacWelcome {
         group {
             move: x, y
             ellipse { at: 22, 24; radius: 22; color: accent_c; opacity: 18% }
-            text icon { at: 22, 24; anchor: center center; size: 20; color: accent_c }
+            Sym(icon, 22, 24, 20, accent_c)
             text title { at: 58, 8; anchor: left center; size: 14; weight: 600; color: ink_c }
             text body { at: 58, 34; anchor: left top; size: 12; color: ink_sub; width: 500; lines: 2 }
         }
@@ -166,7 +167,7 @@ scene MacWelcome {
             move: x, y
             box { from: 0, 0; size: 160, 96; corner: 16; color: item_bg; opacity: item_bg_op + hot * 6% }
             box { from: 0, 0; size: 160, 96; corner: 16; stroke: 2; color: accent_c; opacity: if(on_, 100%, 0%) }
-            text icon { at: 80, 38; anchor: center center; size: 26; color: if(on_, accent_c, ink_c) }
+            Sym(icon, 80, 38, 26, if(on_, accent_c, ink_c))
             text label { at: 80, 72; anchor: center center; size: 13; weight: 600; color: ink_c }
             zone box hit { from: 0, 0; size: 160, 96; corner: 16; cursor: pointer }
             on enter hit { hot: 1 }

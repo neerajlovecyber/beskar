@@ -363,7 +363,7 @@ scene MacControlCenter {
                 row {
                     gap: 8
                     align: center
-                    text "󰅁" { size: 18; color: ink_c; opacity: 70% }
+                    text "󰅁" { family: "JetBrainsMono Nerd Font Mono"; size: 18; color: ink_c; opacity: 70% }
                     text "Wi-Fi" { size: 16; weight: 600; color: ink_c }
                 }
                 zone box wifi_back_hit { from: 0, 0; size: 100, 32; cursor: pointer }
@@ -485,7 +485,7 @@ scene MacControlCenter {
                 row {
                     gap: 8
                     align: center
-                    text "󰅁" { size: 18; color: ink_c; opacity: 70% }
+                    text "󰅁" { family: "JetBrainsMono Nerd Font Mono"; size: 18; color: ink_c; opacity: 70% }
                     text "Bluetooth" { size: 16; weight: 600; color: ink_c }
                 }
                 zone box bt_back_hit { from: 0, 0; size: 130, 32; cursor: pointer }
@@ -508,7 +508,7 @@ scene MacControlCenter {
                         box { from: 0, 0; size: 328, 46; corner: 12; color: accent_c; opacity: if(g.state == 1, 100%, 0%) }
                         box { from: 0, 0; size: 328, 46; corner: 12; stroke: 1; color: card_stroke; opacity: card_stroke_op }
                         ellipse { at: 24, 23; radius: 15; color: if(g.state == 1, #ffffff, item_bg); opacity: if(g.state == 1, 100%, item_bg_op) }
-                        text pick(g.kind, "󰂯", "󰋋", "󰍽", "󰌌", "󰏲", "󰟀", "󰊴", "󰓃") { at: 24, 23; anchor: center; size: 14; color: if(g.state == 1, accent_c, ink_c) }
+                        text pick(g.kind, "󰂯", "󰋋", "󰍽", "󰌌", "󰏲", "󰟀", "󰊴", "󰓃") { family: "JetBrainsMono Nerd Font Mono"; at: 24, 23; anchor: center; size: 14; color: if(g.state == 1, accent_c, ink_c) }
                         text g.name { at: 48, 17; anchor: left center; size: 13; weight: if(g.state == 1, 600, 500); color: if(g.state == 1, #ffffff, ink_c); width: 150; lines: 1 }
                         text g.status { at: 48, 32; anchor: left center; size: 10.5; color: if(g.state == 1, #ffffff, ink_sub); opacity: if(g.state == 1, 85%, 100%); width: 150; lines: 1 }
                         text if(g.battery >= 0, "{g.battery * 100, 0}%", "") { at: 208, 23; anchor: right center; size: 10.5; color: if(g.state == 1, #ffffff, ink_sub) }
@@ -540,7 +540,7 @@ scene MacControlCenter {
                 row {
                     gap: 8
                     align: center
-                    text "󰅁" { size: 18; color: ink_c; opacity: 70% }
+                    text "󰅁" { family: "JetBrainsMono Nerd Font Mono"; size: 18; color: ink_c; opacity: 70% }
                     text "Sound" { size: 16; weight: 600; color: ink_c }
                 }
                 zone box snd_back_hit { from: 0, 0; size: 150, 32; cursor: pointer }

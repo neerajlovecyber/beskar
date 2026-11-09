@@ -1,0 +1,19 @@
+// Icons: ONE way to draw a glyph so it sits in the middle of its box everywhere.
+// The default font draws Nerd Font symbols off-centre by up to 11 px (each glyph differently); the Mono variant gives
+// every symbol the same one-cell advance with the ink centred in it. So never write a glyph with a bare `text`:
+//
+//   Sym("󰕾", 38, 69, 20, ink_c)               // centred on x, y
+//   SymTile("󰃟", 18, 49, 40, 12, ink_c, 12%)    // a rounded square (left, top, size, corner) with the glyph in its middle
+//
+// Put `include "common/icons.plm"` in the scene (after theme.plm). A glyph that must change with a fact uses a
+// `text` of its own with `family: "JetBrainsMono Nerd Font Mono"` (a component's text parameter is a literal).
+part Icons {
+    component Sym(g: text, x: number, y: number, sz: number, col: color, op: number = 1) {
+        text g { at: x, y; anchor: center center; size: sz; family: "JetBrainsMono Nerd Font Mono"; color: col; opacity: op }
+    }
+
+    component SymTile(g: text, x: number, y: number, side: number, corner: number, col: color, fill_op: number = 0.12) {
+        box { from: x, y; size: side, side; corner: corner; color: col; opacity: fill_op }
+        text g { at: x + side / 2, y + side / 2; anchor: center center; size: side * 0.5; family: "JetBrainsMono Nerd Font Mono"; color: col }
+    }
+}

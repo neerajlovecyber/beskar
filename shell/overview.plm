@@ -3,6 +3,7 @@ import "common/palette.plm"
 
 scene MacOverview {
     include "common/theme.plm"
+    include "common/icons.plm"
     include "common/here.plm"
     surface sheet {
         size: 1280, 860
@@ -38,7 +39,7 @@ scene MacOverview {
             group {
                 move: 70, 56
                 ellipse { at: 14, 14; radius: 14; color: accent_c; opacity: 20% }
-                text "󰕰" { at: 14, 14; anchor: center center; size: 15; color: accent_c }
+                Sym("󰕰", 14, 14, 15, accent_c)
                 text "Window Overview" { at: 38, 14; anchor: left center; size: 16; weight: 700; color: ink_c }
                 text win_count_text { at: 200, 14; anchor: left center; size: 12; color: ink_sub }
                 text "esc to close  ·  ↵ to focus  ·  arrows to select" { at: ov_w - 100, 14; anchor: right center; size: 11; color: ink_sub }

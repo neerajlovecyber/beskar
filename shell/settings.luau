@@ -23,7 +23,7 @@ local CATS = {
     { 8, "󰌵", 8, "Night Light & Power" },
 }
 -- Nerd-font glyphs are not drawn symmetrically in their box: how far each one sits right of the middle (measured)
-local GLYPH_DX = { [0] = 1, 1.5, 0.5, 1.5, 1, 1.5, 2, 2, 1 }
+local GLYPH_DX = {}   -- no nudging any more: icons use the Mono Nerd Font (common/icons.plm), centred by design
 local TITLES = {}
 for _, c in ipairs(CATS) do
     TITLES[c[1]] = c[4]

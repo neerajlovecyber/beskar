@@ -14,6 +14,7 @@ import "common/palette.plm"
 
 scene Widgets {
     include "common/theme.plm"
+    include "common/icons.plm"
     permissions {
         services: "clock", "battery", "media", "media.*", "audio", "audio.*", "brightness", "brightness.*", "say:topbar", "say:settings", "say:widget_bar"
         run: "sh", "curl", "cat", "niri msg"
@@ -196,13 +197,13 @@ scene Widgets {
                 box { from: 0, 0; size: cw, ch; corner: 24; stroke: 2; color: accent_c; opacity: 85% }
                 //  remove
                 ellipse { at: 4, 4; radius: 12; color: danger_c }
-                text "󰅖" { at: 4, 4; anchor: center center; size: 13; color: #ffffff }
+                Sym("󰅖", 4, 4, 13, #ffffff)
                 zone box rm_hit { from: -10, -10; size: 28, 28; corner: 14; cursor: pointer }
                 on press rm_hit { emit w_remove(w.id) }
                 on press right rm_hit { }
                 //  size
                 ellipse { at: cw - 4, ch - 4; radius: 13; color: accent_c }
-                text "󰩨" { at: cw - 4, ch - 4; anchor: center center; size: 14; color: #ffffff }
+                Sym("󰩨", cw - 4, ch - 4, 14, #ffffff)
                 zone box rs_hit { from: cw - 20, ch - 20; size: 32, 32; corner: 16; cursor: pointer }
                 on press rs_hit { emit w_resize(w.id) }
                 on press right rs_hit { }
@@ -227,7 +228,7 @@ scene Widgets {
     }
 
     component WeatherFace(cw: number, ch: number, sz: number) {
-        text weather_icon { at: 22, 40; anchor: left center; size: pick(sz, 30, 36, 44); color: warn_c }
+        text weather_icon { family: "JetBrainsMono Nerd Font Mono"; at: 22, 40; anchor: left center; size: pick(sz, 30, 36, 44); color: warn_c }
         text weather_temp { at: 22, ch - 52; anchor: left center; size: pick(sz, 34, 38, 52); weight: 300; color: ink_c }
         text weather_cond { at: 22, ch - 24; anchor: left center; size: 13; weight: 500; color: ink_c }
         group {
@@ -246,11 +247,11 @@ scene Widgets {
             ellipse { at: cx, cy; radius: 52; stroke: 9; color: ink_c; opacity: 12% }
             arc { at: cx, cy; radius: 52; span: bat.percent * 3.6deg; rotate: bat.percent * 1.8deg; width: 9; color: c }
             text "{bat.percent}%" { at: cx, cy - 2; anchor: center center; size: 24; weight: 600; color: ink_c }
-            text if(bat.charging, "󱐋", "") { at: cx, cy + 22; anchor: center center; size: 14; color: ok_c }
+            text if(bat.charging, "󱐋", "") { family: "JetBrainsMono Nerd Font Mono"; at: cx, cy + 22; anchor: center center; size: 14; color: ok_c }
         }
         group {
             show: not bat.present
-            text "󰂄" { at: cw / 2, ch / 2 - 10; anchor: center center; size: 38; color: ink_sub }
+            Sym("󰂄", cw / 2, ch / 2 - 10, 38, ink_sub)
             text "AC power" { at: cw / 2, ch / 2 + 26; anchor: center center; size: 13; color: ink_sub }
         }
         group {
@@ -261,7 +262,7 @@ scene Widgets {
     }
 
     component SystemFace(cw: number, ch: number, sz: number) {
-        text "󰍹  System" { at: 20, 24; anchor: left center; size: 13; weight: 600; color: ink_sub }
+        text "󰍹  System" { family: "JetBrainsMono Nerd Font Mono"; at: 20, 24; anchor: left center; size: 13; weight: 600; color: ink_sub }
         group {
             move: 0, 0
             text "CPU" { at: 20, 54; anchor: left center; size: 11; weight: 600; color: ink_c }
@@ -294,9 +295,9 @@ scene Widgets {
             image cover { at: 18, 18; size: 96, 96 }
             text track_title { at: 130, 44; anchor: left center; size: 15; weight: 600; color: ink_c; width: cw - 150 }
             text track_artist { at: 130, 66; anchor: left center; size: 12; color: ink_sub; width: cw - 150 }
-            text "󰒮" { at: 150, 112; anchor: center center; size: 20; color: ink_c }
-            text if(is_playing, "󰏤", "󰐊") { at: 200, 112; anchor: center center; size: 26; color: ink_c }
-            text "󰒭" { at: 250, 112; anchor: center center; size: 20; color: ink_c }
+            Sym("󰒮", 150, 112, 20, ink_c)
+            text if(is_playing, "󰏤", "󰐊") { family: "JetBrainsMono Nerd Font Mono"; at: 200, 112; anchor: center center; size: 26; color: ink_c }
+            Sym("󰒭", 250, 112, 20, ink_c)
             zone box pv_hit { from: 134, 96; size: 32, 32; corner: 16; cursor: pointer }
             zone box pp_hit { from: 182, 94; size: 36, 36; corner: 18; cursor: pointer }
             zone box nx_hit { from: 234, 96; size: 32, 32; corner: 16; cursor: pointer }
@@ -309,13 +310,13 @@ scene Widgets {
         }
         group {
             show: not has_player
-            text "󰎆" { at: cw / 2, ch / 2 - 10; anchor: center center; size: 38; color: ink_sub }
+            Sym("󰎆", cw / 2, ch / 2 - 10, 38, ink_sub)
             text "Nothing playing" { at: cw / 2, ch / 2 + 26; anchor: center center; size: 13; color: ink_sub }
         }
     }
 
     component DayFace(cw: number, ch: number, sz: number) {
-        text "󰔟  Today" { at: 20, 24; anchor: left center; size: 13; weight: 600; color: ink_sub }
+        text "󰔟  Today" { family: "JetBrainsMono Nerd Font Mono"; at: 20, 24; anchor: left center; size: 13; weight: 600; color: ink_sub }
         text "{day_pct}%" { at: 20, ch / 2 + 2; anchor: left center; size: pick(sz, 40, 54, 54); weight: 300; color: ink_c }
         text day_left { at: 20, ch - 46; anchor: left center; size: 12; color: ink_sub }
         box { from: 20, ch - 26; size: cw - 40, 8; corner: 4; color: item_solid }
@@ -323,14 +324,14 @@ scene Widgets {
     }
 
     component ControlsFace(cw: number, ch: number, sz: number) {
-        text "󰕾" { at: 28, 54; anchor: center center; size: 17; color: ink_c }
+        Sym("󰕾", 28, 54, 17, ink_c)
         box { from: 52, 49; size: cw - 76, 10; corner: 5; color: item_solid }
         box { from: 52, 49; size: max((cw - 76) * if(sound.muted, 0, sound.volume), 10), 10; corner: 5; color: accent_c }
         zone box vol_hit { from: 44, 36; size: cw - 60, 36; cursor: pointer }
         on press vol_hit while not editing { emit w_vol(clamp(local.x / (cw - 76), 0, 1)) }
         on drag vol_hit while not editing { emit w_vol(clamp(local.x / (cw - 76), 0, 1)) }
         on press right vol_hit { }
-        text "󰃟" { at: 28, 108; anchor: center center; size: 17; color: ink_c }
+        Sym("󰃟", 28, 108, 17, ink_c)
         box { from: 52, 103; size: cw - 76, 10; corner: 5; color: item_solid }
         box { from: 52, 103; size: max((cw - 76) * display.level, 10), 10; corner: 5; color: warn_c }
         zone box bri_hit { from: 44, 90; size: cw - 60, 36; cursor: pointer }

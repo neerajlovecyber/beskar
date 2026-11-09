@@ -11,6 +11,7 @@ import "common/palette.plm"
 
 scene MacLock {
     include "common/theme.plm"
+    include "common/icons.plm"
 
     permissions {
         services: "clock", "auth", "say:topbar", "say:session"
@@ -103,7 +104,7 @@ scene MacLock {
                 agent: no
             }
             ellipse { at: 446, 387; radius: 15; color: if(checking, #8e8e93, accent_c); opacity: 90% }
-            text pick(if(checking, 1, 0), "󰁔", "󰑐") { at: 446, 387; anchor: center center; size: 14; color: #ffffff }
+            text pick(if(checking, 1, 0), "󰁔", "󰑐") { family: "JetBrainsMono Nerd Font Mono"; at: 446, 387; anchor: center center; size: 14; color: #ffffff }
             zone box btn_submit { at: 446, 387; size: 32, 32; corner: 16; cursor: pointer }
             on press btn_submit { emit unlock }
             on press right btn_submit { }
@@ -132,7 +133,7 @@ scene MacLock {
         size: 64, 56
         prop hot = 0 ~quick
         ellipse { at: 32, 20; radius: 19; color: #ffffff; opacity: 14% + hot * 14% }
-        text icon { at: 32, 20; anchor: center center; size: 17; color: #ffffff }
+        Sym(icon, 32, 20, 17, #ffffff)
         text label { at: 32, 50; anchor: center center; size: 11; color: #ffffff; opacity: 70% }
         zone box hit { from: 6, 0; size: 52, 56; corner: 14; cursor: pointer }
         on enter hit { hot: 1 }

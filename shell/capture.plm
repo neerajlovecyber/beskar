@@ -6,6 +6,7 @@ import "common/palette.plm"
 scene MacCapture {
     include "common/theme.plm"
     include "common/here.plm"
+    include "common/icons.plm"
 
     surface picker {
         size: full, full
@@ -99,7 +100,7 @@ scene MacCapture {
             opacity: seen
             move: clamp(sel_x + sel_w / 2 - 74, 8, screen.width - 156), min(sel_y + sel_h + 14, screen.height - 54)
             box { from: 0, 0; size: 148, 40; corner: 12; color: accent_c }
-            text if(kind == 1, "󰻂  Record  ⏎", "󰄀  Capture  ⏎") { at: 74, 20; anchor: center center; size: 13; weight: 700; color: #ffffff }
+            text if(kind == 1, "󰻂  Record  ⏎", "󰄀  Capture  ⏎") { family: "JetBrainsMono Nerd Font Mono"; at: 74, 20; anchor: center center; size: 13; weight: 700; color: #ffffff }
             zone box go_hit { from: 0, 0; size: 148, 40; corner: 12; cursor: pointer; label: "Take it" }
             on press go_hit { scr_w = screen.width; scr_h = screen.height; emit do_region }
             on press right go_hit { open = false }
@@ -136,7 +137,7 @@ scene MacCapture {
 
             // close
             ellipse { at: 26, 26; radius: 14; color: item_solid }
-            text "󰅖" { at: 26, 26; anchor: center center; size: 13; color: ink_c }
+            Sym("󰅖", 26, 26, 13, ink_c)
             zone box x_hit { from: 10, 10; size: 32, 32; corner: 16; cursor: pointer; label: "Close" }
             on press x_hit { open = false }
             on press right x_hit { open = false }
@@ -225,7 +226,7 @@ scene MacCapture {
         group {
             move: x, 8
             box { from: 0, 0; size: 90, 36; corner: 18; color: accent_c; opacity: if(mode == idx, 22%, 0%) }
-            text icon_t { at: 20, 18; anchor: center center; size: 15; color: if(mode == idx, accent_c, ink_c) }
+            Sym(icon_t, 20, 18, 15, if(mode == idx, accent_c, ink_c))
             text name_t { at: 36, 18; anchor: left center; size: 12.5; weight: 600; color: if(mode == idx, accent_c, ink_c) }
             zone box chip_hit { from: 0, 0; size: 90, 36; corner: 18; cursor: pointer; label: name_t }
             on press chip_hit { mode = idx; has_sel = false }
@@ -237,7 +238,7 @@ scene MacCapture {
         group {
             move: x, 8
             box { from: 0, 0; size: 72, 36; corner: 18; color: if(idx == 1, danger_c, accent_c); opacity: if(kind == idx, 24%, 0%) }
-            text icon_t { at: 18, 18; anchor: center center; size: 15; color: if(kind == idx, if(idx == 1, danger_c, accent_c), ink_c) }
+            Sym(icon_t, 18, 18, 15, if(kind == idx, if(idx == 1, danger_c, accent_c), ink_c))
             text name_t { at: 32, 18; anchor: left center; size: 12.5; weight: 600; color: if(kind == idx, if(idx == 1, danger_c, accent_c), ink_c) }
             zone box kind_hit { from: 0, 0; size: 72, 36; corner: 18; cursor: pointer; label: name_t }
             on press kind_hit { kind = idx }

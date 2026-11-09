@@ -7,6 +7,7 @@ scene MacWidgetBar {
     let mp_sw = 820
     let mp_sh = 170
     include "common/theme.plm"
+    include "common/icons.plm"
     include "common/morph_core.plm"
 
     permissions {
@@ -75,7 +76,7 @@ scene MacWidgetBar {
         group {
             move: 24 + (k.id - 1) * 86, 52
             box { from: 0, 0; size: 78, 30; corner: 15; color: item_bg; opacity: item_bg_op + hot * 8% }
-            text k.icon { at: 16, 15; anchor: center center; size: 14; color: accent_c }
+            Sym(k.icon, 16, 15, 14, accent_c)
             text k.name { at: 50, 15; anchor: center center; size: 11; weight: 500; color: ink_c }
             zone box add_hit { from: 0, 0; size: 78, 30; corner: 15; cursor: pointer }
             on enter add_hit { hot: 1 }
