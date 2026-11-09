@@ -19,7 +19,7 @@ scene MacUpdates {
     }
 
     permissions {
-        run: "sh", "pkexec"
+        run: "sh", "pkexec", "paru", "yay"
         services: "say:topbar", "say:control_center", "say:notifications", "say:dashboard", "say:settings", "say:wallpapers", "say:widget_bar", "say:spotlight", "say:clipboard", "say:music", "say:weather", "say:overview"
     }
 
@@ -29,7 +29,7 @@ scene MacUpdates {
     fact failed = false
     fact known = false          // a check has finished (before that, an empty list means "not looked yet")
     text status = ""            // the line under the title
-    model pkgs max 40 { name: text; ver: text }
+    model pkgs max 60 { name: text; ver: text; aur: bool }
 
     event toggle
     event do_update ->
@@ -57,7 +57,7 @@ scene MacUpdates {
                 for p in pkgs {
                     group {
                         size: 322, 34
-                        Sym("󰏗", 22, 17, 14, accent_c)
+                        Sym(if(p.aur, "󰣇", "󰏗"), 22, 17, 14, if(p.aur, warn_c, accent_c))
                         text p.name { at: 40, 17; anchor: left center; size: t_sub; weight: 600; color: ink_c; width: 130; lines: 1 }
                         text p.ver { at: 322, 17; anchor: right center; size: t_micro; color: ink_sub; width: 150; lines: 1; align: right }
                     }
