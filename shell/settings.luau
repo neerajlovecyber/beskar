@@ -701,8 +701,27 @@ local function check_updates()
     end)
 end
 on("check_updates", check_updates)
+-- "Update all" runs pacman in the background as root through pkexec: the polkit popup (polkit.plm) asks for the
+-- password, the last line pacman prints is shown as progress, and the list is checked again when it ends.
+local update_id = nil
 on("run_update", function()
-    pcall(run, "kitty", { "-e", "sh", "-c", "paru -Syu || yay -Syu || sudo pacman -Syu; echo; read -p 'Done. Press Enter.' _" }, nil, { output = false })
+    if fact.up_running then return end
+    fact.up_running = true
+    text.up_title = "Updating…"
+    text.up_sub = "Waiting for your password"
+    update_id = spawn("pkexec", { "pacman", "-Syu", "--noconfirm" }, function(line)
+        line = (line or ""):gsub("%c%[[%d;]*%a", ""):gsub("^%s+", ""):gsub("%s+$", "")
+        if line ~= "" then text.up_sub = line:sub(1, 70) end
+    end, function(_, code)
+        update_id = nil
+        fact.up_running = false
+        if code == 0 then
+            check_updates()
+        else
+            text.up_title = "The update did not finish"
+            text.up_sub = (code == 126 or code == 127) and "The password was not given" or ("pacman stopped (code " .. tostring(code) .. ")")
+        end
+    end, { env = { LC_ALL = "C" } })
 end)
 on("open_updates_tab", function() fact.tab = 7 end)
 

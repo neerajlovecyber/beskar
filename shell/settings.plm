@@ -440,7 +440,7 @@ scene MacSettings {
                 gap: 12
                 Card(84) {
                     ellipse { at: 44, 42; radius: 24; color: if(up_n > 0, accent_c, ok_c) }
-                    text pick(if(up_checking, 2, if(up_n > 0, 1, 0)), "󰄬", "󰚰", "󰑐") { family: "JetBrainsMono Nerd Font Mono"; at: 44, 42; anchor: center center; size: 24; color: on_accent }
+                    text pick(if(up_checking or up_running, 2, if(up_n > 0, 1, 0)), "󰄬", "󰚰", "󰑐") { family: "JetBrainsMono Nerd Font Mono"; at: 44, 42; anchor: center center; size: 24; color: on_accent }
                     text up_title { at: 84, 30; anchor: left center; size: 16; weight: 700; color: ink_c }
                     text up_sub { at: 84, 54; anchor: left center; size: t_cap; color: ink_sub; width: 440 }
                 }
@@ -455,7 +455,7 @@ scene MacSettings {
                 }
                 row {
                     gap: 12
-                    Btn("Update all", 130, run_update, true, 0, 0)
+                    Btn(if(up_running, "Updating…", "Update all"), 130, run_update, true, 0, 0)
                     Btn("Check again", 120, check_updates, false, 0, 0)
                 }
             }
@@ -468,7 +468,7 @@ scene MacSettings {
 
     permissions {
         services: "clock", "audio", "audio.*", "brightness", "brightness.*", "network", "network.*", "bluetooth", "bluetooth.*", "say:topbar", "say:spotlight", "say:control_center", "say:notifications", "say:dashboard", "say:clipboard", "say:music", "say:weather", "say:wallpapers", "say:widget_bar", "say:lock", "say:capture", "say:session", "say:appswitcher", "say:widgets"
-        run: "matugen", "powerprofilesctl", "magick", "gsettings", "systemctl", "loginctl", "kitty", "pacman", "yay", "paru", "checkupdates", "sh", "niri msg"
+        run: "matugen", "powerprofilesctl", "magick", "gsettings", "systemctl", "loginctl", "kitty", "pacman", "yay", "paru", "checkupdates", "pkexec", "sh", "niri msg"
     }
 
     service audio as sound { volume: number; muted: bool }
@@ -523,6 +523,7 @@ scene MacSettings {
 
     fact up_n = 0
     fact up_checking = false
+    fact up_running = false     // pacman -Syu is running (through pkexec: the polkit popup asks for the password)
     text up_title = "Software Update"
     text up_sub = ""
 
