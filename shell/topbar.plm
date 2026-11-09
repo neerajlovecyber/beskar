@@ -148,11 +148,11 @@ scene MacTopBar {
     // ── look ─────────────────────────────────────────────────────
     let bar_color = if(pal_on, surf_c, if(dark_mode, if(skin == 2, #181a20, if(skin == 1, #161820, #14161d)), if(skin == 2, #f2f3f7, if(skin == 1, #eaecf2, #f6f7fb))))
     let bar_glass = if(skin == 2, 0%, if(skin == 1, 45%, 55%))
-    let bar_tint  = if(skin == 2, 0%, if(dark_mode, 60%, 45%))
+    let bar_tint  = if(skin == 2, 100%, if(dark_mode, 60%, 45%))
     let bar_rim   = if(skin == 2, 0%, 16%)
     //  Smoke (dark) / milk (light) keep words readable over any wallpaper.
-    let bar_smoke = if(dark_mode, 75%, 0%)
-    let bar_milk  = if(dark_mode, 0%, 70%)
+    let bar_smoke = if(skin == 2, 0%, if(dark_mode, 75%, 0%))
+    let bar_milk  = if(skin == 2, 0%, if(dark_mode, 0%, 70%))
     let stroke_c  = if(dark_mode, #b4a8ff, #7f52ff)
     let hint_c    = #e8a048   // the little numbers (percentage); a deliberate warm note
     let dot_color = ink_c
