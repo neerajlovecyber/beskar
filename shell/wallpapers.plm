@@ -33,9 +33,9 @@ scene MacWallpapers {
             at: 950, 30
             anchor: right middle
             gap: 8
-            TabPill("All", 0, 60)
-            TabPill("Mine", 1, 66)
-            TabPill("Built-in", 2, 84)
+            Chip("All", wall_tab == 0, wall_tab_set, 0, 60)
+            Chip("Mine", wall_tab == 1, wall_tab_set, 1, 66)
+            Chip("Built-in", wall_tab == 2, wall_tab_set, 2, 84)
         }
 
         //  The wheel goes BEFORE the cards: the last declared zone is the one on top.
@@ -134,16 +134,6 @@ scene MacWallpapers {
         on press hit { emit wall_page(dir) }
         on press right hit { }
     }
-
-    component TabPill(label: text, n: number, w: number = 76) {
-        size: w, 28
-        box { from: 0, 0; size: w, 28; corner: 14; color: if(wall_tab == n, accent_c, item_bg); opacity: if(wall_tab == n, 100%, item_bg_op) }
-        text label { at: w / 2, 14; anchor: center; size: t_cap; weight: 600; color: if(wall_tab == n, on_accent, ink_c) }
-        zone box hit { from: 0, 0; size: w, 28; corner: 14; cursor: pointer }
-        on press hit { emit wall_tab_set(n) }
-        on press right hit { }
-    }
-
 
     //  The glass is drawn by the frame: the dock island grows up and out into the strip (topbar.plm).
 

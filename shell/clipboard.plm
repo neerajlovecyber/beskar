@@ -89,17 +89,8 @@ scene MacClipboard {
         prop pin_hot = 0 ~quick
 
         // Pill background
-        box hit {
-            from: 0, 0
-            size: 480, 42
-            corner: 10
-            color: accent_c
-            opacity: on * 22%
-            cursor: pointer
-        }
-
-        // Active indicator bar
-        box { from: 0, 11; size: 3, 20; corner: 1.5; color: accent_c; opacity: on }
+        RowFrame(480, 42, on)
+        zone box hit { from: 0, 0; size: 480, 42; corner: r_m; cursor: pointer }
 
         //  An image: its thumbnail (or a faint box until it is made) in place of the text icon
         group {

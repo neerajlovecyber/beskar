@@ -10,6 +10,8 @@
 //   Pill(label, w, tap, tone, h, round, on_)  a button with a tone (0 neutral, 1 accent, 2 danger, 3 on a fill)
 //   PanelHeader(glyph, title) / PanelSearch(w, ph)   the header and the bottom search field of a dock panel
 //   EmptyState(x, y, glyph, title, hint)   what a list shows when it is empty (centred on x, y)
+//   RowFrame(w, h, on)   the selected look of a list row (accent pill + left bar); the scene adds its zone and content
+//   Slider(w, level, set, tone, thick, floor)   a draggable level (emits set(0..1))
 //   Divider(len)                   a 1 px line
 //   ScrollBar(sc, ct, h)           a thin scroll bar for a `view:` layout (list.scroll, list.content, the seen height)
 part Ui {
@@ -142,5 +144,24 @@ part Ui {
             text title { at: 0, 8; anchor: center center; size: t_body; weight: 600; color: ink_sub }
             text hint { at: 0, 28; anchor: center center; size: t_cap; color: ink_sub; opacity: 75% }
         }
+    }
+
+    //  The look of a selectable list row: an accent pill that fades in with `on` (0..1) and a bar on its left edge. The
+    //  scene adds its own zone over it (`zone box hit { from: 0, 0; size: w, h; corner: r_m; cursor: pointer }`) and its content.
+    component RowFrame(w: number, h: number, on: number) {
+        box { from: 0, 0; size: w, h; corner: r_m; color: accent_c; opacity: on * 22% }
+        box { from: 0, h / 2 - 10; size: 3, 20; corner: 1.5; color: accent_c; opacity: on }
+    }
+
+    //  A slider you can press and drag: the track and its fill (`thick` px high, never narrower than its own height, or
+    //  than `floor` of the width), emitting `set(0..1)`. Draw glyphs over it if you want; Settings and the Control Center use it.
+    component Slider(w: number, level: number, set: event, tone: color = accent_c, thick: number = 10, floor: number = 0) {
+        size: w, thick
+        box { from: 0, 0; size: w, thick; corner: thick / 2; color: slider_bg; opacity: slider_bg_op }
+        box { from: 0, 0; size: max(thick, w * clamp(level, 0, 1)), thick; corner: thick / 2; color: tone; opacity: 92% }
+        zone box hit { from: 0, -6; size: w, thick + 12; cursor: pointer; label: "Slider" }
+        on press hit { emit set(clamp(local.x / w, floor, 1)) }
+        on drag hit { emit set(clamp(local.x / w, floor, 1)) }
+        on press right hit { }
     }
 }

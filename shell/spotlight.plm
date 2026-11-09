@@ -81,17 +81,8 @@ scene MacSpotlight {
         prop on = 0 ~quick
         follow on = if(sel == h.index, 1, 0)
 
-        box hit {
-            from: 0, 0
-            size: 576, 42
-            corner: 12
-            color: accent_c
-            opacity: on * 22%
-            cursor: pointer
-        }
-
-        // Blue selection pill bar on left
-        box { from: 0, 11; size: 3, 20; corner: 1.5; color: accent_c; opacity: on }
+        RowFrame(576, 42, on)
+        zone box hit { from: 0, 0; size: 576, 42; corner: r_m; cursor: pointer }
 
         image h.icon { at: 16, 8; size: 26, 26; show: h.kind == 0 }
         group {

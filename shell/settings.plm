@@ -625,12 +625,7 @@ scene MacSettings {
         box { from: 0, 0; size: 556, 64; corner: r_m; stroke: 1; color: c_border; opacity: c_border_op }
         text title { at: 18, 20; anchor: left center; size: t_body; weight: 600; color: ink_c }
         text "{clamp(level, 0, 1) * 100, 0}%" { at: 538, 20; anchor: right center; size: t_cap; color: ink_sub }
-        box { from: 18, 38; size: 520, 10; corner: 5; color: slider_bg; opacity: slider_bg_op }
-        box { from: 18, 38; size: max(10, 520 * clamp(level, 0, 1)), 10; corner: 5; color: if(live, accent_c, ink_sub) }
-        zone box hit { from: 18, 32; size: 520, 22; cursor: pointer }
-        on press hit { emit set(clamp(local.x / 520, 0, 1)) }
-        on drag hit { emit set(clamp(local.x / 520, 0, 1)) }
-        on press right hit { }
+        group { move: 18, 38; Slider(520, level, set, if(live, accent_c, ink_sub), 10, 0) }
     }
 
     //  Light / Dark / Auto thumbnail.
