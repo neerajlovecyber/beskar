@@ -23,7 +23,7 @@ scene MacSpotlight {
         // Results List
         //  seven rows are seen; more results scroll (wheel, or the arrow keys carry the selection)
         group {
-            clip box { from: 20, 10; size: 600, 314; corner: 8 }     // ends with this group: the search field below is not clipped
+            clip box { from: 20, 10; size: 600, 314; corner: r_s }     // ends with this group: the search field below is not clipped
             column list {
                 at: 32, 14 - sc
                 gap: 2
@@ -108,7 +108,7 @@ scene MacSpotlight {
             ellipse { at: 29, 21; radius: 13; color: accent_c; opacity: 85% }
             text h.glyph { family: "JetBrainsMono Nerd Font Mono"; at: 29, 21; anchor: center; size: 14; color: on_accent }
         }
-        text h.sub { at: 560, 21; anchor: right center; size: 11.5; color: ink_sub; width: 200; lines: 1; align: right }
+        text h.sub { at: 560, 21; anchor: right center; size: t_cap; color: ink_sub; width: 200; lines: 1; align: right }
         text h.name {
             at: 54, 21
             anchor: left center

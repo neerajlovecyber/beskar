@@ -53,8 +53,8 @@ scene MacMusic {
             show: not has_player
             ellipse { at: 174, 70; radius: 26; color: item_solid }
             path { at: 165, 56; color: ink_sub; move 0, 0; line 20, 14; line 0, 28; close }
-            text "Nothing playing" { at: 174, 124; anchor: center; size: 13; weight: 600; color: ink_sub }
-            text "Start a song in any player" { at: 174, 144; anchor: center; size: 11; color: ink_sub; opacity: 70% }
+            text "Nothing playing" { at: 174, 124; anchor: center; size: t_body; weight: 600; color: ink_sub }
+            text "Start a song in any player" { at: 174, 144; anchor: center; size: t_cap; color: ink_sub; opacity: 70% }
         }
 
         // ── a player has something ──
@@ -64,20 +64,20 @@ scene MacMusic {
             //  cover: a gradient, and the real artwork over it
             body {
                 gradient: 0, 0 to 84, 84, accent_c, focus_c
-                box { from: 16, 14; size: 84, 84; corner: 16 }
+                box { from: 16, 14; size: 84, 84; corner: r_l }
             }
             group {
-                clip box { from: 16, 14; size: 84, 84; corner: 16 }
+                clip box { from: 16, 14; size: 84, 84; corner: r_l }
                 image cover { at: 16, 14; size: 84, 84; show: has_art }
             }
-            text track_title { at: 116, 36; anchor: left center; size: 15; weight: 700; color: ink_c; width: 216; lines: 1 }
-            text track_artist { at: 116, 58; anchor: left center; size: 12; color: ink_sub; width: 216; lines: 1 }
+            text track_title { at: 116, 36; anchor: left center; size: t_title; weight: 700; color: ink_c; width: 216; lines: 1 }
+            text track_artist { at: 116, 58; anchor: left center; size: t_sub; color: ink_sub; width: 216; lines: 1 }
 
             //  progress: a click on the bar seeks
             box { from: 16, 118; size: 316, 4; corner: 2; color: slider_bg; opacity: slider_bg_op }
             box { from: 16, 118; size: max(4, 316 * clamp(track_pos / max(track_len, 1), 0, 1)), 4; corner: 2; color: ink_c; show: track_len > 0 }
-            text time_pos { at: 16, 136; anchor: left center; size: 10.5; color: ink_sub }
-            text time_len { at: 332, 136; anchor: right center; size: 10.5; color: ink_sub; show: track_len > 0 }
+            text time_pos { at: 16, 136; anchor: left center; size: t_micro; color: ink_sub }
+            text time_len { at: 332, 136; anchor: right center; size: t_micro; color: ink_sub; show: track_len > 0 }
             zone box seek_hit { from: 16, 110; size: 316, 20; cursor: pointer; active: track_len > 0 }
             on press seek_hit { emit seek(clamp(local.x / 316, 0, 1)) }
 
@@ -93,9 +93,9 @@ scene MacMusic {
             path { at: 168, 156; color: ink_c; show: not is_playing; move 0, 0; line 16, 10; line 0, 20; close }
             path { at: 220, 158; color: ink_c; move 0, 0; line 12, 8; line 0, 16; close }
             box { from: 233, 158; size: 3, 16; corner: 1.5; color: ink_c }
-            zone box prev_hit { at: 125, 166; size: 40, 36; corner: 18; cursor: pointer }
-            zone box play_hit { at: 174, 166; size: 44, 44; corner: 22; cursor: pointer }
-            zone box next_hit { at: 227, 166; size: 40, 36; corner: 18; cursor: pointer }
+            zone box prev_hit { at: 125, 166; size: 40, 36; corner: r_l; cursor: pointer }
+            zone box play_hit { at: 174, 166; size: 44, 44; corner: r_l; cursor: pointer }
+            zone box next_hit { at: 227, 166; size: 40, 36; corner: r_l; cursor: pointer }
             on press prev_hit { emit previous }
             on press play_hit { emit play_pause }
             on press next_hit { emit next }

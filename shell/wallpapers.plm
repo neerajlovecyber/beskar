@@ -28,7 +28,7 @@ scene MacWallpapers {
         on press right inside { }
 
         PanelHeader("󰸉", "Wallpapers")
-        text wall_hint { at: 170, 32; anchor: left center; size: 11.5; color: ink_sub }
+        text wall_hint { at: 170, 32; anchor: left center; size: t_cap; color: ink_sub }
         row {
             at: 950, 30
             anchor: right middle
@@ -58,13 +58,13 @@ scene MacWallpapers {
         }
 
         //  Nothing found
-        text "No pictures found. Put some in ~/Pictures/wallpapers." { at: 490, 120; anchor: center; size: 13; color: ink_sub; show: wall_total < 1 }
+        text "No pictures found. Put some in ~/Pictures/wallpapers." { at: 490, 120; anchor: center; size: t_body; color: ink_sub; show: wall_total < 1 }
 
         //  Where you are in a long list: a thin bar under the cards
         box { from: 28, 196; size: 924, 3; corner: 1.5; color: ink_c; opacity: if(wall_rows > 1, 10%, 0%) }
         box { from: 28 + 924 * wall_row / max(1, wall_total), 196; size: max(30, 924 * 5 / max(1, wall_total)), 3; corner: 1.5; color: ink_c; opacity: if(wall_rows > 1, 45%, 0%) }
 
-        text "← →  to browse   ·   Enter or click to apply   ·   Esc to close" { at: 490, 222; anchor: center; size: 10.5; color: ink_sub; opacity: 80% }
+        text "← →  to browse   ·   Enter or click to apply   ·   Esc to close" { at: 490, 222; anchor: center; size: t_micro; color: ink_sub; opacity: 80% }
     }
         on press dismiss { open = false }
     }
@@ -96,18 +96,18 @@ scene MacWallpapers {
     component WallCard(w: record, pick: event) {
         size: 176, 120
         prop lift = 0 ~lively
-        zone box touch { from: 0, 0; size: 176, 99; corner: 14; cursor: pointer }
+        zone box touch { from: 0, 0; size: 176, 99; corner: r_m; cursor: pointer }
         group {
             move: 0, -lift * 2
             pivot: 88, 50
             scale: 1 + 0.035 * lift
-            box { from: 0, 0; size: 176, 99; corner: 14; color: item_solid }
+            box { from: 0, 0; size: 176, 99; corner: r_m; color: item_solid }
             group {
-                clip box { from: 0, 0; size: 176, 99; corner: 14 }
+                clip box { from: 0, 0; size: 176, 99; corner: r_m }
                 image w.thumb { at: 0, 0; size: 176, 99; show: w.ready }
             }
-            box { from: 0, 0; size: 176, 99; corner: 14; stroke: 3; color: accent_c; opacity: if(w.current, 100%, 0%) }
-            box { from: 0, 0; size: 176, 99; corner: 14; stroke: 1.2; color: ink_c; opacity: max(lift * 35%, if(w.sel, 60%, 0%)) * if(w.current, 0, 1) }
+            box { from: 0, 0; size: 176, 99; corner: r_m; stroke: 3; color: accent_c; opacity: if(w.current, 100%, 0%) }
+            box { from: 0, 0; size: 176, 99; corner: r_m; stroke: 1.2; color: ink_c; opacity: max(lift * 35%, if(w.sel, 60%, 0%)) * if(w.current, 0, 1) }
             //  a small tick on the one in use
             group {
                 show: w.current
@@ -115,7 +115,7 @@ scene MacWallpapers {
                 path { at: 150.5, 76; color: on_accent; stroke: 2; move 0, 4.5; line 4, 8; line 11, 0 }
             }
         }
-        text w.name { at: 88, 111; anchor: center; size: 10.5; weight: if(w.current, 600, 400); color: if(w.current, ink_c, ink_sub); width: 168; lines: 1 }
+        text w.name { at: 88, 111; anchor: center; size: t_micro; weight: if(w.current, 600, 400); color: if(w.current, ink_c, ink_sub); width: 168; lines: 1 }
         on enter touch { lift: 1 }
         on leave touch { lift: 0 }
         on press touch { emit pick(w.index) }
@@ -138,7 +138,7 @@ scene MacWallpapers {
     component TabPill(label: text, n: number, w: number = 76) {
         size: w, 28
         box { from: 0, 0; size: w, 28; corner: 14; color: if(wall_tab == n, accent_c, item_bg); opacity: if(wall_tab == n, 100%, item_bg_op) }
-        text label { at: w / 2, 14; anchor: center; size: 11.5; weight: 600; color: if(wall_tab == n, on_accent, ink_c) }
+        text label { at: w / 2, 14; anchor: center; size: t_cap; weight: 600; color: if(wall_tab == n, on_accent, ink_c) }
         zone box hit { from: 0, 0; size: w, 28; corner: 14; cursor: pointer }
         on press hit { emit wall_tab_set(n) }
         on press right hit { }

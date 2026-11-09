@@ -83,7 +83,7 @@ scene MacCapture {
             group {
                 move: sel_x, max(sel_y - 30, 4)
                 Plate(96, 22, 11)
-                text "{sel_w} × {sel_h}" { at: 48, 11; anchor: center center; size: 11.5; weight: 600; color: ink_c }
+                text "{sel_w} × {sel_h}" { at: 48, 11; anchor: center center; size: t_cap; weight: 600; color: ink_c }
             }
             ellipse { at: sel_x, sel_y; radius: 6; color: on_accent }
             ellipse { at: sel_x + sel_w, sel_y; radius: 6; color: on_accent }
@@ -100,9 +100,9 @@ scene MacCapture {
             show: has_sel and mode == 0
             opacity: seen
             move: clamp(sel_x + sel_w / 2 - 74, 8, screen.width - 156), min(sel_y + sel_h + 14, screen.height - 54)
-            box { from: 0, 0; size: 148, 40; corner: 12; color: accent_c }
+            box { from: 0, 0; size: 148, 40; corner: r_m; color: accent_c }
             text if(kind == 1, "󰻂  Record  ⏎", "󰄀  Capture  ⏎") { family: "JetBrainsMono Nerd Font Mono"; at: 74, 20; anchor: center center; size: 13; weight: 700; color: on_accent }
-            zone box go_hit { from: 0, 0; size: 148, 40; corner: 12; cursor: pointer; label: "Take it" }
+            zone box go_hit { from: 0, 0; size: 148, 40; corner: r_m; cursor: pointer; label: "Take it" }
             on press go_hit { scr_w = screen.width; scr_h = screen.height; emit do_region }
             on press right go_hit { open = false }
         }
@@ -210,10 +210,10 @@ scene MacCapture {
     component ModeChip(x: number, idx: number, icon_t: text, name_t: text) {
         group {
             move: x, 8
-            box { from: 0, 0; size: 90, 36; corner: 18; color: accent_c; opacity: if(mode == idx, 22%, 0%) }
+            box { from: 0, 0; size: 90, 36; corner: r_l; color: accent_c; opacity: if(mode == idx, 22%, 0%) }
             Sym(icon_t, 20, 18, 15, if(mode == idx, accent_c, ink_c))
-            text name_t { at: 36, 18; anchor: left center; size: 12.5; weight: 600; color: if(mode == idx, accent_c, ink_c) }
-            zone box chip_hit { from: 0, 0; size: 90, 36; corner: 18; cursor: pointer; label: name_t }
+            text name_t { at: 36, 18; anchor: left center; size: t_sub; weight: 600; color: if(mode == idx, accent_c, ink_c) }
+            zone box chip_hit { from: 0, 0; size: 90, 36; corner: r_l; cursor: pointer; label: name_t }
             on press chip_hit { mode = idx; has_sel = false }
             on press right chip_hit { open = false }
         }
@@ -222,10 +222,10 @@ scene MacCapture {
     component KindChip(x: number, idx: number, icon_t: text, name_t: text) {
         group {
             move: x, 8
-            box { from: 0, 0; size: 72, 36; corner: 18; color: if(idx == 1, danger_c, accent_c); opacity: if(kind == idx, 24%, 0%) }
+            box { from: 0, 0; size: 72, 36; corner: r_l; color: if(idx == 1, danger_c, accent_c); opacity: if(kind == idx, 24%, 0%) }
             Sym(icon_t, 18, 18, 15, if(kind == idx, if(idx == 1, danger_c, accent_c), ink_c))
-            text name_t { at: 32, 18; anchor: left center; size: 12.5; weight: 600; color: if(kind == idx, if(idx == 1, danger_c, accent_c), ink_c) }
-            zone box kind_hit { from: 0, 0; size: 72, 36; corner: 18; cursor: pointer; label: name_t }
+            text name_t { at: 32, 18; anchor: left center; size: t_sub; weight: 600; color: if(kind == idx, if(idx == 1, danger_c, accent_c), ink_c) }
+            zone box kind_hit { from: 0, 0; size: 72, 36; corner: r_l; cursor: pointer; label: name_t }
             on press kind_hit { kind = idx }
             on press right kind_hit { open = false }
         }

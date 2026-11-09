@@ -38,22 +38,22 @@ scene MacPolkit {
                 refraction: 0
                 tint: tint_amt
                 rim: rim_amt
-                box { from: 0, 0; size: 440, 300; corner: 18 }
+                box { from: 0, 0; size: 440, 300; corner: r_l }
             }
-            box { from: 0, 0; size: 440, 300; corner: 18; stroke: 1; color: card_stroke; opacity: card_stroke_op }
+            box { from: 0, 0; size: 440, 300; corner: r_l; stroke: 1; color: card_stroke; opacity: card_stroke_op }
 
             //  the icon
             ellipse { at: 220, 50; radius: 26; color: accent_c }
             Sym("󰌾", 220, 50, 26, on_accent)
 
-            text "Authentication required" { at: 220, 98; anchor: center center; size: 15; weight: 700; color: ink_c; width: 400; lines: 1; align: center }
+            text "Authentication required" { at: 220, 98; anchor: center center; size: t_title; weight: 700; color: ink_c; width: 400; lines: 1; align: center }
             //  what the program wants, as polkit words it
-            text pk_message { at: 220, 124; anchor: center center; size: 12; color: ink_sub; width: 390; lines: 2; align: center }
+            text pk_message { at: 220, 124; anchor: center center; size: t_sub; color: ink_sub; width: 390; lines: 2; align: center }
 
             //  the password
-            text pk_prompt { at: 50, 172; anchor: left center; size: 11.5; weight: 600; color: ink_c; width: 340; lines: 1 }
-            box { from: 50, 186; size: 340, 38; corner: 10; color: item_bg; opacity: item_bg_op }
-            box { from: 50, 186; size: 340, 38; corner: 10; stroke: 1.5; color: if(pk_wrong, danger_c, accent_c); opacity: if(pk_wrong, 90%, 55%) }
+            text pk_prompt { at: 50, 172; anchor: left center; size: t_cap; weight: 600; color: ink_c; width: 340; lines: 1 }
+            box { from: 50, 186; size: 340, 38; corner: r_s; color: item_bg; opacity: item_bg_op }
+            box { from: 50, 186; size: 340, 38; corner: r_s; stroke: 1.5; color: if(pk_wrong, danger_c, accent_c); opacity: if(pk_wrong, 90%, 55%) }
             input password {
                 at: 62, 195
                 width: 316
@@ -63,13 +63,13 @@ scene MacPolkit {
                 secret: true
                 agent: no
             }
-            text pick(if(pk_wrong, 1, 0), pk_info, "Wrong password, try again") { at: 220, 242; anchor: center center; size: 11; color: if(pk_wrong, danger_c, ink_sub); width: 390; lines: 1 }
+            text pick(if(pk_wrong, 1, 0), pk_info, "Wrong password, try again") { at: 220, 242; anchor: center center; size: t_cap; color: if(pk_wrong, danger_c, ink_sub); width: 390; lines: 1 }
 
             //  Cancel / Authenticate
             group {
                 move: 130, 262
                 box { from: 0, 0; size: 90, 30; corner: 8; color: item_solid }
-                text "Cancel" { at: 45, 15; anchor: center center; size: 13; weight: 500; color: ink_c }
+                text "Cancel" { at: 45, 15; anchor: center center; size: t_body; weight: 500; color: ink_c }
                 zone box btn_cancel { from: 0, 0; size: 90, 30; corner: 8; cursor: pointer }
                 on press btn_cancel { emit pk_cancel }
                 on press right btn_cancel { }
@@ -77,7 +77,7 @@ scene MacPolkit {
             group {
                 move: 230, 262
                 box { from: 0, 0; size: 110, 30; corner: 8; color: accent_c; opacity: if(pk_asking, 100%, 45%) }
-                text "Authenticate" { at: 55, 15; anchor: center center; size: 13; weight: 600; color: on_accent }
+                text "Authenticate" { at: 55, 15; anchor: center center; size: t_body; weight: 600; color: on_accent }
                 zone box btn_ok { from: 0, 0; size: 110, 30; corner: 8; cursor: pointer; active: pk_asking }
                 on press btn_ok { emit pk_answer }
                 on press right btn_ok { }

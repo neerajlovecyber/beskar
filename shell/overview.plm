@@ -41,8 +41,8 @@ scene MacOverview {
                 ellipse { at: 14, 14; radius: 14; color: accent_c; opacity: 20% }
                 Sym("󰕰", 14, 14, 15, accent_c)
                 text "Window Overview" { at: 38, 14; anchor: left center; size: 16; weight: 700; color: ink_c }
-                text win_count_text { at: 200, 14; anchor: left center; size: 12; color: ink_sub }
-                text "esc to close  ·  ↵ to focus  ·  arrows to select" { at: ov_w - 100, 14; anchor: right center; size: 11; color: ink_sub }
+                text win_count_text { at: 200, 14; anchor: left center; size: t_sub; color: ink_sub }
+                text "esc to close  ·  ↵ to focus  ·  arrows to select" { at: ov_w - 100, 14; anchor: right center; size: t_cap; color: ink_sub }
             }
 
             // Grid of Window Previews
@@ -62,7 +62,7 @@ scene MacOverview {
             group {
                 show: wins.count < 1
                 move: 640, 430
-                text "No open windows" { at: 0, 0; anchor: center center; size: 15; weight: 600; color: ink_sub }
+                text "No open windows" { at: 0, 0; anchor: center center; size: t_title; weight: 600; color: ink_sub }
             }
         }
         on press dismiss { open = false }
@@ -128,8 +128,8 @@ scene MacOverview {
         // Preview thumbnail area (clipped)
         group {
             move: 5, 5
-            clip box { from: 0, 0; size: 264, 120; corner: 10 }
-            box { from: 0, 0; size: 264, 120; corner: 10; color: bg_color; opacity: 50% }
+            clip box { from: 0, 0; size: 264, 120; corner: r_s }
+            box { from: 0, 0; size: 264, 120; corner: r_s; color: bg_color; opacity: 50% }
             image w.thumb { at: 0, 0; size: 264, 120; fit: cover; show: w.has_thumb }
             group {
                 show: not w.has_thumb
@@ -152,7 +152,7 @@ scene MacOverview {
             show: w.ws > 0
             box { from: 0, 0; size: 58, 20; corner: 10; color: bg_color; opacity: 90% }
             box { from: 0, 0; size: 58, 20; corner: 10; stroke: 1; color: stroke_c; opacity: stroke_op }
-            text w.ws_label { at: 29, 10; anchor: center center; size: 9.5; weight: 600; color: ink_sub }
+            text w.ws_label { at: 29, 10; anchor: center center; size: t_micro; weight: 600; color: ink_sub }
         }
 
         // Window Title below preview

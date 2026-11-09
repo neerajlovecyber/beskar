@@ -30,9 +30,9 @@ scene MacSession {
             refraction: 0
             tint: tint_amt
             rim: rim_amt
-            box { from: 0, 0; size: 440, 280; corner: 18 }
+            box { from: 0, 0; size: 440, 280; corner: r_l }
         }
-        box { from: 0, 0; size: 440, 280; corner: 18; stroke: 1; color: stroke_c; opacity: stroke_op }
+        box { from: 0, 0; size: 440, 280; corner: r_l; stroke: 1; color: stroke_c; opacity: stroke_op }
 
         // Top Big Icon
         group {
@@ -68,7 +68,7 @@ scene MacSession {
             box hit_reopen { from: 0, 0; size: 340, 30; corner: 6; color: scrim_c; opacity: 0%; cursor: pointer }
             box { from: 10, 7; size: 16, 16; corner: 4; color: if(reopen, accent_c, item_solid) }
             text "󰄲" { family: "JetBrainsMono Nerd Font Mono"; at: 18, 15; anchor: center; size: 12; color: on_accent; show: reopen }
-            text "Reopen windows when logging back in" { at: 36, 15; anchor: left center; size: 12; color: ink_c }
+            text "Reopen windows when logging back in" { at: 36, 15; anchor: left center; size: t_sub; color: ink_c }
             on press hit_reopen { toggle reopen }
         }
 
@@ -82,7 +82,7 @@ scene MacSession {
             group {
                 size: 120, 32
                 box { from: 0, 0; size: 120, 32; corner: 8; color: if(dark_mode, item_solid, item_solid) }
-                text "Cancel" { at: 60, 16; anchor: center; size: 13; weight: 500; color: ink_c }
+                text "Cancel" { at: 60, 16; anchor: center; size: t_body; weight: 500; color: ink_c }
                 zone box btn_cancel { from: 0, 0; size: 120, 32; cursor: pointer }
                 on press btn_cancel { emit dismiss }
             }
@@ -91,7 +91,7 @@ scene MacSession {
             group {
                 size: 130, 32
                 box { from: 0, 0; size: 130, 32; corner: 8; color: pick(kind, danger_c, warn_c, accent_c) }
-                text pick(kind, "Shut Down", "Restart", "Log Out") { at: 65, 16; anchor: center; size: 13; weight: 600; color: on_accent }
+                text pick(kind, "Shut Down", "Restart", "Log Out") { at: 65, 16; anchor: center; size: t_body; weight: 600; color: on_accent }
                 zone box btn_confirm { from: 0, 0; size: 130, 32; cursor: pointer }
                 on press btn_confirm { emit confirm_action }
             }

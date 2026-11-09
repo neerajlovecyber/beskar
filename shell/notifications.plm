@@ -61,14 +61,14 @@ scene MacNotifications {
         //  The icon: a blue squircle with a bell, and the application's own icon over it when it has one.
         body {
             gradient: 0, 0 to 44, 44, accent_c, focus_c
-            box { from: 16, 24; size: 44, 44; corner: 12 }
+            box { from: 16, 24; size: 44, 44; corner: r_m }
         }
         text "󰂚" { family: "JetBrainsMono Nerd Font Mono"; at: 38, 46; anchor: center; size: 20; color: on_accent }
         image n.icon { at: 16, 24; size: 44, 44 }
 
         text n.title { at: 74, 30; anchor: left center; size: 14; weight: 700; color: ink_c; width: 210; lines: 1 }
-        text n.body { at: 74, 50; size: 13; color: ink_c; opacity: 85%; width: 252; lines: 2 }
-        text n.age { at: 332, 30; anchor: right center; size: 12; color: ink_sub; opacity: 1 - hot }
+        text n.body { at: 74, 50; size: t_body; color: ink_c; opacity: 85%; width: 252; lines: 2 }
+        text n.age { at: 332, 30; anchor: right center; size: t_sub; color: ink_sub; opacity: 1 - hot }
 
         //  Close: a small round button at the corner, only on hover.
         group {
@@ -111,8 +111,8 @@ scene MacNotifications {
         }
         group {
             show: r.kind == 2
-            text r.app { at: 10, 16; anchor: left center; size: 12; weight: 700; color: ink_sub }
-            text "Show less" { at: 342, 16; anchor: right center; size: 11; weight: 600; color: ink_sub }
+            text r.app { at: 10, 16; anchor: left center; size: t_sub; weight: 700; color: ink_sub }
+            text "Show less" { at: 342, 16; anchor: right center; size: t_cap; weight: 600; color: ink_sub }
             zone box less_hit { from: 270, 2; size: 82, 28; corner: 14; cursor: pointer }
             on press less_hit { emit group_toggle(r.key) }
             on press right less_hit { }
@@ -122,16 +122,16 @@ scene MacNotifications {
     //  One that was dealt with: smaller, quieter.
     component PastRow(h: record) {
         size: 352, 52
-        box { from: 0, 0; size: 352, 52; corner: 16; color: card_fill; opacity: card_fill_op * 55% }
+        box { from: 0, 0; size: 352, 52; corner: r_l; color: card_fill; opacity: card_fill_op * 55% }
         body {
             gradient: 0, 0 to 28, 28, accent_c, focus_c
             box { from: 14, 12; size: 28, 28; corner: 8; opacity: 70% }
         }
         text "󰂚" { family: "JetBrainsMono Nerd Font Mono"; at: 28, 26; anchor: center; size: 13; color: on_accent; opacity: 80% }
         image h.icon { at: 14, 12; size: 28, 28; opacity: 80% }
-        text h.title { at: 54, 20; anchor: left center; size: 12; weight: 600; color: ink_c; opacity: 85%; width: 230; lines: 1 }
-        text h.body { at: 54, 36; anchor: left center; size: 11; color: ink_sub; width: 230; lines: 1 }
-        text h.age { at: 338, 20; anchor: right center; size: 10.5; color: ink_sub }
+        text h.title { at: 54, 20; anchor: left center; size: t_sub; weight: 600; color: ink_c; opacity: 85%; width: 230; lines: 1 }
+        text h.body { at: 54, 36; anchor: left center; size: t_cap; color: ink_sub; width: 230; lines: 1 }
+        text h.age { at: 338, 20; anchor: right center; size: t_micro; color: ink_sub }
     }
 
     // ── the centre: content only; the frame draws the glass, melting it out of the right island ──
@@ -152,7 +152,7 @@ scene MacNotifications {
         group {
             show: notices.count > 0
             box { from: 280, 18; size: 76, 28; corner: 14; color: item_solid }
-            text "Clear All" { at: 318, 32; anchor: center; size: 10.5; weight: 600; color: ink_c }
+            text "Clear All" { at: 318, 32; anchor: center; size: t_micro; weight: 600; color: ink_c }
             zone box clear_hit { from: 280, 18; size: 76, 28; corner: 14; cursor: pointer }
             on press clear_hit { emit clear_notices }
             on press right clear_hit { }
@@ -168,8 +168,8 @@ scene MacNotifications {
         group {
             show: past.count > 0
             move: 0, 62 + live_h + 4
-            text "Earlier" { at: 24, 14; anchor: left center; size: 12; weight: 700; color: ink_sub }
-            text "Clear" { at: 356, 14; anchor: right center; size: 11; weight: 600; color: ink_sub }
+            text "Earlier" { at: 24, 14; anchor: left center; size: t_sub; weight: 700; color: ink_sub }
+            text "Clear" { at: 356, 14; anchor: right center; size: t_cap; weight: 600; color: ink_sub }
             zone box clear_past_hit { from: 300, 4; size: 56, 22; corner: 11; cursor: pointer }
             on press clear_past_hit { emit clear_past }
             on press right clear_past_hit { }
@@ -186,7 +186,7 @@ scene MacNotifications {
             ellipse { at: 190, 100; radius: 28; color: item_solid }
             path { at: 181, 90; color: ink_sub; move 0, 15; line 2.5, 15; line 3, 7; line 5, 2; line 9, 2; line 11, 7; line 11.5, 15; line 14, 15; line 14, 17; line 0, 17; close }
             ellipse { at: 188, 108; radius: 2.2; color: ink_sub }
-            text "No Notifications" { at: 190, 148; anchor: center; size: 13; weight: 600; color: ink_c }
+            text "No Notifications" { at: 190, 148; anchor: center; size: t_body; weight: 600; color: ink_c }
         }
     }
 

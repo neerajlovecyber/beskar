@@ -56,7 +56,7 @@ scene MacDashboard {
             gap: 8
             align: center
             text "󰃭" { family: "JetBrainsMono Nerd Font Mono"; size: 16; color: accent_c }
-            text "Today" { size: 15; weight: 600; color: ink_c }
+            text "Today" { size: t_title; weight: 600; color: ink_c }
         }
 
         // ── Row 1: Calendar & Weather 2x Side-by-Side Widgets ─────
@@ -67,27 +67,27 @@ scene MacDashboard {
             // Calendar Widget
             group {
                 size: 154, 134
-                box { from: 0, 0; size: 154, 134; corner: 16; color: card_fill; opacity: card_fill_op }
-                box { from: 0, 0; size: 154, 134; corner: 16; stroke: 1; color: card_stroke; opacity: card_stroke_op }
+                box { from: 0, 0; size: 154, 134; corner: r_l; color: card_fill; opacity: card_fill_op }
+                box { from: 0, 0; size: 154, 134; corner: r_l; stroke: 1; color: card_stroke; opacity: card_stroke_op }
 
                 // Red Accent Header
-                text cal_month { at: 16, 14; size: 11; weight: 700; color: #ff3b30 }
+                text cal_month { at: 16, 14; size: t_cap; weight: 700; color: #ff3b30 }
                 text cal_day { at: 16, 32; size: 36; weight: 700; color: ink_c }
-                text cal_dow { at: 16, 74; size: 13; weight: 600; color: ink_c }
-                text cal_event { at: 16, 96; size: 10.5; color: ink_sub; width: 122; lines: 2 }
+                text cal_dow { at: 16, 74; size: t_body; weight: 600; color: ink_c }
+                text cal_event { at: 16, 96; size: t_micro; color: ink_sub; width: 122; lines: 2 }
             }
 
             // Weather Widget
             group {
                 size: 154, 134
-                box { from: 0, 0; size: 154, 134; corner: 16; color: card_fill; opacity: card_fill_op }
-                box { from: 0, 0; size: 154, 134; corner: 16; stroke: 1; color: card_stroke; opacity: card_stroke_op }
+                box { from: 0, 0; size: 154, 134; corner: r_l; color: card_fill; opacity: card_fill_op }
+                box { from: 0, 0; size: 154, 134; corner: r_l; stroke: 1; color: card_stroke; opacity: card_stroke_op }
 
-                text weather_city { at: 14, 14; size: 13; weight: 600; color: ink_c; width: 126; lines: 1 }
+                text weather_city { at: 14, 14; size: t_body; weight: 600; color: ink_c; width: 126; lines: 1 }
                 text weather_temp { at: 14, 34; size: 34; weight: 600; color: ink_c }
                 text weather_icon { family: "JetBrainsMono Nerd Font Mono"; at: 122, 42; anchor: center; size: 28; color: #ff9500 }
-                text weather_cond { at: 14, 82; size: 11.5; weight: 500; color: ink_c; width: 126; lines: 1 }
-                text weather_range { at: 14, 102; size: 10.5; color: ink_sub }
+                text weather_cond { at: 14, 82; size: t_cap; weight: 500; color: ink_c; width: 126; lines: 1 }
+                text weather_range { at: 14, 102; size: t_micro; color: ink_sub }
             }
         }
 
@@ -95,28 +95,28 @@ scene MacDashboard {
         group {
             move: 14, 192
             size: 320, 116
-            box { from: 0, 0; size: 320, 116; corner: 16; color: card_fill; opacity: card_fill_op }
-            box { from: 0, 0; size: 320, 116; corner: 16; stroke: 1; color: card_stroke; opacity: card_stroke_op }
+            box { from: 0, 0; size: 320, 116; corner: r_l; color: card_fill; opacity: card_fill_op }
+            box { from: 0, 0; size: 320, 116; corner: r_l; stroke: 1; color: card_stroke; opacity: card_stroke_op }
 
             // Header
             text "󰍹" { family: "JetBrainsMono Nerd Font Mono"; at: 16, 16; size: 14; color: accent_c }
-            text "Activity & Resources" { at: 36, 16; size: 12; weight: 600; color: ink_c }
+            text "Activity & Resources" { at: 36, 16; size: t_sub; weight: 600; color: ink_c }
 
             // CPU Metric
-            text "CPU" { at: 16, 38; size: 11; weight: 600; color: ink_c }
-            text "{cpu_pct}%" { at: 304, 45; anchor: right center; size: 11; weight: 600; color: accent_c }
+            text "CPU" { at: 16, 38; size: t_cap; weight: 600; color: ink_c }
+            text "{cpu_pct}%" { at: 304, 45; anchor: right center; size: t_cap; weight: 600; color: accent_c }
             box { from: 16, 52; size: 288, 6; corner: 3; color: bar_track }
             box { from: 16, 52; size: max(288 * (cpu_pct / 100), 8), 6; corner: 3; color: accent_c }
 
             // Memory Metric
-            text "Memory" { at: 16, 64; size: 11; weight: 600; color: ink_c }
-            text "{mem_pct}%" { at: 304, 71; anchor: right center; size: 11; weight: 600; color: mint }
+            text "Memory" { at: 16, 64; size: t_cap; weight: 600; color: ink_c }
+            text "{mem_pct}%" { at: 304, 71; anchor: right center; size: t_cap; weight: 600; color: mint }
             box { from: 16, 78; size: 288, 6; corner: 3; color: bar_track }
             box { from: 16, 78; size: max(288 * (mem_pct / 100), 8), 6; corner: 3; color: mint }
 
             // Disk Metric
-            text "Storage Disk" { at: 16, 90; size: 11; weight: 600; color: ink_c }
-            text "{disk_pct}%" { at: 304, 97; anchor: right center; size: 11; weight: 600; color: purple }
+            text "Storage Disk" { at: 16, 90; size: t_cap; weight: 600; color: ink_c }
+            text "{disk_pct}%" { at: 304, 97; anchor: right center; size: t_cap; weight: 600; color: purple }
             box { from: 16, 104; size: 288, 6; corner: 3; color: bar_track }
             box { from: 16, 104; size: max(288 * (disk_pct / 100), 8), 6; corner: 3; color: purple }
         }
@@ -126,14 +126,14 @@ scene MacDashboard {
             show: bat.present
             move: 14, 320
             size: 320, 64
-            box { from: 0, 0; size: 320, 64; corner: 16; color: card_fill; opacity: card_fill_op }
-            box { from: 0, 0; size: 320, 64; corner: 16; stroke: 1; color: card_stroke; opacity: card_stroke_op }
+            box { from: 0, 0; size: 320, 64; corner: r_l; color: card_fill; opacity: card_fill_op }
+            box { from: 0, 0; size: 320, 64; corner: r_l; stroke: 1; color: card_stroke; opacity: card_stroke_op }
             //  the cell
             box { from: 16, 20; size: 34, 17; corner: 5; stroke: 1.8; color: ink_c }
             box { from: 51, 25; size: 3, 6; corner: 1.5; color: ink_c }
             box { from: 19, 23; size: max(3, 28 * clamp(bat.percent / 100, 0, 1)), 11; corner: 2.5; color: if(bat.charging, mint, if(bat.percent <= 20, danger_c, ink_c)) }
-            text "Battery" { at: 70, 22; anchor: left center; size: 12; weight: 600; color: ink_c }
-            text if(bat.charging, "Charging", "On battery") { at: 70, 40; anchor: left center; size: 10.5; color: ink_sub }
+            text "Battery" { at: 70, 22; anchor: left center; size: t_sub; weight: 600; color: ink_c }
+            text if(bat.charging, "Charging", "On battery") { at: 70, 40; anchor: left center; size: t_micro; color: ink_sub }
             text "{bat.percent}%" { at: 304, 32; anchor: right center; size: 22; weight: 700; color: ink_c }
         }
 
@@ -141,8 +141,8 @@ scene MacDashboard {
         group {
             move: 14, if(bat.present, 396, 320)
             size: 320, 84
-            box { from: 0, 0; size: 320, 84; corner: 16; color: card_fill; opacity: card_fill_op }
-            box { from: 0, 0; size: 320, 84; corner: 16; stroke: 1; color: card_stroke; opacity: card_stroke_op }
+            box { from: 0, 0; size: 320, 84; corner: r_l; color: card_fill; opacity: card_fill_op }
+            box { from: 0, 0; size: 320, 84; corner: r_l; stroke: 1; color: card_stroke; opacity: card_stroke_op }
 
             row {
                 at: 16, 14
@@ -150,16 +150,16 @@ scene MacDashboard {
 
                 column {
                     gap: 3
-                    text "Local" { size: 11; color: ink_sub }
+                    text "Local" { size: t_cap; color: ink_sub }
                     text clock_text { size: 16; weight: 600; color: ink_c }
-                    text zone_local { size: 10.5; color: ink_sub }
+                    text zone_local { size: t_micro; color: ink_sub }
                 }
 
                 column {
                     gap: 3
-                    text "UTC" { size: 11; color: ink_sub }
+                    text "UTC" { size: t_cap; color: ink_sub }
                     text zone_utc { size: 16; weight: 600; color: ink_c }
-                    text zone_off { size: 10.5; color: ink_sub }
+                    text zone_off { size: t_micro; color: ink_sub }
                 }
             }
         }

@@ -225,7 +225,7 @@ scene MacTopBar {
         box { from: 31, 10; size: 2, 4; corner: 1; color: ink_c; opacity: 80% }
         box { from: 8, 8.5; size: max(2, 20 * clamp(bat.percent / 100, 0, 1)), 7; corner: 1.6; color: if(bat.charging, ok_c, if(bat.percent <= 20, danger_c, ink_c)) }
         path { at: 16.5, 7; color: if(bat.charging, #0c1410, ink_c); opacity: if(bat.charging, 100%, 0%); move 2.5, 0; line 0, 5.5; line 2.4, 5.5; line 1.5, 10; line 5, 4; line 2.6, 4; close }
-        text "{bat.percent}" { at: 36, 12; anchor: left center; size: 11; weight: 700; color: hint_c }
+        text "{bat.percent}" { at: 36, 12; anchor: left center; size: t_cap; weight: 700; color: hint_c }
         zone box hit { from: 0, 0; size: 54, 24; corner: 8; cursor: pointer }
         on enter hit { hot: 1 }
         on leave hit { hot: 0 }
@@ -314,7 +314,7 @@ scene MacTopBar {
         size: pm_w - 28, 36
         prop hot = 0 ~quick
         box { from: 0, 0; size: pm_w - 28, 36; corner: 10; color: if(danger, danger_c, accent_c); opacity: hot * if(danger, 90%, 85%) }
-        text label { at: 14, 18; anchor: left center; size: 13; weight: 500; color: if(hot > 0.5, on_accent, if(danger, danger_c, ink_c)) }
+        text label { at: 14, 18; anchor: left center; size: t_body; weight: 500; color: if(hot > 0.5, on_accent, if(danger, danger_c, ink_c)) }
         zone box hit { from: 0, 0; size: pm_w - 28, 36; corner: 10; cursor: pointer }
         on enter hit { hot: 1 }
         on leave hit { hot: 0 }
@@ -349,7 +349,7 @@ scene MacTopBar {
             fill: item_solid
             corner: 9
             opacity: if(menu_i == it.index or (it.running and preview_on > 0.05), 0, hot)
-            text it.name { size: 11; weight: 600; color: ink_c; tight: true }
+            text it.name { size: t_cap; weight: 600; color: ink_c; tight: true }
         }
 
         zone box hit { from: 0, 0; size: 40, 44; cursor: pointer }
@@ -364,13 +364,13 @@ scene MacTopBar {
             show: preview_on > 0.05 and it.running and menu_i != it.index
             move: 20, -18
             opacity: preview_on
-            box { from: -84, -132; size: 168, 128; corner: 14; color: bg_color }
-            box { from: -84, -132; size: 168, 128; corner: 14; stroke: 1; color: stroke_c; opacity: card_stroke_op }
+            box { from: -84, -132; size: 168, 128; corner: r_m; color: bg_color }
+            box { from: -84, -132; size: 168, 128; corner: r_m; stroke: 1; color: stroke_c; opacity: card_stroke_op }
             // Preview thumbnail
             group {
                 move: -80, -128
-                clip box { from: 0, 0; size: 160, 96; corner: 10 }
-                box { from: 0, 0; size: 160, 96; corner: 10; color: item_solid; opacity: 50% }
+                clip box { from: 0, 0; size: 160, 96; corner: r_s }
+                box { from: 0, 0; size: 160, 96; corner: r_s; color: item_solid; opacity: 50% }
                 image it.preview_thumb { at: 0, 0; size: 160, 96; fit: cover; show: it.preview_has }
                 group {
                     show: not it.preview_has
@@ -400,7 +400,7 @@ scene MacTopBar {
                 show: it.canpin
                 move: -49, -12 - rows * 34
                 box { from: 0, 0; size: 138, 30; corner: 9; color: ink_c; opacity: pin_hot * 12% }
-                text if(it.pinned, "Remove from Dock", "Keep in Dock") { at: 69, 15; anchor: center; size: 12; weight: 500; color: ink_c }
+                text if(it.pinned, "Remove from Dock", "Keep in Dock") { at: 69, 15; anchor: center; size: t_sub; weight: 500; color: ink_c }
                 zone box pin_hit { from: 0, 0; size: 138, 30; corner: 9; cursor: pointer }
                 on enter pin_hit { pin_hot: 1; emit keep_dock }
                 on leave pin_hit { pin_hot: 0 }
@@ -411,7 +411,7 @@ scene MacTopBar {
                 show: it.running
                 move: -49, -12 - rows * 34 + if(it.canpin, 34, 0)
                 box { from: 0, 0; size: 138, 30; corner: 9; color: danger_c; opacity: quit_hot * 22% }
-                text "Quit" { at: 69, 15; anchor: center; size: 12; weight: 500; color: danger_c }
+                text "Quit" { at: 69, 15; anchor: center; size: t_sub; weight: 500; color: danger_c }
                 zone box quit_hit { from: 0, 0; size: 138, 30; corner: 9; cursor: pointer }
                 on enter quit_hit { quit_hot: 1; emit keep_dock }
                 on leave quit_hit { quit_hot: 0 }
@@ -601,24 +601,24 @@ scene MacTopBar {
             opacity: clamp(ov * 1.6 - 0.5, 0, 1)
             move: screen.width / 2 - 190, 0
             //  the tile with the glyph
-            box { from: 18, 49; size: 40, 40; corner: 12; color: if(osd_kind == 2 and osd_muted, danger_c, ink_c); opacity: if(osd_kind == 2 and osd_muted, 22%, 12%) }
+            box { from: 18, 49; size: 40, 40; corner: r_m; color: if(osd_kind == 2 and osd_muted, danger_c, ink_c); opacity: if(osd_kind == 2 and osd_muted, 22%, 12%) }
             group {
                 show: osd_kind == 0
                 text if(osd_muted or osd_level < 0.02, "󰝟", "󰕾") { family: "JetBrainsMono Nerd Font Mono"; at: 38, 69; anchor: center center; size: 20; color: if(osd_muted, danger_c, ink_c) }
-                text "Volume" { at: 70, 60; anchor: left center; size: 13.5; weight: 700; color: ink_c }
-                text if(osd_muted, "Muted", "{osd_level * 100, 0} %") { at: 362, 60; anchor: right center; size: 12.5; weight: 600; color: if(osd_muted, danger_c, ink_sub) }
+                text "Volume" { at: 70, 60; anchor: left center; size: t_body; weight: 700; color: ink_c }
+                text if(osd_muted, "Muted", "{osd_level * 100, 0} %") { at: 362, 60; anchor: right center; size: t_sub; weight: 600; color: if(osd_muted, danger_c, ink_sub) }
             }
             group {
                 show: osd_kind == 1
                 Sym("󰃟", 38, 69, 20, ink_c)
-                text "Brightness" { at: 70, 60; anchor: left center; size: 13.5; weight: 700; color: ink_c }
-                text "{osd_level * 100, 0} %" { at: 362, 60; anchor: right center; size: 12.5; weight: 600; color: ink_sub }
+                text "Brightness" { at: 70, 60; anchor: left center; size: t_body; weight: 700; color: ink_c }
+                text "{osd_level * 100, 0} %" { at: 362, 60; anchor: right center; size: t_sub; weight: 600; color: ink_sub }
             }
             group {
                 show: osd_kind == 2
                 text if(osd_muted, "󰍭", "󰍬") { family: "JetBrainsMono Nerd Font Mono"; at: 38, 69; anchor: center center; size: 20; color: if(osd_muted, danger_c, ink_c) }
-                text "Microphone" { at: 70, 60; anchor: left center; size: 13.5; weight: 700; color: ink_c }
-                text if(osd_muted, "Muted", "On") { at: 362, 60; anchor: right center; size: 12.5; weight: 600; color: if(osd_muted, danger_c, ink_sub) }
+                text "Microphone" { at: 70, 60; anchor: left center; size: t_body; weight: 700; color: ink_c }
+                text if(osd_muted, "Muted", "On") { at: 362, 60; anchor: right center; size: t_sub; weight: 600; color: if(osd_muted, danger_c, ink_sub) }
             }
             //  the level (not for the microphone: it is on or off)
             group {
@@ -628,7 +628,7 @@ scene MacTopBar {
             }
             group {
                 show: osd_kind == 2
-                text if(osd_muted, "Your microphone is off", "Your microphone is on") { at: 70, 79; anchor: left center; size: 12; color: ink_sub }
+                text if(osd_muted, "Your microphone is off", "Your microphone is on") { at: 70, 79; anchor: left center; size: t_sub; color: ink_sub }
             }
         }
 
@@ -646,8 +646,8 @@ scene MacTopBar {
                 gap: 6
                 align: center
                 text "󱐋" { family: "JetBrainsMono Nerd Font Mono"; size: 13; color: if(bat_charging, ok_c, ink_sub) }
-                text if(bat_charging, "Charging", "On battery") { size: 12.5; weight: 600; color: ink_c }
-                text "{bat_percent}%" { size: 12.5; weight: 700; color: hint_c }
+                text if(bat_charging, "Charging", "On battery") { size: t_sub; weight: 600; color: ink_c }
+                text "{bat_percent}%" { size: t_sub; weight: 700; color: hint_c }
             }
 
             // ── 2. Live activity: Screenshot saved ──
@@ -662,7 +662,7 @@ scene MacTopBar {
                     box { from: 0, 0; size: 20, 20; corner: 4; color: item_solid }
                     image shot_thumb { at: 0, 0; size: 20, 20; fit: cover }
                 }
-                text "Screenshot saved" { size: 12.5; weight: 600; color: ink_c }
+                text "Screenshot saved" { size: t_sub; weight: 600; color: ink_c }
             }
 
             // ── 3. Live activity: Timer done ──
@@ -672,7 +672,7 @@ scene MacTopBar {
                 align: center
                 cursor: pointer
                 ellipse { at: 6, 6; radius: 5; color: warn_c }
-                text "Timer done" { size: 12.5; weight: 700; color: ink_c }
+                text "Timer done" { size: t_sub; weight: 700; color: ink_c }
             }
 
             // ── 4. Live activity: Camera / Microphone in use ──
@@ -686,7 +686,7 @@ scene MacTopBar {
                     ellipse { at: 5, 5; radius: 5; color: dot_col; opacity: 30% }
                     ellipse { at: 5, 5; radius: 3.4; color: dot_col }
                 }
-                text priv_act_text { size: 12.5; weight: 600; color: ink_c }
+                text priv_act_text { size: t_sub; weight: 600; color: ink_c }
             }
 
             // ── Ambient activities (visible when no takeover activity is active) ──
@@ -696,7 +696,7 @@ scene MacTopBar {
                 align: center
                 cursor: pointer
                 ellipse { at: 4.5, 4.5; radius: 4.5; color: danger_c; opacity: 0.55 + 0.45 * (0.5 + 0.5 * rdot) }
-                text rec_time { size: 12; weight: 700; color: ink_c }
+                text rec_time { size: t_sub; weight: 700; color: ink_c }
             }
             row timer_chip {
                 show: act_kind == 0 and timer_on
@@ -704,7 +704,7 @@ scene MacTopBar {
                 align: center
                 cursor: pointer
                 ellipse { at: 6, 6; radius: 4.5; stroke: 1.5; color: warn_c }
-                text timer_text { size: 12; weight: 700; color: ink_c }
+                text timer_text { size: t_sub; weight: 700; color: ink_c }
             }
             row music_chip {
                 show: act_kind == 0 and m_on
@@ -731,7 +731,7 @@ scene MacTopBar {
                 gap: 6
                 align: center
                 cursor: pointer
-                text clock_text { size: 12.5; weight: 700; color: ink_c }
+                text clock_text { size: t_sub; weight: 700; color: ink_c }
             }
 
             row {
@@ -739,7 +739,7 @@ scene MacTopBar {
                 gap: 4
                 align: center
                 text weather_icon { family: "JetBrainsMono Nerd Font Mono"; size: 12; color: hint_c }
-                text weather_temp { size: 11; weight: 600; color: ink_c }
+                text weather_temp { size: t_cap; weight: 600; color: ink_c }
             }
 
         }

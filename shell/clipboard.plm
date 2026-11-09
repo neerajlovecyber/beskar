@@ -35,7 +35,7 @@ scene MacClipboard {
 
             // Header: title, count, Clear All
             PanelHeader("󰅌", "Clipboard History")
-            text clip_count { at: 430, 30; anchor: right center; size: 11; color: ink_sub }
+            text clip_count { at: 430, 30; anchor: right center; size: t_cap; color: ink_sub }
             group { move: 450, 17; Pill("Clear All", 80, clear_all, 0, 26, true) }
 
             // Search field: at the bottom, like every dock panel
@@ -56,7 +56,7 @@ scene MacClipboard {
                 for c in clips { ClipRow(c) }
             }
 
-            text clip_empty { at: 280, 90; anchor: center; size: 13; color: ink_sub; show: clips.count < 1 }
+            text clip_empty { at: 280, 90; anchor: center; size: t_body; color: ink_sub; show: clips.count < 1 }
         }
     }
 

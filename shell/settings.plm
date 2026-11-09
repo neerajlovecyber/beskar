@@ -35,10 +35,10 @@ scene MacSettings {
             refraction: 0
             tint: tint_amt
             rim: rim_amt
-            box { from: 0, 0; size: 840, 580; corner: 20 }
+            box { from: 0, 0; size: 840, 580; corner: r_l }
         }
-        box { from: 0, 0; size: 840, 580; corner: 20; stroke: 1; color: stroke_c; opacity: stroke_op }
-        box { from: 0, 0; size: 230, 580; corner: 20; color: sidebar_bg; opacity: 85% }
+        box { from: 0, 0; size: 840, 580; corner: r_l; stroke: 1; color: stroke_c; opacity: stroke_op }
+        box { from: 0, 0; size: 230, 580; corner: r_l; color: sidebar_bg; opacity: 85% }
         box { from: 230, 0; size: 1, 580; color: stroke_c; opacity: stroke_op }
 
         //  clicks on the window itself do not close it
@@ -60,27 +60,27 @@ scene MacSettings {
         //  who is logged in
         group {
             move: 14, 46
-            box { from: 0, 0; size: 202, 54; corner: 10; color: card_fill; opacity: card_fill_op * 50% }
-            box { from: 0, 0; size: 202, 54; corner: 10; stroke: 1; color: c_border; opacity: c_border_op }
+            box { from: 0, 0; size: 202, 54; corner: r_s; color: card_fill; opacity: card_fill_op * 50% }
+            box { from: 0, 0; size: 202, 54; corner: r_s; stroke: 1; color: c_border; opacity: c_border_op }
             //  your picture if there is one (~/.face or the account's icon), else a gradient disc with your initial
             group {
                 show: not has_avatar
                 body {
                     gradient: 8, 9 to 44, 45, accent_c, focus_c
-                    box { from: 8, 9; size: 36, 36; corner: 18 }
+                    box { from: 8, 9; size: 36, 36; corner: r_l }
                 }
             }
             text avatar_initial { at: 26, 27; anchor: center center; size: 18; weight: 700; color: on_accent; show: not has_avatar }
             group {
                 show: has_avatar
-                clip box { from: 8, 9; size: 36, 36; corner: 18 }
+                clip box { from: 8, 9; size: 36, 36; corner: r_l }
                 image avatar_img { at: 8, 9; size: 36, 36 }
             }
             column {
                 at: 52, 17
                 gap: 2
-                text user_name { size: 13; weight: 600; color: ink_c; width: 140; lines: 1 }
-                text "This computer" { size: 10.5; color: ink_sub }
+                text user_name { size: t_body; weight: 600; color: ink_c; width: 140; lines: 1 }
+                text "This computer" { size: t_micro; color: ink_sub }
             }
         }
 
@@ -104,7 +104,7 @@ scene MacSettings {
             gap: 2
             for c in cats { SidebarItem(c) }
         }
-        text "No matches" { at: 115, 170; anchor: center center; size: 12; color: ink_sub; show: cats.count < 1 }
+        text "No matches" { at: 115, 170; anchor: center center; size: t_sub; color: ink_sub; show: cats.count < 1 }
 
         // ── the pane ─────────────────────────────────────────────
         text pane_title { at: 254, 34; anchor: left center; size: 20; weight: 700; color: ink_c }
@@ -118,7 +118,7 @@ scene MacSettings {
                 step: 56
                 gap: 12
                 Card(138) {
-                    text "Appearance" { at: 18, 16; size: 13; weight: 600; color: ink_c }
+                    text "Appearance" { at: 18, 16; size: t_body; weight: 600; color: ink_c }
                     row {
                         at: 40, 42
                         gap: 28
@@ -126,10 +126,10 @@ scene MacSettings {
                         ModeThumb(1, "Dark", #1e2026, #252830, #2d3139)
                         ModeThumb(2, "Auto", #1e2026, #f2f3f7, #8e8e93)
                     }
-                    text "Auto switches to dark at 7 pm and back to light at 7 am" { at: 380, 70; anchor: left center; size: 10.5; color: ink_sub; width: 160; lines: 3; show: appearance == 2 }
+                    text "Auto switches to dark at 7 pm and back to light at 7 am" { at: 380, 70; anchor: left center; size: t_micro; color: ink_sub; width: 160; lines: 3; show: appearance == 2 }
                 }
                 Card(88) {
-                    text "Window glass" { at: 18, 16; size: 13; weight: 600; color: ink_c }
+                    text "Window glass" { at: 18, 16; size: t_body; weight: 600; color: ink_c }
                     row {
                         at: 18, 36
                         gap: 10
@@ -141,8 +141,8 @@ scene MacSettings {
                 ToggleRow("Colours from the wallpaper", "Accent, highlights and glass tint follow the picture (matugen)", accent_auto, toggle_accent_auto)
                 ToggleRow("Theme other apps", "Terminals, Files (Nautilus) and other GTK / Qt apps wear the same colours", pref_apps, toggle_apps)
                 Card(112) {
-                    text "Accent colour" { at: 18, 16; size: 13; weight: 600; color: ink_c }
-                    text "Palette from the wallpaper" { at: 18, 82; anchor: left center; size: 11.5; weight: 600; color: if(accent_auto, ink_c, ink_sub) }
+                    text "Accent colour" { at: 18, 16; size: t_body; weight: 600; color: ink_c }
+                    text "Palette from the wallpaper" { at: 18, 82; anchor: left center; size: t_cap; weight: 600; color: if(accent_auto, ink_c, ink_sub) }
                     row {
                         at: 262, 68
                         gap: 6
@@ -180,8 +180,8 @@ scene MacSettings {
                     for d in disps { DispTile(d) }
                 }
                 Card(70) {
-                    text "Scale" { at: 18, 22; anchor: left center; size: 13; weight: 600; color: ink_c }
-                    text "Applies now. To keep it after a restart, set it in niri's config." { at: 18, 50; anchor: left center; size: 10.5; color: ink_sub; width: 330 }
+                    text "Scale" { at: 18, 22; anchor: left center; size: t_body; weight: 600; color: ink_c }
+                    text "Applies now. To keep it after a restart, set it in niri's config." { at: 18, 50; anchor: left center; size: t_micro; color: ink_sub; width: 330 }
                     row {
                         at: 290, 14
                         gap: 6
@@ -192,7 +192,7 @@ scene MacSettings {
                     }
                 }
                 Card(56) {
-                    text "Resolution" { at: 18, 28; anchor: left center; size: 13; weight: 600; color: ink_c }
+                    text "Resolution" { at: 18, 28; anchor: left center; size: t_body; weight: 600; color: ink_c }
                     row {
                         at: 150, 14
                         gap: 6
@@ -200,7 +200,7 @@ scene MacSettings {
                     }
                 }
                 Card(56) {
-                    text "Refresh rate" { at: 18, 28; anchor: left center; size: 13; weight: 600; color: ink_c }
+                    text "Refresh rate" { at: 18, 28; anchor: left center; size: t_body; weight: 600; color: ink_c }
                     row {
                         at: 160, 14
                         gap: 6
@@ -223,7 +223,7 @@ scene MacSettings {
                 SliderRow("Output volume", sound.volume, volume_set, 1, not sound.muted)
                 ToggleRow("Mute", "Silences the output", sound.muted, toggle_mute)
                 SliderRow("Input volume", in_level, input_set, 2, true)
-                text "Output device" { size: 13; weight: 600; color: ink_c }
+                text "Output device" { size: t_body; weight: 600; color: ink_c }
                 column {
                     gap: 6
                     for o in outs { OutRow(o) }
@@ -244,7 +244,7 @@ scene MacSettings {
                 ToggleRow("Group by app", "Stack several notifications from one app into a pile", group_apps, toggle_group)
                 ToggleRow("Show banners", "A new notification drops into the clock pill", banners, toggle_banners)
                 Card(64) {
-                    text "Banner stays for" { at: 18, 22; anchor: left center; size: 13; weight: 600; color: ink_c }
+                    text "Banner stays for" { at: 18, 22; anchor: left center; size: t_body; weight: 600; color: ink_c }
                     row {
                         at: 270, 14
                         gap: 6
@@ -253,7 +253,7 @@ scene MacSettings {
                         Seg("8 s", 2, banner_i, banner_secs_pick, 62)
                         Seg("12 s", 3, banner_i, banner_secs_pick, 62)
                     }
-                    text "Hovering a banner keeps it open" { at: 18, 46; anchor: left center; size: 10.5; color: ink_sub }
+                    text "Hovering a banner keeps it open" { at: 18, 46; anchor: left center; size: t_micro; color: ink_sub }
                 }
                 ActionRow("History", "Forget the notifications listed under Earlier", "Clear", clear_notif_history)
             }
@@ -269,7 +269,7 @@ scene MacSettings {
                 step: 56
                 gap: 12
                 Card(54) {
-                    text "Top bar style" { at: 18, 27; anchor: left center; size: 13; weight: 600; color: ink_c }
+                    text "Top bar style" { at: 18, 27; anchor: left center; size: t_body; weight: 600; color: ink_c }
                     row {
                         at: 360, 13
                         gap: 6
@@ -284,8 +284,8 @@ scene MacSettings {
                 ToggleRow("Hide the dock automatically", "It rises when the pointer reaches the bottom edge", pref_dock_auto, toggle_dock_auto)
                 ToggleRow("Desktop widgets", "Clock, weather, system and more on the wallpaper", pref_widgets, toggle_widgets)
                 Card(64) {
-                    text "Arrange widgets" { at: 18, 22; anchor: left center; size: 13; weight: 600; color: ink_c }
-                    text "Drag, resize, add or remove them (Super + Shift + W)" { at: 18, 42; anchor: left center; size: 10.5; color: ink_sub }
+                    text "Arrange widgets" { at: 18, 22; anchor: left center; size: t_body; weight: 600; color: ink_c }
+                    text "Drag, resize, add or remove them (Super + Shift + W)" { at: 18, 42; anchor: left center; size: t_micro; color: ink_sub }
                     row {
                         at: 332, 18
                         gap: 8
@@ -312,7 +312,7 @@ scene MacSettings {
                 placeholder: "Search shortcuts"
                 selection: accent_c
             }
-            text bind_count { at: 538, 17; anchor: right center; size: 10.5; color: ink_sub }
+            text bind_count { at: 538, 17; anchor: right center; size: t_micro; color: ink_sub }
             zone box bind_wheel { from: 0, 44; size: 556, 410 }
             on scroll bind_wheel { emit bind_scroll(wheel) }
             column {
@@ -320,7 +320,7 @@ scene MacSettings {
                 gap: 4
                 for b in binds { BindRow(b) }
             }
-            text "No shortcuts match" { at: 278, 200; anchor: center center; size: 12; color: ink_sub; show: binds.count < 1 }
+            text "No shortcuts match" { at: 278, 200; anchor: center center; size: t_sub; color: ink_sub; show: binds.count < 1 }
         }
 
         // 6 ── General ──────────────────────────────────────────
@@ -334,19 +334,19 @@ scene MacSettings {
                 Card(100) {
                     body {
                         gradient: 18, 18 to 78, 78, accent_c, focus_c
-                        box { from: 18, 18; size: 64, 64; corner: 18 }
+                        box { from: 18, 18; size: 64, 64; corner: r_l }
                     }
                     text "B" { at: 50, 50; anchor: center center; size: 32; weight: 800; color: on_accent }
                     column {
                         at: 100, 22
                         gap: 3
                         text "About This PC" { size: 20; weight: 700; color: ink_c }
-                        text about_os { size: 12; color: ink_sub }
-                        text "Beskar shell · niri · Pleamar" { size: 12; weight: 500; color: ink_c }
+                        text about_os { size: t_sub; color: ink_sub }
+                        text "Beskar shell · niri · Pleamar" { size: t_sub; weight: 500; color: ink_c }
                     }
                 }
                 Card(218) {
-                    text "Hardware Overview" { at: 18, 16; size: 13; weight: 600; color: ink_c }
+                    text "Hardware Overview" { at: 18, 16; size: t_body; weight: 600; color: ink_c }
                     column {
                         at: 18, 40
                         gap: 4
@@ -360,8 +360,8 @@ scene MacSettings {
                     }
                 }
                 Card(64) {
-                    text "Session" { at: 18, 22; anchor: left center; size: 13; weight: 600; color: ink_c }
-                    text "Lock, restart or shut down this computer" { at: 18, 42; anchor: left center; size: 10.5; color: ink_sub }
+                    text "Session" { at: 18, 22; anchor: left center; size: t_body; weight: 600; color: ink_c }
+                    text "Lock, restart or shut down this computer" { at: 18, 42; anchor: left center; size: t_micro; color: ink_sub }
                     row {
                         at: 268, 18
                         gap: 8
@@ -371,8 +371,8 @@ scene MacSettings {
                     }
                 }
                 Card(64) {
-                    text "Lock when away" { at: 18, 22; anchor: left center; size: 13; weight: 600; color: ink_c }
-                    text "Locks after this long without using the computer, and always before sleep" { at: 18, 44; anchor: left center; size: 10.5; color: ink_sub; width: 300; lines: 2 }
+                    text "Lock when away" { at: 18, 22; anchor: left center; size: t_body; weight: 600; color: ink_c }
+                    text "Locks after this long without using the computer, and always before sleep" { at: 18, 44; anchor: left center; size: t_micro; color: ink_sub; width: 300; lines: 2 }
                     row {
                         at: 322, 18
                         gap: 5
@@ -396,8 +396,8 @@ scene MacSettings {
                 step: 56
                 gap: 12
                 Card(130) {
-                    text "Night Light" { at: 18, 22; anchor: left center; size: 13; weight: 600; color: ink_c }
-                    text "Warms the screen so it is easier on the eyes in the evening" { at: 18, 42; anchor: left center; size: 10.5; color: ink_sub; width: 520 }
+                    text "Night Light" { at: 18, 22; anchor: left center; size: t_body; weight: 600; color: ink_c }
+                    text "Warms the screen so it is easier on the eyes in the evening" { at: 18, 42; anchor: left center; size: t_micro; color: ink_sub; width: 520 }
                     row {
                         at: 18, 62
                         gap: 6
@@ -405,7 +405,7 @@ scene MacSettings {
                         Seg("Always on", 1, nl_mode_i, nl_mode_pick, 110)
                         Seg("Sunset to sunrise", 2, nl_mode_i, nl_mode_pick, 150)
                     }
-                    text "Warmth" { at: 18, 108; anchor: left center; size: 11.5; weight: 600; color: if(nl_mode_i > 0, ink_c, ink_sub) }
+                    text "Warmth" { at: 18, 108; anchor: left center; size: t_cap; weight: 600; color: if(nl_mode_i > 0, ink_c, ink_sub) }
                     row {
                         at: 150, 94
                         gap: 6
@@ -415,8 +415,8 @@ scene MacSettings {
                     }
                 }
                 Card(104) {
-                    text "Power mode" { at: 18, 22; anchor: left center; size: 13; weight: 600; color: ink_c }
-                    text pick(if(pp_ok, 0, 1), "Saver stretches the battery; Performance gives the processor more room", "No power-profiles-daemon here: install and start it to choose a mode") { at: 18, 42; anchor: left center; size: 10.5; color: ink_sub; width: 520 }
+                    text "Power mode" { at: 18, 22; anchor: left center; size: t_body; weight: 600; color: ink_c }
+                    text pick(if(pp_ok, 0, 1), "Saver stretches the battery; Performance gives the processor more room", "No power-profiles-daemon here: install and start it to choose a mode") { at: 18, 42; anchor: left center; size: t_micro; color: ink_sub; width: 520 }
                     row {
                         at: 18, 62
                         gap: 6
@@ -424,7 +424,7 @@ scene MacSettings {
                         Seg("Balanced", 1, pp_i, pp_pick, 110)
                         Seg("Performance", 2, pp_i, pp_pick, 130)
                     }
-                    text pp_note { at: 400, 76; anchor: left center; size: 10.5; color: danger_c; width: 140 }
+                    text pp_note { at: 400, 76; anchor: left center; size: t_micro; color: danger_c; width: 140 }
                 }
             }
             group { move: 566, 0; ScrollBar(tcol_8.scroll, tcol_8.content, 500) }
@@ -442,16 +442,16 @@ scene MacSettings {
                     ellipse { at: 44, 42; radius: 24; color: if(up_n > 0, accent_c, ok_c) }
                     text pick(if(up_checking, 2, if(up_n > 0, 1, 0)), "󰄬", "󰚰", "󰑐") { family: "JetBrainsMono Nerd Font Mono"; at: 44, 42; anchor: center center; size: 24; color: on_accent }
                     text up_title { at: 84, 30; anchor: left center; size: 16; weight: 700; color: ink_c }
-                    text up_sub { at: 84, 54; anchor: left center; size: 11.5; color: ink_sub; width: 440 }
+                    text up_sub { at: 84, 54; anchor: left center; size: t_cap; color: ink_sub; width: 440 }
                 }
                 Card(250) {
-                    text "Available updates" { at: 18, 18; size: 13; weight: 600; color: ink_c }
+                    text "Available updates" { at: 18, 18; size: t_body; weight: 600; color: ink_c }
                     column {
                         at: 18, 40
                         gap: 4
                         for u in ups { UpdateRow(u) }
                     }
-                    text "Everything is up to date" { at: 278, 130; anchor: center center; size: 12; color: ink_sub; show: ups.count < 1 and not up_checking }
+                    text "Everything is up to date" { at: 278, 130; anchor: center center; size: t_sub; color: ink_sub; show: ups.count < 1 and not up_checking }
                 }
                 row {
                     gap: 12
@@ -608,10 +608,10 @@ scene MacSettings {
     //  A row with a button on its right.
     component ActionRow(title: text, sub: text, label: text, tap: event) {
         size: 556, 56
-        box { from: 0, 0; size: 556, 56; corner: 14; color: card_fill; opacity: card_fill_op }
-        box { from: 0, 0; size: 556, 56; corner: 14; stroke: 1; color: c_border; opacity: c_border_op }
-        text title { at: 18, 20; anchor: left center; size: 13; weight: 600; color: ink_c; width: 400; lines: 1 }
-        text sub { at: 18, 38; anchor: left center; size: 10.5; color: ink_sub; width: 400; lines: 1 }
+        box { from: 0, 0; size: 556, 56; corner: r_m; color: card_fill; opacity: card_fill_op }
+        box { from: 0, 0; size: 556, 56; corner: r_m; stroke: 1; color: c_border; opacity: c_border_op }
+        text title { at: 18, 20; anchor: left center; size: t_body; weight: 600; color: ink_c; width: 400; lines: 1 }
+        text sub { at: 18, 38; anchor: left center; size: t_micro; color: ink_sub; width: 400; lines: 1 }
         group {
             move: 450, 14
             Btn(label, 88, tap, false, 0, 0)
@@ -621,10 +621,10 @@ scene MacSettings {
     //  A slider you can drag.
     component SliderRow(title: text, level: number, set: event, kind: number, live: bool) {
         size: 556, 64
-        box { from: 0, 0; size: 556, 64; corner: 14; color: card_fill; opacity: card_fill_op }
-        box { from: 0, 0; size: 556, 64; corner: 14; stroke: 1; color: c_border; opacity: c_border_op }
-        text title { at: 18, 20; anchor: left center; size: 13; weight: 600; color: ink_c }
-        text "{clamp(level, 0, 1) * 100, 0}%" { at: 538, 20; anchor: right center; size: 11.5; color: ink_sub }
+        box { from: 0, 0; size: 556, 64; corner: r_m; color: card_fill; opacity: card_fill_op }
+        box { from: 0, 0; size: 556, 64; corner: r_m; stroke: 1; color: c_border; opacity: c_border_op }
+        text title { at: 18, 20; anchor: left center; size: t_body; weight: 600; color: ink_c }
+        text "{clamp(level, 0, 1) * 100, 0}%" { at: 538, 20; anchor: right center; size: t_cap; color: ink_sub }
         box { from: 18, 38; size: 520, 10; corner: 5; color: slider_bg; opacity: slider_bg_op }
         box { from: 18, 38; size: max(10, 520 * clamp(level, 0, 1)), 10; corner: 5; color: if(live, accent_c, ink_sub) }
         zone box hit { from: 18, 32; size: 520, 22; cursor: pointer }
@@ -636,10 +636,10 @@ scene MacSettings {
     //  Light / Dark / Auto thumbnail.
     component ModeThumb(n: number, label: text, base: color, panel_c: color, bar: color) {
         size: 100, 78
-        box { from: 0, 0; size: 100, 60; corner: 8; color: base }
+        box { from: 0, 0; size: 100, 60; corner: r_s; color: base }
         group {
             show: n == 2
-            box { from: 0, 0; size: 50, 60; corner: 8; color: #f2f3f7 }
+            box { from: 0, 0; size: 50, 60; corner: r_s; color: #f2f3f7 }
         }
         group {
             show: n != 2
@@ -647,8 +647,8 @@ scene MacSettings {
             box { from: 6, 18; size: 26, 36; corner: 2; color: panel_c }
             box { from: 36, 18; size: 58, 36; corner: 2; color: panel_c }
         }
-        box { from: 0, 0; size: 100, 60; corner: 8; stroke: if(appearance == n, 2.5, 1); color: if(appearance == n, accent_c, c_border) }
-        text label { at: 50, 72; anchor: center center; size: 12; weight: if(appearance == n, 600, 400); color: if(appearance == n, accent_c, ink_c) }
+        box { from: 0, 0; size: 100, 60; corner: r_s; stroke: if(appearance == n, 2.5, 1); color: if(appearance == n, accent_c, c_border) }
+        text label { at: 50, 72; anchor: center center; size: t_sub; weight: if(appearance == n, 600, 400); color: if(appearance == n, accent_c, ink_c) }
         zone box hit { from: 0, 0; size: 100, 78; cursor: pointer }
         on press hit { emit set_mode(n) }
         on press right hit { }
@@ -656,11 +656,11 @@ scene MacSettings {
 
     component SkinPill(idx: number, title_t: text, desc_t: text) {
         size: 166, 40
-        box { from: 0, 0; size: 166, 40; corner: 10; color: if(skin == idx, if(dark_mode, #2c3240, #ebf2ff), if(dark_mode, #1e2026, #f3f4f6)) }
-        box { from: 0, 0; size: 166, 40; corner: 10; stroke: if(skin == idx, 2, 1); color: if(skin == idx, accent_c, c_border) }
-        text title_t { at: 12, 14; anchor: left center; size: 12; weight: 600; color: if(skin == idx, accent_c, ink_c) }
-        text desc_t { at: 12, 29; anchor: left center; size: 9.5; color: ink_sub; width: 146; lines: 1 }
-        zone box hit { from: 0, 0; size: 166, 40; corner: 10; cursor: pointer }
+        box { from: 0, 0; size: 166, 40; corner: r_s; color: if(skin == idx, if(dark_mode, #2c3240, #ebf2ff), if(dark_mode, #1e2026, #f3f4f6)) }
+        box { from: 0, 0; size: 166, 40; corner: r_s; stroke: if(skin == idx, 2, 1); color: if(skin == idx, accent_c, c_border) }
+        text title_t { at: 12, 14; anchor: left center; size: t_sub; weight: 600; color: if(skin == idx, accent_c, ink_c) }
+        text desc_t { at: 12, 29; anchor: left center; size: t_micro; color: ink_sub; width: 146; lines: 1 }
+        zone box hit { from: 0, 0; size: 166, 40; corner: r_s; cursor: pointer }
         on press hit { emit choose_skin(idx) }
         on press right hit { }
     }
@@ -677,49 +677,49 @@ scene MacSettings {
     //  A display: pick it to change its scale and mode.
     component DispTile(d: record) {
         size: 270, 78
-        box { from: 0, 0; size: 270, 78; corner: 14; color: card_fill; opacity: card_fill_op }
-        box { from: 0, 0; size: 270, 78; corner: 14; stroke: if(d.sel, 2, 1); color: if(d.sel, accent_c, c_border); opacity: if(d.sel, 100%, c_border_op) }
+        box { from: 0, 0; size: 270, 78; corner: r_m; color: card_fill; opacity: card_fill_op }
+        box { from: 0, 0; size: 270, 78; corner: r_m; stroke: if(d.sel, 2, 1); color: if(d.sel, accent_c, c_border); opacity: if(d.sel, 100%, c_border_op) }
         Sym("󰍹", 34, 39, 30, if(d.sel, accent_c, ink_sub))
-        text d.title { at: 66, 28; anchor: left center; size: 12.5; weight: 600; color: ink_c; width: 190; lines: 1 }
-        text d.mode { at: 66, 48; anchor: left center; size: 10.5; color: ink_sub; width: 190; lines: 1 }
-        text d.name { at: 66, 62; anchor: left center; size: 10; color: ink_sub; width: 190; lines: 1 }
-        zone box hit { from: 0, 0; size: 270, 78; corner: 14; cursor: pointer }
+        text d.title { at: 66, 28; anchor: left center; size: t_sub; weight: 600; color: ink_c; width: 190; lines: 1 }
+        text d.mode { at: 66, 48; anchor: left center; size: t_micro; color: ink_sub; width: 190; lines: 1 }
+        text d.name { at: 66, 62; anchor: left center; size: t_micro; color: ink_sub; width: 190; lines: 1 }
+        zone box hit { from: 0, 0; size: 270, 78; corner: r_m; cursor: pointer }
         on press hit { emit disp_pick(d.index) }
         on press right hit { }
     }
 
     component OutRow(o: record) {
         size: 556, 44
-        box { from: 0, 0; size: 556, 44; corner: 12; color: if(o.def, if(dark_mode, #283040, #eef4ff), card_fill); opacity: if(o.def, 100%, card_fill_op) }
-        box { from: 0, 0; size: 556, 44; corner: 12; stroke: if(o.def, 2, 1); color: if(o.def, accent_c, c_border); opacity: if(o.def, 100%, c_border_op) }
+        box { from: 0, 0; size: 556, 44; corner: r_m; color: if(o.def, if(dark_mode, #283040, #eef4ff), card_fill); opacity: if(o.def, 100%, card_fill_op) }
+        box { from: 0, 0; size: 556, 44; corner: r_m; stroke: if(o.def, 2, 1); color: if(o.def, accent_c, c_border); opacity: if(o.def, 100%, c_border_op) }
         Sym("󰓃", 26, 22, 16, if(o.def, accent_c, ink_sub))
-        text o.name { at: 48, 22; anchor: left center; size: 12.5; color: ink_c; width: 440; lines: 1 }
+        text o.name { at: 48, 22; anchor: left center; size: t_sub; color: ink_c; width: 440; lines: 1 }
         text "󰄬" { family: "JetBrainsMono Nerd Font Mono"; at: 530, 22; anchor: center center; size: 15; color: accent_c; show: o.def }
-        zone box hit { from: 0, 0; size: 556, 44; corner: 12; cursor: pointer }
+        zone box hit { from: 0, 0; size: 556, 44; corner: r_m; cursor: pointer }
         on press hit { emit pick_out(o.index) }
         on press right hit { }
     }
 
     component BindRow(b: record) {
         size: 556, 40
-        box { from: 0, 0; size: 556, 40; corner: 10; color: card_fill; opacity: card_fill_op * 70% }
-        text b.what { at: 16, 20; anchor: left center; size: 12.5; color: ink_c; width: 280; lines: 1 }
-        text b.keys { at: 540, 20; anchor: right center; size: 12; weight: 600; color: accent_c; width: 240; lines: 1; align: right }
+        box { from: 0, 0; size: 556, 40; corner: r_s; color: card_fill; opacity: card_fill_op * 70% }
+        text b.what { at: 16, 20; anchor: left center; size: t_sub; color: ink_c; width: 280; lines: 1 }
+        text b.keys { at: 540, 20; anchor: right center; size: t_sub; weight: 600; color: accent_c; width: 240; lines: 1; align: right }
     }
 
     component UpdateRow(u: record) {
         size: 520, 30
         box { from: 0, 0; size: 520, 30; corner: 8; color: if(dark_mode, #1e2026, #f3f4f6) }
         Sym("󰏗", 18, 15, 14, accent_c)
-        text u.name { at: 38, 15; anchor: left center; size: 12; weight: 600; color: ink_c; width: 220; lines: 1 }
-        text u.ver { at: 506, 15; anchor: right center; size: 11; color: ink_sub; width: 240; lines: 1; align: right }
+        text u.name { at: 38, 15; anchor: left center; size: t_sub; weight: 600; color: ink_c; width: 220; lines: 1 }
+        text u.ver { at: 506, 15; anchor: right center; size: t_cap; color: ink_sub; width: 240; lines: 1; align: right }
     }
 
     //  A wallpaper thumbnail: click to apply.
     component SpecRow(label_t: text, val_t: text) {
         size: 520, 22
-        text label_t { at: 0, 11; anchor: left center; size: 12; weight: 600; color: ink_sub; width: 110 }
-        text val_t { at: 120, 11; anchor: left center; size: 12; color: ink_c; width: 390; lines: 1 }
+        text label_t { at: 0, 11; anchor: left center; size: t_sub; weight: 600; color: ink_sub; width: 110 }
+        text val_t { at: 120, 11; anchor: left center; size: t_sub; color: ink_c; width: 390; lines: 1 }
     }
 
     //  A category in the sidebar; `c.tint` picks the icon colour.
@@ -738,7 +738,7 @@ scene MacSettings {
             box { from: 0, 0; size: 22, 22; corner: 5; color: pick(c.tint, #5856d6, #0a84ff, #ff2d55, #ff453a, #8e8e93, #ff9f0a, #8e8e93, #30d158) }
             Sym(c.icon, 11 - c.dx, 10.5, 13, on_accent)
         }
-        text c.name { at: 36, 15; anchor: left center; size: 13; weight: if(tab == c.idx, 600, 400); color: if(tab == c.idx, on_accent, ink_c) }
+        text c.name { at: 36, 15; anchor: left center; size: t_body; weight: if(tab == c.idx, 600, 400); color: if(tab == c.idx, on_accent, ink_c) }
         on press hit { emit pick_cat(c.idx) }
         on press right hit { }
     }

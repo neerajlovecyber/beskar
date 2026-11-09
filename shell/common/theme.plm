@@ -80,6 +80,7 @@ part Theme {
     // ── type scale: title · body · caption · micro ──
     let t_title = 15
     let t_body  = 13
+    let t_sub   = 12
     let t_cap   = 11.5
     let t_micro = 10.5
 }

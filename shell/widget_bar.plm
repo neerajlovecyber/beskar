@@ -45,9 +45,9 @@ scene MacWidgetBar {
             zone box inside { from: 0, 0; size: 800, 132 }
             on press right inside { }
 
-            text "Add a widget" { at: 24, 31; anchor: left center; size: 12; weight: 600; color: ink_sub }
+            text "Add a widget" { at: 24, 31; anchor: left center; size: t_sub; weight: 600; color: ink_sub }
             for k in kinds { KindChip(k) }
-            text "Layouts" { at: 24, 98; anchor: left center; size: 12; weight: 600; color: ink_sub }
+            text "Layouts" { at: 24, 98; anchor: left center; size: t_sub; weight: 600; color: ink_sub }
             for pr in presets { PresetChip(pr) }
 
             group { move: 376, 14; Pill("Tidy up", 94, wb_tidy, 0, 34, true) }
@@ -64,7 +64,7 @@ scene MacWidgetBar {
             move: 24 + (k.id - 1) * 86, 52
             box { from: 0, 0; size: 78, 30; corner: 15; color: item_bg; opacity: item_bg_op + hot * 8% }
             Sym(k.icon, 16, 15, 14, accent_c)
-            text k.name { at: 50, 15; anchor: center center; size: 11; weight: 500; color: ink_c }
+            text k.name { at: 50, 15; anchor: center center; size: t_cap; weight: 500; color: ink_c }
             zone box add_hit { from: 0, 0; size: 78, 30; corner: 15; cursor: pointer }
             on enter add_hit { hot: 1 }
             on leave add_hit { hot: 0 }
@@ -78,7 +78,7 @@ scene MacWidgetBar {
         group {
             move: 92 + (pr.id - 1) * 106, 84
             box { from: 0, 0; size: 98, 28; corner: 14; color: item_bg; opacity: item_bg_op + hot * 8% }
-            text pr.name { at: 49, 14; anchor: center center; size: 12; weight: 500; color: ink_c }
+            text pr.name { at: 49, 14; anchor: center center; size: t_sub; weight: 500; color: ink_c }
             zone box pr_hit { from: 0, 0; size: 98, 28; corner: 14; cursor: pointer }
             on enter pr_hit { hot: 1 }
             on leave pr_hit { hot: 0 }

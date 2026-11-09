@@ -39,9 +39,9 @@ scene MacWelcome {
                 refraction: 0
                 tint: tint_amt
                 rim: rim_amt
-                box { from: 0, 0; size: 640, 460; corner: 22 }
+                box { from: 0, 0; size: 640, 460; corner: r_l }
             }
-            box { from: 0, 0; size: 640, 460; corner: 22; stroke: 1; color: card_stroke; opacity: card_stroke_op }
+            box { from: 0, 0; size: 640, 460; corner: r_l; stroke: 1; color: card_stroke; opacity: card_stroke_op }
 
             //  ── page 0: hello ──
             group {
@@ -59,7 +59,7 @@ scene MacWelcome {
             group {
                 show: page == 1
                 text "Make it yours" { at: 320, 62; anchor: center center; size: 22; weight: 700; color: ink_c }
-                text "You can change all of this later in Settings." { at: 320, 90; anchor: center center; size: 12.5; color: ink_sub }
+                text "You can change all of this later in Settings." { at: 320, 90; anchor: center center; size: t_sub; color: ink_sub }
                 Choice(60, 132, "󰖔", "Dark", mode == 1, choose_dark)
                 Choice(228, 132, "󰖨", "Light", mode == 0, choose_light)
                 Choice(396, 132, "󰔎", "Automatic", mode == 2, choose_auto)
@@ -78,7 +78,7 @@ scene MacWelcome {
                 Keys(100, 256, "Super + ,", "Settings")
                 Keys(100, 292, "Super + Shift + W", "Arrange the widgets")
                 Keys(100, 328, "Super + /", "All shortcuts")
-                text "Everything else is in the bar and the Control Center." { at: 320, 380; anchor: center center; size: 12.5; color: ink_sub }
+                text "Everything else is in the bar and the Control Center." { at: 320, 380; anchor: center center; size: t_sub; color: ink_sub }
             }
 
             //  ── footer: dots, Back, Next / Start, Skip ──
@@ -87,7 +87,7 @@ scene MacWelcome {
             }
             group {
                 show: page > 0
-                text "Back" { at: 60, 424; anchor: left center; size: 13; weight: 500; color: ink_sub }
+                text "Back" { at: 60, 424; anchor: left center; size: t_body; weight: 500; color: ink_sub }
                 zone box back_hit { from: 40, 408; size: 70, 32; corner: 10; cursor: pointer }
                 on press back_hit { emit wl_back }
                 on press right back_hit { }
@@ -95,7 +95,7 @@ scene MacWelcome {
             group {
                 show: page < 2
                 box { from: 500, 408; size: 100, 32; corner: 16; color: accent_c }
-                text "Next" { at: 550, 424; anchor: center center; size: 13; weight: 600; color: on_accent }
+                text "Next" { at: 550, 424; anchor: center center; size: t_body; weight: 600; color: on_accent }
                 zone box next_hit { from: 500, 408; size: 100, 32; corner: 16; cursor: pointer }
                 on press next_hit { emit wl_next }
                 on press right next_hit { }
@@ -103,14 +103,14 @@ scene MacWelcome {
             group {
                 show: page == 2
                 box { from: 480, 408; size: 120, 32; corner: 16; color: accent_c }
-                text "Start using Beskar" { at: 540, 424; anchor: center center; size: 12.5; weight: 600; color: on_accent; width: 116; lines: 1; align: center }
+                text "Start using Beskar" { at: 540, 424; anchor: center center; size: t_sub; weight: 600; color: on_accent; width: 116; lines: 1; align: center }
                 zone box done_hit { from: 480, 408; size: 120, 32; corner: 16; cursor: pointer }
                 on press done_hit { emit wl_done }
                 on press right done_hit { }
             }
             group {
                 show: page < 2
-                text "Skip" { at: 440, 424; anchor: right center; size: 12.5; color: ink_sub }
+                text "Skip" { at: 440, 424; anchor: right center; size: t_sub; color: ink_sub }
                 zone box skip_hit { from: 380, 408; size: 70, 32; corner: 10; cursor: pointer }
                 on press skip_hit { emit wl_done }
                 on press right skip_hit { }
@@ -157,7 +157,7 @@ scene MacWelcome {
             ellipse { at: 22, 24; radius: 22; color: accent_c; opacity: 18% }
             Sym(icon, 22, 24, 20, accent_c)
             text title { at: 58, 8; anchor: left center; size: 14; weight: 600; color: ink_c }
-            text body { at: 58, 34; anchor: left top; size: 12; color: ink_sub; width: 500; lines: 2 }
+            text body { at: 58, 34; anchor: left top; size: t_sub; color: ink_sub; width: 500; lines: 2 }
         }
     }
 
@@ -166,11 +166,11 @@ scene MacWelcome {
         prop hot = 0 ~quick
         group {
             move: x, y
-            box { from: 0, 0; size: 160, 96; corner: 16; color: item_bg; opacity: item_bg_op + hot * 6% }
-            box { from: 0, 0; size: 160, 96; corner: 16; stroke: 2; color: accent_c; opacity: if(on_, 100%, 0%) }
+            box { from: 0, 0; size: 160, 96; corner: r_l; color: item_bg; opacity: item_bg_op + hot * 6% }
+            box { from: 0, 0; size: 160, 96; corner: r_l; stroke: 2; color: accent_c; opacity: if(on_, 100%, 0%) }
             Sym(icon, 80, 38, 26, if(on_, accent_c, ink_c))
-            text label { at: 80, 72; anchor: center center; size: 13; weight: 600; color: ink_c }
-            zone box hit { from: 0, 0; size: 160, 96; corner: 16; cursor: pointer }
+            text label { at: 80, 72; anchor: center center; size: t_body; weight: 600; color: ink_c }
+            zone box hit { from: 0, 0; size: 160, 96; corner: r_l; cursor: pointer }
             on enter hit { hot: 1 }
             on leave hit { hot: 0 }
             on press hit { emit tap }
@@ -184,8 +184,8 @@ scene MacWelcome {
         group {
             move: x, y
             box { from: 0, 0; size: 180, 26; corner: 8; color: item_bg; opacity: item_bg_op }
-            text keys { at: 90, 13; anchor: center center; size: 12; weight: 600; color: ink_c }
-            text what { at: 204, 13; anchor: left center; size: 13; color: ink_c }
+            text keys { at: 90, 13; anchor: center center; size: t_sub; weight: 600; color: ink_c }
+            text what { at: 204, 13; anchor: left center; size: t_body; color: ink_c }
         }
     }
 }

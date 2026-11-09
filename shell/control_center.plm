@@ -123,10 +123,10 @@ scene MacControlCenter {
     //  what it controls differ. The fill never gets narrower than the icon.
     component LevelSlider(title: text, level: number, pct: text, kind: number, set: event, more: event) {
         size: 328, 54
-        box { from: 0, 0; size: 328, 54; corner: 16; color: card_fill; opacity: card_fill_op }
-        box { from: 0, 0; size: 328, 54; corner: 16; stroke: 1; color: card_stroke; opacity: card_stroke_op }
-        text title { at: 14, 14; anchor: left center; size: 11; weight: 600; color: ink_sub }
-        text pct { at: 314, 14; anchor: right center; size: 10.5; color: ink_sub }
+        box { from: 0, 0; size: 328, 54; corner: r_l; color: card_fill; opacity: card_fill_op }
+        box { from: 0, 0; size: 328, 54; corner: r_l; stroke: 1; color: card_stroke; opacity: card_stroke_op }
+        text title { at: 14, 14; anchor: left center; size: t_cap; weight: 600; color: ink_sub }
+        text pct { at: 314, 14; anchor: right center; size: t_micro; color: ink_sub }
         zone box more_hit { from: 230, 2; size: 96, 24; corner: 10; cursor: pointer; active: kind == 1 }
         group {
             move: 14, 25
@@ -178,10 +178,10 @@ scene MacControlCenter {
                     arc { at: 30, 37; radius: a * 4.8; span: 100deg; width: 2.2; color: if(net.online, accent_c, ink_c) }
                 }
                 ellipse { at: 30, 37.5; radius: 1.9; color: if(net.online, accent_c, ink_c) }
-                text "Wi-Fi" { at: 58, 22; anchor: left center; size: 12; weight: 600; color: if(net.online, on_accent, ink_c) }
-                text if(net.online, net.name, "Off") { at: 58, 38; anchor: left center; size: 10; color: if(net.online, on_accent, ink_sub); opacity: if(net.online, 80%, 100%); width: 80; lines: 1 }
+                text "Wi-Fi" { at: 58, 22; anchor: left center; size: t_sub; weight: 600; color: if(net.online, on_accent, ink_c) }
+                text if(net.online, net.name, "Off") { at: 58, 38; anchor: left center; size: t_micro; color: if(net.online, on_accent, ink_sub); opacity: if(net.online, 80%, 100%); width: 80; lines: 1 }
                 zone box wifi_chevron_hit { from: 52, 0; size: 106, 60; corner: 30; cursor: pointer }
-                zone box wifi_icon_hit { at: 30, 30; size: 40, 40; corner: 20; cursor: pointer }
+                zone box wifi_icon_hit { at: 30, 30; size: 40, 40; corner: r_l; cursor: pointer }
             }
 
             // ── Bluetooth ──
@@ -193,10 +193,10 @@ scene MacControlCenter {
                 box { from: 0, 0; size: 158, 60; corner: 30; stroke: 1; color: card_stroke; opacity: card_stroke_op }
                 ellipse { at: 30, 30; radius: 20; color: if(bt_on, on_accent, item_solid) }
                 path { at: 25.5, 20; color: if(bt_on, accent_c, ink_c); stroke: 2; move 0, 6; line 9, 15; line 4.5, 20; line 4.5, 0; line 9, 5; line 0, 14 }
-                text "Bluetooth" { at: 58, 22; anchor: left center; size: 12; weight: 600; color: if(bt_on, on_accent, ink_c) }
-                text bt_sub { at: 58, 38; anchor: left center; size: 10; color: if(bt_on, on_accent, ink_sub); opacity: if(bt_on, 80%, 100%); width: 80; lines: 1 }
+                text "Bluetooth" { at: 58, 22; anchor: left center; size: t_sub; weight: 600; color: if(bt_on, on_accent, ink_c) }
+                text bt_sub { at: 58, 38; anchor: left center; size: t_micro; color: if(bt_on, on_accent, ink_sub); opacity: if(bt_on, 80%, 100%); width: 80; lines: 1 }
                 zone box bt_chevron_hit { from: 52, 0; size: 106, 60; corner: 30; cursor: pointer }
-                zone box bt_icon_hit { at: 30, 30; size: 40, 40; corner: 20; cursor: pointer }
+                zone box bt_icon_hit { at: 30, 30; size: 40, 40; corner: r_l; cursor: pointer }
             }
 
             // ── Now Playing: a tile on the right, as tall as the two pills ──
@@ -210,7 +210,7 @@ scene MacControlCenter {
                     show: not has_player
                     ellipse { at: 79, 48; radius: 22; color: item_solid }
                     path { at: 71, 37; color: ink_sub; move 0, 0; line 17, 11; line 0, 22; close }
-                    text "Not Playing" { at: 79, 96; anchor: center; size: 12; weight: 600; color: ink_sub }
+                    text "Not Playing" { at: 79, 96; anchor: center; size: t_sub; weight: 600; color: ink_sub }
                 }
 
                 group {
@@ -220,8 +220,8 @@ scene MacControlCenter {
                         box { from: 14, 14; size: 46, 46; corner: 11 }
                     }
                     image cover { at: 14, 14; size: 46, 46; show: has_art }
-                    text track_title { at: 14, 74; anchor: left center; size: 12; weight: 600; color: ink_c; width: 132; lines: 1 }
-                    text track_artist { at: 14, 90; anchor: left center; size: 10.5; color: ink_sub; width: 132; lines: 1 }
+                    text track_title { at: 14, 74; anchor: left center; size: t_sub; weight: 600; color: ink_c; width: 132; lines: 1 }
+                    text track_artist { at: 14, 90; anchor: left center; size: t_micro; color: ink_sub; width: 132; lines: 1 }
 
                     //  progress
                     box { from: 14, 102; size: 130, 3; corner: 1.5; color: slider_bg; opacity: slider_bg_op }
@@ -256,8 +256,8 @@ scene MacControlCenter {
                 //  the moon: a disc with a bite out of it, the bite in the disc's own colour
                 ellipse { at: 29, 31; radius: 9; color: if(dnd, focus_c, ink_c) }
                 ellipse { at: 34, 27; radius: 8; color: if(dnd, on_accent, item_solid) }
-                text "Do Not" { at: 58, 24; anchor: left center; size: 12; weight: 600; color: if(dnd, on_accent, ink_c) }
-                text "Disturb" { at: 58, 38; anchor: left center; size: 12; weight: 600; color: if(dnd, on_accent, ink_c) }
+                text "Do Not" { at: 58, 24; anchor: left center; size: t_sub; weight: 600; color: if(dnd, on_accent, ink_c) }
+                text "Disturb" { at: 58, 38; anchor: left center; size: t_sub; weight: 600; color: if(dnd, on_accent, ink_c) }
                 zone box dnd_hit { from: 0, 0; size: 158, 60; corner: 30; cursor: pointer }
             }
 
@@ -265,8 +265,8 @@ scene MacControlCenter {
             group {
                 move: 186, 160
                 size: 73, 60
-                box { from: 0, 0; size: 73, 60; corner: 22; color: card_fill; opacity: card_fill_op }
-                box { from: 0, 0; size: 73, 60; corner: 22; stroke: 1; color: card_stroke; opacity: card_stroke_op }
+                box { from: 0, 0; size: 73, 60; corner: r_l; color: card_fill; opacity: card_fill_op }
+                box { from: 0, 0; size: 73, 60; corner: r_l; stroke: 1; color: card_stroke; opacity: card_stroke_op }
                 ellipse { at: 36.5, 30; radius: 19; color: if(dark_mode, focus_c, warn_c) }
                 group {
                     show: dark_mode
@@ -278,15 +278,15 @@ scene MacControlCenter {
                     ellipse { at: 36.5, 30; radius: 5.5; color: on_accent }
                     repeat k in 0..8 { line { from: 36.5 + 9 * cos(k * 45), 30 + 9 * sin(k * 45); to: 36.5 + 12 * cos(k * 45), 30 + 12 * sin(k * 45); width: 2; color: on_accent } }
                 }
-                zone box dm_tile_hit { from: 0, 0; size: 73, 60; corner: 22; cursor: pointer }
+                zone box dm_tile_hit { from: 0, 0; size: 73, 60; corner: r_l; cursor: pointer }
             }
 
             // ── Settings: a square with three sliders ──
             group {
                 move: 271, 160
                 size: 73, 60
-                box { from: 0, 0; size: 73, 60; corner: 22; color: card_fill; opacity: card_fill_op }
-                box { from: 0, 0; size: 73, 60; corner: 22; stroke: 1; color: card_stroke; opacity: card_stroke_op }
+                box { from: 0, 0; size: 73, 60; corner: r_l; color: card_fill; opacity: card_fill_op }
+                box { from: 0, 0; size: 73, 60; corner: r_l; stroke: 1; color: card_stroke; opacity: card_stroke_op }
                 ellipse { at: 36.5, 30; radius: 19; color: item_solid }
                 line { from: 26, 23; to: 47, 23; width: 1.8; color: ink_c }
                 line { from: 26, 30; to: 47, 30; width: 1.8; color: ink_c }
@@ -294,7 +294,7 @@ scene MacControlCenter {
                 ellipse { at: 32, 23; radius: 3; color: ink_c }
                 ellipse { at: 42, 30; radius: 3; color: ink_c }
                 ellipse { at: 35, 37; radius: 3; color: ink_c }
-                zone box settings_tile_hit { from: 0, 0; size: 73, 60; corner: 22; cursor: pointer }
+                zone box settings_tile_hit { from: 0, 0; size: 73, 60; corner: r_l; cursor: pointer }
             }
 
             // Sliders Section
@@ -367,16 +367,16 @@ scene MacControlCenter {
             group {
                 show: not asking
                 move: 16, 62
-                box { from: 0, 0; size: 328, 64; corner: 14; color: card_fill; opacity: card_fill_op }
-                box { from: 0, 0; size: 328, 64; corner: 14; color: accent_c; opacity: if(wifi_state == 2 or wifi_state == 3, 100%, 0%) }
-                box { from: 0, 0; size: 328, 64; corner: 14; stroke: 1; color: card_stroke; opacity: card_stroke_op }
+                box { from: 0, 0; size: 328, 64; corner: r_m; color: card_fill; opacity: card_fill_op }
+                box { from: 0, 0; size: 328, 64; corner: r_m; color: accent_c; opacity: if(wifi_state == 2 or wifi_state == 3, 100%, 0%) }
+                box { from: 0, 0; size: 328, 64; corner: r_m; stroke: 1; color: card_stroke; opacity: card_stroke_op }
                 group {
                     move: 12, 20
                     opacity: if(wifi_state == 0, 35%, 100%)
                     Bars(if(wifi_state >= 2, wifi_signal, 0), if(wifi_state >= 2, on_accent, ink_c))
                 }
-                text wifi_title { at: 52, 24; anchor: left center; size: 13.5; weight: 600; color: if(wifi_state == 2 or wifi_state == 3, on_accent, ink_c); width: 150; lines: 1 }
-                text wifi_status { at: 52, 42; anchor: left center; size: 10.5; color: if(wifi_state == 2 or wifi_state == 3, on_accent, ink_sub); opacity: if(wifi_state == 2 or wifi_state == 3, 80%, 100%); width: 150; lines: 1 }
+                text wifi_title { at: 52, 24; anchor: left center; size: t_body; weight: 600; color: if(wifi_state == 2 or wifi_state == 3, on_accent, ink_c); width: 150; lines: 1 }
+                text wifi_status { at: 52, 42; anchor: left center; size: t_micro; color: if(wifi_state == 2 or wifi_state == 3, on_accent, ink_sub); opacity: if(wifi_state == 2 or wifi_state == 3, 80%, 100%); width: 150; lines: 1 }
                 row {
                     at: 316, 32
                     anchor: right middle
@@ -400,8 +400,8 @@ scene MacControlCenter {
             // ── networks in range ──
             group {
                 show: wifi_state != 0 and not asking
-                text "NEARBY" { at: 20, 144; anchor: left center; size: 9.5; weight: 700; color: ink_sub }
-                text "Look again" { at: 344, 144; anchor: right center; size: 10.5; color: ink_sub }
+                text "NEARBY" { at: 20, 144; anchor: left center; size: t_micro; weight: 700; color: ink_sub }
+                text "Look again" { at: 344, 144; anchor: right center; size: t_micro; color: ink_sub }
                 zone box wifi_rescan_hit { from: 270, 134; size: 74, 20; corner: 10; cursor: pointer }
                 column {
                     at: 16, 158
@@ -409,39 +409,39 @@ scene MacControlCenter {
                     for n in wifi_rows {
                         group {
                             size: 328, 36
-                            box { from: 0, 0; size: 328, 36; corner: 10; color: card_fill; opacity: card_fill_op }
-                            box { from: 0, 0; size: 328, 36; corner: 10; color: accent_c; opacity: if(n.active, 100%, 0%) }
-                            box { from: 0, 0; size: 328, 36; corner: 10; stroke: 1; color: card_stroke; opacity: card_stroke_op }
+                            box { from: 0, 0; size: 328, 36; corner: r_s; color: card_fill; opacity: card_fill_op }
+                            box { from: 0, 0; size: 328, 36; corner: r_s; color: accent_c; opacity: if(n.active, 100%, 0%) }
+                            box { from: 0, 0; size: 328, 36; corner: r_s; stroke: 1; color: card_stroke; opacity: card_stroke_op }
                             group {
                                 move: 10, 6
                                 Bars(n.signal, if(n.active, on_accent, ink_c))
                             }
-                            text n.name { at: 46, 18; anchor: left center; size: 12.5; weight: if(n.active, 600, 400); color: if(n.active, on_accent, ink_c); width: 190; lines: 1 }
-                            text "Joining…" { at: 300, 18; anchor: right center; size: 10.5; color: ink_sub; show: n.joining }
-                            text "Connected" { at: 300, 18; anchor: right center; size: 10.5; color: on_accent; opacity: 85%; show: n.active and not n.joining }
-                            text "Saved" { at: 300, 18; anchor: right center; size: 10.5; color: ink_sub; show: n.known and not n.active and not n.joining }
+                            text n.name { at: 46, 18; anchor: left center; size: t_sub; weight: if(n.active, 600, 400); color: if(n.active, on_accent, ink_c); width: 190; lines: 1 }
+                            text "Joining…" { at: 300, 18; anchor: right center; size: t_micro; color: ink_sub; show: n.joining }
+                            text "Connected" { at: 300, 18; anchor: right center; size: t_micro; color: on_accent; opacity: 85%; show: n.active and not n.joining }
+                            text "Saved" { at: 300, 18; anchor: right center; size: t_micro; color: ink_sub; show: n.known and not n.active and not n.joining }
                             group {
                                 show: n.secure and not n.known and not n.active
                                 box { from: 310, 20; size: 9, 7; corner: 2; color: ink_sub }
                                 arc { at: 314.5, 20; radius: 3; span: 180deg; width: 1.4; color: ink_sub }
                             }
-                            zone box wifi_row_hit { from: 0, 0; size: 328, 36; corner: 10; cursor: pointer }
+                            zone box wifi_row_hit { from: 0, 0; size: 328, 36; corner: r_s; cursor: pointer }
                             on press wifi_row_hit { emit pick_network(n.index) }
                         }
                     }
                 }
-                text "Looking for networks…" { at: 180, 230; anchor: center; size: 12; color: ink_sub; show: wifi_rows.count < 1 }
+                text "Looking for networks…" { at: 180, 230; anchor: center; size: t_sub; color: ink_sub; show: wifi_rows.count < 1 }
             }
-            text "Turn Wi-Fi on to see the networks around you." { at: 180, 200; anchor: center; size: 12; color: ink_sub; show: wifi_state == 0 and not asking }
+            text "Turn Wi-Fi on to see the networks around you." { at: 180, 200; anchor: center; size: t_sub; color: ink_sub; show: wifi_state == 0 and not asking }
 
             // ── its password, asked for in the list's place ──
             group {
                 show: asking
                 move: 16, 62
-                box { from: 0, 0; size: 328, 150; corner: 14; color: card_fill; opacity: card_fill_op }
-                box { from: 0, 0; size: 328, 150; corner: 14; stroke: 1; color: card_stroke; opacity: card_stroke_op }
-                text "Join" { at: 164, 24; anchor: center; size: 10.5; color: ink_sub }
-                text ask_name { at: 164, 44; anchor: center; size: 15; weight: 600; color: ink_c; width: 290; lines: 1; tight: true }
+                box { from: 0, 0; size: 328, 150; corner: r_m; color: card_fill; opacity: card_fill_op }
+                box { from: 0, 0; size: 328, 150; corner: r_m; stroke: 1; color: card_stroke; opacity: card_stroke_op }
+                text "Join" { at: 164, 24; anchor: center; size: t_micro; color: ink_sub }
+                text ask_name { at: 164, 44; anchor: center; size: t_title; weight: 600; color: ink_c; width: 290; lines: 1; tight: true }
                 box { from: 18, 66; size: 292, 34; corner: 9; color: slider_bg; opacity: slider_bg_op }
                 input wifi_pw {
                     at: 30, 74
@@ -452,7 +452,7 @@ scene MacControlCenter {
                     placeholder: "Password"
                     selection: accent_c
                 }
-                text ask_error { at: 164, 114; anchor: center; size: 10.5; color: danger_c }
+                text ask_error { at: 164, 114; anchor: center; size: t_micro; color: danger_c }
                 row {
                     at: 164, 132
                     anchor: center middle
@@ -485,7 +485,7 @@ scene MacControlCenter {
             box { from: 306, 25; size: 38, 22; corner: 11; color: if(bt_on, ok_c, item_bg); opacity: if(bt_on, 100%, item_bg_op) }
             ellipse { at: if(bt_on, 335, 316), 36; radius: 9; color: on_accent }
             zone box bt_power_hit { from: 306, 25; size: 38, 22; corner: 11; cursor: pointer; active: bt_present }
-            text if(bt_scanning, "Searching…", "Search") { at: 292, 36; anchor: right center; size: 11.5; weight: 500; color: if(bt_scanning, accent_c, ink_sub); show: bt_on }
+            text if(bt_scanning, "Searching…", "Search") { at: 292, 36; anchor: right center; size: t_cap; weight: 500; color: if(bt_scanning, accent_c, ink_sub); show: bt_on }
             zone box bt_scan_hit { from: 200, 24; size: 94, 24; corner: 12; cursor: pointer; active: bt_on }
 
             column {
@@ -494,16 +494,16 @@ scene MacControlCenter {
                 for g in bt_rows {
                     group {
                         size: 328, 46
-                        box { from: 0, 0; size: 328, 46; corner: 12; color: card_fill; opacity: card_fill_op }
-                        box { from: 0, 0; size: 328, 46; corner: 12; color: accent_c; opacity: if(g.state == 1, 100%, 0%) }
-                        box { from: 0, 0; size: 328, 46; corner: 12; stroke: 1; color: card_stroke; opacity: card_stroke_op }
+                        box { from: 0, 0; size: 328, 46; corner: r_m; color: card_fill; opacity: card_fill_op }
+                        box { from: 0, 0; size: 328, 46; corner: r_m; color: accent_c; opacity: if(g.state == 1, 100%, 0%) }
+                        box { from: 0, 0; size: 328, 46; corner: r_m; stroke: 1; color: card_stroke; opacity: card_stroke_op }
                         ellipse { at: 24, 23; radius: 15; color: if(g.state == 1, on_accent, item_bg); opacity: if(g.state == 1, 100%, item_bg_op) }
                         text pick(g.kind, "󰂯", "󰋋", "󰍽", "󰌌", "󰏲", "󰟀", "󰊴", "󰓃") { family: "JetBrainsMono Nerd Font Mono"; at: 24, 23; anchor: center; size: 14; color: if(g.state == 1, accent_c, ink_c) }
-                        text g.name { at: 48, 17; anchor: left center; size: 13; weight: if(g.state == 1, 600, 500); color: if(g.state == 1, on_accent, ink_c); width: 150; lines: 1 }
-                        text g.status { at: 48, 32; anchor: left center; size: 10.5; color: if(g.state == 1, on_accent, ink_sub); opacity: if(g.state == 1, 85%, 100%); width: 150; lines: 1 }
-                        text if(g.battery >= 0, "{g.battery * 100, 0}%", "") { at: 208, 23; anchor: right center; size: 10.5; color: if(g.state == 1, on_accent, ink_sub) }
+                        text g.name { at: 48, 17; anchor: left center; size: t_body; weight: if(g.state == 1, 600, 500); color: if(g.state == 1, on_accent, ink_c); width: 150; lines: 1 }
+                        text g.status { at: 48, 32; anchor: left center; size: t_micro; color: if(g.state == 1, on_accent, ink_sub); opacity: if(g.state == 1, 85%, 100%); width: 150; lines: 1 }
+                        text if(g.battery >= 0, "{g.battery * 100, 0}%", "") { at: 208, 23; anchor: right center; size: t_micro; color: if(g.state == 1, on_accent, ink_sub) }
                         box { from: 246, 9; size: 72, 28; corner: 9; color: if(g.state == 0 or g.state == 3, accent_c, if(g.state == 1, on_accent, item_bg)); opacity: if(g.state == 0 or g.state == 3, 100%, if(g.state == 1, 24%, item_bg_op)) }
-                        text pick(g.state, "Connect", "Disconnect", "…", "Pair") { at: 282, 23; anchor: center; size: 10.5; weight: 600; color: if(g.state == 0 or g.state == 3 or g.state == 1, on_accent, ink_c) }
+                        text pick(g.state, "Connect", "Disconnect", "…", "Pair") { at: 282, 23; anchor: center; size: t_micro; weight: 600; color: if(g.state == 0 or g.state == 3 or g.state == 1, on_accent, ink_c) }
                         zone box bt_row_hit { from: 246, 9; size: 72, 28; corner: 9; cursor: pointer }
                         on press bt_row_hit { emit bt_action(g.index) }
                     }
@@ -511,10 +511,10 @@ scene MacControlCenter {
             }
             group {
                 show: bt_rows.count < 1
-                text "Looking around…" { at: 180, 200; anchor: center; size: 12; color: ink_sub; show: bt_on and bt_scanning }
-                text "No paired devices. Press Search." { at: 180, 200; anchor: center; size: 12; color: ink_sub; show: bt_on and not bt_scanning }
-                text "Bluetooth is off. Use the switch to turn it on." { at: 180, 200; anchor: center; size: 12; color: ink_sub; show: bt_present and not bt_on }
-                text "No Bluetooth adapter found" { at: 180, 200; anchor: center; size: 12; color: ink_sub; show: not bt_present }
+                text "Looking around…" { at: 180, 200; anchor: center; size: t_sub; color: ink_sub; show: bt_on and bt_scanning }
+                text "No paired devices. Press Search." { at: 180, 200; anchor: center; size: t_sub; color: ink_sub; show: bt_on and not bt_scanning }
+                text "Bluetooth is off. Use the switch to turn it on." { at: 180, 200; anchor: center; size: t_sub; color: ink_sub; show: bt_present and not bt_on }
+                text "No Bluetooth adapter found" { at: 180, 200; anchor: center; size: t_sub; color: ink_sub; show: not bt_present }
             }
         }
 
@@ -536,21 +536,21 @@ scene MacControlCenter {
                 zone box snd_back_hit { from: 0, 0; size: 150, 32; cursor: pointer }
             }
 
-            text "OUTPUT" { at: 20, 62; anchor: left center; size: 9.5; weight: 700; color: ink_sub }
+            text "OUTPUT" { at: 20, 62; anchor: left center; size: t_micro; weight: 700; color: ink_sub }
             column outs_list {
                 at: 16, 74
                 gap: 4
                 for o in outs {
                     group {
                         size: 328, 36
-                        box { from: 0, 0; size: 328, 36; corner: 10; color: card_fill; opacity: card_fill_op }
-                        box { from: 0, 0; size: 328, 36; corner: 10; color: accent_c; opacity: if(o.default, 100%, 0%) }
-                        box { from: 0, 0; size: 328, 36; corner: 10; stroke: 1; color: card_stroke; opacity: card_stroke_op }
+                        box { from: 0, 0; size: 328, 36; corner: r_s; color: card_fill; opacity: card_fill_op }
+                        box { from: 0, 0; size: 328, 36; corner: r_s; color: accent_c; opacity: if(o.default, 100%, 0%) }
+                        box { from: 0, 0; size: 328, 36; corner: r_s; stroke: 1; color: card_stroke; opacity: card_stroke_op }
                         ellipse { at: 22, 18; radius: 12; color: if(o.default, on_accent, item_bg); opacity: if(o.default, 100%, item_bg_op) }
                         path { at: 16.5, 12.5; color: if(o.default, accent_c, ink_c); move 0, 3.5; line 3, 3.5; line 7, 0; line 7, 11; line 3, 7.5; line 0, 7.5; close }
-                        text o.name { at: 44, 18; anchor: left center; size: 12.5; weight: if(o.default, 600, 400); color: if(o.default, on_accent, ink_c); width: 250; lines: 1 }
+                        text o.name { at: 44, 18; anchor: left center; size: t_sub; weight: if(o.default, 600, 400); color: if(o.default, on_accent, ink_c); width: 250; lines: 1 }
                         text if(o.default, "✓", "") { at: 310, 18; anchor: center; size: 14; color: on_accent }
-                        zone box out_row_hit { from: 0, 0; size: 328, 36; corner: 10; cursor: pointer }
+                        zone box out_row_hit { from: 0, 0; size: 328, 36; corner: r_s; cursor: pointer }
                         on press out_row_hit { emit pick_output(o.id) }
                     }
                 }
@@ -559,17 +559,17 @@ scene MacControlCenter {
             //  Below the outputs: what is making sound, each with its own slider.
             group {
                 move: 0, 74 + outs_list.height + 12
-                text "APPS" { at: 20, 0; anchor: left center; size: 9.5; weight: 700; color: ink_sub; show: app_rows.count > 0 }
+                text "APPS" { at: 20, 0; anchor: left center; size: t_micro; weight: 700; color: ink_sub; show: app_rows.count > 0 }
                 column {
                     at: 16, 12
                     gap: 6
                     for a in app_rows {
                         group {
                             size: 328, 50
-                            box { from: 0, 0; size: 328, 50; corner: 12; color: card_fill; opacity: card_fill_op }
-                            box { from: 0, 0; size: 328, 50; corner: 12; stroke: 1; color: card_stroke; opacity: card_stroke_op }
-                            text a.name { at: 14, 14; anchor: left center; size: 11.5; weight: 600; color: ink_c; width: 220; lines: 1 }
-                            text "{a.volume * 100, 0}%" { at: 314, 14; anchor: right center; size: 10.5; color: ink_sub }
+                            box { from: 0, 0; size: 328, 50; corner: r_m; color: card_fill; opacity: card_fill_op }
+                            box { from: 0, 0; size: 328, 50; corner: r_m; stroke: 1; color: card_stroke; opacity: card_stroke_op }
+                            text a.name { at: 14, 14; anchor: left center; size: t_cap; weight: 600; color: ink_c; width: 220; lines: 1 }
+                            text "{a.volume * 100, 0}%" { at: 314, 14; anchor: right center; size: t_micro; color: ink_sub }
                             group {
                                 move: 14, 28
                                 box { from: 0, 0; size: 300, 14; corner: 7; color: slider_bg; opacity: slider_bg_op }
@@ -581,7 +581,7 @@ scene MacControlCenter {
                         }
                     }
                 }
-                text "Nothing is playing right now" { at: 180, 40; anchor: center; size: 11.5; color: ink_sub; show: app_rows.count < 1 }
+                text "Nothing is playing right now" { at: 180, 40; anchor: center; size: t_cap; color: ink_sub; show: app_rows.count < 1 }
             }
         }
     }
