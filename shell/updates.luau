@@ -15,6 +15,7 @@ local function tell_bar(n)
     pcall(sys.call, "say", "topbar", "fact upd_n " .. n)
 end
 
+local fresh = false          -- checked within the last 5 minutes
 local function check()
     if fact.checking then return end
     fact.checking = true
@@ -30,6 +31,9 @@ local function check()
             end
         end
         if code == 0 or code == 2 then
+            fact.known = true
+            fresh = true
+            after(300000, function() fresh = false end)
             model.pkgs = rows
             fact.n = n
             tell_bar(n)
@@ -66,12 +70,13 @@ end
 
 on("do_check", check)
 on("do_update", update)
+-- the list is kept between checks: opening the panel shows it at once and only looks again when it is old
 on("fact:open", function(v)
-    if (v == true or v == 1) and not fact.running then check() end
+    if (v == true or v == 1) and not fact.running and not fresh then check() end
 end)
 
 resize()
-after(30000, check)
+after(3000, check)
 every(30 * 60 * 1000, check)
 
 require("exclusive")("updates")

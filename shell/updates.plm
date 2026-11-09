@@ -27,6 +27,7 @@ scene MacUpdates {
     fact checking = false
     fact running = false        // pacman -Syu is running
     fact failed = false
+    fact known = false          // a check has finished (before that, an empty list means "not looked yet")
     text status = ""            // the line under the title
     model pkgs max 40 { name: text; ver: text }
 
@@ -64,7 +65,7 @@ scene MacUpdates {
             }
             group { move: 331, 4; ScrollBar(list.scroll, list.content, 272) }
         }
-        group { move: 0, 70; show: n < 1; EmptyState(170, 60, "󰄬", if(checking, "Checking…", "Everything is up to date")) }
+        group { move: 0, 70; show: n < 1; EmptyState(170, 60, if(known, "󰄬", "󰑐"), if(known, "Everything is up to date", "Checking…")) }
 
         //  the button
         group {
