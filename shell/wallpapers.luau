@@ -10,7 +10,7 @@
 
 local PAGE = 5                  -- pictures on screen, in one row
 local panel = require("panel")("wallpapers")
-panel.height(250)               -- the strip's height, for the frame's glass
+panel.height(330)               -- the strip's height (cards + search field), for the frame's glass
 
 local all = {}              -- { path, name, builtin }, in the order shown by "All"
 local view = {}             -- what the current tab shows
@@ -86,7 +86,8 @@ end
 local function rebuild(tab)
     view = {}
     for _, w in ipairs(all) do
-        if tab == 0 or (tab == 1 and not w.builtin) or (tab == 2 and w.builtin) then
+        local q = (text.wall_q or ""):lower()
+        if (tab == 0 or (tab == 1 and not w.builtin) or (tab == 2 and w.builtin)) and (q == "" or w.name:lower():find(q, 1, true)) then
             view[#view + 1] = w
         end
     end
@@ -213,6 +214,10 @@ on("accent_now", function()
 end)
 
 -- ── buttons ──────────────────────────────────────────────────────
+on("text:wall_q", function()
+    rebuild(tonumber(fact.wall_tab) or 0)
+end)
+
 on("wall_tab_set", function(n)
     fact.wall_tab = tonumber(n) or 0
     rebuild(fact.wall_tab)

@@ -117,6 +117,7 @@ scene MacSpotlight {
 
     on toggle          { toggle open; focus query }
     on key Escape      { open = false }
+    on key Tab         { sel = min(sel + 1, max(hits.count - 1, 0)); sc_t = clamp(sc_t, (min(sel + 1, max(hits.count - 1, 0)) - 6) * 44, min(sel + 1, max(hits.count - 1, 0)) * 44) }
     on blur            { open = false }
     on key Down        { sel = min(sel + 1, max(hits.count - 1, 0)); sc_t = clamp(sc_t, (min(sel + 1, max(hits.count - 1, 0)) - 6) * 44, min(sel + 1, max(hits.count - 1, 0)) * 44) }
     on key Up          { sel = max(sel - 1, 0); sc_t = clamp(sc_t, (max(sel - 1, 0) - 6) * 44, max(sel - 1, 0) * 44) }

@@ -142,4 +142,5 @@ scene MacAppSwitcher {
     on key Right  { emit next_app }
     on key Return { emit switch_to(sel) }
     on key Escape { open = false }
+    on blur       { open = false }
 }

@@ -11,7 +11,7 @@ scene MacWallpapers {
     include "common/morph_core.plm"
 
     surface sheet {
-        size: 1000, 300
+        size: 1000, 380
         anchor: bottom
         margin: 0, 0, 0, 0
         level: overlay
@@ -19,12 +19,12 @@ scene MacWallpapers {
         screens: each
         open: (open or seen > 0.02) and open_screen == screen.index
 
-    zone box dismiss { from: 0, 0; size: 1000, 300; active: open }
+    zone box dismiss { from: 0, 0; size: 1000, 380; active: open }
 
-    PanelBody(10, 300, 1) {
+    PanelBody(10, 380, 1) {
 
         //  clicks on the strip itself do not close it
-        zone box inside { from: 0, 0; size: 980, 250 }
+        zone box inside { from: 0, 0; size: 980, 330 }
         on press right inside { }
 
         PanelHeader("󰸉", "Wallpapers")
@@ -64,7 +64,18 @@ scene MacWallpapers {
         box { from: 28, 196; size: 924, 3; corner: 1.5; color: ink_c; opacity: if(wall_rows > 1, 10%, 0%) }
         box { from: 28 + 924 * wall_row / max(1, wall_total), 196; size: max(30, 924 * 5 / max(1, wall_total)), 3; corner: 1.5; color: ink_c; opacity: if(wall_rows > 1, 45%, 0%) }
 
-        KeyHint(490, 222, "← →  browse   ·   Enter  apply   ·   Esc  close")
+        KeyHint(490, 224, "← →  browse   ·   Enter  apply   ·   Esc  close")
+
+        //  search: at the bottom, like every dock panel
+        PanelSearch(980, ph)
+        input wall_q {
+            at: 68, ph - 50
+            width: 860
+            size: 19
+            color: ink_c
+            placeholder: "Search wallpapers"
+            selection: accent_c
+        }
     }
         on press dismiss { open = false }
     }
@@ -77,6 +88,7 @@ scene MacWallpapers {
     //  Painted by wallpapers.luau: the five on screen, in one row.
     model walls max 6 { name: text; thumb: image 176, 99; current: bool; ready: bool; builtin: bool; sel: bool }
 
+    text wall_q = ""
     fact wall_tab = 0            // 0 all · 1 mine · 2 built in
     fact wall_total = 0          // how many match the tab
     fact wall_row = 0            // the first picture on screen (0-based)
@@ -137,7 +149,7 @@ scene MacWallpapers {
 
     //  The glass is drawn by the frame: the dock island grows up and out into the strip (topbar.plm).
 
-    on toggle     { toggle open }
+    on toggle     { toggle open; focus wall_q }
     on key Left   { emit wall_move(-1) }
     on key Right  { emit wall_move(1) }
     on key Return { emit wall_enter }

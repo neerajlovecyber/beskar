@@ -139,5 +139,7 @@ scene MacClipboard {
     on key Down   { sel = min(sel + 1, max(clips.count - 1, 0)) }
     on key Up     { sel = max(sel - 1, 0) }
     on key Return { emit copy_clip(sel) }
+    on key Tab    { sel = min(sel + 1, max(clips.count - 1, 0)) }
     on key Escape { open = false }
+    on blur       { open = false }
 }
