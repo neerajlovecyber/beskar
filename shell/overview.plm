@@ -3,6 +3,7 @@ import "common/palette.plm"
 
 scene MacOverview {
     include "common/theme.plm"
+    include "common/ui.plm"
     include "common/icons.plm"
     include "common/here.plm"
     surface sheet {
@@ -62,7 +63,7 @@ scene MacOverview {
             group {
                 show: wins.count < 1
                 move: 640, 430
-                text "No open windows" { at: 0, 0; anchor: center center; size: t_title; weight: 600; color: ink_sub }
+                EmptyState(0, 0, "󰕰", "No open windows")
             }
         }
         on press dismiss { open = false }

@@ -9,6 +9,7 @@
 //   ToggleRow(title, sub, state, tap, w)   a card row with a title, a sub line and a Switch on its right
 //   Pill(label, w, tap, tone, h, round, on_)  a button with a tone (0 neutral, 1 accent, 2 danger, 3 on a fill)
 //   PanelHeader(glyph, title) / PanelSearch(w, ph)   the header and the bottom search field of a dock panel
+//   EmptyState(x, y, glyph, title, hint)   what a list shows when it is empty (centred on x, y)
 //   Divider(len)                   a 1 px line
 //   ScrollBar(sc, ct, h)           a thin scroll bar for a `view:` layout (list.scroll, list.content, the seen height)
 part Ui {
@@ -130,5 +131,16 @@ part Ui {
     component PanelSearch(w: number, ph: number) {
         box { from: 28, ph - 74; size: w - 56, 1; color: card_stroke; opacity: card_stroke_op }
         text "󰍉" { at: 46, ph - 38; anchor: center center; size: 19; family: "JetBrainsMono Nerd Font Mono"; color: ink_c; opacity: 60% }
+    }
+
+    //  Nothing to show: a quiet glyph, what is missing and (optionally) what to do about it. Centred on x, y; the caller
+    //  hides it (`group { show: …; EmptyState(…) }`).
+    component EmptyState(x: number, y: number, g: text, title: text, hint: text = "") {
+        group {
+            move: x, y
+            text g { at: 0, -20; anchor: center center; size: 26; family: "JetBrainsMono Nerd Font Mono"; color: ink_sub; opacity: 45% }
+            text title { at: 0, 8; anchor: center center; size: t_body; weight: 600; color: ink_sub }
+            text hint { at: 0, 28; anchor: center center; size: t_cap; color: ink_sub; opacity: 75% }
+        }
     }
 }

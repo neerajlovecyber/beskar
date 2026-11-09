@@ -58,7 +58,7 @@ scene MacWallpapers {
         }
 
         //  Nothing found
-        text "No pictures found. Put some in ~/Pictures/wallpapers." { at: 490, 120; anchor: center; size: t_body; color: ink_sub; show: wall_total < 1 }
+        group { show: wall_total < 1; EmptyState(490, 130, "󰸉", "No pictures found", "Put some in ~/Pictures/wallpapers") }
 
         //  Where you are in a long list: a thin bar under the cards
         box { from: 28, 196; size: 924, 3; corner: 1.5; color: ink_c; opacity: if(wall_rows > 1, 10%, 0%) }

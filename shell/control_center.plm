@@ -514,7 +514,7 @@ scene MacControlCenter {
                 text "Looking around…" { at: 180, 200; anchor: center; size: t_sub; color: ink_sub; show: bt_on and bt_scanning }
                 text "No paired devices. Press Search." { at: 180, 200; anchor: center; size: t_sub; color: ink_sub; show: bt_on and not bt_scanning }
                 text "Bluetooth is off. Use the switch to turn it on." { at: 180, 200; anchor: center; size: t_sub; color: ink_sub; show: bt_present and not bt_on }
-                text "No Bluetooth adapter found" { at: 180, 200; anchor: center; size: t_sub; color: ink_sub; show: not bt_present }
+                group { show: not bt_present; EmptyState(180, 200, "󰂯", "No Bluetooth adapter found") }
             }
         }
 
@@ -581,7 +581,7 @@ scene MacControlCenter {
                         }
                     }
                 }
-                text "Nothing is playing right now" { at: 180, 40; anchor: center; size: t_cap; color: ink_sub; show: app_rows.count < 1 }
+                group { show: app_rows.count < 1; EmptyState(180, 46, "󰝚", "Nothing is playing right now") }
             }
         }
     }

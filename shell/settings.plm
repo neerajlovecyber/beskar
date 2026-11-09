@@ -104,7 +104,7 @@ scene MacSettings {
             gap: 2
             for c in cats { SidebarItem(c) }
         }
-        text "No matches" { at: 115, 170; anchor: center center; size: t_sub; color: ink_sub; show: cats.count < 1 }
+        group { show: cats.count < 1; EmptyState(115, 190, "󰍉", "No matches") }
 
         // ── the pane ─────────────────────────────────────────────
         text pane_title { at: 254, 34; anchor: left center; size: 20; weight: 700; color: ink_c }
