@@ -160,7 +160,7 @@ scene MacTopBar {
 
     // ── geometry ─────────────────────────────────────────────────
     let ring        = 6       // thickness of the border that goes all the way round
-    let curve       = 30      // how round the ring's inner corners are (how much its sides melt)
+    let curve       = 18      // how round the ring's inner corners are (how much its sides melt)
     let ext         = 28      // how far the glass reaches past the screen edge (never seen)
     let pad         = 16      // room between a top island's edge and its content
     let cy          = 19      // vertical centre of the top islands' content
@@ -510,7 +510,7 @@ scene MacTopBar {
             //  rounds the inner corners.
             box ceiling { from: -ext, -ext; size: screen.width + ext * 2, ext + ring }
             //  Style 1 (Strip): full-width flat bar, declared BEFORE the rails so their inner corners melt into it with the same curve as the bottom like macOS menu bar (flat bottom edge, NO notch shape and NO fillets)
-            box strip_bar { from: -ext, -ext; size: screen.width + ext * 2, ext + ring + 32 * s_strip }
+            box strip_bar { from: -ext, -ext; size: screen.width + ext * 2, ext + ring + 36 * s_strip }
             box rail_l  { from: -ext, 0; size: ext + ring, screen.height; blend: curve }
             box rail_r  { from: screen.width - ring, 0; size: ext + ring, screen.height; blend: curve }
             box floor   { from: -ext, screen.height - ring; size: screen.width + ext * 2, ext + ring; blend: curve }
