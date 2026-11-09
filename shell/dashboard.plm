@@ -1,14 +1,16 @@
-// Dashboard: drops from the centre island (click the clock). Date, weather, system load, clocks.
+// Dashboard ("Today"): drops from the centre island (click the clock). A greeting, the weather (a click opens the
+// weather panel), a month calendar, how busy the machine is, and the battery. Logic: dashboard.luau.
 import "common/palette.plm"
 
 scene MacDashboard {
     let mp_sw = 380
-    let mp_sh = 560
+    let mp_sh = 640
     include "common/theme.plm"
+    include "common/icons.plm"
     include "common/ui.plm"
     include "common/morph.plm"
     surface {
-        size: 380, 560
+        size: 380, 640
         anchor: top
         margin: 0, 0, 0, 0
         level: overlay
@@ -21,150 +23,150 @@ scene MacDashboard {
     }
 
     service battery as bat { present: bool; percent: number; charging: bool }
-    service clock as now { time: text = "--:--"; date: text }
-    text clock_text = ""
 
-    fact cpu_pct = 18
-    fact mem_pct = 44
-    fact disk_pct = 52
-    text weather_temp = "24°C"
-    text weather_cond = "Partly Cloudy"
+    fact cpu_pct = 0
+    fact mem_pct = 0
+    fact disk_pct = 0
+    fact bat_ac = false
+    fact cal_shift = 0               // months away from this one (0 = now)
+    text greeting = "Hello"
+    text today_text = ""
+    text uptime_text = ""
+    text bat_state = ""
+    text bat_sub = ""
+    text cal_title = ""
+    text weather_temp = "--°"
+    text weather_cond = ""
     text weather_city = "…"
-    text zone_local = "Local"
-    text zone_utc = "--:--"
-    text zone_off = ""
     text weather_icon = "󰅟"
-    text weather_range = "H: –° · L: –°"
-    text cal_month = "NOVEMBER"
-    text cal_day = "6"
-    text cal_dow = "Friday"
-    text cal_event = "No Upcoming Events"
+    text weather_range = ""
+    text weather_feels = ""
+    text weather_extra = ""
+
+    //  the month grid: Monday first; `dim` = a day of the month before / after; `today` = this very day
+    model cells max 42 { d: text; dim: bool; today: bool }
 
     let bar_track = item_solid
+    prop hot = 0 ~quick
 
     event toggle
     event refresh_stats ->
     event weather_reload ->
-
+    event open_weather ->
+    event cal_prev ->
+    event cal_next ->
+    event cal_now ->
 
     on press dismiss { open = false }
 
     //  The glass behind this is drawn by the frame (topbar.plm), melting out of the centre island.
     PanelBody(16, -2) {
 
-        // ── Top Header ────────────────────────────────────────────
-        row {
-            at: 16, 16
-            gap: 8
-            align: center
-            text "󰃭" { family: "JetBrainsMono Nerd Font Mono"; size: 16; color: accent_c }
-            text "Today" { size: t_title; weight: 600; color: ink_c }
-        }
+        //  clicks on the card itself do not close it
+        zone box inside { from: 0, 0; size: 348, 620 }
+        on press right inside { }
 
-        // ── Row 1: Calendar & Weather 2x Side-by-Side Widgets ─────
-        row {
-            at: 14, 46
-            gap: 12
+        // ── greeting ──────────────────────────────────────────────
+        text greeting { at: 20, 24; anchor: left center; size: t_title; weight: 700; color: ink_c }
+        text today_text { at: 20, 46; anchor: left center; size: t_sub; color: ink_sub }
 
-            // Calendar Widget
-            group {
-                size: 154, 134
-                CardBg(154, 134, r_l)
-                box { from: 0, 0; size: 154, 134; corner: r_l; stroke: 1; color: card_stroke; opacity: card_stroke_op }
-
-                // Red Accent Header
-                text cal_month { at: 16, 14; size: t_cap; weight: 700; color: #ff3b30 }
-                text cal_day { at: 16, 32; size: 36; weight: 700; color: ink_c }
-                text cal_dow { at: 16, 74; size: t_body; weight: 600; color: ink_c }
-                text cal_event { at: 16, 96; size: t_micro; color: ink_sub; width: 122; lines: 2 }
-            }
-
-            // Weather Widget
-            group {
-                size: 154, 134
-                CardBg(154, 134, r_l)
-                box { from: 0, 0; size: 154, 134; corner: r_l; stroke: 1; color: card_stroke; opacity: card_stroke_op }
-
-                text weather_city { at: 14, 14; size: t_body; weight: 600; color: ink_c; width: 126; lines: 1 }
-                text weather_temp { at: 14, 34; size: 34; weight: 600; color: ink_c }
-                text weather_icon { family: "JetBrainsMono Nerd Font Mono"; at: 122, 42; anchor: center; size: 28; color: #ff9500 }
-                text weather_cond { at: 14, 82; size: t_cap; weight: 500; color: ink_c; width: 126; lines: 1 }
-                text weather_range { at: 14, 102; size: t_micro; color: ink_sub }
-            }
-        }
-
-        // ── Row 2: System Activity Monitor Widget ─────────────────
+        // ── weather: a wide card, a click opens the weather panel ─
         group {
-            move: 14, 192
-            size: 320, 116
-            CardBg(320, 116, r_l)
-            box { from: 0, 0; size: 320, 116; corner: r_l; stroke: 1; color: card_stroke; opacity: card_stroke_op }
-
-            // Header
-            text "󰍹" { family: "JetBrainsMono Nerd Font Mono"; at: 16, 16; size: 14; color: accent_c }
-            text "Activity & Resources" { at: 36, 16; size: t_sub; weight: 600; color: ink_c }
-
-            // CPU Metric
-            text "CPU" { at: 16, 38; size: t_cap; weight: 600; color: ink_c }
-            text "{cpu_pct}%" { at: 304, 45; anchor: right center; size: t_cap; weight: 600; color: accent_c }
-            box { from: 16, 52; size: 288, 6; corner: 3; color: bar_track }
-            box { from: 16, 52; size: max(288 * (cpu_pct / 100), 8), 6; corner: 3; color: accent_c }
-
-            // Memory Metric
-            text "Memory" { at: 16, 64; size: t_cap; weight: 600; color: ink_c }
-            text "{mem_pct}%" { at: 304, 71; anchor: right center; size: t_cap; weight: 600; color: mint }
-            box { from: 16, 78; size: 288, 6; corner: 3; color: bar_track }
-            box { from: 16, 78; size: max(288 * (mem_pct / 100), 8), 6; corner: 3; color: mint }
-
-            // Disk Metric
-            text "Storage Disk" { at: 16, 90; size: t_cap; weight: 600; color: ink_c }
-            text "{disk_pct}%" { at: 304, 97; anchor: right center; size: t_cap; weight: 600; color: purple }
-            box { from: 16, 104; size: 288, 6; corner: 3; color: bar_track }
-            box { from: 16, 104; size: max(288 * (disk_pct / 100), 8), 6; corner: 3; color: purple }
+            move: 14, 62
+            CardBg(320, 92, r_l, true)
+            box { from: 0, 0; size: 320, 92; corner: r_l; color: ink_c; opacity: hot * 6% }
+            text weather_city { at: 16, 20; anchor: left center; size: t_body; weight: 700; color: ink_c; width: 190; lines: 1 }
+            text weather_cond { at: 16, 40; anchor: left center; size: t_sub; color: ink_sub; width: 190; lines: 1 }
+            text weather_temp { at: 16, 70; anchor: left center; size: 32; weight: 700; color: ink_c }
+            Sym(weather_icon, 290, 28, 30, warn_c)
+            text weather_range { at: 304, 56; anchor: right center; size: t_sub; weight: 600; color: ink_c }
+            text weather_feels { at: 304, 74; anchor: right center; size: t_cap; color: ink_sub }
+            zone box weather_hit { from: 0, 0; size: 320, 92; corner: r_l; cursor: pointer; label: "Open the weather" }
+            on enter weather_hit { hot: 1 }
+            on leave weather_hit { hot: 0 }
+            on press weather_hit { emit open_weather }
+            on press right weather_hit { }
         }
 
-        // ── Battery (laptops) ─────────────────────────────────────
+        // ── month calendar ────────────────────────────────────────
+        group {
+            move: 14, 166
+            CardBg(320, 232, r_l, true)
+            //  title and the month buttons; a click on the title comes back to this month
+            text cal_title { at: 16, 22; anchor: left center; size: t_body; weight: 700; color: ink_c }
+            zone box cal_title_hit { from: 8, 8; size: 170, 30; corner: r_s; cursor: pointer; label: "This month" }
+            on press cal_title_hit { emit cal_now }
+            on press right cal_title_hit { }
+            group {
+                move: 248, 8
+                box { from: 0, 0; size: 28, 28; corner: r_s; color: item_bg; opacity: item_bg_op }
+                Sym("󰅁", 14, 14, 15, ink_c)
+                zone box prev_hit { from: 0, 0; size: 28, 28; corner: r_s; cursor: pointer; label: "Previous month" }
+                on press prev_hit { emit cal_prev }
+                on press right prev_hit { }
+            }
+            group {
+                move: 282, 8
+                box { from: 0, 0; size: 28, 28; corner: r_s; color: item_bg; opacity: item_bg_op }
+                Sym("󰅂", 14, 14, 15, ink_c)
+                zone box next_hit { from: 0, 0; size: 28, 28; corner: r_s; cursor: pointer; label: "Next month" }
+                on press next_hit { emit cal_next }
+                on press right next_hit { }
+            }
+            //  weekdays
+            repeat i in 0..7 {
+                text pick(i, "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun") { at: 16 + i * 41.3 + 20, 52; anchor: center center; size: t_micro; weight: 600; color: if(i >= 5, accent_c, ink_sub) }
+            }
+            //  days
+            grid {
+                at: 16, 66
+                columns: 7
+                gap: 0
+                width: 289
+                row: 27
+                for c in cells {
+                    group {
+                        size: 41.3, 27
+                        ellipse { at: 20.6, 13.5; radius: 12.5; color: accent_c; show: c.today }
+                        text c.d { at: 20.6, 13.5; anchor: center center; size: t_sub; weight: if(c.today, 700, 500); color: if(c.today, on_accent, ink_c); opacity: if(c.dim, 35%, 100%) }
+                    }
+                }
+            }
+        }
+
+        // ── how busy the machine is ───────────────────────────────
+        group {
+            move: 14, 410
+            CardBg(320, 124, r_l, true)
+            Sym("󰍹", 24, 20, 14, accent_c)
+            text "Activity" { at: 40, 20; anchor: left center; size: t_sub; weight: 600; color: ink_c }
+            text uptime_text { at: 304, 20; anchor: right center; size: t_cap; color: ink_sub }
+            Meter(34, "CPU", cpu_pct, accent_c)
+            Meter(62, "Memory", mem_pct, mint)
+            Meter(90, "Disk", disk_pct, purple)
+        }
+
+        // ── battery (laptops) ─────────────────────────────────────
         group {
             show: bat.present
-            move: 14, 320
-            size: 320, 64
-            CardBg(320, 64, r_l)
-            box { from: 0, 0; size: 320, 64; corner: r_l; stroke: 1; color: card_stroke; opacity: card_stroke_op }
-            //  the cell
-            box { from: 16, 20; size: 34, 17; corner: 5; stroke: 1.8; color: ink_c }
-            box { from: 51, 25; size: 3, 6; corner: 1.5; color: ink_c }
-            box { from: 19, 23; size: max(3, 28 * clamp(bat.percent / 100, 0, 1)), 11; corner: 2.5; color: if(bat.charging, mint, if(bat.percent <= 20, danger_c, ink_c)) }
-            text "Battery" { at: 70, 22; anchor: left center; size: t_sub; weight: 600; color: ink_c }
-            text if(bat.charging, "Charging", "On battery") { at: 70, 40; anchor: left center; size: t_micro; color: ink_sub }
-            text "{bat.percent}%" { at: 304, 32; anchor: right center; size: 22; weight: 700; color: ink_c }
+            move: 14, 546
+            CardBg(320, 66, r_l, true)
+            //  the cell: green with a bolt while on the charger
+            box { from: 16, 21; size: 34, 17; corner: 5; stroke: 1.8; color: ink_c }
+            box { from: 51, 26; size: 3, 6; corner: 1.5; color: ink_c }
+            box { from: 19, 24; size: max(3, 28 * clamp(bat.percent / 100, 0, 1)), 11; corner: 2.5; color: if(bat.charging or bat_ac, ok_c, if(bat.percent <= 20, danger_c, ink_c)) }
+            text bat_state { at: 70, 23; anchor: left center; size: t_sub; weight: 600; color: ink_c }
+            text bat_sub { at: 70, 43; anchor: left center; size: t_micro; color: ink_sub; width: 190; lines: 1 }
+            text "{bat.percent}%" { at: 304, 33; anchor: right center; size: 22; weight: 700; color: ink_c }
         }
+    }
 
-        // ── Row 3: World Clock Widget ─────────────────────────────
-        group {
-            move: 14, if(bat.present, 396, 320)
-            size: 320, 84
-            CardBg(320, 84, r_l)
-            box { from: 0, 0; size: 320, 84; corner: r_l; stroke: 1; color: card_stroke; opacity: card_stroke_op }
-
-            row {
-                at: 16, 14
-                gap: 64
-
-                column {
-                    gap: 3
-                    text "Local" { size: t_cap; color: ink_sub }
-                    text clock_text { size: 16; weight: 600; color: ink_c }
-                    text zone_local { size: t_micro; color: ink_sub }
-                }
-
-                column {
-                    gap: 3
-                    text "UTC" { size: t_cap; color: ink_sub }
-                    text zone_utc { size: 16; weight: 600; color: ink_c }
-                    text zone_off { size: t_micro; color: ink_sub }
-                }
-            }
-        }
+    //  one labelled meter of the activity card (y = its row)
+    component Meter(y: number, label: text, pct: number, tone: color) {
+        text label { at: 16, y + 9; anchor: left center; size: t_cap; weight: 600; color: ink_c }
+        text "{pct}%" { at: 304, y + 9; anchor: right center; size: t_cap; weight: 600; color: tone }
+        box { from: 70, y + 6; size: 180, 6; corner: 3; color: bar_track }
+        box { from: 70, y + 6; size: max(6, 180 * clamp(pct / 100, 0, 1)), 6; corner: 3; color: tone }
     }
 
     on toggle     { toggle open }
