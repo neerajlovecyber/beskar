@@ -116,8 +116,8 @@ scene Widgets {
             opacity: dim
             repeat j in 0..7 {
                 repeat i in 0..11 {
-                    //  the widget bar (820 x 170, centred at the bottom) covers the cells under it: no lines through its glass
-                    box { from: 48 + i * 176, 72 + j * 176; size: 160, 160; corner: 24; stroke: 1; color: #ffffff; opacity: if(72 + j * 176 + 160 > screen.height - 180 and 48 + i * 176 + 160 > screen.width / 2 - 420 and 48 + i * 176 < screen.width / 2 + 420, 0%, 14%) }
+                    //  every cell is drawn; the ones under the widget bar (800 x 132 at the bottom centre) are only a faint hint, so they do not fight its buttons
+                    box { from: 48 + i * 176, 72 + j * 176; size: 160, 160; corner: 24; stroke: 1; color: #ffffff; opacity: if(72 + j * 176 + 160 > screen.height - 140 and 48 + i * 176 + 160 > screen.width / 2 - 400 and 48 + i * 176 < screen.width / 2 + 400, 5%, 14%) }
                 }
             }
         }
