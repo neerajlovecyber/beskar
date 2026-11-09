@@ -80,8 +80,8 @@ scene MacCapture {
             // size label
             group {
                 move: sel_x, max(sel_y - 30, 4)
-                box { from: 0, 0; size: 96, 22; corner: 7; color: #14161b; opacity: 85% }
-                text "{sel_w} × {sel_h}" { at: 48, 11; anchor: center center; size: 11.5; weight: 600; color: #ffffff }
+                Plate(96, 22, 11)
+                text "{sel_w} × {sel_h}" { at: 48, 11; anchor: center center; size: 11.5; weight: 600; color: ink_c }
             }
             ellipse { at: sel_x, sel_y; radius: 6; color: #ffffff }
             ellipse { at: sel_x + sel_w, sel_y; radius: 6; color: #ffffff }
@@ -110,8 +110,11 @@ scene MacCapture {
             show: not (has_sel and mode == 0)
             opacity: seen
             move: screen.width / 2, screen.height / 2
-            box { from: -190, -20; size: 380, 40; corner: 20; color: #14161b; opacity: 80% }
-            text pick(mode, "Drag to select an area", "Click to capture the focused window", "Click to capture the whole screen") { at: 0, 0; anchor: center center; size: 14; weight: 600; color: #ffffff }
+            group {
+                move: -190, -20
+                Plate(380, 40, 20)
+            }
+            text pick(mode, "Drag to select an area", "Click to capture the focused window", "Click to capture the whole screen") { at: 0, 0; anchor: center center; size: 14; weight: 600; color: ink_c }
         }
 
         // ── the toolbar ──────────────────────────────────────────────
@@ -201,6 +204,22 @@ scene MacCapture {
     event do_region ->
     event do_window ->
     event do_screen ->
+
+    // the shell's own plate (glass / light acrylic / solid, light or dark, as Settings says)
+    component Plate(w: number, h: number, r: number) {
+        body {
+            color: bg_color
+            glass: glass_amt
+            lens: false
+            frost: 100%
+            dispersion: 0
+            refraction: 0
+            tint: tint_amt
+            rim: rim_amt
+            box { from: 0, 0; size: w, h; corner: r }
+        }
+        box { from: 0, 0; size: w, h; corner: r; stroke: 1; color: stroke_c; opacity: stroke_op }
+    }
 
     component ModeChip(x: number, idx: number, icon_t: text, name_t: text) {
         group {

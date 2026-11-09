@@ -218,7 +218,7 @@ local function say_later(scene, words)
 end
 on("sc_search", function() say_later("topbar", "emit open_panel 1") end)
 on("sc_clip", function() say_later("topbar", "emit open_panel 2") end)
-on("sc_shot", function() say_later("capture", "emit toggle") end)
+on("sc_shot", function() say_later("topbar", "emit open_panel 11") end)
 on("sc_lock", function() say_later("lock", "fact locked true") end)
 
 -- ── Settings shortcut ────────────────────────────────────────────

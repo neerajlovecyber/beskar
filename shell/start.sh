@@ -58,11 +58,11 @@ apply_saved_theme() {
         [ -z "$DM" ] && DM="true"
         [ -z "$SKIN" ] && SKIN="0"
 
-        for comp in topbar border spotlight control_center notifications dashboard wallpapers settings session capture appswitcher clipboard music overview; do
+        for comp in topbar border spotlight control_center notifications dashboard wallpapers settings session capture appswitcher clipboard music overview widgets widget_bar polkit welcome; do
             "$BIN" --say "$comp" "fact dark_mode $DM" >/dev/null 2>&1 || true
             "$BIN" --say "$comp" "fact skin $SKIN" >/dev/null 2>&1 || true
         done
-        for comp in topbar control_center notifications dashboard settings wallpapers spotlight clipboard music session capture appswitcher lock overview; do
+        for comp in topbar control_center notifications dashboard settings wallpapers spotlight clipboard music session capture appswitcher lock overview widgets widget_bar polkit welcome; do
             "$BIN" --say "$comp" "fact accent $ACCENT" >/dev/null 2>&1 || true
             "$BIN" --say "$comp" "fact accent_auto $AUTO" >/dev/null 2>&1 || true
             "$BIN" --say "$comp" "fact hour12 $H12" >/dev/null 2>&1 || true
