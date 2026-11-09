@@ -263,8 +263,8 @@ local function osd_show(kind, level, muted)
     owner.cp = OSD_ID
     fact.cp_screen = last_toast_screen or 0
     fact.cp_kind = 2
-    fact.cp_w = 290
-    fact.cp_h = 0
+    fact.cp_w = 380
+    fact.cp_h = 58                                   -- a card, like a banner
     fact.cp_on = true
     if osd_timer then
         cancel(osd_timer)

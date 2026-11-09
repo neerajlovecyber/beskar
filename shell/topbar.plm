@@ -533,9 +533,9 @@ scene MacTopBar {
             }
             box center_m {
                 from: screen.width / 2 - (cw + max(0, cpw - cw) * cv) / 2, -14
-                size: cw + max(0, cpw - cw) * cv, (notch_h - s_strip * 2) + cph * cv * if(cp_kind == 2, 1 - s_strip, 1)
-                corner: 18 * (1 - s_strip + s_strip * clamp(cv * 12, 0, 1) * (1 - ov))
-                blend: fillet * (1 - s_strip + s_strip * clamp(cv * 12, 0, 1) * (1 - ov))
+                size: cw + max(0, cpw - cw) * cv, (notch_h - s_strip * 2) + cph * cv
+                corner: 18 * (1 - s_strip + s_strip * clamp(cv * 12, 0, 1))
+                blend: fillet * (1 - s_strip + s_strip * clamp(cv * 12, 0, 1))
             }
 
             //  The dock, rising from the floor.
@@ -594,36 +594,40 @@ scene MacTopBar {
             }
         }
 
-        // ── the volume / brightness feedback, inside the centre pill (the clock gives way) ──
+        // ── the volume / brightness / microphone feedback: a card inside the centre pill, like a notification banner ──
         group {
             show: ov > 0.02
             opacity: clamp(ov * 1.6 - 0.5, 0, 1)
-            move: screen.width / 2 - 125, 0
-            //  the icon: a speaker with waves (or crossed out when muted), or a sun for brightness
+            move: screen.width / 2 - 190, 0
+            //  the tile with the glyph
+            box { from: 18, 49; size: 40, 40; corner: 12; color: if(osd_kind == 2 and osd_muted, danger_c, ink_c); opacity: if(osd_kind == 2 and osd_muted, 22%, 12%) }
             group {
                 show: osd_kind == 0
-                path { at: 0, cy - 7; color: ink_c; move 0, 4; line 4, 4; line 9, 0; line 9, 14; line 4, 10; line 0, 10; close }
-                path { at: 11, cy; color: ink_c; stroke: 1.8; opacity: if(osd_muted, 0%, if(osd_level > 0.05, 100%, 25%)); move 0, -3.5; line 2.5, -1.5; line 2.5, 1.5; line 0, 3.5 }
-                path { at: 14, cy; color: ink_c; stroke: 1.8; opacity: if(osd_muted, 0%, if(osd_level > 0.5, 100%, 25%)); move 0, -6.5; line 3, -3; line 3, 3; line 0, 6.5 }
-                line { from: 13, cy - 7; to: 23, cy + 7; width: 2; color: danger_c; opacity: if(osd_muted, 100%, 0%) }
+                text if(osd_muted or osd_level < 0.02, "󰝟", "󰕾") { at: 38, 69; anchor: center center; size: 20; color: if(osd_muted, danger_c, ink_c) }
+                text "Volume" { at: 70, 60; anchor: left center; size: 13.5; weight: 700; color: ink_c }
+                text if(osd_muted, "Muted", "{osd_level * 100, 0} %") { at: 362, 60; anchor: right center; size: 12.5; weight: 600; color: if(osd_muted, danger_c, ink_sub) }
             }
             group {
                 show: osd_kind == 1
-                ellipse { at: 8, cy; radius: 3.6; color: ink_c }
-                repeat k in 0..8 { line { from: 8 + 6 * cos(k * 45), cy + 6 * sin(k * 45); to: 8 + 8.4 * cos(k * 45), cy + 8.4 * sin(k * 45); width: 1.5; color: ink_c } }
+                text "󰃟" { at: 38, 69; anchor: center center; size: 20; color: ink_c }
+                text "Brightness" { at: 70, 60; anchor: left center; size: 13.5; weight: 700; color: ink_c }
+                text "{osd_level * 100, 0} %" { at: 362, 60; anchor: right center; size: 12.5; weight: 600; color: ink_sub }
             }
-            //  the microphone: its glyph (crossed out in red when muted) and what it is now
             group {
                 show: osd_kind == 2
-                text if(osd_muted, "󰍭", "󰍬") { at: 11, cy; anchor: center center; size: 18; color: if(osd_muted, danger_c, ink_c) }
-                text if(osd_muted, "Microphone muted", "Microphone on") { at: 36, cy; anchor: left center; size: 13; weight: 600; color: ink_c }
+                text if(osd_muted, "󰍭", "󰍬") { at: 38, 69; anchor: center center; size: 20; color: if(osd_muted, danger_c, ink_c) }
+                text "Microphone" { at: 70, 60; anchor: left center; size: 13.5; weight: 700; color: ink_c }
+                text if(osd_muted, "Muted", "On") { at: 362, 60; anchor: right center; size: 12.5; weight: 600; color: if(osd_muted, danger_c, ink_sub) }
             }
-            //  the track and its fill, and the number
+            //  the level (not for the microphone: it is on or off)
             group {
                 show: osd_kind < 2
-                box { from: 36, cy - 3; size: 160, 6; corner: 3; color: ink_c; opacity: 22% }
-                box { from: 36, cy - 3; size: max(6, 160 * clamp(if(osd_muted and osd_kind == 0, 0, osd_level), 0, 1)), 6; corner: 3; color: ink_c }
-                text if(osd_muted and osd_kind == 0, "0", "{osd_level * 100, 0}") { at: 244, cy; anchor: right center; size: 12; weight: 700; color: ink_c }
+                box { from: 70, 76; size: 292, 6; corner: 3; color: ink_c; opacity: 20% }
+                box { from: 70, 76; size: max(6, 292 * clamp(if(osd_muted and osd_kind == 0, 0, osd_level), 0, 1)), 6; corner: 3; color: ink_c }
+            }
+            group {
+                show: osd_kind == 2
+                text if(osd_muted, "Your microphone is off", "Your microphone is on") { at: 70, 79; anchor: left center; size: 12; color: ink_sub }
             }
         }
 
