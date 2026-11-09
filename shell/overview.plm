@@ -43,7 +43,7 @@ scene MacOverview {
                 Sym("󰕰", 14, 14, 15, accent_c)
                 text "Window Overview" { at: 38, 14; anchor: left center; size: 16; weight: 700; color: ink_c }
                 text win_count_text { at: 200, 14; anchor: left center; size: t_sub; color: ink_sub }
-                text "esc to close  ·  ↵ to focus  ·  arrows to select" { at: ov_w - 100, 14; anchor: right center; size: t_cap; color: ink_sub }
+                KeyHint(ov_w - 230, 14, "← →  select   ·   Enter  focus   ·   Esc  close")
             }
 
             // Grid of Window Previews

@@ -396,7 +396,7 @@ scene MacControlCenter {
             // ── networks in range ──
             group {
                 show: wifi_state != 0 and not asking
-                text "NEARBY" { at: 20, 144; anchor: left center; size: t_micro; weight: 700; color: ink_sub }
+                SectionLabel(20, 144, "NEARBY")
                 text "Look again" { at: 344, 144; anchor: right center; size: t_micro; color: ink_sub }
                 zone box wifi_rescan_hit { from: 270, 134; size: 74, 20; corner: 10; cursor: pointer }
                 column {
@@ -532,7 +532,7 @@ scene MacControlCenter {
                 zone box snd_back_hit { from: 0, 0; size: 150, 32; cursor: pointer }
             }
 
-            text "OUTPUT" { at: 20, 62; anchor: left center; size: t_micro; weight: 700; color: ink_sub }
+            SectionLabel(20, 62, "OUTPUT")
             column outs_list {
                 at: 16, 74
                 gap: 4
@@ -555,7 +555,7 @@ scene MacControlCenter {
             //  Below the outputs: what is making sound, each with its own slider.
             group {
                 move: 0, 74 + outs_list.height + 12
-                text "APPS" { at: 20, 0; anchor: left center; size: t_micro; weight: 700; color: ink_sub; show: app_rows.count > 0 }
+                group { show: app_rows.count > 0; SectionLabel(20, 0, "APPS") }
                 column {
                     at: 16, 12
                     gap: 6

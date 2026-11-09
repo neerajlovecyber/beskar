@@ -11,6 +11,7 @@ scene MacNotifications {
     let mp_sw = 412
     let mp_sh = 800
     include "common/theme.plm"
+    include "common/ui.plm"
     include "common/morph.plm"
     //  `notifications` is what makes this the receiver of the desktop's notifications (the logic asks for
     //  them); `files` / `files.write` keep the history of dismissed ones across restarts; `say:topbar`
@@ -147,7 +148,7 @@ scene MacNotifications {
 
     PanelBody(26, -2) {
 
-        text "Notifications" { at: 24, 32; anchor: left center; size: 17; weight: 700; color: ink_c }
+        PanelHeader("󰂚", "Notifications", 30, 32)
         //  Clear all
         group {
             show: notices.count > 0
@@ -168,7 +169,7 @@ scene MacNotifications {
         group {
             show: past.count > 0
             move: 0, 62 + live_h + 4
-            text "Earlier" { at: 24, 14; anchor: left center; size: t_sub; weight: 700; color: ink_sub }
+            SectionLabel(24, 14, "EARLIER")
             text "Clear" { at: 356, 14; anchor: right center; size: t_cap; weight: 600; color: ink_sub }
             zone box clear_past_hit { from: 300, 4; size: 56, 22; corner: 11; cursor: pointer }
             on press clear_past_hit { emit clear_past }

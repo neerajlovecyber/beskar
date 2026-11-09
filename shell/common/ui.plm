@@ -12,6 +12,7 @@
 //   EmptyState(x, y, glyph, title, hint)   what a list shows when it is empty (centred on x, y)
 //   RowFrame(w, h, on)   the selected look of a list row (accent pill + left bar); the scene adds its zone and content
 //   Slider(w, level, set, tone, thick, floor)   a draggable level (emits set(0..1))
+//   SectionLabel(x, y, LABEL) / KeyHint(x, y, text)   a small caps label above rows / the keys line of a modal panel
 //   Divider(len)                   a 1 px line
 //   ScrollBar(sc, ct, h)           a thin scroll bar for a `view:` layout (list.scroll, list.content, the seen height)
 part Ui {
@@ -124,9 +125,19 @@ part Ui {
     //  Bottom: a divider and the search field, ALWAYS at the bottom (nearest the dock, where the panel grows from).
     //  The scene declares the `input` itself (its text is the scene's) at the standard place:
     //      input q { at: 68, ph - 50; width: <panel width> - 110; size: 19; color: ink_c; placeholder: "…"; selection: accent_c }
-    component PanelHeader(g: text, title: text) {
-        text g { at: 36, 30; anchor: center center; size: 16; family: "JetBrainsMono Nerd Font Mono"; color: accent_c }
-        text title { at: 56, 30; anchor: left center; size: 15; weight: 700; color: ink_c }
+    component PanelHeader(g: text, title: text, x: number = 36, y: number = 30) {
+        text g { at: x, y; anchor: center center; size: 16; family: "JetBrainsMono Nerd Font Mono"; color: accent_c }
+        text title { at: x + 20, y; anchor: left center; size: t_title; weight: 700; color: ink_c }
+    }
+
+    //  A small all-caps label above a group of rows ("NEARBY", "OUTPUT", "EARLIER").
+    component SectionLabel(x: number, y: number, label: text) {
+        text label { at: x, y; anchor: left center; size: t_micro; weight: 700; color: ink_sub }
+    }
+
+    //  The line of keys a modal panel shows ("← →  browse  ·  ⏎  apply  ·  Esc  close"): one look everywhere.
+    component KeyHint(x: number, y: number, label: text) {
+        text label { at: x, y; anchor: center center; size: t_micro; color: ink_sub; opacity: 80% }
     }
 
     //  The footer's decoration: the divider and the magnifier. `w` is the glass width, `ph` its height.

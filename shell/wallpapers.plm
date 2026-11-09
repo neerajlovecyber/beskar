@@ -64,7 +64,7 @@ scene MacWallpapers {
         box { from: 28, 196; size: 924, 3; corner: 1.5; color: ink_c; opacity: if(wall_rows > 1, 10%, 0%) }
         box { from: 28 + 924 * wall_row / max(1, wall_total), 196; size: max(30, 924 * 5 / max(1, wall_total)), 3; corner: 1.5; color: ink_c; opacity: if(wall_rows > 1, 45%, 0%) }
 
-        text "← →  to browse   ·   Enter or click to apply   ·   Esc to close" { at: 490, 222; anchor: center; size: t_micro; color: ink_sub; opacity: 80% }
+        KeyHint(490, 222, "← →  browse   ·   Enter  apply   ·   Esc  close")
     }
         on press dismiss { open = false }
     }
