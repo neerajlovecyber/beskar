@@ -90,6 +90,13 @@ scene MacTopBar {
     fact osd_kind = 0         // 0 volume · 1 brightness · 2 microphone
     fact osd_level = 0.5
     fact osd_muted = false
+    text card_glyph = ""      // the live-activity card (osd_kind 3): glyph, title, sub line, right value
+    text card_title = ""
+    text card_sub = ""
+    text card_value = ""
+    fact card_tone = 0        // 0 ink · 1 ok · 2 warn · 3 danger
+    fact card_thumb = false   // the tile is the screenshot thumbnail
+    event card_click ->
     fact last_screen = -1     // the monitor of the last click on one of the bar's buttons
     fact menu_i = -1          // which dock item has its right-click menu open (-1 none)
     //  One record per monitor, in niri's output order: the workspace each one shows.
@@ -601,7 +608,10 @@ scene MacTopBar {
             opacity: clamp(ov * 1.6 - 0.5, 0, 1)
             move: screen.width / 2 - 190, 0
             //  the tile with the glyph
-            box { from: 18, 49; size: 40, 40; corner: r_m; color: if(osd_kind == 2 and osd_muted, danger_c, ink_c); opacity: if(osd_kind == 2 and osd_muted, 22%, 12%) }
+            group {
+                show: osd_kind < 3
+                box { from: 18, 49; size: 40, 40; corner: r_m; color: if(osd_kind == 2 and osd_muted, danger_c, ink_c); opacity: if(osd_kind == 2 and osd_muted, 22%, 12%) }
+            }
             group {
                 show: osd_kind == 0
                 text if(osd_muted or osd_level < 0.02, "󰝟", "󰕾") { family: "JetBrainsMono Nerd Font Mono"; at: 38, 69; anchor: center center; size: 20; color: if(osd_muted, danger_c, ink_c) }
@@ -619,6 +629,28 @@ scene MacTopBar {
                 text if(osd_muted, "󰍭", "󰍬") { family: "JetBrainsMono Nerd Font Mono"; at: 38, 69; anchor: center center; size: 20; color: if(osd_muted, danger_c, ink_c) }
                 text "Microphone" { at: 70, 60; anchor: left center; size: t_body; weight: 700; color: ink_c }
                 text if(osd_muted, "Muted", "On") { at: 362, 60; anchor: right center; size: t_sub; weight: 600; color: if(osd_muted, danger_c, ink_sub) }
+            }
+            //  a live activity (charging, screenshot saved, timer done, camera / microphone in use): same card, its own words
+            group {
+                show: osd_kind == 3
+                //  the tile: a thumbnail (screenshot) or a glyph in the tone of the activity
+                group {
+                    show: card_thumb
+                    clip box { from: 18, 49; size: 40, 40; corner: r_m }
+                    box { from: 18, 49; size: 40, 40; corner: r_m; color: item_solid }
+                    image shot_thumb { at: 18, 49; size: 40, 40; fit: cover }
+                }
+                group {
+                    show: not card_thumb
+                    box { from: 18, 49; size: 40, 40; corner: r_m; color: pick(card_tone, ink_c, ok_c, warn_c, danger_c); opacity: if(card_tone == 0, 12%, 22%) }
+                    text card_glyph { family: "JetBrainsMono Nerd Font Mono"; at: 38, 69; anchor: center center; size: 20; color: pick(card_tone, ink_c, ok_c, warn_c, danger_c) }
+                }
+                text card_title { at: 70, 60; anchor: left center; size: t_body; weight: 700; color: ink_c; width: 230; lines: 1 }
+                text card_value { at: 362, 60; anchor: right center; size: t_sub; weight: 600; color: ink_sub }
+                text card_sub { at: 70, 79; anchor: left center; size: t_sub; color: ink_sub; width: 290; lines: 1 }
+                zone box card_hit { from: 10, 42; size: 360, 52; corner: r_m; cursor: pointer; active: osd_kind == 3 and ov > 0.8; label: "Dismiss or open" }
+                on press card_hit { emit card_click }
+                on press right card_hit { }
             }
             //  the level (not for the microphone: it is on or off)
             group {
@@ -639,55 +671,6 @@ scene MacTopBar {
             opacity: 1 - max(bnv, ov)
             gap: 10
             align: center
-
-            // ── 1. Live activity: Charging ──
-            row act_charge {
-                show: act_kind == 1
-                gap: 6
-                align: center
-                text "󱐋" { family: "JetBrainsMono Nerd Font Mono"; size: 13; color: if(bat_charging, ok_c, ink_sub) }
-                text if(bat_charging, "Charging", "On battery") { size: t_sub; weight: 600; color: ink_c }
-                text "{bat_percent}%" { size: t_sub; weight: 700; color: hint_c }
-            }
-
-            // ── 2. Live activity: Screenshot saved ──
-            row act_shot {
-                show: act_kind == 2
-                gap: 8
-                align: center
-                cursor: pointer
-                group {
-                    size: 20, 20
-                    clip box { from: 0, 0; size: 20, 20; corner: 4 }
-                    box { from: 0, 0; size: 20, 20; corner: 4; color: item_solid }
-                    image shot_thumb { at: 0, 0; size: 20, 20; fit: cover }
-                }
-                text "Screenshot saved" { size: t_sub; weight: 600; color: ink_c }
-            }
-
-            // ── 3. Live activity: Timer done ──
-            row act_timer_done {
-                show: act_kind == 3
-                gap: 7
-                align: center
-                cursor: pointer
-                ellipse { at: 6, 6; radius: 5; color: warn_c }
-                text "Timer done" { size: t_sub; weight: 700; color: ink_c }
-            }
-
-            // ── 4. Live activity: Camera / Microphone in use ──
-            row act_privacy {
-                show: act_kind == 4
-                gap: 7
-                align: center
-                group {
-                    size: 10, 10
-                    let dot_col = if(priv_act_cam, ok_c, warn_c)
-                    ellipse { at: 5, 5; radius: 5; color: dot_col; opacity: 30% }
-                    ellipse { at: 5, 5; radius: 3.4; color: dot_col }
-                }
-                text priv_act_text { size: t_sub; weight: 600; color: ink_c }
-            }
 
             // ── Ambient activities (visible when no takeover activity is active) ──
             row rec_chip {
@@ -750,12 +733,6 @@ scene MacTopBar {
         on press right timer_chip { }
         on press music_chip { last_screen = screen.index; emit open_music }
         on press right music_chip { }
-        on press act_shot { emit open_screenshot }
-        on press right act_shot { }
-        on press act_timer_done { emit dismiss_timer_done }
-        on press right act_timer_done { }
-        on press right act_charge { }
-        on press right act_privacy { }
         on press right clock { }
 
         // ── right island: tray · network · battery · control centre · notifications ──

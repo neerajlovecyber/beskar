@@ -67,17 +67,14 @@ local last_shot_file = ""
 
 local osd_release      -- forward declaration
 
+local card_timers = {}      -- id -> timer of the activity card that is up (11 timer done, 12 charging, 13 screenshot, 14 privacy)
+
 local function cancel_activity(id)
     if id == 8 and osd_release then
         osd_release()
-    elseif id == 11 then
-        if timer_done_timer then cancel(timer_done_timer); timer_done_timer = nil end
-    elseif id == 12 then
-        if charging_timer then cancel(charging_timer); charging_timer = nil end
-    elseif id == 13 then
-        if shot_timer then cancel(shot_timer); shot_timer = nil end
-    elseif id == 14 then
-        if priv_timer then cancel(priv_timer); priv_timer = nil end
+    elseif card_timers[id] ~= nil or (id >= 11 and id <= 14) then
+        if card_timers[id] then cancel(card_timers[id]); card_timers[id] = nil end
+        if owner.cp == id then fact.cp_on = false end
     elseif id == 7 then
         pcall(sys.call, "say", "notifications", "fact banner_on false")
     end
@@ -88,6 +85,36 @@ local function cancel_activity(id)
 end
 
 local last_toast_screen = nil      -- the monitor with the focus (kept up to date below)
+
+-- A live activity is a CARD in the centre pill, the same one the volume / brightness / microphone feedback uses
+-- (osd_kind 3): glyph (or the screenshot thumbnail) in a tile, a title, a sub line and a value on the right.
+-- c = { glyph, title, sub, value, tone (0 ink, 1 ok, 2 warn, 3 danger), thumb = true }
+local function card_open(id, ms, c)
+    if owner.cp and owner.cp ~= id then
+        cancel_activity(owner.cp)
+    end
+    owner.cp = id
+    text.card_glyph = c.glyph or ""
+    text.card_title = c.title or ""
+    text.card_sub = c.sub or ""
+    text.card_value = c.value or ""
+    fact.card_tone = c.tone or 0
+    fact.card_thumb = c.thumb == true
+    fact.osd_kind = 3
+    fact.cp_screen = last_toast_screen or 0
+    fact.cp_kind = 2
+    fact.cp_w = 380
+    fact.cp_h = 58
+    fact.cp_on = true
+    if card_timers[id] then cancel(card_timers[id]) end
+    card_timers[id] = after(ms, function()
+        card_timers[id] = nil
+        if owner.cp == id then
+            owner.cp = nil
+            fact.cp_on = false
+        end
+    end)
+end
 
 on("panel_open", function(id)
     local p = BY_ID[tonumber(id) or 0]
@@ -325,21 +352,7 @@ local function show_charging_activity(ch, pct)
     if owner.cp and (PRIORITIES[owner.cp] or 0) > 40 then
         return
     end
-    if owner.cp and owner.cp ~= 12 then
-        cancel_activity(owner.cp)
-    end
-    owner.cp = 12
-    fact.bat_charging = ch
-    fact.bat_percent = pct
-    fact.act_kind = 1
-    if charging_timer then cancel(charging_timer) end
-    charging_timer = after(3000, function()
-        charging_timer = nil
-        if owner.cp == 12 then
-            owner.cp = nil
-            fact.act_kind = 0
-        end
-    end)
+    card_open(12, 3000, { glyph = "󱐋", title = ch and "Charging" or "On battery", sub = ch and "Power connected" or "Running on battery", value = pct .. "%", tone = ch and 1 or 0 })
 end
 
 local last_charging = nil
@@ -359,21 +372,9 @@ local function show_screenshot_activity(file)
     if owner.cp and (PRIORITIES[owner.cp] or 0) > 30 then
         return
     end
-    if owner.cp and owner.cp ~= 13 then
-        cancel_activity(owner.cp)
-    end
-    owner.cp = 13
     last_shot_file = file
     text.shot_path = file
-    fact.act_kind = 2
-    if shot_timer then cancel(shot_timer) end
-    shot_timer = after(3000, function()
-        shot_timer = nil
-        if owner.cp == 13 then
-            owner.cp = nil
-            fact.act_kind = 0
-        end
-    end)
+    card_open(13, 3500, { title = "Screenshot saved", sub = "Click to open  ·  copied to the clipboard", thumb = true })
 end
 
 on("text:shot_path", function(file)
@@ -417,21 +418,9 @@ local function timer_tick()
         timer_timer = nil
         -- Alert with sound-free notification
         run("notify-send", { "-a", "Timer", "-i", "alarm", "-u", "critical", "-h", "string:sound-name:none", "Timer done", "Time's up!" }, nil, { output = false })
-        -- Show Timer done in pill for 5 s (priority 50)
+        -- Timer done: a card for 5 s (priority 50)
         if not (owner.cp and (PRIORITIES[owner.cp] or 0) > 50) then
-            if owner.cp and owner.cp ~= 11 then
-                cancel_activity(owner.cp)
-            end
-            owner.cp = 11
-            fact.act_kind = 3
-            if timer_done_timer then cancel(timer_done_timer) end
-            timer_done_timer = after(5000, function()
-                timer_done_timer = nil
-                if owner.cp == 11 then
-                    owner.cp = nil
-                    fact.act_kind = 0
-                end
-            end)
+            card_open(11, 5000, { glyph = "󰔛", title = "Timer done", sub = "Click to dismiss", value = "Time's up", tone = 2 })
         end
         return
     end
@@ -445,7 +434,7 @@ on("timer_start", function(sec)
     if sec <= 0 then return end
     if timer_timer then cancel(timer_timer); timer_timer = nil end
     if timer_done_timer then cancel(timer_done_timer); timer_done_timer = nil end
-    if owner.cp == 11 then owner.cp = nil; fact.act_kind = 0 end
+    if owner.cp == 11 then cancel_activity(11) end
     timer_remaining = sec
     fact.timer_on = true
     timer_tick()
@@ -455,6 +444,17 @@ on("timer_cancel", function()
     if timer_timer then cancel(timer_timer); timer_timer = nil end
     fact.timer_on = false
     timer_remaining = 0
+end)
+
+on("card_click", function()
+    if owner.cp == 13 then
+        if last_shot_file and last_shot_file ~= "" then
+            run("xdg-open", { last_shot_file }, nil, { output = false })
+        end
+        cancel_activity(13)
+    elseif owner.cp then
+        cancel_activity(owner.cp)
+    end
 end)
 
 on("dismiss_timer_done", function()
@@ -1181,21 +1181,7 @@ local function show_privacy_activity(is_cam)
     if owner.cp and (PRIORITIES[owner.cp] or 0) > 20 then
         return
     end
-    if owner.cp and owner.cp ~= 14 then
-        cancel_activity(owner.cp)
-    end
-    owner.cp = 14
-    fact.priv_act_cam = is_cam
-    text.priv_act_text = is_cam and "Camera in use" or "Microphone in use"
-    fact.act_kind = 4
-    if priv_timer then cancel(priv_timer) end
-    priv_timer = after(2500, function()
-        priv_timer = nil
-        if owner.cp == 14 then
-            owner.cp = nil
-            fact.act_kind = 0
-        end
-    end)
+    card_open(14, 3000, { glyph = is_cam and "󰄀" or "󰍬", title = is_cam and "Camera in use" or "Microphone in use", sub = "An app is using it right now", tone = is_cam and 1 or 2 })
 end
 
 local function poll_privacy()
