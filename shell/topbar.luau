@@ -348,24 +348,41 @@ on("osd_popup", function()
 end)
 
 -- ── live activity: charging ──────────────────────────────────────
-local function show_charging_activity(ch, pct)
+-- The battery service only says "charging". A laptop on its charger with a charge limit (96 %, say) is plugged in and NOT
+-- charging, so the power supply is read here: `bat_ac` (the charger is connected) and `bat_status`.
+local function show_charging_activity(ac, status, pct)
     if owner.cp and (PRIORITIES[owner.cp] or 0) > 40 then
         return
     end
-    card_open(12, 3000, { glyph = "󱐋", title = ch and "Charging" or "On battery", sub = ch and "Power connected" or "Running on battery", value = pct .. "%", tone = ch and 1 or 0 })
+    local title, sub, tone
+    if not ac then
+        title, sub, tone = "On battery", "Charger disconnected", 0
+    elseif status == "Charging" then
+        title, sub, tone = "Charging", "Power connected", 1
+    elseif status == "Full" then
+        title, sub, tone = "Fully charged", "Power connected", 1
+    else
+        title, sub, tone = "Plugged in", "Power connected  ·  not charging (charge limit)", 1
+    end
+    card_open(12, 3000, { glyph = ac and "󰚥" or "󰁹", title = title, sub = sub, value = pct .. "%", tone = tone })
 end
 
-local last_charging = nil
-pcall(sys.watch, "battery", function(b)
-    if b and b.charging ~= nil then
-        local ch = b.charging == true
-        local pct = math.floor((b.percent or 0) + 0.5)
-        if last_charging ~= nil and ch ~= last_charging then
-            show_charging_activity(ch, pct)
+local last_ac = nil
+local function poll_power()
+    run("sh", { "-c", 'ac=0; for f in /sys/class/power_supply/A*/online /sys/class/power_supply/AC*/online; do [ -r "$f" ] && [ "$(cat "$f")" = 1 ] && ac=1; done; echo "$ac $(cat /sys/class/power_supply/BAT*/status 2>/dev/null | head -1) $(cat /sys/class/power_supply/BAT*/capacity 2>/dev/null | head -1)"' }, function(out)
+        local ac, status, pct = (out or ""):match("^(%d) (.-) (%d+)%s*$")
+        if not ac then return end
+        local plugged = ac == "1"
+        fact.bat_ac = plugged
+        text.bat_status = status
+        if last_ac ~= nil and plugged ~= last_ac then
+            show_charging_activity(plugged, status, tonumber(pct) or 0)
         end
-        last_charging = ch
-    end
-end)
+        last_ac = plugged
+    end)
+end
+poll_power()
+every(3000, poll_power)
 
 -- ── live activity: screenshot taken ──────────────────────────────
 local function show_screenshot_activity(file)

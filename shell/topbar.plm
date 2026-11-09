@@ -107,6 +107,8 @@ scene MacTopBar {
     //  Centre pill live activities: 0 ambient · 1 charging · 2 screenshot · 3 timer done · 4 privacy
     fact act_kind = 0
     fact bat_charging = false
+    fact bat_ac = false        // the charger is connected (read from the power supply: it can be plugged in and not charging)
+    text bat_status = ""
     fact bat_percent = 0
     text shot_path = ""
     image shot_thumb = from shot_path, 20, 20
@@ -230,8 +232,8 @@ scene MacTopBar {
         box { from: 0, 0; size: 54, 24; corner: 8; color: ink_c; opacity: hot * 14% }
         box { from: 6, 6.5; size: 24, 11; corner: 3.2; stroke: 1.3; color: ink_c; opacity: 80% }
         box { from: 31, 10; size: 2, 4; corner: 1; color: ink_c; opacity: 80% }
-        box { from: 8, 8.5; size: max(2, 20 * clamp(bat.percent / 100, 0, 1)), 7; corner: 1.6; color: if(bat.charging, ok_c, if(bat.percent <= 20, danger_c, ink_c)) }
-        path { at: 16.5, 7; color: if(bat.charging, #0c1410, ink_c); opacity: if(bat.charging, 100%, 0%); move 2.5, 0; line 0, 5.5; line 2.4, 5.5; line 1.5, 10; line 5, 4; line 2.6, 4; close }
+        box { from: 8, 8.5; size: max(2, 20 * clamp(bat.percent / 100, 0, 1)), 7; corner: 1.6; color: if(bat.charging or bat_ac, ok_c, if(bat.percent <= 20, danger_c, ink_c)); opacity: if(bat.charging, 100%, if(bat_ac, 60%, 100%)) }
+        path { at: 16.5, 7; color: if(bat.charging, #0c1410, ink_c); opacity: if(bat.charging or bat_ac, 100%, 0%); move 2.5, 0; line 0, 5.5; line 2.4, 5.5; line 1.5, 10; line 5, 4; line 2.6, 4; close }
         text "{bat.percent}" { at: 36, 12; anchor: left center; size: t_cap; weight: 700; color: hint_c }
         zone box hit { from: 0, 0; size: 54, 24; corner: 8; cursor: pointer }
         on enter hit { hot: 1 }
