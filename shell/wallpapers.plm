@@ -70,7 +70,7 @@ scene MacWallpapers {
     }
 
     permissions {
-        services: "say:spotlight", "say:clipboard", "say:music", "say:weather", "say:control_center", "say:notifications", "say:dashboard", "say:settings", "say:widget_bar", "say:wallpaper", "say:topbar"
+        services: "say:spotlight", "say:clipboard", "say:music", "say:weather", "say:updates", "say:control_center", "say:notifications", "say:dashboard", "say:settings", "say:widget_bar", "say:wallpaper", "say:topbar"
         run: "sh", "magick", "fd"
     }
 

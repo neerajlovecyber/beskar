@@ -22,7 +22,7 @@ scene MacWeather {
 
     permissions {
         run: "curl", "sh"
-        services: "say:topbar", "say:control_center", "say:notifications", "say:dashboard", "say:settings", "say:wallpapers", "say:widget_bar", "say:spotlight", "say:clipboard", "say:music", "say:widgets"
+        services: "say:topbar", "say:control_center", "say:notifications", "say:dashboard", "say:settings", "say:wallpapers", "say:widget_bar", "say:spotlight", "say:clipboard", "say:music", "say:widgets", "say:updates"
     }
 
     fact view = 0              // 0 the forecast · 1 choose a place

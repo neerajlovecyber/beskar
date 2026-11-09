@@ -35,6 +35,7 @@ local PANELS = {
     dashboard = { id = 3, island = "cp", w = 360 },
     music = { id = 9, island = "cp", w = 380 },
     weather = { id = 15, island = "cp", w = 420 },
+    updates = { id = 16, island = "rp", w = 372 },
     banner = { id = 7, island = "cp", w = 380, kind = 1 },     -- a notification, shown inside the centre pill
     spotlight = { id = 4, island = "bp", w = 640 },      -- bottom: grow out of the dock
     wallpapers = { id = 5, island = "bp", w = 980 },
@@ -58,7 +59,6 @@ local PRIORITIES = {
     [11] = 50,  -- timer done
     [12] = 40,  -- charging
     [13] = 30,  -- screenshot
-    [16] = 45,  -- updates (count, then progress)
     [14] = 20,  -- privacy (camera/mic)
 }
 
@@ -86,9 +86,6 @@ local function cancel_activity(id)
     end
     fact.act_kind = 0
 end
-
-local updating = false
-local start_update            -- defined with the updates below
 
 local last_toast_screen = nil      -- the monitor with the focus (kept up to date below)
 
@@ -471,9 +468,7 @@ on("timer_cancel", function()
 end)
 
 on("card_click", function()
-    if owner.cp == 16 then
-        if not updating then start_update() end
-    elseif owner.cp == 13 then
+    if owner.cp == 13 then
         if last_shot_file and last_shot_file ~= "" then
             run("xdg-open", { last_shot_file }, nil, { output = false })
         end
@@ -1232,54 +1227,8 @@ end
 poll_privacy()
 every(4000, poll_privacy)
 
--- ── updates: an icon with the count while pacman has something to install ──
-local function poll_updates()
-    run("sh", { "-c", "timeout 60 checkupdates 2>/dev/null | wc -l" }, function(out)
-        local n = tonumber((out or ""):match("%d+"))
-        if n then fact.upd_n = n end
-    end)
-end
-after(45000, poll_updates)
-every(30 * 60 * 1000, poll_updates)
-local function updates_card()
-    if updating then
-        card_open(16, 600000, { glyph = "󰇚", title = "Updating…", sub = text.card_sub ~= "" and text.card_sub or "Working in the background", value = "", tone = 0 })
-    elseif (tonumber(fact.upd_n) or 0) > 0 then
-        local n = tonumber(fact.upd_n)
-        card_open(16, 8000, { glyph = "󰇚", title = n .. (n == 1 and " update available" or " updates available"), sub = "Click to update (asks for your password)", value = "Update", tone = 0 })
-    else
-        card_open(16, 3000, { glyph = "󰄬", title = "Up to date", sub = "Nothing to install", value = "", tone = 1 })
-    end
-end
-
--- "Update" runs pacman as root through pkexec in the background (our polkit popup asks for the password); the card
--- shows the latest line pacman prints, and the count is checked again at the end. Official repositories only.
-start_update = function()
-    if updating then return end
-    updating = true
-    card_open(16, 600000, { glyph = "󰇚", title = "Updating…", sub = "Waiting for your password", value = "", tone = 0 })
-    spawn("pkexec", { "pacman", "-Syu", "--noconfirm" }, function(line)
-        line = (line or ""):gsub("%c%[[%d;]*%a", ""):gsub("^%s+", ""):gsub("%s+$", "")
-        if line ~= "" and owner.cp == 16 then text.card_sub = line:sub(1, 48) end
-    end, function(_, code)
-        updating = false
-        if code == 0 then
-            fact.upd_n = 0
-            card_open(16, 4000, { glyph = "󰄬", title = "System updated", sub = "Everything is up to date", value = "", tone = 1 })
-            poll_updates()
-        else
-            local why = (code == 126 or code == 127) and "The password was not given" or ("pacman stopped (code " .. tostring(code) .. ")")
-            card_open(16, 5000, { glyph = "󰀦", title = "Update did not finish", sub = why, value = "", tone = 3 })
-        end
-    end, { env = { LC_ALL = "C" } })
-end
-
-on("open_updates", function()
-    monitor_of_click(function(scr)
-        last_toast_screen = scr
-        updates_card()
-    end)
-end)
+-- ── updates: updates.luau checks pacman and tells us the count (`upd_n`); the arrow opens its panel ──
+on("open_updates", open_island_panel("updates"))
 
 -- one panel at a time
 require("exclusive")("topbar")

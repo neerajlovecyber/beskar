@@ -49,7 +49,7 @@ scene MacSpotlight {
 
     permissions {
         run: "xdg-open", "wl-copy", "systemctl suspend"
-        services: "apps", "apps.launch", "say:lock", "say:session", "say:capture", "say:clipboard", "say:music", "say:weather", "say:control_center", "say:notifications", "say:dashboard", "say:settings", "say:wallpapers", "say:widget_bar", "say:widgets", "say:topbar"
+        services: "apps", "apps.launch", "say:lock", "say:session", "say:capture", "say:clipboard", "say:music", "say:weather", "say:updates", "say:control_center", "say:notifications", "say:dashboard", "say:settings", "say:wallpapers", "say:widget_bar", "say:widgets", "say:topbar"
     }
 
     let line_color = card_stroke

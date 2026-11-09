@@ -1,0 +1,79 @@
+// Updates panel: grows out of the right island (the download arrow in the bar). Lists the packages pacman has an
+// update for and installs them in the background (pkexec: the polkit popup asks for the password). Logic: updates.luau.
+import "common/palette.plm"
+
+scene MacUpdates {
+    let mp_sw = 400
+    let mp_sh = 480
+    include "common/theme.plm"
+    include "common/icons.plm"
+    include "common/ui.plm"
+    include "common/morph.plm"
+
+    surface {
+        size: 400, 480
+        anchor: top_right
+        margin: 0, 0, 0, 0
+        level: overlay
+        screens: each
+    }
+
+    permissions {
+        run: "sh", "pkexec"
+        services: "say:topbar", "say:control_center", "say:notifications", "say:dashboard", "say:settings", "say:wallpapers", "say:widget_bar", "say:spotlight", "say:clipboard", "say:music", "say:weather", "say:overview"
+    }
+
+    fact n = 0                  // updates waiting
+    fact checking = false
+    fact running = false        // pacman -Syu is running
+    fact failed = false
+    text status = ""            // the line under the title
+    model pkgs max 40 { name: text; ver: text }
+
+    event toggle
+    event do_update ->
+    event do_check ->
+
+    on press dismiss { open = false }
+
+    PanelBody(44, -2) {
+        zone box inside { from: 0, 0; size: 340, 470 }
+        on press right inside { }
+
+        PanelHeader("󰇚", "Updates", 10, 22)
+        text status { at: 0, 52; anchor: left center; size: t_cap; color: ink_sub; width: 340; lines: 1 }
+        group { move: 252, 9; Pill(if(checking, "Checking…", "Check"), 88, do_check, 0, 26, true) }
+
+        //  the packages
+        group {
+            move: 0, 70
+            show: n > 0
+            CardBg(340, min(n, 8) * 34 + 8, r_m)
+            column list {
+                at: 0, 4
+                view: 322, 272
+                step: 34
+                for p in pkgs {
+                    group {
+                        size: 322, 34
+                        Sym("󰏗", 22, 17, 14, accent_c)
+                        text p.name { at: 40, 17; anchor: left center; size: t_sub; weight: 600; color: ink_c; width: 130; lines: 1 }
+                        text p.ver { at: 322, 17; anchor: right center; size: t_micro; color: ink_sub; width: 150; lines: 1; align: right }
+                    }
+                }
+            }
+            group { move: 331, 4; ScrollBar(list.scroll, list.content, 272) }
+        }
+        group { move: 0, 70; show: n < 1; EmptyState(170, 60, "󰄬", if(checking, "Checking…", "Everything is up to date")) }
+
+        //  the button
+        group {
+            move: 0, 70 + min(max(n, 1), 8) * 34 + 24 + if(n < 1, 70, 0)
+            show: n > 0
+            Pill(if(running, "Updating…", "Update all  ·  asks for your password"), 340, do_update, 1, 36, true)
+        }
+    }
+
+    on toggle     { toggle open }
+    on key Escape { open = false }
+}

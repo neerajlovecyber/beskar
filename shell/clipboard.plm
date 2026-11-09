@@ -61,7 +61,7 @@ scene MacClipboard {
     }
 
     permissions {
-        services: "say:topbar", "say:music", "say:weather", "say:spotlight", "say:control_center", "say:notifications", "say:dashboard", "say:settings", "say:wallpapers", "say:widget_bar", "files", "files.write"
+        services: "say:topbar", "say:music", "say:weather", "say:updates", "say:spotlight", "say:control_center", "say:notifications", "say:dashboard", "say:settings", "say:wallpapers", "say:widget_bar", "files", "files.write"
         run: "cliphist", "wl-copy", "notify-send", "sh"
     }
 
