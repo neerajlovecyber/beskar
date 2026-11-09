@@ -17,6 +17,7 @@ local function tell_bar(n)
 end
 
 local fresh = false          -- checked within the last 5 minutes
+local n_official, n_aur = 0, 0   -- from the last check: a step with nothing to do is skipped (no password for it)
 local helper = nil            -- the AUR helper found on this machine: paru, else yay (nil: no AUR part)
 sh("command -v paru >/dev/null && echo paru || { command -v yay >/dev/null && echo yay; }", function(out)
     local h = (out or ""):match("%a+")
@@ -48,6 +49,7 @@ local function check()
             fact.checking = false
             if official_ok then
                 model.pkgs = rows
+                n_official, n_aur = n, aur_n
                 fact.n = n + aur_n
                 fact.known = true
                 tell_bar(n + aur_n)
@@ -117,15 +119,20 @@ local function update()
     model.logl = LOG
     fact.show_log = true
     resize()
-    run_step("pkexec", { "pacman", "-Syu", "--noconfirm" }, "", function(code, err)
-        if code == 0 and helper then
+    local function aur_step(code, err)
+        if code == 0 and helper and n_aur > 0 then
             local args = { "-Sua", "--noconfirm", "--batchinstall", "--sudo", "pkexec" }
             if helper == "paru" then args[#args + 1] = "--skipreview" end
             run_step(helper, args, "AUR: ", finish_update)
         else
             finish_update(code, err)
         end
-    end)
+    end
+    if n_official > 0 then
+        run_step("pkexec", { "pacman", "-Syu", "--noconfirm" }, "", aur_step)
+    else
+        aur_step(0, nil)       -- only AUR packages waiting: no pacman step, no extra password
+    end
 end
 
 on("do_check", check)
