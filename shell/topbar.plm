@@ -237,7 +237,7 @@ scene MacTopBar {
         box { from: 31, 10; size: 2, 4; corner: 1; color: ink_c; opacity: 80% }
         box { from: 8, 8.5; size: max(2, 20 * clamp(bat.percent / 100, 0, 1)), 7; corner: 1.6; color: if(bat.charging or bat_ac, ok_c, if(bat.percent <= 20, danger_c, ink_c)); opacity: if(bat.charging, 100%, if(bat_ac, 60%, 100%)) }
         path { at: 16.5, 7; color: if(bat.charging, #0c1410, ink_c); opacity: if(bat.charging or bat_ac, 100%, 0%); move 2.5, 0; line 0, 5.5; line 2.4, 5.5; line 1.5, 10; line 5, 4; line 2.6, 4; close }
-        text "{bat.percent}" { at: 36, 12; anchor: left center; size: t_cap; weight: 700; color: hint_c }
+        text "{bat.percent}" { at: 36, 12; anchor: left center; size: t_body; weight: 700; color: hint_c }
         zone box hit { from: 0, 0; size: 54, 24; corner: 8; cursor: pointer }
         on enter hit { hot: 1 }
         on leave hit { hot: 0 }
@@ -684,7 +684,7 @@ scene MacTopBar {
                 align: center
                 cursor: pointer
                 ellipse { at: 4.5, 4.5; radius: 4.5; color: danger_c; opacity: 0.55 + 0.45 * (0.5 + 0.5 * rdot) }
-                text rec_time { size: t_sub; weight: 700; color: ink_c }
+                text rec_time { size: 14; weight: 700; color: ink_c }
             }
             row timer_chip {
                 show: act_kind == 0 and timer_on
@@ -692,7 +692,7 @@ scene MacTopBar {
                 align: center
                 cursor: pointer
                 ellipse { at: 6, 6; radius: 4.5; stroke: 1.5; color: warn_c }
-                text timer_text { size: t_sub; weight: 700; color: ink_c }
+                text timer_text { size: 14; weight: 700; color: ink_c }
             }
             row music_chip {
                 show: act_kind == 0 and m_on
@@ -719,7 +719,7 @@ scene MacTopBar {
                 gap: 6
                 align: center
                 cursor: pointer
-                text clock_text { size: t_sub; weight: 700; color: ink_c }
+                text clock_text { size: 14; weight: 700; color: ink_c }
             }
 
             row weather_chip {
@@ -727,8 +727,8 @@ scene MacTopBar {
                 cursor: pointer
                 gap: 4
                 align: center
-                group { size: 16, 18; Sym(weather_icon, 8, 9, 14, hint_c) }
-                text weather_temp { size: t_cap; weight: 600; color: ink_c }
+                group { size: 18, 18; Sym(weather_icon, 9, 9, 16, hint_c) }
+                text weather_temp { size: 14; weight: 700; color: ink_c }
             }
 
         }
