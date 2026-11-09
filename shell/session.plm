@@ -38,7 +38,7 @@ scene MacSession {
         group {
             move: 220, 52
             ellipse { at: 0, 0; radius: 26; color: pick(kind, danger_c, warn_c, focus_c) }
-            text pick(kind, "󰐥", "󰑐", "󰍃") { family: "JetBrainsMono Nerd Font Mono"; at: 0, 0; anchor: center; size: 26; color: #ffffff }
+            text pick(kind, "󰐥", "󰑐", "󰍃") { family: "JetBrainsMono Nerd Font Mono"; at: 0, 0; anchor: center; size: 26; color: on_accent }
         }
 
         // Title text
@@ -65,9 +65,9 @@ scene MacSession {
         // Reopen checkbox card
         group {
             move: 50, 160
-            box hit_reopen { from: 0, 0; size: 340, 30; corner: 6; color: #000000; opacity: 0%; cursor: pointer }
+            box hit_reopen { from: 0, 0; size: 340, 30; corner: 6; color: scrim_c; opacity: 0%; cursor: pointer }
             box { from: 10, 7; size: 16, 16; corner: 4; color: if(reopen, accent_c, item_solid) }
-            text "󰄲" { family: "JetBrainsMono Nerd Font Mono"; at: 18, 15; anchor: center; size: 12; color: #ffffff; show: reopen }
+            text "󰄲" { family: "JetBrainsMono Nerd Font Mono"; at: 18, 15; anchor: center; size: 12; color: on_accent; show: reopen }
             text "Reopen windows when logging back in" { at: 36, 15; anchor: left center; size: 12; color: ink_c }
             on press hit_reopen { toggle reopen }
         }
@@ -91,7 +91,7 @@ scene MacSession {
             group {
                 size: 130, 32
                 box { from: 0, 0; size: 130, 32; corner: 8; color: pick(kind, danger_c, warn_c, accent_c) }
-                text pick(kind, "Shut Down", "Restart", "Log Out") { at: 65, 16; anchor: center; size: 13; weight: 600; color: #ffffff }
+                text pick(kind, "Shut Down", "Restart", "Log Out") { at: 65, 16; anchor: center; size: 13; weight: 600; color: on_accent }
                 zone box btn_confirm { from: 0, 0; size: 130, 32; cursor: pointer }
                 on press btn_confirm { emit confirm_action }
             }

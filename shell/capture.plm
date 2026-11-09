@@ -21,13 +21,13 @@ scene MacCapture {
         // the frozen screen
         image shot { at: 0, 0; size: screen.width, screen.height; fit: fill }
         // dim everything that is not selected
-        box { from: 0, 0; size: screen.width, screen.height; color: #000000; opacity: if(has_sel and mode == 0, 0%, 38%) }
+        box { from: 0, 0; size: screen.width, screen.height; color: scrim_c; opacity: if(has_sel and mode == 0, 0%, 38%) }
         group {
             show: has_sel and mode == 0
-            box { from: 0, 0; size: screen.width, sel_y; color: #000000; opacity: 38% }
-            box { from: 0, sel_y + sel_h; size: screen.width, screen.height - sel_y - sel_h; color: #000000; opacity: 38% }
-            box { from: 0, sel_y; size: sel_x, sel_h; color: #000000; opacity: 38% }
-            box { from: sel_x + sel_w, sel_y; size: screen.width - sel_x - sel_w, sel_h; color: #000000; opacity: 38% }
+            box { from: 0, 0; size: screen.width, sel_y; color: scrim_c; opacity: 38% }
+            box { from: 0, sel_y + sel_h; size: screen.width, screen.height - sel_y - sel_h; color: scrim_c; opacity: 38% }
+            box { from: 0, sel_y; size: sel_x, sel_h; color: scrim_c; opacity: 38% }
+            box { from: sel_x + sel_w, sel_y; size: screen.width - sel_x - sel_w, sel_h; color: scrim_c; opacity: 38% }
         }
 
         // ── what catches the mouse ───────────────────────────────────
@@ -85,10 +85,10 @@ scene MacCapture {
                 Plate(96, 22, 11)
                 text "{sel_w} × {sel_h}" { at: 48, 11; anchor: center center; size: 11.5; weight: 600; color: ink_c }
             }
-            ellipse { at: sel_x, sel_y; radius: 6; color: #ffffff }
-            ellipse { at: sel_x + sel_w, sel_y; radius: 6; color: #ffffff }
-            ellipse { at: sel_x, sel_y + sel_h; radius: 6; color: #ffffff }
-            ellipse { at: sel_x + sel_w, sel_y + sel_h; radius: 6; color: #ffffff }
+            ellipse { at: sel_x, sel_y; radius: 6; color: on_accent }
+            ellipse { at: sel_x + sel_w, sel_y; radius: 6; color: on_accent }
+            ellipse { at: sel_x, sel_y + sel_h; radius: 6; color: on_accent }
+            ellipse { at: sel_x + sel_w, sel_y + sel_h; radius: 6; color: on_accent }
             ellipse { at: sel_x, sel_y; radius: 3.5; color: accent_c }
             ellipse { at: sel_x + sel_w, sel_y; radius: 3.5; color: accent_c }
             ellipse { at: sel_x, sel_y + sel_h; radius: 3.5; color: accent_c }
@@ -101,7 +101,7 @@ scene MacCapture {
             opacity: seen
             move: clamp(sel_x + sel_w / 2 - 74, 8, screen.width - 156), min(sel_y + sel_h + 14, screen.height - 54)
             box { from: 0, 0; size: 148, 40; corner: 12; color: accent_c }
-            text if(kind == 1, "󰻂  Record  ⏎", "󰄀  Capture  ⏎") { family: "JetBrainsMono Nerd Font Mono"; at: 74, 20; anchor: center center; size: 13; weight: 700; color: #ffffff }
+            text if(kind == 1, "󰻂  Record  ⏎", "󰄀  Capture  ⏎") { family: "JetBrainsMono Nerd Font Mono"; at: 74, 20; anchor: center center; size: 13; weight: 700; color: on_accent }
             zone box go_hit { from: 0, 0; size: 148, 40; corner: 12; cursor: pointer; label: "Take it" }
             on press go_hit { scr_w = screen.width; scr_h = screen.height; emit do_region }
             on press right go_hit { open = false }

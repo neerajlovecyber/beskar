@@ -35,8 +35,8 @@ part Ui {
     //  The switch (it carries its own click).
     component Switch(state: bool, tap: event) {
         size: 44, 24
-        box { from: 0, 0; size: 44, 24; corner: 12; color: if(state, accent_c, if(dark_mode, #3a3d46, #d1d5db)) }
-        ellipse { at: if(state, 32, 12), 12; radius: 9.5; color: #ffffff }
+        box { from: 0, 0; size: 44, 24; corner: 12; color: if(state, accent_c, switch_off) }
+        ellipse { at: if(state, 32, 12), 12; radius: 9.5; color: on_accent }
         zone box hit { from: 0, 0; size: 44, 24; corner: 12; cursor: pointer }
         on press hit { emit tap }
         on press right hit { }
@@ -48,8 +48,8 @@ part Ui {
         prop hot = 0 ~quick
         group {
             move: x, y
-            box { from: 0, 0; size: w, 28; corner: 8; color: if(primary, accent_c, if(dark_mode, #2a2e38, #e5e7eb)); opacity: 0.85 + hot * 0.15 }
-            text label { at: w / 2, 14; anchor: center center; size: 12; weight: 600; color: if(primary, #ffffff, ink_c) }
+            box { from: 0, 0; size: w, 28; corner: 8; color: if(primary, accent_c, btn_fill); opacity: 0.85 + hot * 0.15 }
+            text label { at: w / 2, 14; anchor: center center; size: 12; weight: 600; color: if(primary, on_accent, ink_c) }
             zone box hit { from: 0, 0; size: w, 28; corner: 8; cursor: pointer }
             on enter hit { hot: 1 }
             on leave hit { hot: 0 }
@@ -61,8 +61,8 @@ part Ui {
     //  A segment of a row of choices.
     component Seg(label: text, n: number, cur: number, pick: event, w: number = 52) {
         size: w, 28
-        box { from: 0, 0; size: w, 28; corner: 8; color: if(cur == n, accent_c, if(dark_mode, #2a2e38, #e5e7eb)) }
-        text label { at: w / 2, 14; anchor: center center; size: 11.5; weight: 600; color: if(cur == n, #ffffff, ink_c) }
+        box { from: 0, 0; size: w, 28; corner: 8; color: if(cur == n, accent_c, btn_fill) }
+        text label { at: w / 2, 14; anchor: center center; size: 11.5; weight: 600; color: if(cur == n, on_accent, ink_c) }
         zone box hit { from: 0, 0; size: w, 28; corner: 8; cursor: pointer }
         on press hit { emit pick(n) }
         on press right hit { }
@@ -71,8 +71,8 @@ part Ui {
     //  A chip chosen from a list (resolution, refresh rate).
     component Chip(label: text, on: bool, pick: event, n: number, w: number = 80) {
         size: w, 28
-        box { from: 0, 0; size: w, 28; corner: 8; color: if(on, accent_c, if(dark_mode, #2a2e38, #e5e7eb)) }
-        text label { at: w / 2, 14; anchor: center center; size: 11.5; weight: 600; color: if(on, #ffffff, ink_c) }
+        box { from: 0, 0; size: w, 28; corner: 8; color: if(on, accent_c, btn_fill) }
+        text label { at: w / 2, 14; anchor: center center; size: 11.5; weight: 600; color: if(on, on_accent, ink_c) }
         zone box hit { from: 0, 0; size: w, 28; corner: 8; cursor: pointer }
         on press hit { emit pick(n) }
         on press right hit { }
@@ -107,8 +107,8 @@ part Ui {
     component Pill(label: text, w: number, tap: event, tone: number = 0, h: number = 28, round: bool = false, on_: bool = true) {
         size: w, h
         prop glow = 0 ~quick
-        box { from: 0, 0; size: w, h; corner: if(round, h / 2, 9); color: pick(tone, item_bg, accent_c, danger_c, #ffffff); opacity: pick(tone, item_bg_op, 100%, 20%, 24%) + glow * 8% }
-        text label { at: w / 2, h / 2; anchor: center center; size: if(h > 30, 13, 11.5); weight: 600; color: pick(tone, ink_c, #ffffff, danger_c, #ffffff); opacity: if(on_, 100%, 40%) }
+        box { from: 0, 0; size: w, h; corner: if(round, h / 2, 9); color: pick(tone, item_bg, accent_c, danger_c, on_accent); opacity: pick(tone, item_bg_op, 100%, 20%, 24%) + glow * 8% }
+        text label { at: w / 2, h / 2; anchor: center center; size: if(h > 30, 13, 11.5); weight: 600; color: pick(tone, ink_c, on_accent, danger_c, on_accent); opacity: if(on_, 100%, 40%) }
         zone box hit { from: 0, 0; size: w, h; corner: if(round, h / 2, 9); cursor: pointer; active: on_ }
         on enter hit { glow: 1 }
         on leave hit { glow: 0 }

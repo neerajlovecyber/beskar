@@ -112,7 +112,7 @@ scene MacWallpapers {
             group {
                 show: w.current
                 ellipse { at: 156, 80; radius: 10; color: accent_c }
-                path { at: 150.5, 76; color: #ffffff; stroke: 2; move 0, 4.5; line 4, 8; line 11, 0 }
+                path { at: 150.5, 76; color: on_accent; stroke: 2; move 0, 4.5; line 4, 8; line 11, 0 }
             }
         }
         text w.name { at: 88, 111; anchor: center; size: 10.5; weight: if(w.current, 600, 400); color: if(w.current, ink_c, ink_sub); width: 168; lines: 1 }
@@ -138,7 +138,7 @@ scene MacWallpapers {
     component TabPill(label: text, n: number, w: number = 76) {
         size: w, 28
         box { from: 0, 0; size: w, 28; corner: 14; color: if(wall_tab == n, accent_c, item_bg); opacity: if(wall_tab == n, 100%, item_bg_op) }
-        text label { at: w / 2, 14; anchor: center; size: 11.5; weight: 600; color: if(wall_tab == n, #ffffff, ink_c) }
+        text label { at: w / 2, 14; anchor: center; size: 11.5; weight: 600; color: if(wall_tab == n, on_accent, ink_c) }
         zone box hit { from: 0, 0; size: w, 28; corner: 14; cursor: pointer }
         on press hit { emit wall_tab_set(n) }
         on press right hit { }

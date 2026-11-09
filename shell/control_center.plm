@@ -173,13 +173,13 @@ scene MacControlCenter {
                 box { from: 0, 0; size: 158, 60; corner: 30; color: card_fill; opacity: card_fill_op }
                 box { from: 0, 0; size: 158, 60; corner: 30; color: accent_c; opacity: if(net.online, 100%, 0%) }
                 box { from: 0, 0; size: 158, 60; corner: 30; stroke: 1; color: card_stroke; opacity: card_stroke_op }
-                ellipse { at: 30, 30; radius: 20; color: if(net.online, #ffffff, item_solid) }
+                ellipse { at: 30, 30; radius: 20; color: if(net.online, on_accent, item_solid) }
                 repeat a in 1..4 {
                     arc { at: 30, 37; radius: a * 4.8; span: 100deg; width: 2.2; color: if(net.online, accent_c, ink_c) }
                 }
                 ellipse { at: 30, 37.5; radius: 1.9; color: if(net.online, accent_c, ink_c) }
-                text "Wi-Fi" { at: 58, 22; anchor: left center; size: 12; weight: 600; color: if(net.online, #ffffff, ink_c) }
-                text if(net.online, net.name, "Off") { at: 58, 38; anchor: left center; size: 10; color: if(net.online, #ffffff, ink_sub); opacity: if(net.online, 80%, 100%); width: 80; lines: 1 }
+                text "Wi-Fi" { at: 58, 22; anchor: left center; size: 12; weight: 600; color: if(net.online, on_accent, ink_c) }
+                text if(net.online, net.name, "Off") { at: 58, 38; anchor: left center; size: 10; color: if(net.online, on_accent, ink_sub); opacity: if(net.online, 80%, 100%); width: 80; lines: 1 }
                 zone box wifi_chevron_hit { from: 52, 0; size: 106, 60; corner: 30; cursor: pointer }
                 zone box wifi_icon_hit { at: 30, 30; size: 40, 40; corner: 20; cursor: pointer }
             }
@@ -191,10 +191,10 @@ scene MacControlCenter {
                 box { from: 0, 0; size: 158, 60; corner: 30; color: card_fill; opacity: card_fill_op }
                 box { from: 0, 0; size: 158, 60; corner: 30; color: accent_c; opacity: if(bt_on, 100%, 0%) }
                 box { from: 0, 0; size: 158, 60; corner: 30; stroke: 1; color: card_stroke; opacity: card_stroke_op }
-                ellipse { at: 30, 30; radius: 20; color: if(bt_on, #ffffff, item_solid) }
+                ellipse { at: 30, 30; radius: 20; color: if(bt_on, on_accent, item_solid) }
                 path { at: 25.5, 20; color: if(bt_on, accent_c, ink_c); stroke: 2; move 0, 6; line 9, 15; line 4.5, 20; line 4.5, 0; line 9, 5; line 0, 14 }
-                text "Bluetooth" { at: 58, 22; anchor: left center; size: 12; weight: 600; color: if(bt_on, #ffffff, ink_c) }
-                text bt_sub { at: 58, 38; anchor: left center; size: 10; color: if(bt_on, #ffffff, ink_sub); opacity: if(bt_on, 80%, 100%); width: 80; lines: 1 }
+                text "Bluetooth" { at: 58, 22; anchor: left center; size: 12; weight: 600; color: if(bt_on, on_accent, ink_c) }
+                text bt_sub { at: 58, 38; anchor: left center; size: 10; color: if(bt_on, on_accent, ink_sub); opacity: if(bt_on, 80%, 100%); width: 80; lines: 1 }
                 zone box bt_chevron_hit { from: 52, 0; size: 106, 60; corner: 30; cursor: pointer }
                 zone box bt_icon_hit { at: 30, 30; size: 40, 40; corner: 20; cursor: pointer }
             }
@@ -252,12 +252,12 @@ scene MacControlCenter {
                 box { from: 0, 0; size: 158, 60; corner: 30; color: card_fill; opacity: card_fill_op }
                 box { from: 0, 0; size: 158, 60; corner: 30; color: focus_c; opacity: if(dnd, 100%, 0%) }
                 box { from: 0, 0; size: 158, 60; corner: 30; stroke: 1; color: card_stroke; opacity: card_stroke_op }
-                ellipse { at: 30, 30; radius: 20; color: if(dnd, #ffffff, item_solid) }
+                ellipse { at: 30, 30; radius: 20; color: if(dnd, on_accent, item_solid) }
                 //  the moon: a disc with a bite out of it, the bite in the disc's own colour
                 ellipse { at: 29, 31; radius: 9; color: if(dnd, focus_c, ink_c) }
-                ellipse { at: 34, 27; radius: 8; color: if(dnd, #ffffff, item_solid) }
-                text "Do Not" { at: 58, 24; anchor: left center; size: 12; weight: 600; color: if(dnd, #ffffff, ink_c) }
-                text "Disturb" { at: 58, 38; anchor: left center; size: 12; weight: 600; color: if(dnd, #ffffff, ink_c) }
+                ellipse { at: 34, 27; radius: 8; color: if(dnd, on_accent, item_solid) }
+                text "Do Not" { at: 58, 24; anchor: left center; size: 12; weight: 600; color: if(dnd, on_accent, ink_c) }
+                text "Disturb" { at: 58, 38; anchor: left center; size: 12; weight: 600; color: if(dnd, on_accent, ink_c) }
                 zone box dnd_hit { from: 0, 0; size: 158, 60; corner: 30; cursor: pointer }
             }
 
@@ -270,13 +270,13 @@ scene MacControlCenter {
                 ellipse { at: 36.5, 30; radius: 19; color: if(dark_mode, focus_c, warn_c) }
                 group {
                     show: dark_mode
-                    ellipse { at: 35.5, 31; radius: 9; color: #ffffff }
+                    ellipse { at: 35.5, 31; radius: 9; color: on_accent }
                     ellipse { at: 40, 27; radius: 8; color: focus_c }
                 }
                 group {
                     show: not dark_mode
-                    ellipse { at: 36.5, 30; radius: 5.5; color: #ffffff }
-                    repeat k in 0..8 { line { from: 36.5 + 9 * cos(k * 45), 30 + 9 * sin(k * 45); to: 36.5 + 12 * cos(k * 45), 30 + 12 * sin(k * 45); width: 2; color: #ffffff } }
+                    ellipse { at: 36.5, 30; radius: 5.5; color: on_accent }
+                    repeat k in 0..8 { line { from: 36.5 + 9 * cos(k * 45), 30 + 9 * sin(k * 45); to: 36.5 + 12 * cos(k * 45), 30 + 12 * sin(k * 45); width: 2; color: on_accent } }
                 }
                 zone box dm_tile_hit { from: 0, 0; size: 73, 60; corner: 22; cursor: pointer }
             }
@@ -360,7 +360,7 @@ scene MacControlCenter {
             }
             //  Radio switch
             box { from: 306, 25; size: 38, 22; corner: 11; color: if(wifi_state != 0, ok_c, item_bg); opacity: if(wifi_state != 0, 100%, item_bg_op) }
-            ellipse { at: if(wifi_state != 0, 335, 316), 36; radius: 9; color: #ffffff }
+            ellipse { at: if(wifi_state != 0, 335, 316), 36; radius: 9; color: on_accent }
             zone box wifi_switch_hit { from: 306, 25; size: 38, 22; corner: 11; cursor: pointer }
 
             // ── the connection in use, or why there is none ──
@@ -373,10 +373,10 @@ scene MacControlCenter {
                 group {
                     move: 12, 20
                     opacity: if(wifi_state == 0, 35%, 100%)
-                    Bars(if(wifi_state >= 2, wifi_signal, 0), if(wifi_state >= 2, #ffffff, ink_c))
+                    Bars(if(wifi_state >= 2, wifi_signal, 0), if(wifi_state >= 2, on_accent, ink_c))
                 }
-                text wifi_title { at: 52, 24; anchor: left center; size: 13.5; weight: 600; color: if(wifi_state == 2 or wifi_state == 3, #ffffff, ink_c); width: 150; lines: 1 }
-                text wifi_status { at: 52, 42; anchor: left center; size: 10.5; color: if(wifi_state == 2 or wifi_state == 3, #ffffff, ink_sub); opacity: if(wifi_state == 2 or wifi_state == 3, 80%, 100%); width: 150; lines: 1 }
+                text wifi_title { at: 52, 24; anchor: left center; size: 13.5; weight: 600; color: if(wifi_state == 2 or wifi_state == 3, on_accent, ink_c); width: 150; lines: 1 }
+                text wifi_status { at: 52, 42; anchor: left center; size: 10.5; color: if(wifi_state == 2 or wifi_state == 3, on_accent, ink_sub); opacity: if(wifi_state == 2 or wifi_state == 3, 80%, 100%); width: 150; lines: 1 }
                 row {
                     at: 316, 32
                     anchor: right middle
@@ -414,11 +414,11 @@ scene MacControlCenter {
                             box { from: 0, 0; size: 328, 36; corner: 10; stroke: 1; color: card_stroke; opacity: card_stroke_op }
                             group {
                                 move: 10, 6
-                                Bars(n.signal, if(n.active, #ffffff, ink_c))
+                                Bars(n.signal, if(n.active, on_accent, ink_c))
                             }
-                            text n.name { at: 46, 18; anchor: left center; size: 12.5; weight: if(n.active, 600, 400); color: if(n.active, #ffffff, ink_c); width: 190; lines: 1 }
+                            text n.name { at: 46, 18; anchor: left center; size: 12.5; weight: if(n.active, 600, 400); color: if(n.active, on_accent, ink_c); width: 190; lines: 1 }
                             text "Joining…" { at: 300, 18; anchor: right center; size: 10.5; color: ink_sub; show: n.joining }
-                            text "Connected" { at: 300, 18; anchor: right center; size: 10.5; color: #ffffff; opacity: 85%; show: n.active and not n.joining }
+                            text "Connected" { at: 300, 18; anchor: right center; size: 10.5; color: on_accent; opacity: 85%; show: n.active and not n.joining }
                             text "Saved" { at: 300, 18; anchor: right center; size: 10.5; color: ink_sub; show: n.known and not n.active and not n.joining }
                             group {
                                 show: n.secure and not n.known and not n.active
@@ -483,7 +483,7 @@ scene MacControlCenter {
 
             //  Power switch, and the search button beside it
             box { from: 306, 25; size: 38, 22; corner: 11; color: if(bt_on, ok_c, item_bg); opacity: if(bt_on, 100%, item_bg_op) }
-            ellipse { at: if(bt_on, 335, 316), 36; radius: 9; color: #ffffff }
+            ellipse { at: if(bt_on, 335, 316), 36; radius: 9; color: on_accent }
             zone box bt_power_hit { from: 306, 25; size: 38, 22; corner: 11; cursor: pointer; active: bt_present }
             text if(bt_scanning, "Searching…", "Search") { at: 292, 36; anchor: right center; size: 11.5; weight: 500; color: if(bt_scanning, accent_c, ink_sub); show: bt_on }
             zone box bt_scan_hit { from: 200, 24; size: 94, 24; corner: 12; cursor: pointer; active: bt_on }
@@ -497,13 +497,13 @@ scene MacControlCenter {
                         box { from: 0, 0; size: 328, 46; corner: 12; color: card_fill; opacity: card_fill_op }
                         box { from: 0, 0; size: 328, 46; corner: 12; color: accent_c; opacity: if(g.state == 1, 100%, 0%) }
                         box { from: 0, 0; size: 328, 46; corner: 12; stroke: 1; color: card_stroke; opacity: card_stroke_op }
-                        ellipse { at: 24, 23; radius: 15; color: if(g.state == 1, #ffffff, item_bg); opacity: if(g.state == 1, 100%, item_bg_op) }
+                        ellipse { at: 24, 23; radius: 15; color: if(g.state == 1, on_accent, item_bg); opacity: if(g.state == 1, 100%, item_bg_op) }
                         text pick(g.kind, "󰂯", "󰋋", "󰍽", "󰌌", "󰏲", "󰟀", "󰊴", "󰓃") { family: "JetBrainsMono Nerd Font Mono"; at: 24, 23; anchor: center; size: 14; color: if(g.state == 1, accent_c, ink_c) }
-                        text g.name { at: 48, 17; anchor: left center; size: 13; weight: if(g.state == 1, 600, 500); color: if(g.state == 1, #ffffff, ink_c); width: 150; lines: 1 }
-                        text g.status { at: 48, 32; anchor: left center; size: 10.5; color: if(g.state == 1, #ffffff, ink_sub); opacity: if(g.state == 1, 85%, 100%); width: 150; lines: 1 }
-                        text if(g.battery >= 0, "{g.battery * 100, 0}%", "") { at: 208, 23; anchor: right center; size: 10.5; color: if(g.state == 1, #ffffff, ink_sub) }
-                        box { from: 246, 9; size: 72, 28; corner: 9; color: if(g.state == 0 or g.state == 3, accent_c, if(g.state == 1, #ffffff, item_bg)); opacity: if(g.state == 0 or g.state == 3, 100%, if(g.state == 1, 24%, item_bg_op)) }
-                        text pick(g.state, "Connect", "Disconnect", "…", "Pair") { at: 282, 23; anchor: center; size: 10.5; weight: 600; color: if(g.state == 0 or g.state == 3 or g.state == 1, #ffffff, ink_c) }
+                        text g.name { at: 48, 17; anchor: left center; size: 13; weight: if(g.state == 1, 600, 500); color: if(g.state == 1, on_accent, ink_c); width: 150; lines: 1 }
+                        text g.status { at: 48, 32; anchor: left center; size: 10.5; color: if(g.state == 1, on_accent, ink_sub); opacity: if(g.state == 1, 85%, 100%); width: 150; lines: 1 }
+                        text if(g.battery >= 0, "{g.battery * 100, 0}%", "") { at: 208, 23; anchor: right center; size: 10.5; color: if(g.state == 1, on_accent, ink_sub) }
+                        box { from: 246, 9; size: 72, 28; corner: 9; color: if(g.state == 0 or g.state == 3, accent_c, if(g.state == 1, on_accent, item_bg)); opacity: if(g.state == 0 or g.state == 3, 100%, if(g.state == 1, 24%, item_bg_op)) }
+                        text pick(g.state, "Connect", "Disconnect", "…", "Pair") { at: 282, 23; anchor: center; size: 10.5; weight: 600; color: if(g.state == 0 or g.state == 3 or g.state == 1, on_accent, ink_c) }
                         zone box bt_row_hit { from: 246, 9; size: 72, 28; corner: 9; cursor: pointer }
                         on press bt_row_hit { emit bt_action(g.index) }
                     }
@@ -546,10 +546,10 @@ scene MacControlCenter {
                         box { from: 0, 0; size: 328, 36; corner: 10; color: card_fill; opacity: card_fill_op }
                         box { from: 0, 0; size: 328, 36; corner: 10; color: accent_c; opacity: if(o.default, 100%, 0%) }
                         box { from: 0, 0; size: 328, 36; corner: 10; stroke: 1; color: card_stroke; opacity: card_stroke_op }
-                        ellipse { at: 22, 18; radius: 12; color: if(o.default, #ffffff, item_bg); opacity: if(o.default, 100%, item_bg_op) }
+                        ellipse { at: 22, 18; radius: 12; color: if(o.default, on_accent, item_bg); opacity: if(o.default, 100%, item_bg_op) }
                         path { at: 16.5, 12.5; color: if(o.default, accent_c, ink_c); move 0, 3.5; line 3, 3.5; line 7, 0; line 7, 11; line 3, 7.5; line 0, 7.5; close }
-                        text o.name { at: 44, 18; anchor: left center; size: 12.5; weight: if(o.default, 600, 400); color: if(o.default, #ffffff, ink_c); width: 250; lines: 1 }
-                        text if(o.default, "✓", "") { at: 310, 18; anchor: center; size: 14; color: #ffffff }
+                        text o.name { at: 44, 18; anchor: left center; size: 12.5; weight: if(o.default, 600, 400); color: if(o.default, on_accent, ink_c); width: 250; lines: 1 }
+                        text if(o.default, "✓", "") { at: 310, 18; anchor: center; size: 14; color: on_accent }
                         zone box out_row_hit { from: 0, 0; size: 328, 36; corner: 10; cursor: pointer }
                         on press out_row_hit { emit pick_output(o.id) }
                     }

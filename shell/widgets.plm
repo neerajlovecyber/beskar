@@ -105,14 +105,14 @@ scene Widgets {
     component GridCells() {
         repeat j in 0..7 {
             repeat i in 0..11 {
-                box { from: 48 + i * 176, 72 + j * 176; size: 160, 160; corner: 24; stroke: 1; color: #ffffff; opacity: 14% }
+                box { from: 48 + i * 176, 72 + j * 176; size: 160, 160; corner: 24; stroke: 1; color: on_accent; opacity: 14% }
             }
         }
     }
 
     component Desk() {
         // the dimming veil in edit mode
-        box { from: 0, 0; size: screen.width, screen.height; color: #000000; opacity: dim * 38%; show: dim > 0.01 }
+        box { from: 0, 0; size: screen.width, screen.height; color: scrim_c; opacity: dim * 38%; show: dim > 0.01 }
         group {
             show: editing
             zone box veil { from: 0, 0; size: screen.width, screen.height }
@@ -197,13 +197,13 @@ scene Widgets {
                 box { from: 0, 0; size: cw, ch; corner: 24; stroke: 2; color: accent_c; opacity: 85% }
                 //  remove
                 ellipse { at: 4, 4; radius: 12; color: danger_c }
-                Sym("󰅖", 4, 4, 13, #ffffff)
+                Sym("󰅖", 4, 4, 13, on_accent)
                 zone box rm_hit { from: -10, -10; size: 28, 28; corner: 14; cursor: pointer }
                 on press rm_hit { emit w_remove(w.id) }
                 on press right rm_hit { }
                 //  size
                 ellipse { at: cw - 4, ch - 4; radius: 13; color: accent_c }
-                Sym("󰩨", cw - 4, ch - 4, 14, #ffffff)
+                Sym("󰩨", cw - 4, ch - 4, 14, on_accent)
                 zone box rs_hit { from: cw - 20, ch - 20; size: 32, 32; corner: 16; cursor: pointer }
                 on press rs_hit { emit w_resize(w.id) }
                 on press right rs_hit { }
@@ -347,7 +347,7 @@ scene Widgets {
         }
         repeat k in 0..42 {
             ellipse { at: 28 + mod(k, 7) * 43.4, 98 + (k - mod(k, 7)) / 7 * 38; radius: 15; color: accent_c; show: cm.$k == 2 }
-            text cd.$k { at: 28 + mod(k, 7) * 43.4, 98 + (k - mod(k, 7)) / 7 * 38; anchor: center center; size: 13; weight: if(cm.$k == 2, 700, 500); color: if(cm.$k == 2, #ffffff, ink_c); opacity: if(cm.$k == 1, 35%, 100%) }
+            text cd.$k { at: 28 + mod(k, 7) * 43.4, 98 + (k - mod(k, 7)) / 7 * 38; anchor: center center; size: 13; weight: if(cm.$k == 2, 700, 500); color: if(cm.$k == 2, on_accent, ink_c); opacity: if(cm.$k == 1, 35%, 100%) }
         }
     }
 

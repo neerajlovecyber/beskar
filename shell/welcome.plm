@@ -47,7 +47,7 @@ scene MacWelcome {
             group {
                 show: page == 0
                 ellipse { at: 320, 92; radius: 38; color: accent_c }
-                Sym("󰣇", 320, 92, 38, #ffffff)
+                Sym("󰣇", 320, 92, 38, on_accent)
                 text "Welcome to Beskar" { at: 320, 168; anchor: center center; size: 26; weight: 700; color: ink_c }
                 text "A glass desktop for niri" { at: 320, 200; anchor: center center; size: 14; color: ink_sub }
                 Tip(60, 226, "󰍜", "The bar", "The clock opens the dashboard, the bell your notifications, the switches icon the Control Center.")
@@ -95,7 +95,7 @@ scene MacWelcome {
             group {
                 show: page < 2
                 box { from: 500, 408; size: 100, 32; corner: 16; color: accent_c }
-                text "Next" { at: 550, 424; anchor: center center; size: 13; weight: 600; color: #ffffff }
+                text "Next" { at: 550, 424; anchor: center center; size: 13; weight: 600; color: on_accent }
                 zone box next_hit { from: 500, 408; size: 100, 32; corner: 16; cursor: pointer }
                 on press next_hit { emit wl_next }
                 on press right next_hit { }
@@ -103,7 +103,7 @@ scene MacWelcome {
             group {
                 show: page == 2
                 box { from: 480, 408; size: 120, 32; corner: 16; color: accent_c }
-                text "Start using Beskar" { at: 540, 424; anchor: center center; size: 12.5; weight: 600; color: #ffffff; width: 116; lines: 1; align: center }
+                text "Start using Beskar" { at: 540, 424; anchor: center center; size: 12.5; weight: 600; color: on_accent; width: 116; lines: 1; align: center }
                 zone box done_hit { from: 480, 408; size: 120, 32; corner: 16; cursor: pointer }
                 on press done_hit { emit wl_done }
                 on press right done_hit { }

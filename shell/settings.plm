@@ -70,7 +70,7 @@ scene MacSettings {
                     box { from: 8, 9; size: 36, 36; corner: 18 }
                 }
             }
-            text avatar_initial { at: 26, 27; anchor: center center; size: 18; weight: 700; color: #ffffff; show: not has_avatar }
+            text avatar_initial { at: 26, 27; anchor: center center; size: 18; weight: 700; color: on_accent; show: not has_avatar }
             group {
                 show: has_avatar
                 clip box { from: 8, 9; size: 36, 36; corner: 18 }
@@ -122,7 +122,7 @@ scene MacSettings {
                     row {
                         at: 40, 42
                         gap: 28
-                        ModeThumb(0, "Light", #f2f3f7, #ffffff, #e5e7eb)
+                        ModeThumb(0, "Light", #f2f3f7, on_accent, #e5e7eb)
                         ModeThumb(1, "Dark", #1e2026, #252830, #2d3139)
                         ModeThumb(2, "Auto", #1e2026, #f2f3f7, #8e8e93)
                     }
@@ -336,7 +336,7 @@ scene MacSettings {
                         gradient: 18, 18 to 78, 78, accent_c, focus_c
                         box { from: 18, 18; size: 64, 64; corner: 18 }
                     }
-                    text "B" { at: 50, 50; anchor: center center; size: 32; weight: 800; color: #ffffff }
+                    text "B" { at: 50, 50; anchor: center center; size: 32; weight: 800; color: on_accent }
                     column {
                         at: 100, 22
                         gap: 3
@@ -440,7 +440,7 @@ scene MacSettings {
                 gap: 12
                 Card(84) {
                     ellipse { at: 44, 42; radius: 24; color: if(up_n > 0, accent_c, ok_c) }
-                    text pick(if(up_checking, 2, if(up_n > 0, 1, 0)), "󰄬", "󰚰", "󰑐") { family: "JetBrainsMono Nerd Font Mono"; at: 44, 42; anchor: center center; size: 24; color: #ffffff }
+                    text pick(if(up_checking, 2, if(up_n > 0, 1, 0)), "󰄬", "󰚰", "󰑐") { family: "JetBrainsMono Nerd Font Mono"; at: 44, 42; anchor: center center; size: 24; color: on_accent }
                     text up_title { at: 84, 30; anchor: left center; size: 16; weight: 700; color: ink_c }
                     text up_sub { at: 84, 54; anchor: left center; size: 11.5; color: ink_sub; width: 440 }
                 }
@@ -736,9 +736,9 @@ scene MacSettings {
         group {
             move: 6, 4
             box { from: 0, 0; size: 22, 22; corner: 5; color: pick(c.tint, #5856d6, #0a84ff, #ff2d55, #ff453a, #8e8e93, #ff9f0a, #8e8e93, #30d158) }
-            Sym(c.icon, 11 - c.dx, 10.5, 13, #ffffff)
+            Sym(c.icon, 11 - c.dx, 10.5, 13, on_accent)
         }
-        text c.name { at: 36, 15; anchor: left center; size: 13; weight: if(tab == c.idx, 600, 400); color: if(tab == c.idx, #ffffff, ink_c) }
+        text c.name { at: 36, 15; anchor: left center; size: 13; weight: if(tab == c.idx, 600, 400); color: if(tab == c.idx, on_accent, ink_c) }
         on press hit { emit pick_cat(c.idx) }
         on press right hit { }
     }

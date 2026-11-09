@@ -64,4 +64,22 @@ part Theme {
     let slider_bar    = if(dark_mode, #ffffff, accent_c)
     let slider_bar_op = 92%
     let slider_icon   = if(dark_mode, #16181d, #ffffff)
+
+    // ── fixed-purpose colours (use these, never a hex value in a scene) ──
+    let on_accent  = #ffffff                                   // text and glyphs on an accent / danger fill, knobs, handles
+    let scrim_c    = #000000                                   // dimming layers and shadows
+    let btn_fill   = if(dark_mode, #2a2e38, #e5e7eb)           // a neutral button, segment or chip
+    let switch_off = if(dark_mode, #3a3d46, #d1d5db)           // the track of a switch that is off
+
+    // ── radii: small (chips, buttons) · medium (rows, cards) · large (panels, tiles) · xl (windows) ──
+    let r_s  = 8
+    let r_m  = 12
+    let r_l  = 16
+    let r_xl = 24
+
+    // ── type scale: title · body · caption · micro ──
+    let t_title = 15
+    let t_body  = 13
+    let t_cap   = 11.5
+    let t_micro = 10.5
 }

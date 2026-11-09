@@ -258,7 +258,7 @@ scene MacTopBar {
         ellipse { at: 12, 19.2; radius: 1.7; color: ink_c }
         line { from: 5, 5; to: 19, 19; width: 1.8; color: ink_c; opacity: if(dnd, 100%, 0%) }
         ellipse { at: 19, 5; radius: 5.5; color: danger_c; opacity: if(notif_count > 0, 100%, 0%) }
-        text "{notif_count}" { at: 19, 5; anchor: center; size: 7.5; weight: 700; color: #ffffff; opacity: if(notif_count > 0, 100%, 0%) }
+        text "{notif_count}" { at: 19, 5; anchor: center; size: 7.5; weight: 700; color: on_accent; opacity: if(notif_count > 0, 100%, 0%) }
         zone box hit { from: 0, 0; size: 24, 24; corner: 8; cursor: pointer }
         on enter hit { hot: 1 }
         on leave hit { hot: 0 }
@@ -314,7 +314,7 @@ scene MacTopBar {
         size: pm_w - 28, 36
         prop hot = 0 ~quick
         box { from: 0, 0; size: pm_w - 28, 36; corner: 10; color: if(danger, danger_c, accent_c); opacity: hot * if(danger, 90%, 85%) }
-        text label { at: 14, 18; anchor: left center; size: 13; weight: 500; color: if(hot > 0.5, #ffffff, if(danger, danger_c, ink_c)) }
+        text label { at: 14, 18; anchor: left center; size: 13; weight: 500; color: if(hot > 0.5, on_accent, if(danger, danger_c, ink_c)) }
         zone box hit { from: 0, 0; size: pm_w - 28, 36; corner: 10; cursor: pointer }
         on enter hit { hot: 1 }
         on leave hit { hot: 0 }
@@ -569,8 +569,8 @@ scene MacTopBar {
                         gradient: 0, 0 to 24, 24, accent_c, focus_c
                         box { from: 1, 1; size: 22, 22; corner: 7 }
                     }
-                    path { at: 5.5, 5.5; color: #ffffff; stroke: 1.7; move 6.5, 0; line 13, 6.5; line 6.5, 13; line 0, 6.5; close }
-                    path { at: 9, 9; color: #ffffff; move 3, 0; line 6, 3; line 3, 6; line 0, 3; close }
+                    path { at: 5.5, 5.5; color: on_accent; stroke: 1.7; move 6.5, 0; line 13, 6.5; line 6.5, 13; line 0, 6.5; close }
+                    path { at: 9, 9; color: on_accent; move 3, 0; line 6, 3; line 3, 6; line 0, 3; close }
                 }
                 zone box logo_hit { from: 0, 0; size: 24, 24; corner: 7; cursor: pointer }
                 on enter logo_hit { hot: 1 }
