@@ -119,7 +119,7 @@ local function update()
     resize()
     run_step("pkexec", { "pacman", "-Syu", "--noconfirm" }, "", function(code, err)
         if code == 0 and helper then
-            local args = { "-Sua", "--noconfirm", "--sudo", "pkexec" }
+            local args = { "-Sua", "--noconfirm", "--batchinstall", "--sudo", "pkexec" }
             if helper == "paru" then args[#args + 1] = "--skipreview" end
             run_step(helper, args, "AUR: ", finish_update)
         else
