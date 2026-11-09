@@ -275,7 +275,7 @@ local function osd_show(kind, level, muted)
     end)
 end
 
-local last_vol, last_mute, last_br = nil, nil, nil
+local last_vol, last_mute, last_br, last_imute = nil, nil, nil, nil
 pcall(sys.watch, "audio", function(a)
     if a and a.volume ~= nil then
         local mute = a.muted == true
@@ -283,6 +283,13 @@ pcall(sys.watch, "audio", function(a)
             osd_show(0, a.volume, mute)
         end
         last_vol, last_mute = a.volume, mute
+    end
+    if a and a.input_muted ~= nil then
+        local im = a.input_muted == true
+        if last_imute ~= nil and im ~= last_imute then
+            osd_show(2, 1, im)                       -- the microphone was muted / unmuted
+        end
+        last_imute = im
     end
 end)
 pcall(sys.watch, "brightness", function(b)

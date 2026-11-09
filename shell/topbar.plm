@@ -86,7 +86,7 @@ scene MacTopBar {
     fact rp_w = 372
     fact rp_h = 434
     //  The volume / brightness feedback inside the centre pill (osd_*): set by topbar.luau
-    fact osd_kind = 0         // 0 volume · 1 brightness
+    fact osd_kind = 0         // 0 volume · 1 brightness · 2 microphone
     fact osd_level = 0.5
     fact osd_muted = false
     fact last_screen = -1     // the monitor of the last click on one of the bar's buttons
@@ -612,10 +612,19 @@ scene MacTopBar {
                 ellipse { at: 8, cy; radius: 3.6; color: ink_c }
                 repeat k in 0..8 { line { from: 8 + 6 * cos(k * 45), cy + 6 * sin(k * 45); to: 8 + 8.4 * cos(k * 45), cy + 8.4 * sin(k * 45); width: 1.5; color: ink_c } }
             }
+            //  the microphone: its glyph (crossed out in red when muted) and what it is now
+            group {
+                show: osd_kind == 2
+                text if(osd_muted, "󰍭", "󰍬") { at: 11, cy; anchor: center center; size: 18; color: if(osd_muted, danger_c, ink_c) }
+                text if(osd_muted, "Microphone muted", "Microphone on") { at: 36, cy; anchor: left center; size: 13; weight: 600; color: ink_c }
+            }
             //  the track and its fill, and the number
-            box { from: 36, cy - 3; size: 160, 6; corner: 3; color: ink_c; opacity: 22% }
-            box { from: 36, cy - 3; size: max(6, 160 * clamp(if(osd_muted and osd_kind == 0, 0, osd_level), 0, 1)), 6; corner: 3; color: ink_c }
-            text if(osd_muted and osd_kind == 0, "0", "{osd_level * 100, 0}") { at: 244, cy; anchor: right center; size: 12; weight: 700; color: ink_c }
+            group {
+                show: osd_kind < 2
+                box { from: 36, cy - 3; size: 160, 6; corner: 3; color: ink_c; opacity: 22% }
+                box { from: 36, cy - 3; size: max(6, 160 * clamp(if(osd_muted and osd_kind == 0, 0, osd_level), 0, 1)), 6; corner: 3; color: ink_c }
+                text if(osd_muted and osd_kind == 0, "0", "{osd_level * 100, 0}") { at: 244, cy; anchor: right center; size: 12; weight: 700; color: ink_c }
+            }
         }
 
         // ── centre island: clock · weather · sound · live activities ───────────────
