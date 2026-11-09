@@ -94,6 +94,7 @@ local function words_for(code)
 end
 
 local function refresh_weather()
+on("weather_reload", refresh_weather)
     locate(function(place)
         if not place then
             return

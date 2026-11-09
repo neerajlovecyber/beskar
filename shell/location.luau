@@ -2,22 +2,17 @@
 --   1. ~/.config/beskar/location, one line "LAT LON City name", wins (write it yourself to pin a place)
 --   2. otherwise the place is looked up once from your IP (ipwho.is) and saved there
 -- `require("location")(function(place) … end)` calls back with { lat, lon, city } (nil if both fail).
--- The scene needs `run: "sh", "curl"`.
-local cached = nil
+-- The scene needs `run: "sh", "curl"`. Nothing is cached: the file is read on every call, so a place picked in the
+-- weather panel is used at the next refresh by every scene.
 local waiting = nil
 
 return function(done)
-    if cached then
-        done(cached)
-        return
-    end
     if waiting then
         waiting[#waiting + 1] = done
         return
     end
     waiting = { done }
     local function finish(place)
-        cached = place
         local list = waiting
         waiting = nil
         for _, cb in ipairs(list) do

@@ -16,7 +16,7 @@ scene MacDashboard {
     }
 
     permissions {
-        services: "clock", "battery", "say:spotlight", "say:clipboard", "say:music", "say:control_center", "say:notifications", "say:settings", "say:wallpapers", "say:widget_bar", "say:topbar"
+        services: "clock", "battery", "say:spotlight", "say:clipboard", "say:music", "say:weather", "say:control_center", "say:notifications", "say:settings", "say:wallpapers", "say:widget_bar", "say:topbar"
         run: "sh", "curl"
     }
 
@@ -44,6 +44,7 @@ scene MacDashboard {
 
     event toggle
     event refresh_stats ->
+    event weather_reload ->
 
 
     on press dismiss { open = false }

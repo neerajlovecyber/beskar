@@ -5,7 +5,7 @@
 
 local THEMED = { "topbar", "control_center", "notifications", "dashboard", "settings", "wallpapers",
                 "spotlight", "clipboard", "session", "capture", "appswitcher", "lock", "music", "widgets",
-                "overview", "widget_bar", "polkit", "welcome" }
+                "overview", "widget_bar", "polkit", "welcome", "weather" }
 
 local function say(scene, words)
     pcall(sys.call, "say", scene, words)

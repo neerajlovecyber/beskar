@@ -82,6 +82,7 @@ scene Widgets {
     event w_next ->
     event w_prev ->
     event w_open ->
+    event weather_reload ->
     event w_grid ->
     event w_tidy ->
     event w_vol ->

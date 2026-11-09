@@ -390,6 +390,7 @@ every(15000, paint_clock)
 on("fact:hour12", paint_clock)
 
 -- ── weather ──
+local refresh_weather
 local function icon_for(code)
     if code == 0 then return "󰖙"
     elseif code <= 3 then return "󰖐"
@@ -410,7 +411,7 @@ local function words_for(code)
     elseif code >= 95 then return "Thunderstorm" end
     return "Cloudy"
 end
-local function refresh_weather()
+refresh_weather = function()
     locate(function(place)
         if not place then return end
         text.weather_city = place.city
@@ -434,6 +435,7 @@ local function refresh_weather()
         end)
     end)
 end
+on("weather_reload", function() if refresh_weather then refresh_weather() end end)
 
 -- ── system ──
 local STATS = [[

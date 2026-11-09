@@ -34,6 +34,7 @@ local PANELS = {
     notifications = { id = 2, island = "rp", w = 386 },
     dashboard = { id = 3, island = "cp", w = 360 },
     music = { id = 9, island = "cp", w = 380 },
+    weather = { id = 15, island = "cp", w = 420 },
     banner = { id = 7, island = "cp", w = 380, kind = 1 },     -- a notification, shown inside the centre pill
     spotlight = { id = 4, island = "bp", w = 640 },      -- bottom: grow out of the dock
     wallpapers = { id = 5, island = "bp", w = 980 },
@@ -51,6 +52,7 @@ local heights = {}      -- id → last height it reported
 local PRIORITIES = {
     [3] = 100,  -- dashboard panel
     [9] = 100,  -- music panel
+    [15] = 100, -- weather panel
     [7] = 70,   -- banner
     [8] = 60,   -- volume / brightness
     [11] = 50,  -- timer done
@@ -231,6 +233,7 @@ on("open_cc_bt", open_island_panel("control_center", 2))
 on("open_dashboard", open_island_panel("dashboard"))
 on("open_notifications", open_island_panel("notifications"))
 on("open_music", open_island_panel("music"))
+on("open_weather", open_island_panel("weather"))
 on("rec_stop", function()
     pcall(sys.call, "say", "capture", "emit toggle_record")
 end)
@@ -1180,6 +1183,7 @@ end
 
 refresh_weather()
 every(WEATHER_EVERY_MS, refresh_weather)
+on("weather_reload", refresh_weather)
 
 -- ── privacy: camera and microphone in use ───────────────────────
 -- The camera is "in use" while some process has a /dev/video* node open (fuser); the microphone while some program

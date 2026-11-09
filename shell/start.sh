@@ -35,7 +35,7 @@ kill_all() {
 
 check_status() {
     echo "macOS / iNiR Shell Status:"
-    for comp in topbar border spotlight control_center notifications dashboard wallpapers settings lock session capture appswitcher clipboard music overview; do
+    for comp in topbar border spotlight control_center notifications dashboard wallpapers settings lock session capture appswitcher clipboard music weather overview; do
         if pgrep -f "pleamar.*$comp\.plm" >/dev/null 2>&1; then
             echo "  ✔ $comp is RUNNING"
         else
@@ -58,7 +58,7 @@ apply_saved_theme() {
         [ -z "$DM" ] && DM="true"
         [ -z "$SKIN" ] && SKIN="0"
 
-        for comp in topbar border spotlight control_center notifications dashboard wallpapers settings session capture appswitcher clipboard music overview widgets widget_bar polkit welcome; do
+        for comp in topbar border spotlight control_center notifications dashboard wallpapers settings session capture appswitcher clipboard music weather overview widgets widget_bar polkit welcome; do
             "$BIN" --say "$comp" "fact dark_mode $DM" >/dev/null 2>&1 || true
             "$BIN" --say "$comp" "fact skin $SKIN" >/dev/null 2>&1 || true
         done
@@ -121,6 +121,7 @@ start_shell() {
     PID_SWITCHER=$!
     setsid "$DIR/shell/supervise.sh" "$DIR/shell/clipboard.plm" /tmp/pleamar_clipboard.log </dev/null >/dev/null 2>&1 &
     setsid "$DIR/shell/supervise.sh" "$DIR/shell/music.plm" /tmp/pleamar_music.log </dev/null >/dev/null 2>&1 &
+    setsid "$DIR/shell/supervise.sh" "$DIR/shell/weather.plm" /tmp/pleamar_weather.log </dev/null >/dev/null 2>&1 &
     PID_CLIP=$!
     setsid "$DIR/shell/supervise.sh" "$DIR/shell/widgets.plm" /tmp/pleamar_widgets.log </dev/null >/dev/null 2>&1 &
     setsid "$DIR/shell/supervise.sh" "$DIR/shell/widget_bar.plm" /tmp/pleamar_widget_bar.log </dev/null >/dev/null 2>&1 &
