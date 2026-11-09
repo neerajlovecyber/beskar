@@ -1,154 +1,228 @@
-// macOS Screen Capture & Recording HUD (Cmd + Shift + 5)
+// Screenshot and screen recording: a full-screen picker (frozen screen, drag a region, handles, window, whole screen).
+// Opened through the frame (`start.sh capture`, Print / Super+Shift+5): panel number 11 in topbar.luau's FOCUS_PANELS,
+// so it opens on the monitor with the focus. capture.luau grabs the frozen picture first, then opens it.
 import "common/palette.plm"
 
 scene MacCapture {
     include "common/theme.plm"
-    surface {
-        size: 580, 110
-        anchor: bottom
-        margin: 70
+    include "common/here.plm"
+
+    surface picker {
+        size: full, full
+        anchor: top_left
         level: overlay
-        keyboard: on_demand
+        reserve: -1
+        keyboard: exclusive while open
+        screens: each
+        open: (open or seen > 0.02) and open_screen == screen.index
+
+        // the frozen screen
+        image shot { at: 0, 0; size: screen.width, screen.height; fit: fill }
+        // dim everything that is not selected
+        box { from: 0, 0; size: screen.width, screen.height; color: #000000; opacity: if(has_sel and mode == 0, 0%, 38%) }
+        group {
+            show: has_sel and mode == 0
+            box { from: 0, 0; size: screen.width, sel_y; color: #000000; opacity: 38% }
+            box { from: 0, sel_y + sel_h; size: screen.width, screen.height - sel_y - sel_h; color: #000000; opacity: 38% }
+            box { from: 0, sel_y; size: sel_x, sel_h; color: #000000; opacity: 38% }
+            box { from: sel_x + sel_w, sel_y; size: screen.width - sel_x - sel_w, sel_h; color: #000000; opacity: 38% }
+        }
+
+        // ── what catches the mouse ───────────────────────────────────
+        // region: drag anywhere for a new selection
+        zone box catch { from: 0, 0; size: screen.width, screen.height; cursor: crosshair; label: "Select a region" }
+        on press catch while mode == 0 { fx = local.x; fy = local.y; hx = local.x; hy = local.y; sel_x = local.x; sel_y = local.y; sel_w = 0; sel_h = 0; has_sel = false }
+        on drag catch while mode == 0 {
+            has_sel = true
+            sel_x = min(fx, clamp(hx + drag.dx, 0, screen.width))
+            sel_y = min(fy, clamp(hy + drag.dy, 0, screen.height))
+            sel_w = abs(clamp(hx + drag.dx, 0, screen.width) - fx)
+            sel_h = abs(clamp(hy + drag.dy, 0, screen.height) - fy)
+        }
+        on release catch while mode == 0 { has_sel = sel_w > 12 and sel_h > 12 }
+        // window / screen: a click takes it
+        on press catch while mode == 1 { emit do_window }
+        on press catch while mode == 2 { emit do_screen }
+        on press right catch { open = false }
+
+        // move the selection by its inside
+        zone box move_hit { from: sel_x, sel_y; size: sel_w, sel_h; cursor: move; active: has_sel and mode == 0; label: "Move the selection" }
+        on press move_hit { o_x = sel_x; o_y = sel_y }
+        on drag move_hit {
+            sel_x = clamp(o_x + drag.dx, 0, screen.width - sel_w)
+            sel_y = clamp(o_y + drag.dy, 0, screen.height - sel_h)
+        }
+        on press right move_hit { open = false }
+
+        // four corners resize it: the opposite corner stays where it is
+        zone box h_tl { from: sel_x - 10, sel_y - 10; size: 20, 20; cursor: nwse_resize; active: has_sel and mode == 0; label: "Resize top left" }
+        zone box h_tr { from: sel_x + sel_w - 10, sel_y - 10; size: 20, 20; cursor: nesw_resize; active: has_sel and mode == 0; label: "Resize top right" }
+        zone box h_bl { from: sel_x - 10, sel_y + sel_h - 10; size: 20, 20; cursor: nesw_resize; active: has_sel and mode == 0; label: "Resize bottom left" }
+        zone box h_br { from: sel_x + sel_w - 10, sel_y + sel_h - 10; size: 20, 20; cursor: nwse_resize; active: has_sel and mode == 0; label: "Resize bottom right" }
+        on press h_tl { fx = sel_x + sel_w; fy = sel_y + sel_h; hx = sel_x; hy = sel_y }
+        on press h_tr { fx = sel_x; fy = sel_y + sel_h; hx = sel_x + sel_w; hy = sel_y }
+        on press h_bl { fx = sel_x + sel_w; fy = sel_y; hx = sel_x; hy = sel_y + sel_h }
+        on press h_br { fx = sel_x; fy = sel_y; hx = sel_x + sel_w; hy = sel_y + sel_h }
+        on drag h_tl { sel_x = min(fx, clamp(hx + drag.dx, 0, screen.width)); sel_y = min(fy, clamp(hy + drag.dy, 0, screen.height)); sel_w = abs(clamp(hx + drag.dx, 0, screen.width) - fx); sel_h = abs(clamp(hy + drag.dy, 0, screen.height) - fy) }
+        on drag h_tr { sel_x = min(fx, clamp(hx + drag.dx, 0, screen.width)); sel_y = min(fy, clamp(hy + drag.dy, 0, screen.height)); sel_w = abs(clamp(hx + drag.dx, 0, screen.width) - fx); sel_h = abs(clamp(hy + drag.dy, 0, screen.height) - fy) }
+        on drag h_bl { sel_x = min(fx, clamp(hx + drag.dx, 0, screen.width)); sel_y = min(fy, clamp(hy + drag.dy, 0, screen.height)); sel_w = abs(clamp(hx + drag.dx, 0, screen.width) - fx); sel_h = abs(clamp(hy + drag.dy, 0, screen.height) - fy) }
+        on drag h_br { sel_x = min(fx, clamp(hx + drag.dx, 0, screen.width)); sel_y = min(fy, clamp(hy + drag.dy, 0, screen.height)); sel_w = abs(clamp(hx + drag.dx, 0, screen.width) - fx); sel_h = abs(clamp(hy + drag.dy, 0, screen.height) - fy) }
+        on press right h_tl { open = false }
+        on press right h_tr { open = false }
+        on press right h_bl { open = false }
+        on press right h_br { open = false }
+
+        // ── the selection: border, size, handles ─────────────────────
+        group {
+            show: has_sel and mode == 0
+            opacity: seen
+            box { from: sel_x, sel_y; size: sel_w, sel_h; stroke: 2; color: accent_c }
+            // size label
+            group {
+                move: sel_x, max(sel_y - 30, 4)
+                box { from: 0, 0; size: 96, 22; corner: 7; color: #14161b; opacity: 85% }
+                text "{sel_w} × {sel_h}" { at: 48, 11; anchor: center center; size: 11.5; weight: 600; color: #ffffff }
+            }
+            ellipse { at: sel_x, sel_y; radius: 6; color: #ffffff }
+            ellipse { at: sel_x + sel_w, sel_y; radius: 6; color: #ffffff }
+            ellipse { at: sel_x, sel_y + sel_h; radius: 6; color: #ffffff }
+            ellipse { at: sel_x + sel_w, sel_y + sel_h; radius: 6; color: #ffffff }
+            ellipse { at: sel_x, sel_y; radius: 3.5; color: accent_c }
+            ellipse { at: sel_x + sel_w, sel_y; radius: 3.5; color: accent_c }
+            ellipse { at: sel_x, sel_y + sel_h; radius: 3.5; color: accent_c }
+            ellipse { at: sel_x + sel_w, sel_y + sel_h; radius: 3.5; color: accent_c }
+        }
+
+        // the action under the selection
+        group {
+            show: has_sel and mode == 0
+            opacity: seen
+            move: clamp(sel_x + sel_w / 2 - 74, 8, screen.width - 156), min(sel_y + sel_h + 14, screen.height - 54)
+            box { from: 0, 0; size: 148, 40; corner: 12; color: accent_c }
+            text if(kind == 1, "󰻂  Record  ⏎", "󰄀  Capture  ⏎") { at: 74, 20; anchor: center center; size: 13; weight: 700; color: #ffffff }
+            zone box go_hit { from: 0, 0; size: 148, 40; corner: 12; cursor: pointer; label: "Take it" }
+            on press go_hit { scr_w = screen.width; scr_h = screen.height; emit do_region }
+            on press right go_hit { open = false }
+        }
+
+        // hint when nothing is selected yet
+        group {
+            show: not (has_sel and mode == 0)
+            opacity: seen
+            move: screen.width / 2, screen.height / 2
+            box { from: -190, -20; size: 380, 40; corner: 20; color: #14161b; opacity: 80% }
+            text pick(mode, "Drag to select an area", "Click to capture the focused window", "Click to capture the whole screen") { at: 0, 0; anchor: center center; size: 14; weight: 600; color: #ffffff }
+        }
+
+        // ── the toolbar ──────────────────────────────────────────────
+        group {
+            opacity: seen
+            move: screen.width / 2 - 262, 62 - (1 - seen) * 14
+            body {
+                color: bg_color
+                glass: glass_amt
+                lens: false
+                frost: 100%
+                dispersion: 0
+                refraction: 0
+                tint: tint_amt
+                rim: rim_amt
+                box { from: 0, 0; size: 524, 52; corner: 26 }
+            }
+            box { from: 0, 0; size: 524, 52; corner: 26; stroke: 1; color: stroke_c; opacity: stroke_op }
+
+            // close
+            ellipse { at: 26, 26; radius: 14; color: item_solid }
+            text "󰅖" { at: 26, 26; anchor: center center; size: 13; color: ink_c }
+            zone box x_hit { from: 10, 10; size: 32, 32; corner: 16; cursor: pointer; label: "Close" }
+            on press x_hit { open = false }
+            on press right x_hit { open = false }
+
+            box { from: 52, 12; size: 1, 28; color: stroke_c; opacity: stroke_op }
+
+            // what to take
+            ModeChip(66, 0, "󰩭", "Region")
+            ModeChip(66 + 94, 1, "󰖲", "Window")
+            ModeChip(66 + 188, 2, "󰍹", "Screen")
+
+            box { from: 66 + 288, 12; size: 1, 28; color: stroke_c; opacity: stroke_op }
+
+            // photo or video
+            KindChip(66 + 304, 0, "󰄀", "Photo")
+            KindChip(66 + 304 + 76, 1, "󰻂", "Video")
+        }
+
+        on key Escape { open = false }
+        on key Return while has_sel and mode == 0 { scr_w = screen.width; scr_h = screen.height; emit do_region }
+        on key Return while mode == 1 { emit do_window }
+        on key Return while mode == 2 { emit do_screen }
+        on key r { kind = 1 }
+        on key p { kind = 0 }
     }
 
     permissions {
         services: "clock", "say:topbar"
-        run: "grim", "slurp", "wf-recorder", "wl-copy", "magick", "pkill", "notify-send", "sh", "niri msg"
+        run: "grim", "slurp", "wf-recorder", "wl-copy", "magick", "pkill", "notify-send", "sh", "niri msg", "rm", "cp"
     }
 
     fact open = false
     fact recording = false
     fact record_secs = 0
-    fact target_mode = 0    // 0: Entire Screen, 1: Selected Window, 2: Selected Portion
+    fact mode = 0          // 0 region, 1 focused window, 2 whole screen
+    fact kind = 0          // 0 photo, 1 video
+    fact has_sel = false
+    fact sel_x = 0
+    fact sel_y = 0
+    fact sel_w = 0
+    fact sel_h = 0
+    fact fx = 0
+    fact fy = 0
+    fact hx = 0
+    fact hy = 0
+    fact o_x = 0
+    fact o_y = 0
+    fact scr_w = 1920
+    fact scr_h = 1080
+    text shot_path = ""
+    image shot = from shot_path, 0, 0
 
     prop seen = 0 ~quick
-    prop rise = 14 ~lively
 
     layer hud ~quick {
-        shown while open { seen: 1 ~quick; rise: 0 ~lively }
-        gone             { seen: 0 ~quick; rise: 14 ~quick }
+        shown while open { seen: 1 ~quick }
+        gone             { seen: 0 ~quick }
     }
 
     let stroke_c = card_stroke
     let stroke_op = card_stroke_op
 
-    event toggle
-    event capture ->
-    event shot_entire ->
-    event shot_window ->
-    event shot_area ->
+    event toggle ->
     event toggle_record ->
+    event do_region ->
+    event do_window ->
+    event do_screen ->
 
-    group {
-        move: 40, 20 + rise
-        pivot: 250, 35
-        opacity: seen
-
-        // Floating Capsule Frame
-        body {
-            color: bg_color
-            glass: glass_amt
-            lens: false
-            frost: 100%
-            dispersion: 0
-            refraction: 0
-            tint: tint_amt
-            rim: rim_amt
-            box { from: 0, 0; size: 500, 70; corner: 18 }
-        }
-        box { from: 0, 0; size: 500, 70; corner: 18; stroke: 1; color: stroke_c; opacity: stroke_op }
-
-        // Buttons Row
-        row {
-            at: 16, 12
-            gap: 8
-            align: center
-
-            // Close 'X' Button
-            group {
-                size: 28, 46
-                ellipse { at: 14, 23; radius: 11; color: if(dark_mode, item_solid, item_solid) }
-                text "󰅖" { at: 14, 23; anchor: center; size: 12; color: ink_c }
-                zone box btn_x { from: 0, 0; size: 28, 46; cursor: pointer }
-                on press btn_x { open = false }
-                on press right btn_x { }   // right button is ours: without a rule, pleamar quits on right click
-            }
-
-            // Separator 1
-            box { from: 0, 8; size: 1, 30; color: stroke_c; opacity: stroke_op }
-
-            // Still Capture: Entire Screen
-            ModeButton(0, "󰍹", "Capture Entire Screen", target_mode == 0)
-            // Still Capture: Selected Window
-            ModeButton(1, "󰖲", "Capture Selected Window", target_mode == 1)
-            // Still Capture: Portion
-            ModeButton(2, "󰩭", "Capture Selected Portion", target_mode == 2)
-
-            // Separator 2
-            box { from: 0, 8; size: 1, 30; color: stroke_c; opacity: stroke_op }
-
-            // Screen Recording Toggle Button
-            group {
-                size: 100, 46
-                box {
-                    from: 0, 4
-                    size: 100, 38
-                    corner: 10
-                    color: if(recording, danger_c, if(dark_mode, item_solid, item_solid))
-                }
-                text if(recording, "󰑐 Stop", "󰑈 Record") {
-                    at: 50, 23
-                    anchor: center
-                    size: 12.5
-                    weight: 600
-                    color: if(recording, #ffffff, ink_c)
-                }
-                zone box rec_hit { from: 0, 4; size: 100, 38; cursor: pointer }
-                on press rec_hit { emit toggle_record }
-            }
-
-            // Capture Trigger Button (for Still Images)
-            group {
-                size: 90, 46
-                show: not recording
-                box {
-                    from: 0, 4
-                    size: 90, 38
-                    corner: 10
-                    color: accent_c
-                }
-                text "Capture" {
-                    at: 45, 23
-                    anchor: center
-                    size: 13
-                    weight: 600
-                    color: #ffffff
-                }
-                zone box shot_hit { from: 0, 4; size: 90, 38; cursor: pointer }
-                on press shot_hit { emit capture }
-            }
+    component ModeChip(x: number, idx: number, icon_t: text, name_t: text) {
+        group {
+            move: x, 8
+            box { from: 0, 0; size: 90, 36; corner: 18; color: accent_c; opacity: if(mode == idx, 22%, 0%) }
+            text icon_t { at: 20, 18; anchor: center center; size: 15; color: if(mode == idx, accent_c, ink_c) }
+            text name_t { at: 36, 18; anchor: left center; size: 12.5; weight: 600; color: if(mode == idx, accent_c, ink_c) }
+            zone box chip_hit { from: 0, 0; size: 90, 36; corner: 18; cursor: pointer; label: name_t }
+            on press chip_hit { mode = idx; has_sel = false }
+            on press right chip_hit { open = false }
         }
     }
 
-    component ModeButton(idx: number, icon_t: text, desc_t: text, active_mode: bool) {
-        size: 42, 46
-        box {
-            from: 0, 5
-            size: 42, 36
-            corner: 8
-            color: if(active_mode, if(dark_mode, #2c3240, #ebf2ff), #000000)
-            opacity: if(active_mode, 100%, 0%)
+    component KindChip(x: number, idx: number, icon_t: text, name_t: text) {
+        group {
+            move: x, 8
+            box { from: 0, 0; size: 72, 36; corner: 18; color: if(idx == 1, danger_c, accent_c); opacity: if(kind == idx, 24%, 0%) }
+            text icon_t { at: 18, 18; anchor: center center; size: 15; color: if(kind == idx, if(idx == 1, danger_c, accent_c), ink_c) }
+            text name_t { at: 32, 18; anchor: left center; size: 12.5; weight: 600; color: if(kind == idx, if(idx == 1, danger_c, accent_c), ink_c) }
+            zone box kind_hit { from: 0, 0; size: 72, 36; corner: 18; cursor: pointer; label: name_t }
+            on press kind_hit { kind = idx }
+            on press right kind_hit { open = false }
         }
-        text icon_t {
-            at: 21, 23
-            anchor: center
-            size: 18
-            color: if(active_mode, accent_c, ink_c)
-        }
-        zone box mode_hit { from: 0, 5; size: 42, 36; cursor: pointer }
-        on press mode_hit { target_mode = idx }
     }
-
-    on toggle     { toggle open }
-    on key Escape { open = false }
 }

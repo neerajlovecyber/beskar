@@ -45,46 +45,35 @@ local function finish_still(file, title)
     to_topbar("text shot_path " .. file)
 end
 
-on("capture", function()
-    fact.open = false
-    local m = fact.target_mode or 0
-    -- let the HUD fade out before the picture is taken
-    after(350, function()
-        if m == 1 then
-            -- the focused window, by niri itself (saved and copied)
-            run("niri", { "msg", "action", "screenshot-window" }, nil, { output = false })
-            return
+-- the monitor with the focus: name and where it sits in the global layout
+local function focused_info(cb)
+    run("niri", { "msg", "-j", "focused-output" }, function(out)
+        local ok, o = pcall(json.decode, out or "")
+        if ok and type(o) == "table" then
+            local l = o.logical or {}
+            cb(o.name or "", l.x or 0, l.y or 0)
+        else
+            cb("", 0, 0)
         end
-        dir_of("Pictures/Screenshots", function(dir)
-            local file = string.format("%s/Screen_Shot_%s.png", dir, stamp())
-            if m == 0 then
-                focused_output(function(name)
-                    local args = name ~= "" and { "-o", name, file } or { file }
-                    run("grim", args, function(_, code)
-                        if code == 0 then
-                            finish_still(file, "Screenshot taken")
-                        else
-                            notify("Screenshot failed", "grim could not capture the screen", "dialog-error")
-                        end
-                    end)
-                end)
-            else
-                -- a region: slurp asks for it, then grim takes it (cancelled with Esc: nothing happens)
-                run("slurp", {}, function(region, code)
-                    region = (region or ""):gsub("%s+$", "")
-                    if code ~= 0 or region == "" then
-                        return
-                    end
-                    run("grim", { "-g", region, file }, function(_, c2)
-                        if c2 == 0 then
-                            finish_still(file, "Portion captured")
-                        end
-                    end)
-                end)
-            end
-        end)
     end)
-end)
+end
+
+local frozen = nil      -- the picture shown behind the picker
+local frozen_out = nil  -- its monitor, and where that monitor sits (for recording a region)
+local frozen_x, frozen_y = 0, 0
+
+local function drop_frozen()
+    if frozen then
+        run("rm", { "-f", frozen }, nil, { output = false })
+        frozen = nil
+    end
+end
+
+local function still_name(cb)
+    dir_of("Pictures/Screenshots", function(dir)
+        cb(string.format("%s/Screen_Shot_%s.png", dir, stamp()))
+    end)
+end
 
 local function stop_recording()
     if timer_id then
@@ -111,42 +100,130 @@ local function tick()
     timer_id = after(1000, tick)
 end
 
-on("toggle_record", function()
+
+local function start_recording(geom)
+    dir_of("Videos/Captures", function(dir)
+        local file = string.format("%s/Screen_Recording_%s.mp4", dir, stamp())
+        local args = {}
+        if geom then
+            args = { "-g", geom, "-f", file }
+        elseif frozen_out and frozen_out ~= "" then
+            args = { "-o", frozen_out, "-f", file }
+        else
+            args = { "-f", file }
+        end
+        rec_file = file
+        rec_running = true
+        secs = 0
+        fact.recording = true
+        fact.record_secs = 0
+        to_topbar("text rec_time 0:00")
+        to_topbar("fact rec_on true")
+        spawn("wf-recorder", args, function() end, function(_, code)
+            local was = rec_running
+            if timer_id then
+                cancel(timer_id)
+                timer_id = nil
+            end
+            rec_running = false
+            fact.recording = false
+            to_topbar("fact rec_on false")
+            if was then
+                notify("Recording failed", "wf-recorder stopped unexpectedly", "dialog-error")
+            else
+                notify("Recording saved", "Videos/Captures", "video-x-generic")
+            end
+        end)
+        timer_id = after(1000, tick)
+    end)
+end
+
+-- open the picker: the screen is frozen first, so what you select is what you saw
+on("toggle", function()
+    if fact.open then
+        fact.open = false
+        return
+    end
     if rec_running then
         stop_recording()
         return
     end
-    fact.open = false
-    after(350, function()
-        dir_of("Videos/Captures", function(dir)
-            focused_output(function(name)
-                local file = string.format("%s/Screen_Recording_%s.mp4", dir, stamp())
-                local args = name ~= "" and { "-o", name, "-f", file } or { "-f", file }
-                rec_file = file
-                rec_running = true
-                secs = 0
-                fact.recording = true
-                fact.record_secs = 0
-                to_topbar("text rec_time 0:00")
-                to_topbar("fact rec_on true")
-                spawn("wf-recorder", args, function() end, function(_, code)
-                    -- it ended (we stopped it, or it died): put everything back
-                    local was = rec_running
-                    if timer_id then
-                        cancel(timer_id)
-                        timer_id = nil
-                    end
-                    rec_running = false
-                    fact.recording = false
-                    to_topbar("fact rec_on false")
-                    if was then
-                        notify("Recording failed", "wf-recorder stopped unexpectedly", "dialog-error")
-                    else
-                        notify("Recording saved", "Videos/Captures", "video-x-generic")
-                    end
-                end)
-                timer_id = after(1000, tick)
-            end)
+    focused_info(function(name, lx, ly)
+        local file = string.format("/tmp/beskar-cap-%d.png", os.time())
+        local args = name ~= "" and { "-o", name, file } or { file }
+        run("grim", args, function(_, code)
+            if code ~= 0 then
+                notify("Screenshot failed", "grim could not capture the screen", "dialog-error")
+                return
+            end
+            drop_frozen()
+            frozen, frozen_out, frozen_x, frozen_y = file, name, lx, ly
+            text.shot_path = file
+            fact.has_sel = false
+            fact.sel_w = 0
+            fact.sel_h = 0
+            after(120, function() fact.open = true end)
         end)
     end)
+end)
+
+on("do_screen", function()
+    fact.open = false
+    local k = fact.kind or 0
+    after(350, function()
+        if k == 1 then
+            start_recording(nil)
+        elseif frozen then
+            still_name(function(dest)
+                run("cp", { frozen, dest }, function(_, code)
+                    if code == 0 then finish_still(dest, "Screenshot taken") end
+                end)
+            end)
+        end
+    end)
+end)
+
+on("do_window", function()
+    fact.open = false
+    local k = fact.kind or 0
+    after(350, function()
+        if k == 1 then
+            start_recording(nil)
+        else
+            run("niri", { "msg", "action", "screenshot-window" }, nil, { output = false })
+        end
+    end)
+end)
+
+on("do_region", function()
+    local x, y = math.floor(fact.sel_x or 0), math.floor(fact.sel_y or 0)
+    local w, h = math.floor(fact.sel_w or 0), math.floor(fact.sel_h or 0)
+    local sw = math.floor(fact.scr_w or 1920)
+    local k = fact.kind or 0
+    fact.open = false
+    if w < 4 or h < 4 then return end
+    if k == 1 then
+        local geom = string.format("%d,%d %dx%d", x + frozen_x, y + frozen_y, w, h)
+        after(350, function() start_recording(geom) end)
+        return
+    end
+    if not frozen then return end
+    still_name(function(dest)
+        local script = 'f="$1"; out="$2"; iw=$(magick identify -format %w "$f"); '
+            .. 'magick "$f" -crop "$(($5*iw/$7))x$(($6*iw/$7))+$(($3*iw/$7))+$(($4*iw/$7))" +repage "$out"'
+        run("sh", { "-c", script, "x", frozen, dest, tostring(x), tostring(y), tostring(w), tostring(h), tostring(sw) },
+            function(_, code)
+                if code == 0 then
+                    finish_still(dest, "Screenshot taken")
+                else
+                    notify("Screenshot failed", "could not crop the picture", "dialog-error")
+                end
+            end)
+    end)
+end)
+
+on("toggle_record", function()
+    if rec_running then
+        stop_recording()
+    end
 end)

@@ -229,7 +229,7 @@ case "$1" in
         "$BIN" --say topbar "emit open_panel 5"
         ;;
     capture)
-        "$BIN" --say capture "emit toggle"
+        "$BIN" --say topbar "emit open_panel 11"
         ;;
     spotlight)
         "$BIN" --say topbar "emit open_panel 1"
