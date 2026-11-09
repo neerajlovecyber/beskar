@@ -10,7 +10,8 @@ local apps = {}
 local entries = {}
 local panel = require("panel")("spotlight")     -- the frame draws the glass: tell it how tall to be
 
-local MAX_ROWS = 7
+local MAX_ROWS = 24       -- results kept (the list shows 7 and scrolls)
+local SEEN_ROWS = 7
 
 -- ── a small calculator (no loadstring in the sandbox) ───────────────────────────
 local FUNCS = { sqrt = math.sqrt, abs = math.abs, round = function(x) return math.floor(x + 0.5) end,
@@ -229,7 +230,7 @@ local function paint()
     end
     model.hits = rows
     fact.sel = 0
-    panel.height(94 + math.max(#rows, 1) * 44)
+    panel.height(94 + math.min(math.max(#rows, 1), SEEN_ROWS) * 44)
 end
 
 local function build()

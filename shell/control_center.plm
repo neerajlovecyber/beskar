@@ -5,6 +5,7 @@ scene MacControlCenter {
     let mp_sw = 440
     let mp_sh = 520
     include "common/theme.plm"
+    include "common/ui.plm"
     include "common/morph.plm"
     surface {
         size: 440, 520
@@ -109,17 +110,6 @@ scene MacControlCenter {
     //  The card is shorter on the overview than on the pickers, and grows when one opens.
 
     //  A small button with a word.
-    component Pill(label: text, press: event, w: number = 96, strong: bool = false, warn: bool = false, onfill: bool = false) {
-        size: w, 28
-        prop glow = 0 ~quick
-        box { from: 0, 0; size: w, 28; corner: 9; color: if(onfill, #ffffff, if(strong, accent_c, if(warn, danger_c, item_bg))); opacity: if(onfill, 24%, if(strong, 100%, if(warn, 20%, item_bg_op))) + glow * 12% }
-        text label { at: w / 2, 14; anchor: center; size: 11; weight: 600; color: if(onfill or strong, #ffffff, if(warn, danger_c, ink_c)) }
-        zone box hit { from: 0, 0; size: w, 28; corner: 9; cursor: pointer }
-        on enter hit { glow: 1 }
-        on leave hit { glow: 0 }
-        on press hit { emit press }
-    }
-
     //  Four arcs that fill with the strength, 0..1
     component Bars(level: number, tone: color = ink_c) {
         size: 28, 24
@@ -391,19 +381,19 @@ scene MacControlCenter {
                     at: 316, 32
                     anchor: right middle
                     show: wifi_state == 2
-                    Pill("Disconnect", wifi_disconnect, 92, false, false, true)
+                    Pill("Disconnect", 92, wifi_disconnect, 3)
                 }
                 row {
                     at: 316, 32
                     anchor: right middle
                     show: wifi_state == 0
-                    Pill("Turn On", wifi_power, 84, true)
+                    Pill("Turn On", 84, wifi_power, 1)
                 }
                 row {
                     at: 316, 32
                     anchor: right middle
                     show: wifi_state == 4
-                    Pill("Cancel", wifi_disconnect, 76)
+                    Pill("Cancel", 76, wifi_disconnect)
                 }
             }
 
@@ -467,8 +457,8 @@ scene MacControlCenter {
                     at: 164, 132
                     anchor: center middle
                     gap: 10
-                    Pill("Cancel", wifi_cancel, 90)
-                    Pill("Join", wifi_join, 90, true)
+                    Pill("Cancel", 90, wifi_cancel)
+                    Pill("Join", 90, wifi_join, 1)
                 }
             }
         }

@@ -6,7 +6,10 @@
 //   Btn(label, w, tap, primary)    a 28 px button; `primary` = accent
 //   Seg(label, n, cur, pick, w)    one segment of a row of choices (`pick(n)` when pressed); highlighted when cur == n
 //   Chip(label, on, pick, n, w)    a chip chosen from a list; highlighted when `on`
+//   ToggleRow(title, sub, state, tap, w)   a card row with a title, a sub line and a Switch on its right
+//   Pill(label, w, tap, tone, h, round, on_)  a button with a tone (0 neutral, 1 accent, 2 danger, 3 on a fill)
 //   Divider(len)                   a 1 px line
+//   ScrollBar(sc, ct, h)           a thin scroll bar for a `view:` layout (list.scroll, list.content, the seen height)
 part Ui {
     //  The shell's own glass plate.
     component Plate(w: number, h: number, r: number) {
@@ -74,4 +77,41 @@ part Ui {
         on press right hit { }
     }
 
+
+    //  A thin scroll bar for a layout with `view:` (draw it beside the list; `sc` = list.scroll, `ct` = list.content,
+    //  `h` = the height that is seen). It only shows when there is more than fits.
+    component ScrollBar(sc: number, ct: number, h: number) {
+        group {
+            show: ct > h + 1
+            box { from: 0, 0; size: 4, h; corner: 2; color: ink_c; opacity: 7% }
+            box { from: 0, clamp(sc / max(ct, 1), 0, 1) * h; size: 4, max(24, h * h / max(ct, h)); corner: 2; color: ink_c; opacity: 32% }
+        }
+    }
+
+    component ToggleRow(title: text, sub: text, state: bool, tap: event, w: number = 556) {
+        size: w, 56
+        box { from: 0, 0; size: w, 56; corner: 14; color: card_fill; opacity: card_fill_op }
+        box { from: 0, 0; size: w, 56; corner: 14; stroke: 1; color: card_stroke; opacity: card_stroke_op }
+        text title { at: 18, 20; anchor: left center; size: 13; weight: 600; color: ink_c; width: w - 110; lines: 1 }
+        text sub { at: 18, 38; anchor: left center; size: 10.5; color: ink_sub; width: w - 110; lines: 1 }
+        group {
+            move: w - 62, 16
+            Switch(state, tap)
+        }
+    }
+
+
+    //  A button with a tone: 0 neutral · 1 accent · 2 danger · 3 on a coloured fill (translucent white). `h` 34 and
+    //  `round` make the pill of a toolbar; `on_` false greys it out and makes it inert.
+    component Pill(label: text, w: number, tap: event, tone: number = 0, h: number = 28, round: bool = false, on_: bool = true) {
+        size: w, h
+        prop glow = 0 ~quick
+        box { from: 0, 0; size: w, h; corner: if(round, h / 2, 9); color: pick(tone, item_bg, accent_c, danger_c, #ffffff); opacity: pick(tone, item_bg_op, 100%, 20%, 24%) + glow * 8% }
+        text label { at: w / 2, h / 2; anchor: center center; size: if(h > 30, 13, 11.5); weight: 600; color: pick(tone, ink_c, #ffffff, danger_c, #ffffff); opacity: if(on_, 100%, 40%) }
+        zone box hit { from: 0, 0; size: w, h; corner: if(round, h / 2, 9); cursor: pointer; active: on_ }
+        on enter hit { glow: 1 }
+        on leave hit { glow: 0 }
+        on press hit { emit tap }
+        on press right hit { }
+    }
 }

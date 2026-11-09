@@ -113,7 +113,9 @@ scene MacSettings {
         group tab_0 {
             show: tab == 0
             move: 254, 60
-            column {
+            column tcol_0 {
+                view: 560, 500
+                step: 56
                 gap: 12
                 Card(138) {
                     text "Appearance" { at: 18, 16; size: 13; weight: 600; color: ink_c }
@@ -162,13 +164,16 @@ scene MacSettings {
                     }
                 }
             }
+            group { move: 566, 0; ScrollBar(tcol_0.scroll, tcol_0.content, 500) }
         }
 
         // 1 ── Displays ─────────────────────────────────────────
         group tab_1 {
             show: tab == 1
             move: 254, 60
-            column {
+            column tcol_1 {
+                view: 560, 500
+                step: 56
                 gap: 12
                 row {
                     gap: 10
@@ -204,13 +209,16 @@ scene MacSettings {
                 }
                 SliderRow("Brightness", bright.level, brightness_set, 0, true)
             }
+            group { move: 566, 0; ScrollBar(tcol_1.scroll, tcol_1.content, 500) }
         }
 
         // 2 ── Sound ────────────────────────────────────────────
         group tab_2 {
             show: tab == 2
             move: 254, 60
-            column {
+            column tcol_2 {
+                view: 560, 500
+                step: 56
                 gap: 12
                 SliderRow("Output volume", sound.volume, volume_set, 1, not sound.muted)
                 ToggleRow("Mute", "Silences the output", sound.muted, toggle_mute)
@@ -221,13 +229,16 @@ scene MacSettings {
                     for o in outs { OutRow(o) }
                 }
             }
+            group { move: 566, 0; ScrollBar(tcol_2.scroll, tcol_2.content, 500) }
         }
 
         // 3 ── Notifications ────────────────────────────────────
         group tab_3 {
             show: tab == 3
             move: 254, 60
-            column {
+            column tcol_3 {
+                view: 560, 500
+                step: 56
                 gap: 12
                 ToggleRow("Do Not Disturb", "Notifications still arrive, silently, in the centre", dnd, toggle_dnd)
                 ToggleRow("Group by app", "Stack several notifications from one app into a pile", group_apps, toggle_group)
@@ -246,13 +257,16 @@ scene MacSettings {
                 }
                 ActionRow("History", "Forget the notifications listed under Earlier", "Clear", clear_notif_history)
             }
+            group { move: 566, 0; ScrollBar(tcol_3.scroll, tcol_3.content, 500) }
         }
 
         // 4 ── Menu Bar & Dock ──────────────────────────────────
         group tab_4 {
             show: tab == 4
             move: 254, 60
-            column {
+            column tcol_4 {
+                view: 560, 500
+                step: 56
                 gap: 12
                 Card(54) {
                     text "Top bar style" { at: 18, 27; anchor: left center; size: 13; weight: 600; color: ink_c }
@@ -280,6 +294,7 @@ scene MacSettings {
                     }
                 }
             }
+            group { move: 566, 0; ScrollBar(tcol_4.scroll, tcol_4.content, 500) }
         }
 
         // 5 ── Shortcuts ────────────────────────────────────────
@@ -312,7 +327,9 @@ scene MacSettings {
         group tab_6 {
             show: tab == 6
             move: 254, 60
-            column {
+            column tcol_6 {
+                view: 560, 500
+                step: 56
                 gap: 12
                 Card(100) {
                     body {
@@ -367,13 +384,16 @@ scene MacSettings {
                     }
                 }
             }
+            group { move: 566, 0; ScrollBar(tcol_6.scroll, tcol_6.content, 500) }
         }
 
         // 8 ── Night Light & Power ─────────────────────────────
         group tab_8 {
             show: tab == 8
             move: 254, 60
-            column {
+            column tcol_8 {
+                view: 560, 500
+                step: 56
                 gap: 12
                 Card(130) {
                     text "Night Light" { at: 18, 22; anchor: left center; size: 13; weight: 600; color: ink_c }
@@ -407,13 +427,16 @@ scene MacSettings {
                     text pp_note { at: 400, 76; anchor: left center; size: 10.5; color: danger_c; width: 140 }
                 }
             }
+            group { move: 566, 0; ScrollBar(tcol_8.scroll, tcol_8.content, 500) }
         }
 
         // 7 ── Software Update ─────────────────────────────────
         group tab_7 {
             show: tab == 7
             move: 254, 60
-            column {
+            column tcol_7 {
+                view: 560, 500
+                step: 56
                 gap: 12
                 Card(84) {
                     ellipse { at: 44, 42; radius: 24; color: if(up_n > 0, accent_c, ok_c) }
@@ -436,6 +459,7 @@ scene MacSettings {
                     Btn("Check again", 120, check_updates, false, 0, 0)
                 }
             }
+            group { move: 566, 0; ScrollBar(tcol_7.scroll, tcol_7.content, 500) }
         }
     }
         on press dismiss { open = false }
@@ -579,18 +603,6 @@ scene MacSettings {
         box { from: 0, 0; size: 556, h; corner: 14; color: card_fill; opacity: card_fill_op }
         box { from: 0, 0; size: 556, h; corner: 14; stroke: 1; color: c_border; opacity: c_border_op }
         children
-    }
-
-    component ToggleRow(title: text, sub: text, state: bool, tap: event) {
-        size: 556, 56
-        box { from: 0, 0; size: 556, 56; corner: 14; color: card_fill; opacity: card_fill_op }
-        box { from: 0, 0; size: 556, 56; corner: 14; stroke: 1; color: c_border; opacity: c_border_op }
-        text title { at: 18, 20; anchor: left center; size: 13; weight: 600; color: ink_c; width: 440; lines: 1 }
-        text sub { at: 18, 38; anchor: left center; size: 10.5; color: ink_sub; width: 440; lines: 1 }
-        group {
-            move: 494, 16
-            Switch(state, tap)
-        }
     }
 
     //  A row with a button on its right.

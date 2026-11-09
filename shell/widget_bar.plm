@@ -7,6 +7,7 @@ scene MacWidgetBar {
     let mp_sw = 820
     let mp_sh = 170
     include "common/theme.plm"
+    include "common/ui.plm"
     include "common/icons.plm"
     include "common/morph_core.plm"
 
@@ -49,26 +50,12 @@ scene MacWidgetBar {
             text "Layouts" { at: 24, 98; anchor: left center; size: 12; weight: 600; color: ink_sub }
             for pr in presets { PresetChip(pr) }
 
-            Pill("Tidy up", 376, 14, 94, wb_tidy, false, true)
-            Pill(if(snap_on, "Grid: on", "Grid: off"), 480, 14, 90, wb_grid, false, true)
-            Pill("Undo", 580, 14, 70, wb_undo, false, can_undo)
-            Pill("Done", 660, 14, 124, wb_done, true, true)
+            group { move: 376, 14; Pill("Tidy up", 94, wb_tidy, 0, 34, true) }
+            group { move: 480, 14; Pill(if(snap_on, "Grid: on", "Grid: off"), 90, wb_grid, 0, 34, true) }
+            group { move: 580, 14; Pill("Undo", 70, wb_undo, 0, 34, true, can_undo) }
+            group { move: 660, 14; Pill("Done", 124, wb_done, 1, 34, true) }
         }
         on press dismiss { open = false }
-    }
-
-    component Pill(label: text, x: number, y: number, w: number, tap: event, primary: bool, on_: bool) {
-        prop hot = 0 ~quick
-        group {
-            move: x, y
-            box { from: 0, 0; size: w, 34; corner: 17; color: if(primary, accent_c, item_bg); opacity: if(primary, 100%, item_bg_op + hot * 6%) }
-            text label { at: w / 2, 17; anchor: center center; size: 13; weight: if(primary, 600, 500); color: if(primary, #ffffff, ink_c); opacity: if(on_, 100%, 40%) }
-            zone box hit { from: 0, 0; size: w, 34; corner: 17; cursor: pointer; active: on_ }
-            on enter hit { hot: 1 }
-            on leave hit { hot: 0 }
-            on press hit { emit tap }
-            on press right hit { }
-        }
     }
 
     component KindChip(k: record) {

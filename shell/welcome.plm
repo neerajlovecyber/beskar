@@ -5,6 +5,7 @@ import "common/palette.plm"
 
 scene MacWelcome {
     include "common/theme.plm"
+    include "common/ui.plm"
     include "common/icons.plm"
     include "common/here.plm"
 
@@ -62,8 +63,8 @@ scene MacWelcome {
                 Choice(60, 132, "󰖔", "Dark", mode == 1, choose_dark)
                 Choice(228, 132, "󰖨", "Light", mode == 0, choose_light)
                 Choice(396, 132, "󰔎", "Automatic", mode == 2, choose_auto)
-                Switch(60, 250, "Colours from the wallpaper", "The accent, highlights and glass tint follow the picture you choose.", wall_colours, toggle_colours)
-                Switch(60, 318, "Theme other apps", "Terminals, Files and other GTK and Qt apps wear the same colours.", theme_apps, toggle_apps_pref)
+                group { move: 60, 250; ToggleRow("Colours from the wallpaper", "The accent, highlights and glass tint follow the picture you choose.", wall_colours, toggle_colours, 520) }
+                group { move: 60, 318; ToggleRow("Theme other apps", "Terminals, Files and other GTK and Qt apps wear the same colours.", theme_apps, toggle_apps_pref, 520) }
             }
 
             //  ── page 2: shortcuts ──
@@ -178,20 +179,6 @@ scene MacWelcome {
     }
 
     //  a row with a switch
-    component Switch(x: number, y: number, title: text, body: text, on_: bool, tap: event) {
-        group {
-            move: x, y
-            box { from: 0, 0; size: 520, 58; corner: 14; color: item_bg; opacity: item_bg_op }
-            text title { at: 18, 20; anchor: left center; size: 13.5; weight: 600; color: ink_c }
-            text body { at: 18, 40; anchor: left center; size: 11.5; color: ink_sub; width: 420; lines: 1 }
-            box { from: 454, 17; size: 46, 26; corner: 13; color: if(on_, accent_c, item_solid) }
-            ellipse { at: if(on_, 487, 467), 30; radius: 10; color: #ffffff }
-            zone box hit { from: 0, 0; size: 520, 58; corner: 14; cursor: pointer }
-            on press hit { emit tap }
-            on press right hit { }
-        }
-    }
-
     //  a shortcut line
     component Keys(x: number, y: number, keys: text, what: text) {
         group {
