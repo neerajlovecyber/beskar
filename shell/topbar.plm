@@ -509,12 +509,12 @@ scene MacTopBar {
             //  The ring. The sides and the floor melt into what came before, which is what
             //  rounds the inner corners.
             box ceiling { from: -ext, -ext; size: screen.width + ext * 2, ext + ring }
+            //  Style 1 (Strip): full-width flat bar, declared BEFORE the rails so their inner corners melt into it with the same curve as the bottom like macOS menu bar (flat bottom edge, NO notch shape and NO fillets)
+            box strip_bar { from: -ext, -ext; size: screen.width + ext * 2, ext + ring + 32 * s_strip }
             box rail_l  { from: -ext, 0; size: ext + ring, screen.height; blend: curve }
             box rail_r  { from: screen.width - ring, 0; size: ext + ring, screen.height; blend: curve }
             box floor   { from: -ext, screen.height - ring; size: screen.width + ext * 2, ext + ring; blend: curve }
 
-            //  Style 1 (Strip): full-width flat bar like macOS menu bar (flat bottom edge, NO notch shape and NO fillets)
-            box strip_bar { from: -ext, -ext; size: screen.width + ext * 2, ext + ring + 32 * s_strip }
 
             //  The three top islands ARE the panel shapes below (at rest they are just the island): drawing the island
             //  twice made the smooth union inflate it and left bumps along the bottom edge when a panel was open.
