@@ -202,8 +202,8 @@ scene MacTopBar {
         box { from: 0, 0; size: 24, 24; corner: 8; color: ink_c; opacity: hot * 14% }
         //  three arcs that fill with the signal; dim and slashed when there is no connection
         arc { at: 12, 17; radius: 4.2; span: 90deg; width: 1.9; color: ink_c; opacity: if(net.online, 100%, 30%) }
-        arc { at: 12, 17; radius: 8; span: 90deg; width: 1.9; color: ink_c; opacity: if(net.online and net.strength > 30, 100%, 30%) }
-        arc { at: 12, 17; radius: 11.8; span: 90deg; width: 1.9; color: ink_c; opacity: if(net.online and net.strength > 60, 100%, 30%) }
+        arc { at: 12, 17; radius: 8; span: 90deg; width: 1.9; color: ink_c; opacity: if(net.online and net.strength > 0.33, 100%, 30%) }
+        arc { at: 12, 17; radius: 11.8; span: 90deg; width: 1.9; color: ink_c; opacity: if(net.online and net.strength > 0.66, 100%, 30%) }
         ellipse { at: 12, 17.4; radius: 1.5; color: ink_c; opacity: if(net.online, 100%, 30%) }
         line { from: 5, 5; to: 19, 19; width: 1.8; color: ink_c; opacity: if(net.online, 0%, 100%) }
         zone box hit { from: 0, 0; size: 24, 24; corner: 8; cursor: pointer }
