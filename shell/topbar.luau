@@ -105,6 +105,18 @@ on("panel_open", function(id)
             fact[p.island .. "_h"] = heights[p.id]
         end
         fact[p.island .. "_on"] = true
+        if p.island == "bp" then
+            fact.bp_keep = (p.name == "widget_bar")
+        end
+    end
+end)
+
+-- a click on nothing while a panel is open: close every panel (the widget bar stays: you work on the desktop with it)
+on("outside_click", function()
+    for name, p in pairs(PANELS) do
+        if name ~= "banner" and name ~= "widget_bar" then
+            pcall(sys.call, "say", name, "fact open false")
+        end
     end
 end)
 

@@ -75,6 +75,7 @@ scene MacTopBar {
     text m_art = ""
     image m_cover = from m_art, 22, 22
     fact cp_kind = 0          // what owns the centre island: 0 the dashboard · 1 a notification banner (the clock gives way)
+    fact bp_keep = false      // the open bottom panel must survive a click outside (the widget bar: you drag cards while it is up)
     fact bp_on = false        // bottom: the dock island grows UP into Spotlight / the wallpaper strip
     fact bp_screen = -1
     fact bp_w = 680
@@ -135,6 +136,7 @@ scene MacTopBar {
     event ws_go ->
     event ws_focus ->
     event dock_click ->
+    event outside_click ->   // a click on nothing while a panel is open closes it
     event dock_pin ->
     event dock_quit ->
     event dock_hover ->
@@ -518,6 +520,12 @@ scene MacTopBar {
             //  with a bottom panel open (Spotlight, wallpapers) it grows up and out into the panel's glass.
             box dock_island { from: screen.width / 2 - (dw * clamp((vis - 0.3) * 1.8, 0, 1) + max(0, bpw - dw) * bv) / 2, screen.height - dock_h * vis - max(0, bph - dock_h) * bv; size: dw * clamp((vis - 0.3) * 1.8, 0, 1) + max(0, bpw - dw) * bv, dock_h + ext + max(0, bph - dock_h) * bv; corner: 24; blend: dock_fillet }
         }
+
+        //  A click anywhere that is neither the panel nor a bar / dock button closes the open panel (as macOS does). It is
+        //  declared BEFORE every button zone so those stay on top; the panels are separate surfaces above this one.
+        zone box outside_zone { from: 0, 0; size: screen.width, screen.height; active: (rp_on or (cp_on and cp_kind == 0) or (bp_on and not bp_keep)) }
+        on press outside_zone { emit outside_click }
+        on press right outside_zone { emit outside_click }
 
         // ── left island: menu orb · workspace · window ───────────
         row left_row {
