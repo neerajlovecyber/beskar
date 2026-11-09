@@ -791,7 +791,7 @@ on("dock_pin", function(i)
             build_dock()
         elseif it.pid then        -- pin: learn the command line from /proc
             local aid = it.app_id
-            run("sh", { "-c", 'P=/proc/' .. tostring(it.pid) .. '; A=$(tr "\\0" "\\n" < $P/environ 2>/dev/null | sed -n "s/^APPIMAGE=//p" | head -1); if [ -n "$A" ]; then echo "$A"; else tr "\\0" " " < $P/cmdline; fi' }, function(out)
+            run("sh", { "-c", 'P=/proc/' .. tostring(it.pid) .. '; ID="$1"; for d in "$HOME/.local/share/applications" /usr/local/share/applications /usr/share/applications; do f="$d/$ID.desktop"; if [ -f "$f" ]; then C=$(sed -n "s/^Exec=//p" "$f" | head -1 | sed "s/ *%[a-zA-Z]//g"); [ -n "$C" ] && { echo "$C"; exit 0; }; fi; done; A=$(tr "\\0" "\\n" < $P/environ 2>/dev/null | sed -n "s/^APPIMAGE=//p" | head -1); if [ -n "$A" ]; then echo "$A"; else tr "\\0" " " < $P/cmdline; fi', "x", aid }, function(out)
                 local cmd = (out or ""):gsub("%s+$", ""):gsub("[\n|]", " ")
                 if cmd == "" then return end
                 local list = {}
