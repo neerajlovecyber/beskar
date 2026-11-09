@@ -8,6 +8,7 @@
 //   Chip(label, on, pick, n, w)    a chip chosen from a list; highlighted when `on`
 //   ToggleRow(title, sub, state, tap, w)   a card row with a title, a sub line and a Switch on its right
 //   Pill(label, w, tap, tone, h, round, on_)  a button with a tone (0 neutral, 1 accent, 2 danger, 3 on a fill)
+//   PanelHeader(glyph, title) / PanelSearch(w, ph)   the header and the bottom search field of a dock panel
 //   Divider(len)                   a 1 px line
 //   ScrollBar(sc, ct, h)           a thin scroll bar for a `view:` layout (list.scroll, list.content, the seen height)
 part Ui {
@@ -113,5 +114,21 @@ part Ui {
         on leave hit { glow: 0 }
         on press hit { emit tap }
         on press right hit { }
+    }
+
+    //  ── the design language of the panels that grow out of the dock (Spotlight, clipboard, wallpapers, …) ──
+    //  Top: a header (accent glyph + title; the scene puts its own count / actions on the right of the same line, at y 30).
+    //  Bottom: a divider and the search field, ALWAYS at the bottom (nearest the dock, where the panel grows from).
+    //  The scene declares the `input` itself (its text is the scene's) at the standard place:
+    //      input q { at: 68, ph - 50; width: <panel width> - 110; size: 19; color: ink_c; placeholder: "…"; selection: accent_c }
+    component PanelHeader(g: text, title: text) {
+        text g { at: 36, 30; anchor: center center; size: 16; family: "JetBrainsMono Nerd Font Mono"; color: accent_c }
+        text title { at: 56, 30; anchor: left center; size: 15; weight: 700; color: ink_c }
+    }
+
+    //  The footer's decoration: the divider and the magnifier. `w` is the glass width, `ph` its height.
+    component PanelSearch(w: number, ph: number) {
+        box { from: 28, ph - 74; size: w - 56, 1; color: card_stroke; opacity: card_stroke_op }
+        text "󰍉" { at: 46, ph - 38; anchor: center center; size: 19; family: "JetBrainsMono Nerd Font Mono"; color: ink_c; opacity: 60% }
     }
 }

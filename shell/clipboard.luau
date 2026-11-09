@@ -118,7 +118,7 @@ local function rebuild(keep_off)
     if #rows > 0 and (fact.sel >= #rows or fact.sel < 0) then
         fact.sel = 0
     end
-    panel.height(96 + math.max(#rows, 1) * 46 + 30)
+    panel.height(58 + math.max(#rows, 1) * 46 + 84)
 end
 
 repaint = function()

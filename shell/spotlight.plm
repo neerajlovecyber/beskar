@@ -34,11 +34,7 @@ scene MacSpotlight {
         on scroll list_wheel { sc_t = clamp(sc_t - wheel * 44, 0, max(0, hits.count * 44 - 308)) }
         group { move: 614, 14; ScrollBar(sc, hits.count * 44 - 2, 306) }
 
-        // Separator Line
-        box { from: 28, ph - 74; size: 584, 1; color: line_color; opacity: line_op }
-
-        // Spotlight Magnifying Glass & Search Field
-        text "󰍉" { family: "JetBrainsMono Nerd Font Mono"; at: 46, ph - 38; anchor: center; size: 19; color: ink_c; opacity: 60% }
+        PanelSearch(640, ph)
         input query {
             at: 68, ph - 50
             width: 530

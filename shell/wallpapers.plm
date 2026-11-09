@@ -7,6 +7,7 @@ scene MacWallpapers {
     let mp_sw = 1000
     let mp_sh = 300
     include "common/theme.plm"
+    include "common/ui.plm"
     include "common/morph_core.plm"
 
     surface sheet {
@@ -26,8 +27,8 @@ scene MacWallpapers {
         zone box inside { from: 0, 0; size: 980, 250 }
         on press right inside { }
 
-        text "Wallpapers" { at: 28, 30; anchor: left center; size: 17; weight: 700; color: ink_c }
-        text wall_hint { at: 150, 32; anchor: left center; size: 11.5; color: ink_sub }
+        PanelHeader("󰸉", "Wallpapers")
+        text wall_hint { at: 170, 32; anchor: left center; size: 11.5; color: ink_sub }
         row {
             at: 950, 30
             anchor: right middle
