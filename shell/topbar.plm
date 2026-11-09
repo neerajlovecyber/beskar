@@ -703,7 +703,7 @@ scene MacTopBar {
                     ellipse { at: 11, 11; radius: 11; color: accent_c }
                     group {
                         clip box { from: 0, 0; size: 22, 22; corner: 11 }
-                        image m_cover { at: -9, 0; size: 40, 22; show: m_has_art }
+                        image m_cover { at: -10, -1; size: 42, 24; show: m_has_art }
                     }
                 }
                 group {
