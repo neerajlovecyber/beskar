@@ -26,7 +26,7 @@ scene MacTopBar {
     //  the weather, and the dock's apps. Undeclared is nothing.
     permissions {
         services: "clock", "network", "battery", "window", "tray", "tray.*", "apps", "apps.launch", "audio", "audio.*", "brightness", "brightness.*", "media", "media.*", "thumbnails", "thumbnails.*", "say:music", "say:weather", "say:capture", "say:control_center", "say:spotlight", "say:notifications", "say:dashboard", "say:settings", "say:session", "say:appswitcher", "say:lock", "say:clipboard", "say:wallpapers", "say:widget_bar", "say:polkit", "say:welcome", "say:widgets", "say:overview"
-        run: "niri msg", "curl", "sh", "systemctl", "xdg-open", "notify-send"
+        run: "niri msg", "curl", "sh", "systemctl", "xdg-open", "notify-send", "pkexec"
     }
 
     service clock as now { time: text = "--:--"; date: text }
@@ -280,7 +280,7 @@ scene MacTopBar {
         on press right hit { }
     }
 
-    //  Updates: a small download arrow with the count, only while pacman has something to install; opens Settings → Software Update.
+    //  Updates: a small download arrow with the count, only while pacman has something to install; a click shows the update card in the centre pill.
     component UpdateIcon(tap: event) {
         size: 24, 24
         prop hot = 0 ~quick

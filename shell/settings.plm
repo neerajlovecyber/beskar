@@ -1,7 +1,7 @@
 // System Settings: a sidebar of categories (with search) and a pane of real controls. Every switch, slider and
 // button here does something: the logic is settings.luau. Window 840 × 580, centred on the monitor with the focus.
 //
-//   0 Appearance · 1 Displays · 2 Sound · 3 Notifications · 4 Menu Bar & Dock · 5 Shortcuts · 6 General · 7 Software Update
+//   0 Appearance · 1 Displays · 2 Sound · 3 Notifications · 4 Menu Bar & Dock · 5 Shortcuts · 6 General
 import "common/palette.plm"
 
 scene MacSettings {
@@ -430,37 +430,6 @@ scene MacSettings {
             group { move: 566, 0; ScrollBar(tcol_8.scroll, tcol_8.content, 500) }
         }
 
-        // 7 ── Software Update ─────────────────────────────────
-        group tab_7 {
-            show: tab == 7
-            move: 254, 60
-            column tcol_7 {
-                view: 560, 500
-                step: 56
-                gap: 12
-                Card(84) {
-                    ellipse { at: 44, 42; radius: 24; color: if(up_n > 0, accent_c, ok_c) }
-                    text pick(if(up_checking or up_running, 2, if(up_n > 0, 1, 0)), "󰄬", "󰚰", "󰑐") { family: "JetBrainsMono Nerd Font Mono"; at: 44, 42; anchor: center center; size: 24; color: on_accent }
-                    text up_title { at: 84, 30; anchor: left center; size: 16; weight: 700; color: ink_c }
-                    text up_sub { at: 84, 54; anchor: left center; size: t_cap; color: ink_sub; width: 440 }
-                }
-                Card(250) {
-                    text "Available updates" { at: 18, 18; size: t_body; weight: 600; color: ink_c }
-                    column {
-                        at: 18, 40
-                        gap: 4
-                        for u in ups { UpdateRow(u) }
-                    }
-                    text "Everything is up to date" { at: 278, 130; anchor: center center; size: t_sub; color: ink_sub; show: ups.count < 1 and not up_checking }
-                }
-                row {
-                    gap: 12
-                    Btn(if(up_running, "Updating…", "Update all"), 130, run_update, true, 0, 0)
-                    Btn("Check again", 120, check_updates, false, 0, 0)
-                }
-            }
-            group { move: 566, 0; ScrollBar(tcol_7.scroll, tcol_7.content, 500) }
-        }
     }
         on press dismiss { open = false }
     on press right dismiss { }
@@ -468,7 +437,7 @@ scene MacSettings {
 
     permissions {
         services: "clock", "audio", "audio.*", "brightness", "brightness.*", "network", "network.*", "bluetooth", "bluetooth.*", "say:topbar", "say:spotlight", "say:control_center", "say:notifications", "say:dashboard", "say:clipboard", "say:music", "say:weather", "say:wallpapers", "say:widget_bar", "say:lock", "say:capture", "say:session", "say:appswitcher", "say:widgets"
-        run: "matugen", "powerprofilesctl", "magick", "gsettings", "systemctl", "loginctl", "kitty", "pacman", "yay", "paru", "checkupdates", "pkexec", "sh", "niri msg"
+        run: "matugen", "powerprofilesctl", "magick", "gsettings", "systemctl", "loginctl", "kitty", "pacman", "yay", "paru", "sh", "niri msg"
     }
 
     service audio as sound { volume: number; muted: bool }
@@ -491,7 +460,6 @@ scene MacSettings {
     model hzlist max 5 { label: text; cur: bool }
     model outs max 4 { name: text; def: bool }
     model binds max 9 { keys: text; what: text }
-    model ups max 6 { name: text; ver: text }
     text about_host = "…"
     text about_up = "…"
     fact disp_scale_i = 0
@@ -521,11 +489,6 @@ scene MacSettings {
     fact bar_style = 0
 
 
-    fact up_n = 0
-    fact up_checking = false
-    fact up_running = false     // pacman -Syu is running (through pkexec: the polkit popup asks for the password)
-    text up_title = "Software Update"
-    text up_sub = ""
 
     //  About this PC: filled in by settings.luau from the machine itself
     text about_os = "Linux"
@@ -579,9 +542,6 @@ scene MacSettings {
     event disp_scale ->
     event disp_res ->
     event disp_hz ->
-    event open_updates_tab ->
-    event run_update ->
-    event check_updates ->
     event toggle_dnd ->
     event toggle_banners ->
     event toggle_group ->
@@ -701,14 +661,6 @@ scene MacSettings {
         box { from: 0, 0; size: 556, 40; corner: r_s; color: card_fill; opacity: card_fill_op * 70% }
         text b.what { at: 16, 20; anchor: left center; size: t_sub; color: ink_c; width: 280; lines: 1 }
         text b.keys { at: 540, 20; anchor: right center; size: t_sub; weight: 600; color: accent_c; width: 240; lines: 1; align: right }
-    }
-
-    component UpdateRow(u: record) {
-        size: 520, 30
-        box { from: 0, 0; size: 520, 30; corner: 8; color: field_bg }
-        Sym("󰏗", 18, 15, 14, accent_c)
-        text u.name { at: 38, 15; anchor: left center; size: t_sub; weight: 600; color: ink_c; width: 220; lines: 1 }
-        text u.ver { at: 506, 15; anchor: right center; size: t_cap; color: ink_sub; width: 240; lines: 1; align: right }
     }
 
     //  A wallpaper thumbnail: click to apply.

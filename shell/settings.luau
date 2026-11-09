@@ -19,7 +19,7 @@ end
 local CATS = {
     { 0, "󰏘", 0, "Appearance" }, { 1, "󰍹", 1, "Displays" }, { 2, "󰕾", 2, "Sound" },
     { 3, "󰒎", 3, "Notifications" }, { 4, "󰍜", 4, "Menu Bar & Dock" },
-    { 5, "󰌌", 5, "Shortcuts" }, { 6, "󰋚", 6, "General" }, { 7, "󰚰", 7, "Software Update" },
+    { 5, "󰌌", 5, "Shortcuts" }, { 6, "󰋚", 6, "General" },
     { 8, "󰌵", 8, "Night Light & Power" },
 }
 -- Nerd-font glyphs are not drawn symmetrically in their box: how far each one sits right of the middle (measured)
@@ -671,60 +671,6 @@ on("bind_scroll", function(wheel)
     paint_binds(false)
 end)
 
--- ── Software update (pacman) ─────────────────────────────────────
-local function check_updates()
-    fact.up_checking = true
-    text.up_title = "Checking…"
-    text.up_sub = "Asking the package servers"
-    sh('timeout 40 checkupdates 2>/dev/null', function(out, code)
-        fact.up_checking = false
-        local rows, n = {}, 0
-        for line in (out or ""):gmatch("[^\n]+") do
-            local name, old, new = line:match("^(%S+)%s+(%S+)%s+%->%s+(%S+)")
-            if name then
-                n = n + 1
-                if #rows < 6 then
-                    rows[#rows + 1] = { name = name, ver = old .. " → " .. new }
-                end
-            end
-        end
-        model.ups = rows
-        fact.up_n = n
-        if code == 0 or code == 2 then pcall(sys.call, "say", "topbar", "fact upd_n " .. n) end
-        if n == 0 then
-            text.up_title = "Your system is up to date"
-            text.up_sub = (code ~= 0 and code ~= 2) and "Could not reach the package servers" or "Nothing to install"
-        else
-            text.up_title = n .. (n == 1 and " update available" or " updates available")
-            text.up_sub = (n > #rows) and ("Showing the first " .. #rows .. ". Update all installs everything.") or "Ready to install"
-        end
-    end)
-end
-on("check_updates", check_updates)
--- "Update all" runs pacman in the background as root through pkexec: the polkit popup (polkit.plm) asks for the
--- password, the last line pacman prints is shown as progress, and the list is checked again when it ends.
-local update_id = nil
-on("run_update", function()
-    if fact.up_running then return end
-    fact.up_running = true
-    text.up_title = "Updating…"
-    text.up_sub = "Waiting for your password"
-    update_id = spawn("pkexec", { "pacman", "-Syu", "--noconfirm" }, function(line)
-        line = (line or ""):gsub("%c%[[%d;]*%a", ""):gsub("^%s+", ""):gsub("%s+$", "")
-        if line ~= "" then text.up_sub = line:sub(1, 70) end
-    end, function(_, code)
-        update_id = nil
-        fact.up_running = false
-        if code == 0 then
-            check_updates()
-        else
-            text.up_title = "The update did not finish"
-            text.up_sub = (code == 126 or code == 127) and "The password was not given" or ("pacman stopped (code " .. tostring(code) .. ")")
-        end
-    end, { env = { LC_ALL = "C" } })
-end)
-on("open_updates_tab", function() fact.tab = 7 end)
-
 -- ── navigation ───────────────────────────────────────────────────
 on("pick_cat", function(i) fact.tab = tonumber(i) or 0 end)
 on("fact:tab", function(v)
@@ -732,7 +678,6 @@ on("fact:tab", function(v)
     text.pane_title = TITLES[t] or "Settings"
     if t == 1 then refresh_displays()
     elseif t == 5 then load_binds()
-    elseif t == 7 and (fact.up_n or 0) == 0 then check_updates()
     end
 end)
 on("fact:open", function(v)

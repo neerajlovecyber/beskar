@@ -51,3 +51,6 @@ on("pk_cancel", function()
     fact.open = false
     pending = false
 end)
+
+-- the password popup must not end up behind another panel (Settings, Control Center…): they close when it opens
+require("exclusive")("polkit")

@@ -10,7 +10,7 @@ scene MacPolkit {
     include "common/here.plm"
 
     permissions {
-        services: "polkit", "polkit.*", "say:topbar"
+        services: "polkit", "polkit.*", "say:topbar", "say:spotlight", "say:clipboard", "say:control_center", "say:notifications", "say:dashboard", "say:settings", "say:wallpapers", "say:music", "say:weather", "say:widget_bar", "say:overview"
     }
 
     surface sheet {
