@@ -285,9 +285,9 @@ scene MacTopBar {
         size: 24, 24
         prop hot = 0 ~quick
         box { from: 0, 0; size: 24, 24; corner: 8; color: ink_c; opacity: hot * 14% }
-        Sym("󰇚", 11, 13, 17, accent_c)
-        ellipse { at: 19, 5; radius: 5.5; color: accent_c }
-        text "{min(upd_n, 99)}" { at: 19, 5; anchor: center; size: 7.5; weight: 700; color: on_accent }
+        Sym("󰇚", 11, 13, 17, ink_c)
+        ellipse { at: 19, 5; radius: 5.5; color: ink_c }
+        text "{min(upd_n, 99)}" { at: 19, 5; anchor: center; size: 7.5; weight: 700; color: bar_color }
         zone box hit { from: 0, 0; size: 24, 24; corner: 8; cursor: pointer }
         on enter hit { hot: 1 }
         on leave hit { hot: 0 }
