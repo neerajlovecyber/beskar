@@ -8,7 +8,8 @@ end
 
 local function resize()
     local n = tonumber(fact.n) or 0
-    panel.height(70 + math.min(math.max(n, 1), 8) * 34 + 24 + (n < 1 and 70 or 0) + 36 + 20)
+    local rows = fact.show_log and 8 or math.min(math.max(n, 1), 8)
+    panel.height(70 + rows * 34 + 24 + ((n < 1 and not fact.show_log) and 70 or 0) + 36 + 20)
 end
 
 local function tell_bar(n)
@@ -38,6 +39,7 @@ local function check()
     if fact.checking then return end
     fact.checking = true
     fact.failed = false
+    if not fact.running then fact.show_log = false end
     sh("timeout 60 checkupdates 2>/dev/null", function(out, code)
         local rows = {}
         local n = parse(out, false, rows)
@@ -73,13 +75,23 @@ end
 
 -- Update all: pacman -Syu (official), then the AUR helper (-Sua). Both run as root through pkexec (our popup asks):
 -- the helper builds as you and calls `--sudo pkexec` for its installs, so no terminal and no sudo are involved.
+local LOG = {}
+local function log_line(l)
+    LOG[#LOG + 1] = { t = l:sub(1, 70) }
+    while #LOG > 14 do table.remove(LOG, 1) end
+    model.logl = LOG
+end
+
 local function run_step(cmd, args, label, on_done)
     local last_error = nil
     text.status = "Waiting for your password…"
     spawn(cmd, args, function(line)
-        line = (line or ""):gsub("%c%[[%d;]*%a", ""):gsub("^%s+", ""):gsub("%s+$", "")
+        line = (line or ""):gsub("%c%[[%d;]*%a", ""):gsub("^.*\r", ""):gsub("^%s+", ""):gsub("%s+$", "")
         if line:match("^error") then last_error = line end
-        if line ~= "" then text.status = (label .. line):sub(1, 60) end
+        if line ~= "" then
+            log_line(line)
+            text.status = (label .. line):sub(1, 60)
+        end
     end, function(_, code)
         on_done(code, last_error)
     end, { env = { LC_ALL = "C" }, errors = true })
@@ -89,6 +101,7 @@ local function finish_update(code, err)
     fact.running = false
     if code == 0 then
         text.status = "System updated"
+        fact.show_log = false
         check()
     else
         fact.failed = true
@@ -100,6 +113,10 @@ local function update()
     if fact.running then return end
     fact.running = true
     fact.failed = false
+    LOG = {}
+    model.logl = LOG
+    fact.show_log = true
+    resize()
     run_step("pkexec", { "pacman", "-Syu", "--noconfirm" }, "", function(code, err)
         if code == 0 and helper then
             local args = { "-Sua", "--noconfirm", "--sudo", "pkexec" }
