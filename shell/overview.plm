@@ -108,23 +108,8 @@ scene MacOverview {
         prop on = 0 ~quick
         follow on = if(sel == w.index, 1, 0)
 
-        // Card base & selection highlight
-        box hit {
-            from: 0, 0
-            size: 274, 165
-            corner: 14
-            color: if(sel == w.index, accent_c, item_solid)
-            opacity: if(sel == w.index, 24%, 40%)
-            cursor: pointer
-        }
-        box {
-            from: 0, 0
-            size: 274, 165
-            corner: 14
-            stroke: if(sel == w.index, 2, 1)
-            color: if(sel == w.index, accent_c, stroke_c)
-            opacity: if(sel == w.index, 90%, stroke_op)
-        }
+        SelectCard(274, 165, sel == w.index)
+        zone box hit { from: 0, 0; size: 274, 165; corner: r_l; cursor: pointer }
 
         // Preview thumbnail area (clipped)
         group {

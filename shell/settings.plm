@@ -720,6 +720,8 @@ scene MacSettings {
     //  A category in the sidebar; `c.tint` picks the icon colour.
     component SidebarItem(c: record) {
         size: 206, 30
+        prop hot = 0 ~quick
+        box { from: 0, 0; size: 206, 30; corner: r_s; color: ink_c; opacity: if(tab == c.idx, 0%, hot * 7%) }
         box hit {
             from: 0, 0
             size: 206, 30
@@ -734,6 +736,8 @@ scene MacSettings {
             Sym(c.icon, 11 - c.dx, 10.5, 13, on_accent)
         }
         text c.name { at: 36, 15; anchor: left center; size: t_body; weight: if(tab == c.idx, 600, 400); color: if(tab == c.idx, on_accent, ink_c) }
+        on enter hit { hot: 1 }
+        on leave hit { hot: 0 }
         on press hit { emit pick_cat(c.idx) }
         on press right hit { }
     }

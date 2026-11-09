@@ -13,6 +13,7 @@
 //   RowFrame(w, h, on)   the selected look of a list row (accent pill + left bar); the scene adds its zone and content
 //   Slider(w, level, set, tone, thick, floor)   a draggable level (emits set(0..1))
 //   SectionLabel(x, y, LABEL) / KeyHint(x, y, text)   a small caps label above rows / the keys line of a modal panel
+//   SelectCard(w, h, selected)   a selectable card (switcher, overview); the scene adds its hit zone
 //   Divider(len)                   a 1 px line
 //   ScrollBar(sc, ct, h)           a thin scroll bar for a `view:` layout (list.scroll, list.content, the seen height)
 part Ui {
@@ -174,5 +175,12 @@ part Ui {
         on press hit { emit set(clamp(local.x / w, floor, 1)) }
         on drag hit { emit set(clamp(local.x / w, floor, 1)) }
         on press right hit { }
+    }
+
+    //  A selectable card (app switcher, overview): a soft fill, a 1 px edge, and when selected the accent fill and a 2 px
+    //  accent edge. Visual only: the scene adds its `zone box hit { … cursor: pointer }` over it.
+    component SelectCard(w: number, h: number, selected: bool) {
+        box { from: 0, 0; size: w, h; corner: r_l; color: if(selected, accent_c, item_solid); opacity: if(selected, 24%, 40%) }
+        box { from: 0, 0; size: w, h; corner: r_l; stroke: if(selected, 2, 1); color: if(selected, accent_c, card_stroke); opacity: if(selected, 90%, card_stroke_op) }
     }
 }
