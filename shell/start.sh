@@ -221,7 +221,7 @@ case "$1" in
         ;;
     session)
         K_VAL="${2:-0}"
-        "$BIN" --say dialogs "fact kind $K_VAL"
+        "$BIN" --say dock "fact kind $K_VAL"
         "$BIN" --say topbar "emit open_panel 5"
         ;;
     shot)

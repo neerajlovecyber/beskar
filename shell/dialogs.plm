@@ -1,6 +1,5 @@
-// Dialogs: the session dialog (shut down / restart / log out), the polkit password dialog and the first-run welcome in
-// ONE scene (three named surfaces that share one open / open_screen / cur state; only one dialog is ever up).
-// `cur`: 1 session · 2 polkit (the authentication agent) · 3 welcome. Logic: dialogs.luau.
+// Dialogs: the first-run welcome (a centred window). The session dialog and the polkit password dialog moved to the DOCK
+// scene (dock.plm: they grow out of the dock like Spotlight). Logic: dialogs.luau.
 import "common/palette.plm"
 
 scene MacDialogs {
@@ -10,16 +9,15 @@ scene MacDialogs {
     include "common/here.plm"
 
     permissions {
-        services: "polkit", "polkit.*", "say:topbar", "say:settings", "say:spotlight", "say:clipboard", "say:control_center", "say:notifications", "say:panels", "say:dock", "say:modals", "say:wallpapers", "say:widget_bar", "say:overview"
-        run: "systemctl", "niri msg", "sh"
+        services: "say:topbar", "say:settings", "say:spotlight", "say:clipboard", "say:control_center", "say:notifications", "say:panels", "say:dock", "say:modals", "say:wallpapers", "say:widget_bar", "say:overview"
+        run: "sh"
     }
 
     // ── shared state ────────────────────────────────────────────
     fact open = false
-    fact cur = 1
+    fact cur = 3
     prop seen = 0 ~quick
     prop scale = 0.96 ~lively
-    prop shake = 0 ~quick
     layer modal ~quick {
         shown while open { seen: 1 ~quick; scale: 1 ~lively }
         gone             { seen: 0 ~quick; scale: 0.96 ~quick }
@@ -29,29 +27,6 @@ scene MacDialogs {
     on change cur { emit dlg_sync }
     event show_dialog ->         // show_dialog(id): open that dialog (set by topbar.luau / start.sh)
     event toggle_dialog ->       // toggle_dialog(id)
-
-    // ── session ─────────────────────────────────────────────────
-    fact kind = 0            // 0: Shut Down, 1: Restart, 2: Log Out
-    fact countdown = 60      // 60-second automatic timer
-    fact ses_sel = 1         // the button Enter presses: 0 Cancel, 1 the action (the default)
-    fact reopen = true       // Reopen windows when logging back in
-    let stroke_c = card_stroke
-    let stroke_op = card_stroke_op
-    event confirm_action ->
-    event ses_enter ->
-    event dismiss
-
-    // ── polkit ──────────────────────────────────────────────────
-    fact pk_secret = true
-    fact pk_asking = false
-    fact pk_wrong = false
-    text pk_message = ""
-    text pk_prompt = "Password"
-    text pk_info = ""
-    text password = ""
-    event pk_cancel ->
-    event pk_answer ->
-    event pk_shake
 
     // ── welcome ─────────────────────────────────────────────────
     fact page = 0
@@ -68,183 +43,7 @@ scene MacDialogs {
     event toggle_colours ->
     event toggle_apps_pref ->
 
-    surface session {
-        size: 520, 330
-        anchor: bottom
-        margin: 0, 0, 84, 0
-        level: overlay
-        keyboard: exclusive while open and cur == 1
-        screens: each
-        open: (open or seen > 0.02) and cur == 1 and open_screen == screen.index
 
-    zone box ses_scrim { from: 0, 0; size: 520, 330; active: open and cur == 1 }
-
-    group {
-        move: 40, 20 + (1 - seen) * 36
-        pivot: 220, 140
-        scale: scale
-        opacity: seen
-
-        // Dialog Glass Surface
-        body {
-            color: bg_color
-            glass: glass_amt
-            lens: false
-            frost: 100%
-            dispersion: 0
-            refraction: 0
-            tint: tint_amt
-            rim: rim_amt
-            box { from: 0, 0; size: 440, 280; corner: r_l }
-        }
-        box { from: 0, 0; size: 440, 280; corner: r_l; stroke: 1; color: stroke_c; opacity: stroke_op }
-
-        // Top Big Icon
-        group {
-            move: 220, 52
-            ellipse { at: 0, 0; radius: 26; color: pick(kind, danger_c, warn_c, focus_c) }
-            text pick(kind, "󰐥", "󰑐", "󰍃") { family: "JetBrainsMono Nerd Font Mono"; at: 0, 0; anchor: center; size: 26; color: on_accent }
-        }
-
-        // Title text
-        text pick(kind, "Are you sure you want to shut down your computer?", "Are you sure you want to restart your computer?", "Are you sure you want to log out?") {
-            at: 220, 102
-            anchor: center
-            size: 15
-            weight: 700
-            color: ink_c
-            width: 400
-            lines: 1
-        }
-
-        // Subtitle with live countdown
-        text pick(kind, "Your computer will shut down automatically in {countdown} seconds.", "Your computer will restart automatically in {countdown} seconds.", "You will be logged out automatically in {countdown} seconds.") {
-            at: 220, 128
-            anchor: center
-            size: 12
-            color: ink_sub
-            width: 380
-            lines: 1
-        }
-
-        // Reopen checkbox card
-        group {
-            move: 50, 160
-            box ses_hit_reopen { from: 0, 0; size: 340, 30; corner: 6; color: scrim_c; opacity: 0%; cursor: pointer }
-            box { from: 10, 7; size: 16, 16; corner: 4; color: if(reopen, accent_c, item_solid) }
-            text "󰄲" { family: "JetBrainsMono Nerd Font Mono"; at: 18, 15; anchor: center; size: 12; color: on_accent; show: reopen }
-            text "Reopen windows when logging back in" { at: 36, 15; anchor: left center; size: t_sub; color: ink_c }
-            on press ses_hit_reopen { toggle reopen }
-        }
-
-        KeyHint(220, 262, "Enter  confirm   ·   ← →  choose   ·   Esc  cancel")
-
-        // Action Buttons Row (macOS standard: Cancel on left, Primary on right)
-        row {
-            at: 220, 226
-            gap: 16
-            anchor: center
-
-            // Cancel Button
-            group {
-                size: 120, 32
-                box { from: 0, 0; size: 120, 32; corner: 8; color: if(dark_mode, item_solid, item_solid) }
-                box { from: -2, -2; size: 124, 36; corner: 10; stroke: 2; color: ink_c; opacity: if(ses_sel == 0, 80%, 0%) }
-                text "Cancel" { at: 60, 16; anchor: center; size: t_body; weight: 500; color: ink_c }
-                zone box ses_btn_cancel { from: 0, 0; size: 120, 32; cursor: pointer }
-                on press ses_btn_cancel { emit dismiss }
-            }
-
-            // Primary Action Button (Shut Down / Restart / Log Out)
-            group {
-                size: 130, 32
-                box { from: 0, 0; size: 130, 32; corner: 8; color: pick(kind, danger_c, warn_c, accent_c) }
-                box { from: -2, -2; size: 134, 36; corner: 10; stroke: 2; color: ink_c; opacity: if(ses_sel == 1, 80%, 0%) }
-                text pick(kind, "Shut Down", "Restart", "Log Out") { at: 65, 16; anchor: center; size: t_body; weight: 600; color: on_accent }
-                zone box ses_btn_confirm { from: 0, 0; size: 130, 32; cursor: pointer }
-                on press ses_btn_confirm { emit confirm_action }
-            }
-        }
-    }
-        on press ses_scrim { open = false }
-    on press right ses_scrim { }
-            on press right ses_scrim { }
-    }
-
-    surface auth {
-        size: 520, 350
-        anchor: bottom
-        margin: 0, 0, 84, 0
-        level: overlay
-        keyboard: exclusive while open and cur == 2
-        screens: each
-        open: (open or seen > 0.02) and cur == 2 and open_screen == screen.index
-
-        zone box pk_scrim { from: 0, 0; size: 520, 350; active: open and cur == 2 }
-
-        group {
-            pivot: 220, 150
-            scale: scale
-            opacity: seen
-            move: 40 + shake, 20 + (1 - seen) * 36
-
-            body {
-                color: bg_color
-                glass: glass_amt
-                lens: false
-                frost: 100%
-                dispersion: 0
-                refraction: 0
-                tint: tint_amt
-                rim: rim_amt
-                box { from: 0, 0; size: 440, 300; corner: r_l }
-            }
-            box { from: 0, 0; size: 440, 300; corner: r_l; stroke: 1; color: card_stroke; opacity: card_stroke_op }
-
-            //  the icon
-            ellipse { at: 220, 50; radius: 26; color: accent_c }
-            Sym("󰌾", 220, 50, 26, on_accent)
-
-            text "Authentication required" { at: 220, 98; anchor: center center; size: t_title; weight: 700; color: ink_c; width: 400; lines: 1; align: center }
-            //  what the program wants, as polkit words it
-            text pk_message { at: 220, 124; anchor: center center; size: t_sub; color: ink_sub; width: 390; lines: 2; align: center }
-
-            //  the password
-            text pk_prompt { at: 50, 172; anchor: left center; size: t_cap; weight: 600; color: ink_c; width: 340; lines: 1 }
-            box { from: 50, 186; size: 340, 38; corner: r_s; color: item_bg; opacity: item_bg_op }
-            box { from: 50, 186; size: 340, 38; corner: r_s; stroke: 1.5; color: if(pk_wrong, danger_c, accent_c); opacity: if(pk_wrong, 90%, 55%) }
-            input password {
-                at: 62, 195
-                width: 316
-                size: 14
-                color: ink_c
-                placeholder: "Password"
-                secret: true
-                agent: no
-            }
-            text pick(if(pk_wrong, 1, 0), pk_info, "Wrong password, try again") { at: 220, 242; anchor: center center; size: t_cap; color: if(pk_wrong, danger_c, ink_sub); width: 390; lines: 1 }
-
-            //  Cancel / Authenticate
-            group {
-                move: 130, 262
-                box { from: 0, 0; size: 90, 30; corner: 8; color: item_solid }
-                text "Cancel" { at: 45, 15; anchor: center center; size: t_body; weight: 500; color: ink_c }
-                zone box pk_btn_cancel { from: 0, 0; size: 90, 30; corner: 8; cursor: pointer }
-                on press pk_btn_cancel { emit pk_cancel }
-                on press right pk_btn_cancel { }
-            }
-            group {
-                move: 230, 262
-                box { from: 0, 0; size: 110, 30; corner: 8; color: accent_c; opacity: if(pk_asking, 100%, 45%) }
-                text "Authenticate" { at: 55, 15; anchor: center center; size: t_body; weight: 600; color: on_accent }
-                zone box pk_btn_ok { from: 0, 0; size: 110, 30; corner: 8; cursor: pointer; active: pk_asking }
-                on press pk_btn_ok { emit pk_answer }
-                on press right pk_btn_ok { }
-            }
-        }
-        on press pk_scrim { }
-        on press right pk_scrim { }
-        }
 
     surface welcome {
         size: 720, 520
@@ -352,19 +151,6 @@ scene MacDialogs {
         on press right wl_scrim { }
         }
 
-    on dismiss    while cur == 1 { open = false }
-    on pk_shake   { impulse shake 18 }
-    on submit password { emit pk_answer }
-    on change open while open and cur == 2 { focus password }
-    on key Escape while cur == 1 { open = false }
-    on key Return while cur == 1 { emit ses_enter }
-    on key KP_Enter while cur == 1 { emit ses_enter }
-    on key Left while cur == 1 { ses_sel = 0 }
-    on key Right while cur == 1 { ses_sel = 1 }
-    on key Tab while cur == 1 { ses_sel = 1 - ses_sel }
-    on key y while cur == 1 { emit confirm_action }
-    on key n while cur == 1 { open = false }
-    on key Escape while cur == 2 { emit pk_cancel }
     on key Escape while cur == 3 { emit wl_done }
     on key Right  while cur == 3 { emit wl_next }
     on key Left   while cur == 3 { emit wl_back }

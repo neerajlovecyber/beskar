@@ -729,7 +729,7 @@ end)
 local function session(kind)
     fact.open = false
     after(250, function()
-        say("dialogs", "fact kind " .. kind)
+        say("dock", "fact kind " .. kind)
         say("topbar", "emit open_panel 5")
     end)
 end

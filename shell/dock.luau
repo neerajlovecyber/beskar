@@ -1,6 +1,6 @@
--- Dock panels (Spotlight, clipboard, wallpapers, widget bar): ONE scene (dock.plm), one logic; the shared core is
+-- Dock panels (Spotlight, clipboard, wallpapers, widget bar, session dialog, polkit password dialog): ONE scene (dock.plm), one logic; the shared core is
 -- panelcore.luau. Each part is its own function (own locals); `opened` / `closed` replace the old `on("fact:open")`.
-local module = require("panelcore")({ spotlight = 4, wallpapers = 5, clipboard = 6, widget_bar = 10 })
+local module = require("panelcore")({ spotlight = 4, wallpapers = 5, clipboard = 6, widget_bar = 10, session = 11, polkit = 12 })
 
 module("spotlight", function(panel, opened, shown, closed)
     -- Spotlight logic. What you type decides what is listed (best first):
@@ -209,9 +209,9 @@ module("spotlight", function(panel, opened, shown, closed)
         { "Timer 25 min", "timer 25", function() say("topbar", "emit timer_start 1500") end },
         { "Lock Screen", "lock", function() say("lock", "fact locked true") end },
         { "Sleep", "suspend", function() run("systemctl", { "suspend" }, nil, { output = false }) end },
-        { "Log Out…", "logout", function() say("dialogs", "fact kind 2"); say("topbar", "emit open_panel 5") end },
-        { "Restart…", "reboot", function() say("dialogs", "fact kind 1"); say("topbar", "emit open_panel 5") end },
-        { "Shut Down…", "poweroff", function() say("dialogs", "fact kind 0"); say("topbar", "emit open_panel 5") end },
+        { "Log Out…", "logout", function() fact.kind = 2; say("topbar", "emit open_panel 5") end },
+        { "Restart…", "reboot", function() fact.kind = 1; say("topbar", "emit open_panel 5") end },
+        { "Shut Down…", "poweroff", function() fact.kind = 0; say("topbar", "emit open_panel 5") end },
         { "Take Screenshot", "screenshot", function() say("modals", "fact mode 2"); say("modals", "fact kind 0"); say("topbar", "emit open_panel 11") end },
         { "Select Area Screenshot", "area", function() say("modals", "fact mode 0"); say("modals", "fact kind 0"); say("topbar", "emit open_panel 11") end },
         { "Record Screen", "record", function() say("modals", "fact mode 0"); say("modals", "fact kind 1"); say("topbar", "emit open_panel 11") end },
@@ -896,6 +896,136 @@ module("widget_bar", function(panel, opened, shown, closed)
     for i, p in ipairs(DATA.PRESETS) do presets[#presets + 1] = { id = i, name = p.name } end
     model.kinds = kinds
     model.presets = presets
+end)
+
+module("session", function(panel, opened, shown, closed)
+    -- Session dialog logic: shut down, restart, log out (with a 60 s countdown). Enter presses the highlighted button
+    -- (the action by default); the dialog grows out of the dock like Spotlight.
+    panel.height(250)
+    local timer_id = nil
+
+    local function clear_timer()
+        if timer_id then
+            cancel(timer_id)
+            timer_id = nil
+        end
+    end
+
+    on("confirm_action", function()
+        clear_timer()
+        fact.open = false
+        local k = fact.kind or 0
+        if k == 0 then
+            log("Session: Powering off system...")
+            run("systemctl", { "poweroff" }, function(_, code)
+                if code ~= 0 then log("Session: poweroff failed with code", code) end
+            end)
+        elseif k == 1 then
+            log("Session: Restarting system...")
+            run("systemctl", { "reboot" }, function(_, code)
+                if code ~= 0 then log("Session: reboot failed with code", code) end
+            end)
+        else
+            log("Session: Logging out...")
+            run("niri", { "msg", "action", "quit", "--skip-confirmation" })
+        end
+    end)
+
+    -- Countdown loop: runs while this dialog is the one shown
+    opened(function()
+        fact.ses_sel = 1          -- Enter presses the action by default
+        fact.countdown = 60
+        clear_timer()
+        local function tick()
+            if not shown() then return end
+            if fact.countdown > 1 then
+                fact.countdown = fact.countdown - 1
+                timer_id = after(1000, tick)
+            else
+                emit("confirm_action")
+            end
+        end
+        timer_id = after(1000, tick)
+    end)
+    closed(clear_timer)
+
+    on("ses_enter", function()
+        if not shown() then return end
+        if (tonumber(fact.ses_sel) or 1) == 1 then
+            emit("confirm_action")
+        else
+            fact.open = false
+        end
+    end)
+    on("dismiss", function() if shown() then fact.open = false end end)
+end)
+
+module("polkit", function(panel, opened, shown, closed)
+    -- The authentication agent. Watching the `polkit` service makes this process the session's agent (one per session).
+    -- Requests come one at a time: `pending` (a program waits; polkit's message and whose password it takes), then
+    -- `asking` (an answer is awaited; the prompt, secret or not), `error = "wrong"` after a bad one (three tries at most).
+    panel.height(310)
+    panel.keep()                 -- a click outside does not close it: it has to be answered or cancelled
+    local pending = false
+
+    local function open_on_focused_monitor()
+        -- the frame knows which monitor has the focus (FOCUS_PANELS in topbar.luau toggles us there)
+        pcall(sys.call, "say", "topbar", "emit open_panel 8")
+    end
+
+    sys.watch("polkit", function(p)
+        p = p or {}
+        local was_wrong = fact.pk_wrong == true
+        text.pk_message = p.message or ""
+        local prompt = p.prompt or ""
+        prompt = prompt:gsub(":%s*$", "")
+        text.pk_prompt = (prompt ~= "" and prompt) or ("Password for " .. (p.user or "administrator"))
+        text.pk_info = p.info or ""
+        fact.pk_secret = p.secret ~= false
+        fact.pk_asking = p.asking == true
+        fact.pk_wrong = p.error == "wrong"
+
+        if p.pending == true then
+            if not pending then
+                pending = true
+                text.password = ""
+                if not shown() then open_on_focused_monitor() end
+            end
+        elseif pending then
+            pending = false
+            text.password = ""
+            if shown() then fact.open = false end
+        end
+
+        if fact.pk_wrong and not was_wrong then
+            text.password = ""
+            emit("pk_shake")
+        end
+    end)
+
+    on("pk_answer", function()
+        if not shown() or fact.pk_asking ~= true then return end
+        local pwd = text.password or ""
+        text.password = ""
+        pcall(sys.call, "polkit.answer", pwd)
+    end)
+
+    on("pk_cancel", function()
+        if not shown() then return end
+        text.password = ""
+        pcall(sys.call, "polkit.cancel")
+        fact.open = false
+        pending = false
+    end)
+
+    -- closed by anything else (another panel took over): the program must be told it was dismissed
+    closed(function()
+        if pending then
+            pending = false
+            text.password = ""
+            pcall(sys.call, "polkit.cancel")
+        end
+    end)
 end)
 
 -- opening one closes the others (Control Center, notifications, Settings …)
