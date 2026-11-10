@@ -263,12 +263,29 @@ every(1000, paint_clock)
 on("fact:hour12", paint_clock)
 on("fact:pref_seconds", paint_clock)
 
+-- ── the little bars (music) and the recording dot move only while they show ──
+-- (a plm `wave` paints the whole scene at the monitor's rate for ever; this phase ticks 20 times a second, and only
+-- while something plays or records)
+local ph_timer = nil
+local function wave_tick()
+    ph_timer = nil
+    if fact.m_playing == true or fact.rec_on == true then
+        fact.m_ph = (tonumber(fact.m_ph) or 0) + 0.05 * 57.2958
+        ph_timer = after(50, wave_tick)
+    end
+end
+local function wave_kick()
+    if not ph_timer then ph_timer = after(50, wave_tick) end
+end
+on("fact:rec_on", wave_kick)
+
 -- ── music in the clock pill: the cover and a few bars while a player has something ──
 pcall(sys.watch, "media", function(m)
     m = m or {}
     local has = (m.player or "") ~= "" and (m.title or "") ~= ""
     fact.m_on = has
     fact.m_playing = m.playing == true
+    wave_kick()
     fact.m_has_art = (m.art or "") ~= ""
     text.m_art = m.art or ""
 end)

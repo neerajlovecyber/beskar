@@ -69,6 +69,7 @@ scene MacTopBar {
     fact pref_tray = true
     fact pref_dock_auto = true
     fact bar_style = 0       // 0 Notch · 1 Strip
+    fact m_ph = 0             // phase (degrees) of the little bars and the recording dot: moves only while they show
     fact rec_on = false       // a screen recording runs (capture.luau): a red dot and the time show in the pill
     text rec_time = "0:00"
     text clock_text = ""      // the time, in the format chosen in Settings (topbar.luau)
@@ -467,14 +468,12 @@ scene MacTopBar {
         follow dw = dock_row.width + dock_pad * 2
 
         //  the little bars beside the cover: three sines at different speeds, flat while paused
-        prop mb1 = 0
-        prop mb2 = 0
-        prop mb3 = 0
-        wave mb1 = 1 at 5.3
-        wave mb2 = 1 at 7.1
-        wave mb3 = 1 at 6.2
-        prop rdot = 0
-        wave rdot = 0.5 at 4.5
+        //  (driven by `m_ph`, which topbar.luau advances ONLY while music plays or a recording runs: a `wave` keeps
+        //  the whole scene painting at the monitor's rate for ever, even when nothing is shown: ~100 frames a second)
+        let mb1 = sin(m_ph * 5.3)
+        let mb2 = sin(m_ph * 7.1)
+        let mb3 = sin(m_ph * 6.2)
+        let rdot = 0.5 * sin(m_ph * 4.5)
         prop mplay = 0 ~calm
         follow mplay = if(m_playing, 1, 0)
 
