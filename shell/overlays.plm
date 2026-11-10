@@ -16,7 +16,7 @@ scene MacOverlays {
 
     permissions {
         run: "sh", "curl", "xdg-open", "wl-copy", "systemctl", "niri msg", "systemctl suspend", "cliphist", "notify-send", "magick", "fd", "grim", "slurp", "wf-recorder", "pkill", "rm", "cp"
-        services: "clock", "battery", "media", "media.*", "polkit", "polkit.*", "apps", "apps.launch", "files", "files.write", "window", "thumbnails", "thumbnails.*", "say:topbar", "say:settings", "say:widgets", "say:lock", "say:control_center", "say:notifications", "say:overlays"
+        services: "clock", "battery", "media", "media.*", "polkit", "polkit.*", "apps", "apps.launch", "files", "files.write", "window", "thumbnails", "thumbnails.*", "say:topbar", "say:settings", "say:widgets", "say:lock", "say:control_center", "say:notifications", "say:overlays", "say:capture"
     }
 
     fact cur = 4                 // which one is up: its id
@@ -26,7 +26,6 @@ scene MacOverlays {
     event toggle_dock ->
     event close_panel ->
     event outside_close ->
-    event cap_toggle ->
     //  the centred windows (switcher, overview, capture, welcome): their own fade / scale
     prop mseen = 0 ~quick
     prop mscale = 0.95 ~lively
@@ -1299,57 +1298,6 @@ scene MacOverlays {
     on key Escape while cur == 22 { open = false }
     on blur while cur == 22 and not fresh { open = false }
 
-    // ── capture ─────────────────────────────────────────────────
-    fact recording = false
-    fact record_secs = 0
-    fact cap_mode = 0          // 0 region, 1 focused window, 2 whole screen
-    fact cap_kind = 0          // 0 photo, 1 video
-    fact has_sel = false
-    fact sel_x = 0
-    fact sel_y = 0
-    fact sel_w = 0
-    fact sel_h = 0
-    fact fx = 0
-    fact fy = 0
-    fact hx = 0
-    fact hy = 0
-    fact o_x = 0
-    fact o_y = 0
-    fact scr_w = 1920
-    fact scr_h = 1080
-    text shot_path = ""
-    image shot = from shot_path, 0, 0
-    event toggle_record ->
-    event do_region ->
-    event confirm ->
-    event do_window ->
-    event shot_now ->
-    event do_screen ->
-
-    component ModeChip(x: number, idx: number, icon_t: text, name_t: text) {
-        group {
-            move: x, 8
-            box { from: 0, 0; size: 90, 36; corner: r_l; color: accent_c; opacity: if(cap_mode == idx, 22%, 0%) }
-            Sym(icon_t, 20, 18, 15, if(cap_mode == idx, accent_c, ink_c))
-            text name_t { at: 36, 18; anchor: left center; size: t_sub; weight: 600; color: if(cap_mode == idx, accent_c, ink_c) }
-            zone box chip_hit { from: 0, 0; size: 90, 36; corner: r_l; cursor: pointer; label: name_t }
-            on press chip_hit { cap_mode = idx; has_sel = false }
-            on press right chip_hit { open = false }
-        }
-    }
-
-    component KindChip(x: number, idx: number, icon_t: text, name_t: text) {
-        group {
-            move: x, 8
-            box { from: 0, 0; size: 72, 36; corner: r_l; color: if(idx == 1, danger_c, accent_c); opacity: if(cap_kind == idx, 24%, 0%) }
-            Sym(icon_t, 18, 18, 15, if(cap_kind == idx, if(idx == 1, danger_c, accent_c), ink_c))
-            text name_t { at: 32, 18; anchor: left center; size: t_sub; weight: 600; color: if(cap_kind == idx, if(idx == 1, danger_c, accent_c), ink_c) }
-            zone box kind_hit { from: 0, 0; size: 72, 36; corner: r_l; cursor: pointer; label: name_t }
-            on press kind_hit { cap_kind = idx }
-            on press right kind_hit { open = false }
-        }
-    }
-
     surface switcher {
         size: 1160, 220
         anchor: center
@@ -1472,162 +1420,9 @@ scene MacOverlays {
         on press right ov_dismiss { }
         }
 
-    surface picker {
-        size: full, full
-        anchor: top_left
-        level: overlay
-        reserve: -1
-        keyboard: exclusive while open and cur == 23
-        screens: each
-        open: (open or mseen > 0.02) and cur == 23 and open_screen == screen.index
-
-        // the frozen screen
-        image shot { at: 0, 0; size: picker.width, picker.height; fit: fill }
-        // dim everything that is not selected
-        box { from: 0, 0; size: picker.width, picker.height; color: scrim_c; opacity: if(has_sel and cap_mode == 0, 0%, 38%) }
-        group {
-            show: has_sel and cap_mode == 0
-            box { from: 0, 0; size: picker.width, sel_y; color: scrim_c; opacity: 38% }
-            box { from: 0, sel_y + sel_h; size: picker.width, picker.height - sel_y - sel_h; color: scrim_c; opacity: 38% }
-            box { from: 0, sel_y; size: sel_x, sel_h; color: scrim_c; opacity: 38% }
-            box { from: sel_x + sel_w, sel_y; size: picker.width - sel_x - sel_w, sel_h; color: scrim_c; opacity: 38% }
-        }
-
-        // ── what catches the mouse ───────────────────────────────────
-        // region: drag anywhere for a new selection
-        zone box catch { from: 0, 0; size: picker.width, picker.height; cursor: crosshair; label: "Select a region" }
-        on press catch while cap_mode == 0 { fx = local.x; fy = local.y; hx = local.x; hy = local.y; sel_x = local.x; sel_y = local.y; sel_w = 0; sel_h = 0; has_sel = false }
-        on drag catch while cap_mode == 0 {
-            has_sel = true
-            sel_x = min(fx, clamp(hx + drag.dx, 0, picker.width))
-            sel_y = min(fy, clamp(hy + drag.dy, 0, picker.height))
-            sel_w = abs(clamp(hx + drag.dx, 0, picker.width) - fx)
-            sel_h = abs(clamp(hy + drag.dy, 0, picker.height) - fy)
-        }
-        on release catch while cap_mode == 0 { has_sel = sel_w > 12 and sel_h > 12 }
-        // window / screen: a click takes it
-        on press catch while cap_mode == 1 { emit do_window }
-        on press catch while cap_mode == 2 { emit do_screen }
-        on press right catch { open = false }
-
-        // move the selection by its inside
-        zone box move_hit { from: sel_x, sel_y; size: sel_w, sel_h; cursor: move; active: has_sel and cap_mode == 0; label: "Move the selection" }
-        on press move_hit { o_x = sel_x; o_y = sel_y }
-        on drag move_hit {
-            sel_x = clamp(o_x + drag.dx, 0, picker.width - sel_w)
-            sel_y = clamp(o_y + drag.dy, 0, picker.height - sel_h)
-        }
-        on press right move_hit { open = false }
-
-        // four corners resize it: the opposite corner stays where it is
-        zone box h_tl { from: sel_x - 10, sel_y - 10; size: 20, 20; cursor: nwse_resize; active: has_sel and cap_mode == 0; label: "Resize top left" }
-        zone box h_tr { from: sel_x + sel_w - 10, sel_y - 10; size: 20, 20; cursor: nesw_resize; active: has_sel and cap_mode == 0; label: "Resize top right" }
-        zone box h_bl { from: sel_x - 10, sel_y + sel_h - 10; size: 20, 20; cursor: nesw_resize; active: has_sel and cap_mode == 0; label: "Resize bottom left" }
-        zone box h_br { from: sel_x + sel_w - 10, sel_y + sel_h - 10; size: 20, 20; cursor: nwse_resize; active: has_sel and cap_mode == 0; label: "Resize bottom right" }
-        on press h_tl { fx = sel_x + sel_w; fy = sel_y + sel_h; hx = sel_x; hy = sel_y }
-        on press h_tr { fx = sel_x; fy = sel_y + sel_h; hx = sel_x + sel_w; hy = sel_y }
-        on press h_bl { fx = sel_x + sel_w; fy = sel_y; hx = sel_x; hy = sel_y + sel_h }
-        on press h_br { fx = sel_x; fy = sel_y; hx = sel_x + sel_w; hy = sel_y + sel_h }
-        on drag h_tl { sel_x = min(fx, clamp(hx + drag.dx, 0, picker.width)); sel_y = min(fy, clamp(hy + drag.dy, 0, picker.height)); sel_w = abs(clamp(hx + drag.dx, 0, picker.width) - fx); sel_h = abs(clamp(hy + drag.dy, 0, picker.height) - fy) }
-        on drag h_tr { sel_x = min(fx, clamp(hx + drag.dx, 0, picker.width)); sel_y = min(fy, clamp(hy + drag.dy, 0, picker.height)); sel_w = abs(clamp(hx + drag.dx, 0, picker.width) - fx); sel_h = abs(clamp(hy + drag.dy, 0, picker.height) - fy) }
-        on drag h_bl { sel_x = min(fx, clamp(hx + drag.dx, 0, picker.width)); sel_y = min(fy, clamp(hy + drag.dy, 0, picker.height)); sel_w = abs(clamp(hx + drag.dx, 0, picker.width) - fx); sel_h = abs(clamp(hy + drag.dy, 0, picker.height) - fy) }
-        on drag h_br { sel_x = min(fx, clamp(hx + drag.dx, 0, picker.width)); sel_y = min(fy, clamp(hy + drag.dy, 0, picker.height)); sel_w = abs(clamp(hx + drag.dx, 0, picker.width) - fx); sel_h = abs(clamp(hy + drag.dy, 0, picker.height) - fy) }
-        on press right h_tl { open = false }
-        on press right h_tr { open = false }
-        on press right h_bl { open = false }
-        on press right h_br { open = false }
-
-        // ── the selection: border, size, handles ─────────────────────
-        group {
-            show: has_sel and cap_mode == 0
-            opacity: mseen
-            box { from: sel_x, sel_y; size: sel_w, sel_h; stroke: 2; color: accent_c }
-            // size label
-            group {
-                move: sel_x, max(sel_y - 30, 4)
-                Plate(96, 22, 11)
-                text "{sel_w} × {sel_h}" { at: 48, 11; anchor: center center; size: t_cap; weight: 600; color: ink_c }
-            }
-            ellipse { at: sel_x, sel_y; radius: 6; color: on_accent }
-            ellipse { at: sel_x + sel_w, sel_y; radius: 6; color: on_accent }
-            ellipse { at: sel_x, sel_y + sel_h; radius: 6; color: on_accent }
-            ellipse { at: sel_x + sel_w, sel_y + sel_h; radius: 6; color: on_accent }
-            ellipse { at: sel_x, sel_y; radius: 3.5; color: accent_c }
-            ellipse { at: sel_x + sel_w, sel_y; radius: 3.5; color: accent_c }
-            ellipse { at: sel_x, sel_y + sel_h; radius: 3.5; color: accent_c }
-            ellipse { at: sel_x + sel_w, sel_y + sel_h; radius: 3.5; color: accent_c }
-        }
-
-        // the action under the selection
-        group {
-            show: has_sel and cap_mode == 0
-            opacity: mseen
-            move: clamp(sel_x + sel_w / 2 - 74, 8, picker.width - 156), min(sel_y + sel_h + 14, picker.height - 54)
-            box { from: 0, 0; size: 148, 40; corner: r_m; color: accent_c }
-            text if(cap_kind == 1, "󰻂  Record  ⏎", "󰄀  Capture  ⏎") { family: "JetBrainsMono Nerd Font Mono"; at: 74, 20; anchor: center center; size: 13; weight: 700; color: on_accent }
-            zone box go_hit { from: 0, 0; size: 148, 40; corner: r_m; cursor: pointer; label: "Take it" }
-            on press go_hit { scr_w = picker.width; scr_h = picker.height; emit do_region }
-            on press right go_hit { open = false }
-        }
-
-        // hint when nothing is selected yet
-        group {
-            show: not (has_sel and cap_mode == 0)
-            opacity: mseen
-            move: picker.width / 2, picker.height / 2
-            group {
-                move: -190, -20
-                Plate(380, 40, 20)
-            }
-            text pick(cap_mode, "Drag to select an area", "Click to capture the screen with the focused window", "Click to capture the whole screen") { at: 0, 0; anchor: center center; size: 14; weight: 600; color: ink_c }
-        }
-
-        // ── the toolbar ──────────────────────────────────────────────
-        group {
-            opacity: mseen
-            move: picker.width / 2 - 262, 62 - (1 - mseen) * 14
-            body {
-                color: bg_color
-                glass: glass_amt
-                lens: false
-                frost: 100%
-                dispersion: 0
-                refraction: 0
-                tint: tint_amt
-                rim: rim_amt
-                box { from: 0, 0; size: 524, 52; corner: 26 }
-            }
-            box { from: 0, 0; size: 524, 52; corner: 26; stroke: 1; color: stroke_c; opacity: stroke_op }
-
-            // close
-            ellipse { at: 26, 26; radius: 14; color: item_solid }
-            Sym("󰅖", 26, 26, 13, ink_c)
-            zone box x_hit { from: 10, 10; size: 32, 32; corner: 16; cursor: pointer; label: "Close" }
-            on press x_hit { open = false }
-            on press right x_hit { open = false }
-
-            box { from: 52, 12; size: 1, 28; color: stroke_c; opacity: stroke_op }
-
-            // what to take
-            ModeChip(66, 0, "󰩭", "Region")
-            ModeChip(66 + 94, 1, "󰖲", "Window")
-            ModeChip(66 + 188, 2, "󰍹", "Screen")
-
-            box { from: 66 + 288, 12; size: 1, 28; color: stroke_c; opacity: stroke_op }
-
-            // photo or video
-            KindChip(66 + 304, 0, "󰄀", "Photo")
-            KindChip(66 + 304 + 76, 1, "󰻂", "Video")
-        }
-        }
 
 
-        on key Escape while cur == 23 { open = false }
-        on key Return while cur == 23 { emit confirm }
-        on key KP_Enter while cur == 23 { emit confirm }
-        on key r while cur == 23 { cap_kind = 1 }
-        on key p while cur == 23 { cap_kind = 0 }
-
+                    
     // ── welcome ─────────────────────────────────────────────────
     fact page = 0
     fact wl_mode = 1            // 0 light · 1 dark · 2 auto (mirrors Settings)

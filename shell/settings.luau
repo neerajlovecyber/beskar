@@ -3,7 +3,7 @@
 --   prefs     bar / dock / notification options          → saved in ~/.config/beskar/prefs.json, pushed to the scenes
 --   system    sound, brightness, displays (niri msg), Wi-Fi, Bluetooth, updates, shortcuts (read from niri's config)
 
-local THEMED = { "topbar", "control_center", "notifications", "overlays", "settings",
+local THEMED = { "topbar", "control_center", "notifications", "overlays", "settings", "capture",
                 "lock", "widgets" }
 
 local function say(scene, words)
@@ -741,6 +741,12 @@ on("session_lock", function()
 end)
 
 -- one panel at a time
+-- a scene that starts later (the capture picker, on demand) asks for the look it missed
+on("theme_sync", function()
+    broadcast_theme()
+    push_palette()
+end)
+
 require("exclusive")("settings")
 
 -- ── who is logged in: the full name if the account has one, else the login name ──

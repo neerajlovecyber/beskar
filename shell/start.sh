@@ -70,6 +70,19 @@ apply_saved_theme() {
     fi
 }
 
+# The capture picker is its own scene, started on demand (it ends itself when idle): its full-screen buffers on two
+# monitors would otherwise sit in GPU memory all day. Waits until it answers, then asks Settings for the look it missed.
+ensure_capture() {
+    if ! "$BIN" --say capture "get open" >/dev/null 2>&1; then
+        PLEAMAR_NO_LENS=1 setsid "$BIN" --no-hud --scene "$DIR/shell/capture.plm" </dev/null >/tmp/pleamar_capture.log 2>&1 &
+        for _ in $(seq 1 40); do
+            sleep 0.15
+            "$BIN" --say capture "get open" >/dev/null 2>&1 && break
+        done
+        "$BIN" --say settings "emit theme_sync" >/dev/null 2>&1 || true
+    fi
+}
+
 start_shell() {
     kill_all
     sleep 0.3
@@ -208,10 +221,15 @@ case "$1" in
         "$BIN" --say topbar "emit open_panel 5"
         ;;
     shot)
-        "$BIN" --say overlays "emit shot_now"
+        ensure_capture
+        "$BIN" --say capture "emit shot_now"
         ;;
     capture)
+        ensure_capture
         "$BIN" --say topbar "emit open_panel 11"
+        ;;
+    capture-ensure)
+        ensure_capture
         ;;
     spotlight)
         "$BIN" --say topbar "emit open_panel 1"

@@ -25,7 +25,7 @@ scene MacTopBar {
     //  What topbar.luau may touch. `run` is only what it needs: niri for the workspace, curl for
     //  the weather, and the dock's apps. Undeclared is nothing.
     permissions {
-        services: "clock", "network", "battery", "window", "tray", "tray.*", "apps", "apps.launch", "audio", "audio.*", "brightness", "brightness.*", "media", "media.*", "thumbnails", "thumbnails.*", "say:music", "say:weather", "say:updates", "say:overlays", "say:overlays", "say:control_center", "say:spotlight", "say:notifications", "say:dashboard", "say:settings", "say:session", "say:overlays", "say:appswitcher", "say:lock", "say:clipboard", "say:wallpapers", "say:widget_bar", "say:polkit", "say:welcome", "say:widgets", "say:overview"
+        services: "clock", "network", "battery", "window", "tray", "tray.*", "apps", "apps.launch", "audio", "audio.*", "brightness", "brightness.*", "media", "media.*", "thumbnails", "thumbnails.*", "say:music", "say:weather", "say:updates", "say:overlays", "say:capture", "say:overlays", "say:control_center", "say:spotlight", "say:notifications", "say:dashboard", "say:settings", "say:session", "say:overlays", "say:appswitcher", "say:lock", "say:clipboard", "say:wallpapers", "say:widget_bar", "say:polkit", "say:welcome", "say:widgets", "say:overview"
         run: "niri msg", "curl", "sh", "systemctl", "xdg-open", "notify-send"
     }
 

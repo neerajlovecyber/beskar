@@ -249,7 +249,7 @@ on("open_notifications", open_island_panel("notifications"))
 on("open_music", open_island_panel("music"))
 on("open_weather", open_island_panel("weather"))
 on("rec_stop", function()
-    pcall(sys.call, "say", "overlays", "emit toggle_record")
+    pcall(sys.call, "say", "capture", "emit toggle_record")
 end)
 
 -- ── the clock: the time only (no date), 12 hour with AM / PM unless Settings says 24 ──
@@ -533,25 +533,33 @@ end)
 -- only where `open_screen` says (common/here.plm). Everything that wants one asks us (`open_panel N`): a niri key
 -- through start.sh, a button in another panel. The toggle is the panel's own.
 -- EVERYTHING that opens over the desktop lives in ONE scene, `overlays` (rule 50): its `cur` is the panel id
-local OVERLAY = { spotlight = 4, wallpapers = 5, clipboard = 6, widget_bar = 10, session = 11, polkit = 12, appswitcher = 21, overview = 22, capture = 23, welcome = 24 }
+local OVERLAY = { spotlight = 4, wallpapers = 5, clipboard = 6, widget_bar = 10, session = 11, polkit = 12, appswitcher = 21, overview = 22, welcome = 24 }
 local FOCUS_PANELS = { [1] = "spotlight", [2] = "clipboard", [3] = "wallpapers", [4] = "settings", [5] = "session", [6] = "appswitcher", [7] = "widget_bar", [8] = "polkit", [9] = "welcome", [10] = "overview", [11] = "capture" }
 on("open_panel", function(n)
     local name = FOCUS_PANELS[tonumber(n) or 0]
     if not name then
         return
     end
-    monitor_of_click(function(s)
+    local function open_it(s)
         local p = PANELS[name]
         if p then
             fact[p.island .. "_screen"] = s          -- its glass is drawn by the frame, on that monitor
         end
         if OVERLAY[name] then
             pcall(sys.call, "say", "overlays", "fact open_screen " .. s)
-            pcall(sys.call, "say", "overlays", name == "capture" and "emit cap_toggle" or ("emit toggle_dock " .. OVERLAY[name]))
+            pcall(sys.call, "say", "overlays", "emit toggle_dock " .. OVERLAY[name])
             return
         end
         pcall(sys.call, "say", name, "fact open_screen " .. s)
         pcall(sys.call, "say", name, "emit toggle")
+    end
+    monitor_of_click(function(s)
+        if name == "capture" then
+            -- the picker is its own scene, started on demand (it ends itself when idle): make sure it is up first
+            run("sh", { "-c", '"$(cat "$HOME/.config/beskar/shell-dir")/shell/start.sh" capture-ensure' }, function() open_it(s) end)
+        else
+            open_it(s)
+        end
     end)
 end)
 
