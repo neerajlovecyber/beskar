@@ -128,8 +128,11 @@ start_shell() {
     setsid "$DIR/shell/supervise.sh" "$DIR/shell/widget_bar.plm" /tmp/pleamar_widget_bar.log </dev/null >/dev/null 2>&1 &
     # The session's polkit authentication agent: the password dialog for programs that need administrator rights
     setsid "$DIR/shell/supervise.sh" "$DIR/shell/polkit.plm" /tmp/pleamar_polkit.log </dev/null >/dev/null 2>&1 &
-    # First-run welcome (it opens itself once, when ~/.config/beskar/welcome-done does not exist)
-    setsid "$DIR/shell/supervise.sh" "$DIR/shell/welcome.plm" /tmp/pleamar_welcome.log </dev/null >/dev/null 2>&1 &
+    # First-run welcome: only while ~/.config/beskar/welcome-done does not exist (a scene is ~25 MB and 17 threads;
+    # `start.sh welcome` starts it on demand later)
+    if [ ! -e "$HOME/.config/beskar/welcome-done" ]; then
+        setsid "$DIR/shell/supervise.sh" "$DIR/shell/welcome.plm" /tmp/pleamar_welcome.log </dev/null >/dev/null 2>&1 &
+    fi
     # Window overview (Mission Control HUD grid)
     setsid "$DIR/shell/supervise.sh" "$DIR/shell/overview.plm" /tmp/pleamar_overview.log </dev/null >/dev/null 2>&1 &
 
@@ -214,7 +217,11 @@ case "$1" in
         "$BIN" --say topbar "emit open_panel 4"
         ;;
     welcome)
-        "$BIN" --say welcome "emit show_again"
+        if ! "$BIN" --say welcome "emit show_again" >/dev/null 2>&1; then
+            setsid "$DIR/shell/supervise.sh" "$DIR/shell/welcome.plm" /tmp/pleamar_welcome.log </dev/null >/dev/null 2>&1 &
+            sleep 4
+            "$BIN" --say welcome "emit show_again"
+        fi
         ;;
     shortcuts)
         "$BIN" --say settings "fact tab 5" >/dev/null 2>&1 || true
