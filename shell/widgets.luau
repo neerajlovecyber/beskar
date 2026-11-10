@@ -84,8 +84,8 @@ local function snapshot()
 end
 
 function push_bar()
-    say("widget_bar", "fact snap_on " .. tostring(fact.snap_on and true or false))
-    say("widget_bar", "fact can_undo " .. tostring(fact.can_undo and true or false))
+    say("dock", "fact snap_on " .. tostring(fact.snap_on and true or false))
+    say("dock", "fact can_undo " .. tostring(fact.can_undo and true or false))
 end
 
 local function changed()
@@ -207,7 +207,7 @@ local function set_editing(on)
         HISTORY = {}
         fact.can_undo = false
     else
-        say("widget_bar", "fact open false")
+        say("dock", "emit close_panel 10")
         save_now()
     end
 end

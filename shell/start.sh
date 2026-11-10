@@ -35,7 +35,7 @@ kill_all() {
 
 check_status() {
     echo "macOS / iNiR Shell Status:"
-    for comp in topbar border spotlight control_center notifications wallpapers settings lock capture appswitcher clipboard overview panels dialogs; do
+    for comp in topbar border control_center notifications settings lock capture appswitcher overview panels dock dialogs; do
         if pgrep -f "pleamar.*$comp\.plm" >/dev/null 2>&1; then
             echo "  ✔ $comp is RUNNING"
         else
@@ -58,11 +58,11 @@ apply_saved_theme() {
         [ -z "$DM" ] && DM="true"
         [ -z "$SKIN" ] && SKIN="0"
 
-        for comp in topbar border spotlight control_center notifications wallpapers settings capture appswitcher clipboard overview panels dialogs widgets widget_bar ; do
+        for comp in topbar border control_center notifications settings capture appswitcher overview panels dock dialogs widgets ; do
             "$BIN" --say "$comp" "fact dark_mode $DM" >/dev/null 2>&1 || true
             "$BIN" --say "$comp" "fact skin $SKIN" >/dev/null 2>&1 || true
         done
-        for comp in topbar control_center notifications settings wallpapers spotlight clipboard capture appswitcher lock overview panels dialogs widgets widget_bar ; do
+        for comp in topbar control_center notifications settings capture appswitcher lock overview panels dock dialogs widgets ; do
             "$BIN" --say "$comp" "fact accent $ACCENT" >/dev/null 2>&1 || true
             "$BIN" --say "$comp" "fact accent_auto $AUTO" >/dev/null 2>&1 || true
             "$BIN" --say "$comp" "fact hour12 $H12" >/dev/null 2>&1 || true
@@ -99,14 +99,12 @@ start_shell() {
     PID_BAR=$!
     # Border neutralized - window borders handled natively by compositor
     PID_BORDER=""
-    setsid "$DIR/shell/supervise.sh" "$DIR/shell/spotlight.plm" /tmp/pleamar_spotlight.log </dev/null >/dev/null 2>&1 &
     PID_SPOTLIGHT=$!
     setsid "$DIR/shell/supervise.sh" "$DIR/shell/control_center.plm" /tmp/pleamar_cc.log </dev/null >/dev/null 2>&1 &
     PID_CC=$!
     setsid "$DIR/shell/supervise.sh" "$DIR/shell/notifications.plm" /tmp/pleamar_notifications.log </dev/null >/dev/null 2>&1 &
     PID_WIDGETS=$!
     PID_DASH=$!
-    setsid "$DIR/shell/supervise.sh" "$DIR/shell/wallpapers.plm" /tmp/pleamar_wallpapers.log </dev/null >/dev/null 2>&1 &
     PID_WALL=$!
     setsid "$DIR/shell/supervise.sh" "$DIR/shell/settings.plm" /tmp/pleamar_settings.log </dev/null >/dev/null 2>&1 &
     PID_SETTINGS=$!
@@ -117,12 +115,12 @@ start_shell() {
     PID_CAPTURE=$!
     setsid "$DIR/shell/supervise.sh" "$DIR/shell/appswitcher.plm" /tmp/pleamar_switcher.log </dev/null >/dev/null 2>&1 &
     PID_SWITCHER=$!
-    setsid "$DIR/shell/supervise.sh" "$DIR/shell/clipboard.plm" /tmp/pleamar_clipboard.log </dev/null >/dev/null 2>&1 &
     PID_CLIP=$!
     setsid "$DIR/shell/supervise.sh" "$DIR/shell/widgets.plm" /tmp/pleamar_widgets.log </dev/null >/dev/null 2>&1 &
-    setsid "$DIR/shell/supervise.sh" "$DIR/shell/widget_bar.plm" /tmp/pleamar_widget_bar.log </dev/null >/dev/null 2>&1 &
     # Window overview (Mission Control HUD grid)
     # Weather, music, today (dashboard) and updates: ONE scene, four named surfaces (rule 50)
+    # Spotlight, clipboard history, wallpaper strip and widget bar: ONE scene (rule 52)
+    setsid "$DIR/shell/supervise.sh" "$DIR/shell/dock.plm" /tmp/pleamar_dock.log </dev/null >/dev/null 2>&1 &
     # The session dialog, the polkit authentication agent (the password dialog for programs that need administrator
     # rights) and the first-run welcome: ONE scene (rule 51)
     setsid "$DIR/shell/supervise.sh" "$DIR/shell/dialogs.plm" /tmp/pleamar_dialogs.log </dev/null >/dev/null 2>&1 &
@@ -275,7 +273,7 @@ case "$1" in
     dark-mode)
         VAL="true"
         [ "$2" = "off" ] && VAL="false"
-        for comp in topbar spotlight control_center notifications wallpapers settings capture overview panels dialogs; do
+        for comp in topbar control_center notifications settings capture overview panels dock dialogs; do
             "$BIN" --say "$comp" "fact dark_mode $VAL"
         done
         mkdir -p "$(dirname "$CONFIG_FILE")"
@@ -284,7 +282,7 @@ case "$1" in
         ;;
     skin)
         SKIN_VAL="${2:-0}"
-        for comp in topbar spotlight control_center notifications wallpapers settings capture overview panels dialogs; do
+        for comp in topbar control_center notifications settings capture overview panels dock dialogs; do
             "$BIN" --say "$comp" "fact skin $SKIN_VAL"
         done
         mkdir -p "$(dirname "$CONFIG_FILE")"

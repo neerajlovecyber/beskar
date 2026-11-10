@@ -17,6 +17,7 @@ scene MacPanels {
     // ── the morph state (shared by the four panels) ─────────────
     fact open = false
     fact open_screen = 0         // which monitor shows it (set by topbar.luau)
+    fact fresh = false           // a panel has just taken over (panelcore.luau): its `on blur` is ignored for a moment
     fact cur = 0                 // which panel: its id (3 / 9 / 15 / 16)
     fact panel_h = 400           // its height, reported by panels.luau
     prop seen = 0 ~calm
@@ -29,6 +30,10 @@ scene MacPanels {
     event panel_sync ->
     on change open { emit panel_sync }
     on change cur { emit panel_sync }
+    event show_panel ->
+    event toggle_dock ->
+    event close_panel ->
+    event outside_close ->
     let mp_rh = ph * clamp(seen, 0, 1) + 4
     let mp_fade = clamp(seen * 2.4 - 1.3, 0, 1)
 
@@ -549,4 +554,5 @@ scene MacPanels {
 
 
     on key Escape { open = false }
+    on blur while cur == 3 and not fresh { open = false }     // today (dashboard) closes when it loses the focus
 }

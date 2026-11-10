@@ -71,7 +71,7 @@ scene MacOverview {
     }
 
     permissions {
-        services: "apps", "window", "thumbnails", "thumbnails.*", "say:topbar", "say:spotlight", "say:clipboard", "say:control_center", "say:notifications", "say:dashboard", "say:settings", "say:wallpapers", "say:music", "say:weather", "say:panels", "say:updates", "say:widget_bar"
+        services: "apps", "window", "thumbnails", "thumbnails.*", "say:topbar", "say:spotlight", "say:clipboard", "say:control_center", "say:notifications", "say:dashboard", "say:settings", "say:wallpapers", "say:music", "say:weather", "say:panels", "say:dock", "say:updates", "say:widget_bar"
         run: "niri msg"
     }
 

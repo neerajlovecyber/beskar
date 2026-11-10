@@ -155,6 +155,8 @@ end)
 -- Weather, music, today and updates live in ONE scene, `panels` (panels.plm): one shared open / open_screen / cur
 -- (the panel id) / panel_h. `panel_say(name, words)` talks to whichever scene a panel is in.
 local MERGED = { dashboard = true, music = true, weather = true, updates = true }
+-- Spotlight, wallpapers, clipboard and the widget bar live in ONE scene, `dock` (panel id = its `cur`)
+local DOCK = { spotlight = 4, wallpapers = 5, clipboard = 6, widget_bar = 10 }
 local function panel_say(name, words)
     pcall(sys.call, "say", MERGED[name] and "panels" or name, words)
 end
@@ -162,10 +164,11 @@ end
 -- a click on nothing while a panel is open: close every panel (the widget bar stays: you work on the desktop with it)
 on("outside_click", function()
     for name, p in pairs(PANELS) do
-        if name ~= "banner" and name ~= "widget_bar" then
+        if name ~= "banner" and not DOCK[name] then
             panel_say(name, "fact open false")
         end
     end
+    pcall(sys.call, "say", "dock", "emit outside_close")      -- (the widget bar stays: you work on the desktop with it)
 end)
 
 on("panel_height", function(v)
@@ -521,6 +524,11 @@ on("open_panel", function(n)
         local p = PANELS[name]
         if p then
             fact[p.island .. "_screen"] = s          -- its glass is drawn by the frame, on that monitor
+        end
+        if DOCK[name] then
+            pcall(sys.call, "say", "dock", "fact open_screen " .. s)
+            pcall(sys.call, "say", "dock", "emit toggle_dock " .. DOCK[name])
+            return
         end
         if DIALOGS[name] then
             pcall(sys.call, "say", "dialogs", "fact open_screen " .. s)

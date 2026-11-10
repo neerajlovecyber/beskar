@@ -16,7 +16,7 @@ scene Widgets {
     include "common/theme.plm"
     include "common/icons.plm"
     permissions {
-        services: "clock", "battery", "media", "media.*", "audio", "audio.*", "brightness", "brightness.*", "say:topbar", "say:settings", "say:widget_bar"
+        services: "clock", "battery", "media", "media.*", "audio", "audio.*", "brightness", "brightness.*", "say:topbar", "say:settings", "say:widget_bar", "say:dock"
         run: "sh", "curl", "cat", "niri msg"
     }
 

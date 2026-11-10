@@ -1,0 +1,465 @@
+// Dock: Spotlight, the clipboard history, the wallpaper strip and the widget bar in ONE scene (four named surfaces
+// that grow out of the dock). They share one open / open_screen / cur / panel_h (morph_core.plm): only one is ever open;
+// `cur` is its panel id (4 spotlight, 5 wallpapers, 6 clipboard, 10 widget bar). The glass is drawn by the frame
+// (topbar.plm). Logic: dock.luau (+ panelcore.luau).
+import "common/palette.plm"
+
+scene MacDock {
+    let mp_sw = 1000
+    let mp_sh = 560
+    include "common/theme.plm"
+    include "common/ui.plm"
+    include "common/icons.plm"
+    include "common/morph_core.plm"
+
+    permissions {
+        run: "xdg-open", "wl-copy", "systemctl suspend", "cliphist", "notify-send", "sh", "magick", "fd"
+        services: "apps", "apps.launch", "files", "files.write", "say:topbar", "say:widgets", "say:settings", "say:lock", "say:dialogs", "say:capture", "say:control_center", "say:notifications", "say:panels", "say:wallpaper", "say:overview"
+    }
+
+    fact fresh = false           // a panel has just taken over (set by panelcore.luau): its `on blur` is ignored for a moment
+    fact cur = 4                 // which panel is up: its panel id
+    on change cur { emit panel_sync }
+    event show_panel ->
+    event toggle_dock ->
+    event close_panel ->
+    event outside_close ->
+
+    // ── spotlight ─────────────────────────────────────────────────
+    let line_color = card_stroke
+    let line_op = card_stroke_op
+
+    //  the logos of the web searches (Google, YouTube, GitHub, Wikipedia, DuckDuckGo, Maps), picked by `site` 1..6
+    image logo_g = file "../assets/icons/web/google.svg", 26, 26
+    image logo_yt = file "../assets/icons/web/youtube.svg", 26, 26
+    image logo_gh = file "../assets/icons/web/github.svg", 26, 26
+    image logo_w = file "../assets/icons/web/wikipedia.svg", 26, 26
+    image logo_ddg = file "../assets/icons/web/duckduckgo.svg", 26, 26
+    image logo_maps = file "../assets/icons/web/maps.svg", 26, 26
+
+    model hits max 24 { name: text; sub: text; kind: number; site: number; glyph: text; icon: image 26, 26 }
+    fact sp_sel   = 0
+    fact sc_t  = 0                 // where the result list is scrolled to (px)
+    prop sc = 0 ~quick
+    follow sc = sc_t
+    text query = ""
+    event launch ->
+
+    //  The glass is drawn by the frame: the dock island grows UP into it (topbar.plm). This scene only draws the
+    //  content, anchored to the bottom: the results above, the search field at the bottom where the dock was.
+
+
+    component Row(h: record) {
+        size: 576, 42
+        prop on = 0 ~quick
+        follow on = if(sp_sel == h.index, 1, 0)
+
+        RowFrame(576, 42, on)
+        zone box hit { from: 0, 0; size: 576, 42; corner: r_m; cursor: pointer }
+
+        image h.icon { at: 16, 8; size: 26, 26; show: h.kind == 0 }
+        group {
+            show: h.kind == 2 and h.site > 0
+            image logo_g { at: 16, 8; size: 26, 26; show: h.site == 1 }
+            image logo_yt { at: 16, 8; size: 26, 26; show: h.site == 2 }
+            image logo_gh { at: 16, 8; size: 26, 26; show: h.site == 3 }
+            image logo_w { at: 16, 8; size: 26, 26; show: h.site == 4 }
+            image logo_ddg { at: 16, 8; size: 26, 26; show: h.site == 5 }
+            image logo_maps { at: 16, 8; size: 26, 26; show: h.site == 6 }
+        }
+        group {
+            show: h.kind != 0 and not (h.kind == 2 and h.site > 0)
+            ellipse { at: 29, 21; radius: 13; color: accent_c; opacity: 85% }
+            text h.glyph { family: "JetBrainsMono Nerd Font Mono"; at: 29, 21; anchor: center; size: 14; color: on_accent }
+        }
+        text h.sub { at: 560, 21; anchor: right center; size: t_cap; color: ink_sub; width: 200; lines: 1; align: right }
+        text h.name {
+            at: 54, 21
+            anchor: left center
+            size: if(h.kind == 1, 19, 15)
+            weight: if(h.kind == 1, 700, 400)
+            width: 360
+            lines: 1
+            color: ink_c
+            opacity: 65% + on * 35%
+        }
+
+        on enter hit { sp_sel = h.index }
+        on press hit { emit launch(h.index) }
+    }
+    on key Escape while cur == 4 { open = false }
+    on key Tab while cur == 4 { sp_sel = min(sp_sel + 1, max(hits.count - 1, 0)); sc_t = clamp(sc_t, (min(sp_sel + 1, max(hits.count - 1, 0)) - 6) * 44, min(sp_sel + 1, max(hits.count - 1, 0)) * 44) }
+    on blur while cur == 4 and not fresh { open = false }
+    on key Down while cur == 4 { sp_sel = min(sp_sel + 1, max(hits.count - 1, 0)); sc_t = clamp(sc_t, (min(sp_sel + 1, max(hits.count - 1, 0)) - 6) * 44, min(sp_sel + 1, max(hits.count - 1, 0)) * 44) }
+    on key Up while cur == 4 { sp_sel = max(sp_sel - 1, 0); sc_t = clamp(sc_t, (max(sp_sel - 1, 0) - 6) * 44, max(sp_sel - 1, 0) * 44) }
+    on change sp_sel while sp_sel == 0 { sc_t = 0 }
+    on submit query    { emit launch(sp_sel) }
+
+    // ── clipboard ─────────────────────────────────────────────────
+    fact clip_sel = 0
+
+    //  Painted by clipboard.luau. `src` is where it came from in the logic's lists; `pinned` shows the pin.
+    model clips max 8 { src: number; preview: text; pinned: bool; pinnable: bool; is_img: bool; ready: bool; thumb: image 56, 34 }
+    text clip_q = ""
+    text clip_count = ""
+    text clip_empty = "Nothing copied yet"
+
+    let stroke_c = card_stroke
+    let stroke_op = card_stroke_op
+
+    event copy_clip ->
+    event pin_clip ->
+    event clear_all ->
+    event clip_scroll ->
+
+    component ClipRow(c: record) {
+        size: 520, 42
+        prop on = 0 ~quick
+        follow on = if(clip_sel == c.index, 1, 0)
+        prop pin_hot = 0 ~quick
+
+        // Pill background
+        RowFrame(480, 42, on)
+        zone box hit { from: 0, 0; size: 480, 42; corner: r_m; cursor: pointer }
+
+        //  An image: its thumbnail (or a faint box until it is made) in place of the text icon
+        group {
+            show: c.is_img
+            box { from: 10, 4; size: 56, 34; corner: 6; color: item_solid }
+            image c.thumb { at: 10, 4; size: 56, 34; show: c.ready }
+        }
+
+        // Clip text preview
+        row {
+            at: if(c.is_img, 76, 14), 12
+            gap: 10
+            align: center
+
+            text "󰈙" { family: "JetBrainsMono Nerd Font Mono"; size: 14; color: if(on > 0.5, accent_c, ink_sub); show: not c.is_img }
+            text c.preview {
+                size: 13
+                weight: if(on > 0.5, 600, 400)
+                color: ink_c
+                width: 420
+                lines: 1
+            }
+        }
+
+        //  The pin: a pushpin, filled and in the accent colour when pinned, a faint outline otherwise (shown on the
+        //  row under the pointer or the cursor, and always when pinned)
+        group {
+            show: c.pinnable
+            opacity: if(c.pinned, 100%, on * 70%)
+            move: 488, 9
+            ellipse { at: 12, 8.5; radius: 5; color: if(c.pinned, accent_c, ink_sub) }
+            ellipse { at: 12, 8.5; radius: 5; stroke: 1.5; color: if(c.pinned, accent_c, ink_sub); opacity: if(c.pinned, 0%, 100%) }
+            line { from: 12, 13.5; to: 12, 22; width: 1.8; color: if(c.pinned, accent_c, ink_sub) }
+            line { from: 7, 14; to: 17, 14; width: 1.8; color: if(c.pinned, accent_c, ink_sub) }
+            zone box pin_hit { at: 12, 12; size: 28, 28; corner: 8; cursor: pointer }
+            on press pin_hit { emit pin_clip(c.index) }
+            on press right pin_hit { }
+        }
+
+        on enter hit { clip_sel = c.index }
+        on press hit { emit copy_clip(c.index) }
+        on press right hit { }
+    }
+    on key Down while cur == 6 { clip_sel = min(clip_sel + 1, max(clips.count - 1, 0)) }
+    on key Up while cur == 6 { clip_sel = max(clip_sel - 1, 0) }
+    on key Return while cur == 6 { emit copy_clip(clip_sel) }
+    on key Tab while cur == 6 { clip_sel = min(clip_sel + 1, max(clips.count - 1, 0)) }
+    on key Escape while cur == 6 { open = false }
+    on blur while cur == 6 and not fresh { open = false }
+
+    // ── wallpapers ─────────────────────────────────────────────────
+    //  Painted by wallpapers.luau: the five on screen, in one row.
+    model walls max 6 { name: text; thumb: image 176, 99; current: bool; ready: bool; builtin: bool; sel: bool }
+
+    fact wall_tab = 0            // 0 all · 1 mine · 2 built in
+    fact wall_total = 0          // how many match the tab
+    fact wall_row = 0            // the first picture on screen (0-based)
+    fact wall_rows = 1           // how far it can scroll + 1
+    text wall_hint = ""
+
+    event wall_pick ->
+    event wall_scroll ->
+    event wall_tab_set ->
+    event wall_move ->
+    event wall_page ->
+    event wall_enter ->
+    event accent_now ->
+
+    //  One wallpaper: the picture, its name, a ring if it is the one on now, a small lift on hover.
+    component WallCard(w: record, pick: event) {
+        size: 176, 120
+        prop lift = 0 ~lively
+        zone box touch { from: 0, 0; size: 176, 99; corner: r_m; cursor: pointer }
+        group {
+            move: 0, -lift * 2
+            pivot: 88, 50
+            scale: 1 + 0.035 * lift
+            box { from: 0, 0; size: 176, 99; corner: r_m; color: item_solid }
+            group {
+                clip box { from: 0, 0; size: 176, 99; corner: r_m }
+                image w.thumb { at: 0, 0; size: 176, 99; show: w.ready }
+            }
+            box { from: 0, 0; size: 176, 99; corner: r_m; stroke: 3; color: accent_c; opacity: if(w.current, 100%, 0%) }
+            box { from: 0, 0; size: 176, 99; corner: r_m; stroke: 1.2; color: ink_c; opacity: max(lift * 35%, if(w.sel, 60%, 0%)) * if(w.current, 0, 1) }
+            //  a small tick on the one in use
+            group {
+                show: w.current
+                ellipse { at: 156, 80; radius: 10; color: accent_c }
+                path { at: 150.5, 76; color: on_accent; stroke: 2; move 0, 4.5; line 4, 8; line 11, 0 }
+            }
+        }
+        text w.name { at: 88, 111; anchor: center; size: t_micro; weight: if(w.current, 600, 400); color: if(w.current, ink_c, ink_sub); width: 168; lines: 1 }
+        on enter touch { lift: 1 }
+        on leave touch { lift: 0 }
+        on press touch { emit pick(w.index) }
+        on press right touch { }
+    }
+
+    //  An arrow (just the chevron, no circle) at one end of the strip; `dir` -1 left, 1 right. Dim when there is nowhere to go.
+    component ArrowBtn(dir: number) {
+        size: 32, 32
+        prop hot = 0 ~quick
+        let can = if(dir < 0, wall_row > 0, wall_row < wall_rows - 1)
+        path { at: 12 + dir * 0.5, 7; color: if(can and hot > 0.5, accent_c, ink_c); stroke: 2.6; opacity: if(can, 80% + hot * 20%, 25%); move 4 - dir * 4, 0; line 4 + dir * 4, 9; line 4 - dir * 4, 18 }
+        zone box hit { from: 0, 0; size: 32, 32; corner: 16; cursor: pointer; active: can }
+        on enter hit { hot: 1 }
+        on leave hit { hot: 0 }
+        on press hit { emit wall_page(dir) }
+        on press right hit { }
+    }
+
+    //  The glass is drawn by the frame: the dock island grows up and out into the strip (topbar.plm).
+    on key Left while cur == 5 { emit wall_move(-1) }
+    on key Right while cur == 5 { emit wall_move(1) }
+    on key Return while cur == 5 { emit wall_enter }
+    on key Escape while cur == 5 { open = false }
+    on blur while cur == 5 and not fresh { open = false }
+
+    // ── widget_bar ─────────────────────────────────────────────────
+    model kinds max 12 { id: number; name: text; icon: text }
+    model presets max 8 { id: number; name: text }
+    fact snap_on = true
+    fact can_undo = false
+
+    event wb_add ->
+    event wb_preset ->
+    event wb_undo ->
+    event wb_tidy ->
+    event wb_grid ->
+    event wb_done ->
+
+    component KindChip(k: record) {
+        prop hot = 0 ~quick
+        group {
+            move: 24 + (k.id - 1) * 86, 52
+            box { from: 0, 0; size: 78, 30; corner: 15; color: item_bg; opacity: item_bg_op + hot * 8% }
+            Sym(k.icon, 16, 15, 14, accent_c)
+            text k.name { at: 50, 15; anchor: center center; size: t_cap; weight: 500; color: ink_c }
+            zone box add_hit { from: 0, 0; size: 78, 30; corner: 15; cursor: pointer }
+            on enter add_hit { hot: 1 }
+            on leave add_hit { hot: 0 }
+            on press add_hit { emit wb_add(open_screen * 100 + k.id) }
+            on press right add_hit { }
+        }
+    }
+
+    component PresetChip(pr: record) {
+        prop hot = 0 ~quick
+        group {
+            move: 92 + (pr.id - 1) * 106, 84
+            box { from: 0, 0; size: 98, 28; corner: 14; color: item_bg; opacity: item_bg_op + hot * 8% }
+            text pr.name { at: 49, 14; anchor: center center; size: t_sub; weight: 500; color: ink_c }
+            zone box pr_hit { from: 0, 0; size: 98, 28; corner: 14; cursor: pointer }
+            on enter pr_hit { hot: 1 }
+            on leave pr_hit { hot: 0 }
+            on press pr_hit { emit wb_preset(pr.id) }
+            on press right pr_hit { }
+        }
+    }
+    on key Escape while cur == 10 { open = false }
+
+    surface spotlight {
+        size: 680, 520
+        anchor: bottom
+        margin: 0, 0, 0, 0
+        level: overlay
+        keyboard: exclusive while open and cur == 4
+        screens: each
+        open: (open or seen > 0.02) and cur == 4 and open_screen == screen.index
+
+    zone box sp_dismiss { from: 0, 0; size: 680, 520; active: open and cur == 4 }
+
+    PanelBody(20, 520, 1) {
+
+        // Results List
+        //  seven rows are seen; more results scroll (wheel, or the arrow keys carry the selection)
+        group {
+            clip box { from: 20, 10; size: 600, 314; corner: r_s }     // ends with this group: the search field below is not clipped
+            column list {
+                at: 32, 14 - sc
+                gap: 2
+                for h in hits { Row(h) }
+            }
+        }
+        zone box list_wheel { from: 20, 10; size: 600, 314; active: hits.count > 7 }
+        on scroll list_wheel { sc_t = clamp(sc_t - wheel * 44, 0, max(0, hits.count * 44 - 308)) }
+        group { move: 614, 14; ScrollBar(sc, hits.count * 44 - 2, 306) }
+
+        PanelSearch(640, ph)
+        input query {
+            at: 68, ph - 50
+            width: 530
+            size: 19
+            color: ink_c
+            placeholder: "Spotlight Search"
+            selection: accent_c
+        }
+    }
+        on press sp_dismiss { open = false }
+    }
+
+    surface clipboard {
+        size: 600, 560
+        anchor: bottom
+        margin: 0, 0, 0, 0
+        level: overlay
+        keyboard: exclusive while open and cur == 6
+        screens: each
+        open: (open or seen > 0.02) and cur == 6 and open_screen == screen.index
+
+        zone box clip_dismiss { from: 0, 0; size: 600, 560; active: open and cur == 6 }
+        on press clip_dismiss { open = false }
+        on press right clip_dismiss { }
+
+        PanelBody(20, 560, 1) {
+
+            //  clicks on the panel itself do not close it; the wheel scrolls the list
+            zone box clip_inside { from: 0, 0; size: 560, 520 }
+            on press right clip_inside { }
+            on scroll clip_inside { emit clip_scroll(wheel) }
+
+            // Header: title, count, Clear All
+            PanelHeader("󰅌", "Clipboard History")
+            text clip_count { at: 430, 30; anchor: right center; size: t_cap; color: ink_sub }
+            group { move: 450, 17; Pill("Clear All", 80, clear_all, 0, 26, true) }
+
+            // Search field: at the bottom, like every dock panel
+            PanelSearch(560, ph)
+            input clip_q {
+                at: 68, ph - 50
+                width: 450
+                size: 19
+                color: ink_c
+                placeholder: "Search clipboard history"
+                selection: accent_c
+            }
+
+            // Entries: pinned first, then the most recent
+            column clip_list {
+                at: 20, 58
+                gap: 4
+                for c in clips { ClipRow(c) }
+            }
+
+            group { show: clips.count < 1; EmptyState(280, 92, "󰅌", "Nothing copied yet", "Copy something and it shows up here") }
+        }
+    }
+
+    surface wallpapers {
+        size: 1000, 300
+        anchor: bottom
+        margin: 0, 0, 0, 0
+        level: overlay
+        keyboard: exclusive while open and cur == 5
+        screens: each
+        open: (open or seen > 0.02) and cur == 5 and open_screen == screen.index
+
+    zone box wp_dismiss { from: 0, 0; size: 1000, 300; active: open and cur == 5 }
+
+    PanelBody(10, 300, 1) {
+
+        //  clicks on the strip itself do not close it
+        zone box wp_inside { from: 0, 0; size: 980, 250 }
+        on press right wp_inside { }
+
+        PanelHeader("󰸉", "Wallpapers")
+        text wall_hint { at: 170, 32; anchor: left center; size: t_cap; color: ink_sub }
+        row {
+            at: 950, 30
+            anchor: right middle
+            gap: 8
+            Chip("All", wall_tab == 0, wall_tab_set, 0, 60)
+            Chip("Mine", wall_tab == 1, wall_tab_set, 1, 66)
+            Chip("Built-in", wall_tab == 2, wall_tab_set, 2, 84)
+        }
+
+        //  The wheel goes BEFORE the cards: the last declared zone is the one on top.
+        zone box wall_wheel { from: 20, 56; size: 940, 140 }
+        on scroll wall_wheel { emit wall_scroll(wheel) }
+
+        row {
+            at: 34, 62
+            gap: 8
+            for w in walls { WallCard(w, wall_pick) }
+        }
+        //  the arrow buttons, on both sides of the cards
+        group {
+            move: 1, 96
+            ArrowBtn(-1)
+        }
+        group {
+            move: 947, 96
+            ArrowBtn(1)
+        }
+
+        //  Nothing found
+        group { show: wall_total < 1; EmptyState(490, 130, "󰸉", "No pictures found", "Put some in ~/Pictures/wallpapers") }
+
+        //  Where you are in a long list: a thin bar under the cards
+        box { from: 28, 196; size: 924, 3; corner: 1.5; color: ink_c; opacity: if(wall_rows > 1, 10%, 0%) }
+        box { from: 28 + 924 * wall_row / max(1, wall_total), 196; size: max(30, 924 * 5 / max(1, wall_total)), 3; corner: 1.5; color: ink_c; opacity: if(wall_rows > 1, 45%, 0%) }
+
+        KeyHint(490, 222, "← →  browse   ·   Enter  apply   ·   Esc  close")
+    }
+        on press wp_dismiss { open = false }
+    }
+
+    surface widget_bar {
+        size: 820, 170
+        anchor: bottom
+        margin: 0, 0, 0, 0
+        level: overlay
+        keyboard: exclusive while open and cur == 10
+        screens: each
+        open: (open or seen > 0.02) and cur == 10 and open_screen == screen.index
+
+        zone box wb_dismiss { from: 0, 0; size: 820, 170; active: open and cur == 10 }
+
+        PanelBody(10, 170, 1) {
+
+            //  clicks on the bar itself do nothing
+            zone box wb_inside { from: 0, 0; size: 800, 132 }
+            on press right wb_inside { }
+
+            text "Add a widget" { at: 24, 31; anchor: left center; size: t_sub; weight: 600; color: ink_sub }
+            for k in kinds { KindChip(k) }
+            text "Layouts" { at: 24, 98; anchor: left center; size: t_sub; weight: 600; color: ink_sub }
+            for pr in presets { PresetChip(pr) }
+
+            group { move: 376, 14; Pill("Tidy up", 94, wb_tidy, 0, 34, true) }
+            group { move: 480, 14; Pill(if(snap_on, "Grid: on", "Grid: off"), 90, wb_grid, 0, 34, true) }
+            group { move: 580, 14; Pill("Undo", 70, wb_undo, 0, 34, true, can_undo) }
+            group { move: 660, 14; Pill("Done", 124, wb_done, 1, 34, true) }
+        }
+        on press wb_dismiss { open = false }
+    }
+
+    on change open while open and cur == 4 { focus query }
+    on change cur while open and cur == 4 { focus query }
+    on change open while open and cur == 6 { focus clip_q }
+    on change cur while open and cur == 6 { focus clip_q }
+}
