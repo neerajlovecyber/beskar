@@ -41,6 +41,7 @@ module("session", function(opened, closed, shown)
 
     -- Countdown loop: runs while this dialog is the one shown
     opened(function()
+        fact.ses_sel = 1          -- Enter presses the action by default
         fact.countdown = 60
         clear_timer()
         local function tick()
@@ -55,6 +56,15 @@ module("session", function(opened, closed, shown)
         timer_id = after(1000, tick)
     end)
     closed(clear_timer)
+
+    on("ses_enter", function()
+        if not shown() then return end
+        if (tonumber(fact.ses_sel) or 1) == 1 then
+            emit("confirm_action")
+        else
+            fact.open = false
+        end
+    end)
 end)
 
 module("polkit", function(opened, closed, shown)

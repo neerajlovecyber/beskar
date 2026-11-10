@@ -33,10 +33,12 @@ scene MacDialogs {
     // ── session ─────────────────────────────────────────────────
     fact kind = 0            // 0: Shut Down, 1: Restart, 2: Log Out
     fact countdown = 60      // 60-second automatic timer
+    fact ses_sel = 1         // the button Enter presses: 0 Cancel, 1 the action (the default)
     fact reopen = true       // Reopen windows when logging back in
     let stroke_c = card_stroke
     let stroke_op = card_stroke_op
     event confirm_action ->
+    event ses_enter ->
     event dismiss
 
     // ── polkit ──────────────────────────────────────────────────
@@ -67,17 +69,18 @@ scene MacDialogs {
     event toggle_apps_pref ->
 
     surface session {
-        size: 520, 360
-        anchor: center
+        size: 520, 330
+        anchor: bottom
+        margin: 0, 0, 84, 0
         level: overlay
         keyboard: exclusive while open and cur == 1
         screens: each
         open: (open or seen > 0.02) and cur == 1 and open_screen == screen.index
 
-    zone box ses_scrim { from: 0, 0; size: 520, 360; active: open and cur == 1 }
+    zone box ses_scrim { from: 0, 0; size: 520, 330; active: open and cur == 1 }
 
     group {
-        move: 40, 40
+        move: 40, 20 + (1 - seen) * 36
         pivot: 220, 140
         scale: scale
         opacity: seen
@@ -134,6 +137,8 @@ scene MacDialogs {
             on press ses_hit_reopen { toggle reopen }
         }
 
+        KeyHint(220, 262, "Enter  confirm   ·   ← →  choose   ·   Esc  cancel")
+
         // Action Buttons Row (macOS standard: Cancel on left, Primary on right)
         row {
             at: 220, 226
@@ -144,6 +149,7 @@ scene MacDialogs {
             group {
                 size: 120, 32
                 box { from: 0, 0; size: 120, 32; corner: 8; color: if(dark_mode, item_solid, item_solid) }
+                box { from: -2, -2; size: 124, 36; corner: 10; stroke: 2; color: ink_c; opacity: if(ses_sel == 0, 80%, 0%) }
                 text "Cancel" { at: 60, 16; anchor: center; size: t_body; weight: 500; color: ink_c }
                 zone box ses_btn_cancel { from: 0, 0; size: 120, 32; cursor: pointer }
                 on press ses_btn_cancel { emit dismiss }
@@ -153,6 +159,7 @@ scene MacDialogs {
             group {
                 size: 130, 32
                 box { from: 0, 0; size: 130, 32; corner: 8; color: pick(kind, danger_c, warn_c, accent_c) }
+                box { from: -2, -2; size: 134, 36; corner: 10; stroke: 2; color: ink_c; opacity: if(ses_sel == 1, 80%, 0%) }
                 text pick(kind, "Shut Down", "Restart", "Log Out") { at: 65, 16; anchor: center; size: t_body; weight: 600; color: on_accent }
                 zone box ses_btn_confirm { from: 0, 0; size: 130, 32; cursor: pointer }
                 on press ses_btn_confirm { emit confirm_action }
@@ -165,20 +172,21 @@ scene MacDialogs {
     }
 
     surface auth {
-        size: 520, 380
-        anchor: center
+        size: 520, 350
+        anchor: bottom
+        margin: 0, 0, 84, 0
         level: overlay
         keyboard: exclusive while open and cur == 2
         screens: each
         open: (open or seen > 0.02) and cur == 2 and open_screen == screen.index
 
-        zone box pk_scrim { from: 0, 0; size: 520, 380; active: open and cur == 2 }
+        zone box pk_scrim { from: 0, 0; size: 520, 350; active: open and cur == 2 }
 
         group {
             pivot: 220, 150
             scale: scale
             opacity: seen
-            move: 40 + shake, 40
+            move: 40 + shake, 20 + (1 - seen) * 36
 
             body {
                 color: bg_color
@@ -349,6 +357,13 @@ scene MacDialogs {
     on submit password { emit pk_answer }
     on change open while open and cur == 2 { focus password }
     on key Escape while cur == 1 { open = false }
+    on key Return while cur == 1 { emit ses_enter }
+    on key KP_Enter while cur == 1 { emit ses_enter }
+    on key Left while cur == 1 { ses_sel = 0 }
+    on key Right while cur == 1 { ses_sel = 1 }
+    on key Tab while cur == 1 { ses_sel = 1 - ses_sel }
+    on key y while cur == 1 { emit confirm_action }
+    on key n while cur == 1 { open = false }
     on key Escape while cur == 2 { emit pk_cancel }
     on key Escape while cur == 3 { emit wl_done }
     on key Right  while cur == 3 { emit wl_next }
