@@ -17,7 +17,7 @@ scene MacNotifications {
     //  them); `files` / `files.write` keep the history of dismissed ones across restarts; `say:topbar`
     //  tells the bell how many are waiting.
     permissions {
-        services: "notifications", "notifications.*", "files", "files.write", "say:topbar", "say:lock", "say:spotlight", "say:clipboard", "say:music", "say:weather", "say:panels", "say:dock", "say:updates", "say:control_center", "say:dashboard", "say:settings", "say:wallpapers", "say:widget_bar"
+        services: "notifications", "notifications.*", "files", "files.write", "say:topbar", "say:lock", "say:spotlight", "say:clipboard", "say:music", "say:weather", "say:panels", "say:dock", "say:modals", "say:updates", "say:control_center", "say:dashboard", "say:settings", "say:wallpapers", "say:widget_bar"
     }
 
     //  Both are painted by notifications.luau. `icon` is the application's own icon (a name or a path).

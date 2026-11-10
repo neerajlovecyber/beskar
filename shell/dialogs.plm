@@ -10,7 +10,7 @@ scene MacDialogs {
     include "common/here.plm"
 
     permissions {
-        services: "polkit", "polkit.*", "say:topbar", "say:settings", "say:spotlight", "say:clipboard", "say:control_center", "say:notifications", "say:panels", "say:dock", "say:wallpapers", "say:widget_bar", "say:overview"
+        services: "polkit", "polkit.*", "say:topbar", "say:settings", "say:spotlight", "say:clipboard", "say:control_center", "say:notifications", "say:panels", "say:dock", "say:modals", "say:wallpapers", "say:widget_bar", "say:overview"
         run: "systemctl", "niri msg", "sh"
     }
 

@@ -3,7 +3,7 @@
 -- for every other panel in its permissions (listed in PANELS).
 -- A logic that opens its own panel (`fact.open = true` from Luau) does not trigger `on("fact:open")`, so the
 -- merged scenes' sync events (`panel_sync`, `dlg_sync`) count too.
-local PANELS = { "control_center", "notifications", "settings", "panels", "dock", "topbar", "overview" }
+local PANELS = { "control_center", "notifications", "settings", "panels", "dock", "topbar", "modals" }
 
 return function(me)
     local function opened()

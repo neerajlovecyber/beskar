@@ -4,8 +4,7 @@
 --   system    sound, brightness, displays (niri msg), Wi-Fi, Bluetooth, updates, shortcuts (read from niri's config)
 
 local THEMED = { "topbar", "control_center", "notifications", "panels", "settings", "dock",
-                "dialogs", "capture", "appswitcher", "lock", "widgets",
-                "overview" }
+                "dialogs", "modals", "lock", "widgets" }
 
 local function say(scene, words)
     pcall(sys.call, "say", scene, words)

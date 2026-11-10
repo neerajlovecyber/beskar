@@ -247,7 +247,7 @@ on("open_notifications", open_island_panel("notifications"))
 on("open_music", open_island_panel("music"))
 on("open_weather", open_island_panel("weather"))
 on("rec_stop", function()
-    pcall(sys.call, "say", "capture", "emit toggle_record")
+    pcall(sys.call, "say", "modals", "emit toggle_record")
 end)
 
 -- ── the clock: the time only (no date), 12 hour with AM / PM unless Settings says 24 ──
@@ -513,7 +513,8 @@ end)
 -- switcher) open on ONE monitor: the one with the focus. They are `screens: each` scenes that show their content
 -- only where `open_screen` says (common/here.plm). Everything that wants one asks us (`open_panel N`): a niri key
 -- through start.sh, a button in another panel. The toggle is the panel's own.
-local DIALOGS = { session = 1, polkit = 2, welcome = 3 }     -- these three live in ONE scene, `dialogs` (cur = this id)
+local DIALOGS = { session = 1, polkit = 2, welcome = 3 }
+local MODALS = { appswitcher = 1, overview = 2, capture = 3 } -- app switcher, overview and the capture picker live in ONE scene, `modals` (cur = this id)     -- these three live in ONE scene, `dialogs` (cur = this id)
 local FOCUS_PANELS = { [1] = "spotlight", [2] = "clipboard", [3] = "wallpapers", [4] = "settings", [5] = "session", [6] = "appswitcher", [7] = "widget_bar", [8] = "polkit", [9] = "welcome", [10] = "overview", [11] = "capture" }
 on("open_panel", function(n)
     local name = FOCUS_PANELS[tonumber(n) or 0]
@@ -528,6 +529,11 @@ on("open_panel", function(n)
         if DOCK[name] then
             pcall(sys.call, "say", "dock", "fact open_screen " .. s)
             pcall(sys.call, "say", "dock", "emit toggle_dock " .. DOCK[name])
+            return
+        end
+        if MODALS[name] then
+            pcall(sys.call, "say", "modals", "fact open_screen " .. s)
+            pcall(sys.call, "say", "modals", name == "capture" and "emit cap_toggle" or ("emit toggle_dialog " .. MODALS[name]))
             return
         end
         if DIALOGS[name] then

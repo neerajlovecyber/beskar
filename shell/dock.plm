@@ -14,7 +14,7 @@ scene MacDock {
 
     permissions {
         run: "xdg-open", "wl-copy", "systemctl suspend", "cliphist", "notify-send", "sh", "magick", "fd"
-        services: "apps", "apps.launch", "files", "files.write", "say:topbar", "say:widgets", "say:settings", "say:lock", "say:dialogs", "say:capture", "say:control_center", "say:notifications", "say:panels", "say:wallpaper", "say:overview"
+        services: "apps", "apps.launch", "files", "files.write", "say:topbar", "say:widgets", "say:settings", "say:lock", "say:dialogs", "say:modals", "say:control_center", "say:notifications", "say:panels", "say:wallpaper", "say:overview"
     }
 
     fact fresh = false           // a panel has just taken over (set by panelcore.luau): its `on blur` is ignored for a moment
