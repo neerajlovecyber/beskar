@@ -1,0 +1,1798 @@
+// Overlays: EVERY panel and window that opens over the desktop, in ONE scene (one process, named surfaces that share
+// state; only one is ever open):
+//   top island panels  weather 15 · music 9 · today 3 · updates 16        (glass drawn by the frame, topbar.plm)
+//   dock panels        spotlight 4 · wallpapers 5 · clipboard 6 · widget bar 10 · session dialog 11 · polkit dialog 12
+//   centred windows    app switcher 21 · window overview 22 · capture picker 23 · first-run welcome 24
+// `cur` is the id of the open one. Logic: overlays.luau (+ panelcore.luau).
+import "common/palette.plm"
+
+scene MacOverlays {
+    let mp_sw = 1000
+    let mp_sh = 560
+    include "common/theme.plm"
+    include "common/ui.plm"
+    include "common/icons.plm"
+    include "common/morph_core.plm"
+
+    permissions {
+        run: "sh", "curl", "xdg-open", "wl-copy", "systemctl", "niri msg", "systemctl suspend", "cliphist", "notify-send", "magick", "fd", "grim", "slurp", "wf-recorder", "pkill", "rm", "cp"
+        services: "clock", "battery", "media", "media.*", "polkit", "polkit.*", "apps", "apps.launch", "files", "files.write", "window", "thumbnails", "thumbnails.*", "say:topbar", "say:settings", "say:widgets", "say:lock", "say:control_center", "say:notifications", "say:overlays"
+    }
+
+    fact cur = 4                 // which one is up: its id
+    fact fresh = false           // one has just taken over (panelcore.luau): its `on blur` is ignored for a moment
+    on change cur { emit panel_sync }
+    event show_panel ->
+    event toggle_dock ->
+    event close_panel ->
+    event outside_close ->
+    event cap_toggle ->
+    //  the centred windows (switcher, overview, capture, welcome): their own fade / scale
+    prop mseen = 0 ~quick
+    prop mscale = 0.95 ~lively
+    layer modal ~quick {
+        shown while open and cur >= 21 { mseen: 1 ~quick; mscale: 1 ~lively }
+        gone                           { mseen: 0 ~quick; mscale: 0.95 ~quick }
+    }
+    let stroke_c = card_stroke
+    let stroke_op = card_stroke_op
+
+    //  a top panel's content: shown only inside the glass as it grows (the surface itself is per monitor), fading in late
+    component TopBody(x: number, y: number, sw: number) {
+        group {
+            move: x, y
+            opacity: mp_fade
+            clip box { from: -60, -20; size: sw + 120, mp_rh + 20 }
+            children
+        }
+    }
+
+
+    // ── weather ─────────────────────────────────────────────────
+    fact wx_view = 0              // 0 the forecast · 1 choose a place
+    fact wx_loaded = false
+    fact wx_loading = false
+    fact wx_searching = false
+    fact wx_q_has = false         // the search field has text (set by weather.luau from its text)
+    fact wx_lo = 0
+    fact wx_hi = 1
+    text wx_city = ""
+    text w_cond = ""
+    text w_temp = "--°"
+    text w_feels = ""
+    text w_range = ""
+    text w_icon = "󰅟"
+    text w_hum = "--"
+    text w_wind = "--"
+    text w_uv = "--"
+    text w_press = "--"
+    text w_sunrise = "--"
+    text w_sunset = "--"
+    text w_source = ""
+    text wq = ""
+
+    model hours max 8 { t: text; icon: text; temp: text }
+    model days max 5 { day: text; icon: text; lo: text; hi: text; lo_n: number; hi_n: number }
+    model places max 5 { name: text; sub: text }
+
+    event loc_change ->
+    event loc_back ->
+    event loc_ip ->
+    event loc_pick ->
+
+    event weather_reload ->
+    event open_weather ->
+
+    // ── music ───────────────────────────────────────────────────
+    //  Reported by music.luau
+    fact has_player = false
+    fact is_playing = false
+    fact has_art = false
+    fact track_len = 0
+    fact track_pos = 0
+    text track_title = ""
+    text track_artist = ""
+    text cover_art = ""
+    text time_pos = "0:00"
+    text time_len = "0:00"
+    image cover = from cover_art, 150, 84      // a wide cell: a 16:9 thumbnail fills it, a square cover sits in the middle; the tile shows the middle
+
+    event play_pause ->
+    event previous ->
+    event next ->
+    event seek ->
+
+
+    // ── today (dashboard) ───────────────────────────────────────
+    service battery as bat { present: bool; percent: number; charging: bool }
+
+    fact cpu_pct = 0
+    fact mem_pct = 0
+    fact disk_pct = 0
+    fact bat_ac = false
+    fact cal_shift = 0               // months away from this one (0 = now)
+    text greeting = "Hello"
+    text today_text = ""
+    text uptime_text = ""
+    text bat_state = ""
+    text bat_sub = ""
+    text cal_title = ""
+    text dw_temp = "--°"
+    text dw_cond = ""
+    text dw_city = "…"
+    text dw_icon = "󰅟"
+    text dw_range = ""
+    text dw_feels = ""
+    text dw_extra = ""
+
+    //  the month grid: Monday first; `dim` = a day of the month before / after; `today` = this very day
+    model cells max 42 { d: text; dim: bool; today: bool }
+
+    let bar_track = item_solid
+    prop d_hot = 0 ~quick
+
+    event d_toggle
+    event refresh_stats ->
+    event open_weather ->
+    event cal_prev ->
+    event cal_next ->
+    event cal_now ->
+
+
+    // ── updates ─────────────────────────────────────────────────
+    fact up_n = 0                  // updates waiting
+    fact up_checking = false
+    fact up_running = false        // pacman -Syu is running
+    fact up_failed = false
+    fact up_known = false          // a check has finished (before that, an empty list means "not looked yet")
+    text up_status = ""            // the line under the title
+    model up_pkgs max 60 { name: text; ver: text; aur: bool }
+
+    event do_update ->
+    event do_check ->
+
+
+    surface weather {
+        size: 420, 610
+        anchor: top
+        margin: 0, 0, 0, 0
+        level: overlay
+        keyboard: on_demand
+        screens: each
+        open: (open or seen > 0.02) and cur == 15 and open_screen == screen.index
+        zone box wx_dismiss { from: 0, 0; size: 420, 610; active: open and cur == 15 }
+        on press wx_dismiss { open = false }
+        on press right wx_dismiss { }
+    TopBody(16, -2, 420) {
+
+        //  clicks on the card itself do not close it
+        zone box wx_inside { from: 0, 0; size: 388, 600 }
+        on press right wx_inside { }
+
+        // ═══ wx_view 0: the forecast ═══════════════════════════════════
+        group {
+            show: wx_view == 0
+
+            //  place and its button
+            Sym("󰍎", 10, 22, 15, accent_c)
+            text wx_city { at: 26, 22; anchor: left center; size: t_title; weight: 700; color: ink_c; width: 250; lines: 1 }
+            group { move: 300, 9; Pill("Change", 88, loc_change, 0, 26, true) }
+            text w_cond { at: 4, 52; anchor: left center; size: t_sub; color: ink_sub; width: 380; lines: 1 }
+
+            //  now
+            text w_temp { at: 4, 100; anchor: left center; size: 56; weight: 700; color: ink_c }
+            Sym(w_icon, 340, 92, 54, accent_c)
+            text w_feels { at: 4, 140; anchor: left center; size: t_sub; color: ink_sub }
+            text w_range { at: 384, 140; anchor: right center; size: t_sub; weight: 600; color: ink_c }
+
+            //  details
+            group {
+                move: 0, 160
+                CardBg(388, 58, r_m)
+                Stat(14, "Humidity", w_hum)
+                Stat(112, "Wind", w_wind)
+                Stat(210, "UV index", w_uv)
+                Stat(300, "Pressure", w_press)
+            }
+            group {
+                move: 0, 226
+                CardBg(388, 42, r_m)
+                Sym("󰖜", 22, 21, 16, warn_c)
+                text "Sunrise" { at: 40, 21; anchor: left center; size: t_cap; color: ink_sub }
+                text w_sunrise { at: 92, 21; anchor: left center; size: t_sub; weight: 600; color: ink_c }
+                Sym("󰖛", 220, 21, 16, accent_c)
+                text "Sunset" { at: 238, 21; anchor: left center; size: t_cap; color: ink_sub }
+                text w_sunset { at: 288, 21; anchor: left center; size: t_sub; weight: 600; color: ink_c }
+            }
+
+            //  next hours
+            SectionLabel(4, 288, "NEXT HOURS")
+            group {
+                move: 0, 300
+                CardBg(388, 96, r_m)
+                row {
+                    at: 2, 0
+                    for h in hours {
+                        group {
+                            size: 48.5, 96
+                            text h.t { at: 24, 16; anchor: center center; size: t_micro; color: ink_sub }
+                            Sym(h.icon, 24, 48, 20, accent_c)
+                            text h.temp { at: 24, 78; anchor: center center; size: t_sub; weight: 600; color: ink_c }
+                        }
+                    }
+                }
+            }
+
+            //  next days
+            SectionLabel(4, 414, "NEXT DAYS")
+            group {
+                move: 0, 426
+                CardBg(388, 176, r_m)
+                column {
+                    at: 0, 4
+                    for d in days {
+                        group {
+                            size: 388, 34
+                            text d.day { at: 16, 17; anchor: left center; size: t_body; weight: 600; color: ink_c }
+                            Sym(d.icon, 100, 17, 17, accent_c)
+                            text d.lo { at: 146, 17; anchor: right center; size: t_sub; color: ink_sub }
+                            box { from: 158, 15; size: 168, 4; corner: 2; color: ink_c; opacity: 12% }
+                            box { from: 158 + 168 * (d.lo_n - wx_lo) / max(1, wx_hi - wx_lo), 15; size: max(8, 168 * (d.hi_n - d.lo_n) / max(1, wx_hi - wx_lo)), 4; corner: 2; color: accent_c }
+                            text d.hi { at: 372, 17; anchor: right center; size: t_sub; weight: 600; color: ink_c }
+                        }
+                    }
+                }
+            }
+
+            //  nothing yet
+            group { show: not wx_loaded; EmptyState(194, 300, "󰅟", "Loading the forecast", "Needs a network connection") }
+        }
+
+        // ═══ wx_view 1: choose a place ═════════════════════════════════
+        group {
+            show: wx_view == 1
+
+            text "Choose a location" { at: 4, 22; anchor: left center; size: t_title; weight: 700; color: ink_c }
+            group { move: 300, 9; Pill("Back", 88, loc_back, 0, 26, true) }
+
+            //  your IP
+            group { move: 0, 46; Pill("󰩟  Use my location (from my IP address)", 388, loc_ip, 1, 34, true) }
+
+            //  search
+            group {
+                move: 0, 94
+                CardBg(388, 40, r_m, true)
+                Sym("󰍉", 22, 20, 16, ink_sub)
+                input wq {
+                    at: 44, 10
+                    width: 330
+                    size: 15
+                    color: ink_c
+                    placeholder: "Search a city"
+                    selection: accent_c
+                }
+            }
+
+            //  results
+            column {
+                at: 0, 146
+                gap: 4
+                for p in places {
+                    group {
+                        size: 388, 44
+                        prop on = 0 ~quick
+                        RowFrame(388, 44, on)
+                        text p.name { at: 16, 15; anchor: left center; size: t_body; weight: 600; color: ink_c; width: 350; lines: 1 }
+                        text p.sub { at: 16, 32; anchor: left center; size: t_cap; color: ink_sub; width: 350; lines: 1 }
+                        zone box wx_pick_hit { from: 0, 0; size: 388, 44; corner: r_m; cursor: pointer }
+                        on enter wx_pick_hit { on: 1 }
+                        on leave wx_pick_hit { on: 0 }
+                        on press wx_pick_hit { emit loc_pick(p.index) }
+                        on press right wx_pick_hit { }
+                    }
+                }
+            }
+            group { show: places.count < 1 and not wx_q_has; text "Type a city name, or use your IP address" { at: 194, 190; anchor: center center; size: t_sub; color: ink_sub } }
+            group { show: places.count < 1 and wx_q_has and not wx_searching; EmptyState(194, 200, "󰍉", "No place found") }
+            text w_source { at: 4, 360; anchor: left center; size: t_cap; color: ink_sub; show: places.count < 1 }
+        }
+    }
+
+    }
+
+    surface music {
+        size: 380, 260
+        anchor: top
+        margin: 0, 0, 0, 0
+        level: overlay
+        screens: each
+        open: (open or seen > 0.02) and cur == 9 and open_screen == screen.index
+        zone box mu_dismiss { from: 0, 0; size: 380, 260; active: open and cur == 9 }
+        on press mu_dismiss { open = false }
+        on press right mu_dismiss { }
+    TopBody(16, -2, 380) {
+
+        //  clicks on the card itself do not close it
+        zone box mu_inside { from: 0, 0; size: 348, 200 }
+        on press right mu_inside { }
+
+        // ── nothing is playing ──
+        group {
+            show: not has_player
+            ellipse { at: 174, 70; radius: 26; color: item_solid }
+            path { at: 165, 56; color: ink_sub; move 0, 0; line 20, 14; line 0, 28; close }
+            text "Nothing playing" { at: 174, 124; anchor: center; size: t_body; weight: 600; color: ink_sub }
+            text "Start a song in any player" { at: 174, 144; anchor: center; size: t_cap; color: ink_sub; opacity: 70% }
+        }
+
+        // ── a player has something ──
+        group {
+            show: has_player
+
+            //  cover: a gradient, and the real artwork over it
+            body {
+                gradient: 0, 0 to 84, 84, accent_c, focus_c
+                box { from: 16, 14; size: 84, 84; corner: r_l }
+            }
+            group {
+                clip box { from: 16, 14; size: 84, 84; corner: r_l }
+                image cover { at: -18, 13; size: 152, 86; show: has_art }   // a pixel past the tile on every side: no seam
+            }
+            text track_title { at: 116, 36; anchor: left center; size: t_title; weight: 700; color: ink_c; width: 216; lines: 1 }
+            text track_artist { at: 116, 58; anchor: left center; size: t_sub; color: ink_sub; width: 216; lines: 1 }
+
+            //  progress: a click on the bar seeks
+            box { from: 16, 118; size: 316, 4; corner: 2; color: slider_bg; opacity: slider_bg_op }
+            box { from: 16, 118; size: max(4, 316 * clamp(track_pos / max(track_len, 1), 0, 1)), 4; corner: 2; color: ink_c; show: track_len > 0 }
+            text time_pos { at: 16, 136; anchor: left center; size: t_micro; color: ink_sub }
+            text time_len { at: 332, 136; anchor: right center; size: t_micro; color: ink_sub; show: track_len > 0 }
+            zone box seek_hit { from: 16, 110; size: 316, 20; cursor: pointer; active: track_len > 0 }
+            on press seek_hit { emit seek(clamp(local.x / 316, 0, 1)) }
+
+            //  previous · play/pause · next
+            path { at: 118, 158; color: ink_c; move 12, 0; line 0, 8; line 12, 16; close }
+            box { from: 115, 158; size: 3, 16; corner: 1.5; color: ink_c }
+            ellipse { at: 174, 166; radius: 20; color: item_solid }
+            group {
+                show: is_playing
+                box { from: 167, 157; size: 4.5, 18; corner: 2.2; color: ink_c }
+                box { from: 177, 157; size: 4.5, 18; corner: 2.2; color: ink_c }
+            }
+            path { at: 168, 156; color: ink_c; show: not is_playing; move 0, 0; line 16, 10; line 0, 20; close }
+            path { at: 220, 158; color: ink_c; move 0, 0; line 12, 8; line 0, 16; close }
+            box { from: 233, 158; size: 3, 16; corner: 1.5; color: ink_c }
+            zone box prev_hit { at: 125, 166; size: 40, 36; corner: r_l; cursor: pointer }
+            zone box play_hit { at: 174, 166; size: 44, 44; corner: r_l; cursor: pointer }
+            zone box next_hit { at: 227, 166; size: 40, 36; corner: r_l; cursor: pointer }
+            on press prev_hit { emit previous }
+            on press play_hit { emit play_pause }
+            on press next_hit { emit next }
+            on press right prev_hit { }
+            on press right play_hit { }
+            on press right next_hit { }
+            on press right seek_hit { }
+        }
+    }
+
+    }
+
+    surface today {
+        size: 380, 640
+        anchor: top
+        margin: 0, 0, 0, 0
+        level: overlay
+        screens: each
+        open: (open or seen > 0.02) and cur == 3 and open_screen == screen.index
+        zone box d_dismiss { from: 0, 0; size: 380, 640; active: open and cur == 3 }
+        on press d_dismiss { open = false }
+        on press right d_dismiss { }
+    TopBody(16, -2, 380) {
+
+        //  clicks on the card itself do not close it
+        zone box d_inside { from: 0, 0; size: 348, 620 }
+        on press right d_inside { }
+
+        // ── greeting ──────────────────────────────────────────────
+        text greeting { at: 20, 24; anchor: left center; size: t_title; weight: 700; color: ink_c }
+        text today_text { at: 20, 46; anchor: left center; size: t_sub; color: ink_sub }
+
+        // ── weather: a wide card, a click opens the weather panel ─
+        group {
+            move: 14, 62
+            CardBg(320, 92, r_l, true)
+            box { from: 0, 0; size: 320, 92; corner: r_l; color: ink_c; opacity: d_hot * 6% }
+            text dw_city { at: 16, 20; anchor: left center; size: t_body; weight: 700; color: ink_c; width: 190; lines: 1 }
+            text dw_cond { at: 16, 40; anchor: left center; size: t_sub; color: ink_sub; width: 190; lines: 1 }
+            text dw_temp { at: 16, 70; anchor: left center; size: 32; weight: 700; color: ink_c }
+            Sym(dw_icon, 290, 28, 30, warn_c)
+            text dw_range { at: 304, 56; anchor: right center; size: t_sub; weight: 600; color: ink_c }
+            text dw_feels { at: 304, 74; anchor: right center; size: t_cap; color: ink_sub }
+            zone box dw_hit { from: 0, 0; size: 320, 92; corner: r_l; cursor: pointer; label: "Open the weather" }
+            on enter dw_hit { d_hot: 1 }
+            on leave dw_hit { d_hot: 0 }
+            on press dw_hit { emit open_weather }
+            on press right dw_hit { }
+        }
+
+        // ── month calendar ────────────────────────────────────────
+        group {
+            move: 14, 166
+            CardBg(320, 232, r_l, true)
+            //  title and the month buttons; a click on the title comes back to this month
+            text cal_title { at: 16, 22; anchor: left center; size: t_body; weight: 700; color: ink_c }
+            zone box d_title_hit { from: 8, 8; size: 170, 30; corner: r_s; cursor: pointer; label: "This month" }
+            on press d_title_hit { emit cal_now }
+            on press right d_title_hit { }
+            group {
+                move: 248, 8
+                box { from: 0, 0; size: 28, 28; corner: r_s; color: item_bg; opacity: item_bg_op }
+                Sym("󰅁", 14, 14, 15, ink_c)
+                zone box d_prev_hit { from: 0, 0; size: 28, 28; corner: r_s; cursor: pointer; label: "Previous month" }
+                on press d_prev_hit { emit cal_prev }
+                on press right d_prev_hit { }
+            }
+            group {
+                move: 282, 8
+                box { from: 0, 0; size: 28, 28; corner: r_s; color: item_bg; opacity: item_bg_op }
+                Sym("󰅂", 14, 14, 15, ink_c)
+                zone box d_next_hit { from: 0, 0; size: 28, 28; corner: r_s; cursor: pointer; label: "Next month" }
+                on press d_next_hit { emit cal_next }
+                on press right d_next_hit { }
+            }
+            //  weekdays
+            repeat i in 0..7 {
+                text pick(i, "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun") { at: 16 + i * 41.3 + 20, 52; anchor: center center; size: t_micro; weight: 600; color: if(i >= 5, accent_c, ink_sub) }
+            }
+            //  days
+            grid {
+                at: 16, 66
+                columns: 7
+                gap: 0
+                width: 289
+                row: 27
+                for c in cells {
+                    group {
+                        size: 41.3, 27
+                        ellipse { at: 20.6, 13.5; radius: 12.5; color: accent_c; show: c.today }
+                        text c.d { at: 20.6, 13.5; anchor: center center; size: t_sub; weight: if(c.today, 700, 500); color: if(c.today, on_accent, ink_c); opacity: if(c.dim, 35%, 100%) }
+                    }
+                }
+            }
+        }
+
+        // ── how busy the machine is ───────────────────────────────
+        group {
+            move: 14, 410
+            CardBg(320, 124, r_l, true)
+            Sym("󰍹", 24, 20, 14, accent_c)
+            text "Activity" { at: 40, 20; anchor: left center; size: t_sub; weight: 600; color: ink_c }
+            text uptime_text { at: 304, 20; anchor: right center; size: t_cap; color: ink_sub }
+            Meter(34, "CPU", cpu_pct, accent_c)
+            Meter(62, "Memory", mem_pct, mint)
+            Meter(90, "Disk", disk_pct, purple)
+        }
+
+        // ── battery (laptops) ─────────────────────────────────────
+        group {
+            show: bat.present
+            move: 14, 546
+            CardBg(320, 66, r_l, true)
+            //  the cell: green with a bolt while on the charger
+            box { from: 16, 21; size: 34, 17; corner: 5; stroke: 1.8; color: ink_c }
+            box { from: 51, 26; size: 3, 6; corner: 1.5; color: ink_c }
+            box { from: 19, 24; size: max(3, 28 * clamp(bat.percent / 100, 0, 1)), 11; corner: 2.5; color: if(bat.charging or bat_ac, ok_c, if(bat.percent <= 20, danger_c, ink_c)) }
+            text bat_state { at: 70, 23; anchor: left center; size: t_sub; weight: 600; color: ink_c }
+            text bat_sub { at: 70, 43; anchor: left center; size: t_micro; color: ink_sub; width: 190; lines: 1 }
+            text "{bat.percent}%" { at: 304, 33; anchor: right center; size: 22; weight: 700; color: ink_c }
+        }
+    }
+
+    }
+
+    surface updates {
+        size: 400, 480
+        anchor: top_right
+        margin: 0, 0, 0, 0
+        level: overlay
+        screens: each
+        open: (open or seen > 0.02) and cur == 16 and open_screen == screen.index
+        zone box up_dismiss { from: 0, 0; size: 400, 480; active: open and cur == 16 }
+        on press up_dismiss { open = false }
+        on press right up_dismiss { }
+    TopBody(44, -2, 400) {
+        zone box up_inside { from: 0, 0; size: 340, 470 }
+        on press right up_inside { }
+
+        PanelHeader("󰇚", "Updates", 10, 22)
+        text up_status { at: 0, 52; anchor: left center; size: t_cap; color: ink_sub; width: 340; lines: 1 }
+        group { move: 252, 9; Pill(if(up_checking, "Checking…", "Check"), 88, do_check, 0, 26, true) }
+
+        //  the packages
+        group {
+            move: 0, 70
+            show: up_n > 0
+            CardBg(340, min(up_n, 8) * 34 + 8, r_m)
+            column up_list {
+                at: 0, 4
+                view: 322, 272
+                step: 34
+                for p in up_pkgs {
+                    group {
+                        size: 322, 34
+                        Sym(if(p.aur, "󰣇", "󰏗"), 22, 17, 14, if(p.aur, warn_c, accent_c))
+                        text p.name { at: 40, 17; anchor: left center; size: t_sub; weight: 600; color: ink_c; width: 130; lines: 1 }
+                        text p.ver { at: 322, 17; anchor: right center; size: t_micro; color: ink_sub; width: 150; lines: 1; align: right }
+                    }
+                }
+            }
+            group { move: 331, 4; ScrollBar(up_list.scroll, up_list.content, 272) }
+        }
+        group { move: 0, 70; show: up_n < 1; EmptyState(170, 60, if(up_known, "󰄬", "󰑐"), if(up_known, "Everything is up to date", "Checking…")) }
+
+        //  the button
+        group {
+            move: 0, 70 + min(max(up_n, 1), 8) * 34 + 24 + if(up_n < 1, 70, 0)
+            show: up_n > 0
+            Pill(if(up_running, "Updating…", "Update all"), 340, do_update, 1, 36, true)
+        }
+    }
+
+    }
+
+    //  one labelled number of the details card
+    component Stat(x: number, label: text, value: text) {
+        text label { at: x, 17; anchor: left center; size: t_micro; color: ink_sub }
+        text value { at: x, 38; anchor: left center; size: t_body; weight: 700; color: ink_c }
+    }
+
+    //  one labelled meter of the activity card (y = its row)
+    component Meter(y: number, label: text, pct: number, tone: color) {
+        text label { at: 16, y + 9; anchor: left center; size: t_cap; weight: 600; color: ink_c }
+        text "{pct}%" { at: 304, y + 9; anchor: right center; size: t_cap; weight: 600; color: tone }
+        box { from: 70, y + 6; size: 180, 6; corner: 3; color: bar_track }
+        box { from: 70, y + 6; size: max(6, 180 * clamp(pct / 100, 0, 1)), 6; corner: 3; color: tone }
+    }
+
+
+    on key Escape { open = false }
+    on blur while cur == 3 and not fresh { open = false }     // today (dashboard) closes when it loses the focus
+
+    // ── spotlight ─────────────────────────────────────────────────
+    let line_color = card_stroke
+    let line_op = card_stroke_op
+
+    //  the logos of the web searches (Google, YouTube, GitHub, Wikipedia, DuckDuckGo, Maps), picked by `site` 1..6
+    image logo_g = file "../assets/icons/web/google.svg", 26, 26
+    image logo_yt = file "../assets/icons/web/youtube.svg", 26, 26
+    image logo_gh = file "../assets/icons/web/github.svg", 26, 26
+    image logo_w = file "../assets/icons/web/wikipedia.svg", 26, 26
+    image logo_ddg = file "../assets/icons/web/duckduckgo.svg", 26, 26
+    image logo_maps = file "../assets/icons/web/maps.svg", 26, 26
+
+    model hits max 24 { name: text; sub: text; kind: number; site: number; glyph: text; icon: image 26, 26 }
+    fact sp_sel   = 0
+    fact sc_t  = 0                 // where the result list is scrolled to (px)
+    prop sc = 0 ~quick
+    follow sc = sc_t
+    text query = ""
+    event launch ->
+
+    //  The glass is drawn by the frame: the dock island grows UP into it (topbar.plm). This scene only draws the
+    //  content, anchored to the bottom: the results above, the search field at the bottom where the dock was.
+
+
+    component Row(h: record) {
+        size: 576, 42
+        prop on = 0 ~quick
+        follow on = if(sp_sel == h.index, 1, 0)
+
+        RowFrame(576, 42, on)
+        zone box hit { from: 0, 0; size: 576, 42; corner: r_m; cursor: pointer }
+
+        image h.icon { at: 16, 8; size: 26, 26; show: h.kind == 0 }
+        group {
+            show: h.kind == 2 and h.site > 0
+            image logo_g { at: 16, 8; size: 26, 26; show: h.site == 1 }
+            image logo_yt { at: 16, 8; size: 26, 26; show: h.site == 2 }
+            image logo_gh { at: 16, 8; size: 26, 26; show: h.site == 3 }
+            image logo_w { at: 16, 8; size: 26, 26; show: h.site == 4 }
+            image logo_ddg { at: 16, 8; size: 26, 26; show: h.site == 5 }
+            image logo_maps { at: 16, 8; size: 26, 26; show: h.site == 6 }
+        }
+        group {
+            show: h.kind != 0 and not (h.kind == 2 and h.site > 0)
+            ellipse { at: 29, 21; radius: 13; color: accent_c; opacity: 85% }
+            text h.glyph { family: "JetBrainsMono Nerd Font Mono"; at: 29, 21; anchor: center; size: 14; color: on_accent }
+        }
+        text h.sub { at: 560, 21; anchor: right center; size: t_cap; color: ink_sub; width: 200; lines: 1; align: right }
+        text h.name {
+            at: 54, 21
+            anchor: left center
+            size: if(h.kind == 1, 19, 15)
+            weight: if(h.kind == 1, 700, 400)
+            width: 360
+            lines: 1
+            color: ink_c
+            opacity: 65% + on * 35%
+        }
+
+        on enter hit { sp_sel = h.index }
+        on press hit { emit launch(h.index) }
+    }
+    on key Escape while cur == 4 { open = false }
+    on key Tab while cur == 4 { sp_sel = min(sp_sel + 1, max(hits.count - 1, 0)); sc_t = clamp(sc_t, (min(sp_sel + 1, max(hits.count - 1, 0)) - 6) * 44, min(sp_sel + 1, max(hits.count - 1, 0)) * 44) }
+    on blur while cur == 4 and not fresh { open = false }
+    on key Down while cur == 4 { sp_sel = min(sp_sel + 1, max(hits.count - 1, 0)); sc_t = clamp(sc_t, (min(sp_sel + 1, max(hits.count - 1, 0)) - 6) * 44, min(sp_sel + 1, max(hits.count - 1, 0)) * 44) }
+    on key Up while cur == 4 { sp_sel = max(sp_sel - 1, 0); sc_t = clamp(sc_t, (max(sp_sel - 1, 0) - 6) * 44, max(sp_sel - 1, 0) * 44) }
+    on change sp_sel while sp_sel == 0 { sc_t = 0 }
+    on submit query    { emit launch(sp_sel) }
+
+    // ── clipboard ─────────────────────────────────────────────────
+    fact clip_sel = 0
+
+    //  Painted by clipboard.luau. `src` is where it came from in the logic's lists; `pinned` shows the pin.
+    model clips max 8 { src: number; preview: text; pinned: bool; pinnable: bool; is_img: bool; ready: bool; thumb: image 56, 34 }
+    text clip_q = ""
+    text clip_count = ""
+    text clip_empty = "Nothing copied yet"
+
+
+    event copy_clip ->
+    event pin_clip ->
+    event clear_all ->
+    event clip_scroll ->
+
+    component ClipRow(c: record) {
+        size: 520, 42
+        prop on = 0 ~quick
+        follow on = if(clip_sel == c.index, 1, 0)
+        prop pin_hot = 0 ~quick
+
+        // Pill background
+        RowFrame(480, 42, on)
+        zone box hit { from: 0, 0; size: 480, 42; corner: r_m; cursor: pointer }
+
+        //  An image: its thumbnail (or a faint box until it is made) in place of the text icon
+        group {
+            show: c.is_img
+            box { from: 10, 4; size: 56, 34; corner: 6; color: item_solid }
+            image c.thumb { at: 10, 4; size: 56, 34; show: c.ready }
+        }
+
+        // Clip text preview
+        row {
+            at: if(c.is_img, 76, 14), 12
+            gap: 10
+            align: center
+
+            text "󰈙" { family: "JetBrainsMono Nerd Font Mono"; size: 14; color: if(on > 0.5, accent_c, ink_sub); show: not c.is_img }
+            text c.preview {
+                size: 13
+                weight: if(on > 0.5, 600, 400)
+                color: ink_c
+                width: 420
+                lines: 1
+            }
+        }
+
+        //  The pin: a pushpin, filled and in the accent colour when pinned, a faint outline otherwise (shown on the
+        //  row under the pointer or the cursor, and always when pinned)
+        group {
+            show: c.pinnable
+            opacity: if(c.pinned, 100%, on * 70%)
+            move: 488, 9
+            ellipse { at: 12, 8.5; radius: 5; color: if(c.pinned, accent_c, ink_sub) }
+            ellipse { at: 12, 8.5; radius: 5; stroke: 1.5; color: if(c.pinned, accent_c, ink_sub); opacity: if(c.pinned, 0%, 100%) }
+            line { from: 12, 13.5; to: 12, 22; width: 1.8; color: if(c.pinned, accent_c, ink_sub) }
+            line { from: 7, 14; to: 17, 14; width: 1.8; color: if(c.pinned, accent_c, ink_sub) }
+            zone box pin_hit { at: 12, 12; size: 28, 28; corner: 8; cursor: pointer }
+            on press pin_hit { emit pin_clip(c.index) }
+            on press right pin_hit { }
+        }
+
+        on enter hit { clip_sel = c.index }
+        on press hit { emit copy_clip(c.index) }
+        on press right hit { }
+    }
+    on key Down while cur == 6 { clip_sel = min(clip_sel + 1, max(clips.count - 1, 0)) }
+    on key Up while cur == 6 { clip_sel = max(clip_sel - 1, 0) }
+    on key Return while cur == 6 { emit copy_clip(clip_sel) }
+    on key Tab while cur == 6 { clip_sel = min(clip_sel + 1, max(clips.count - 1, 0)) }
+    on key Escape while cur == 6 { open = false }
+    on blur while cur == 6 and not fresh { open = false }
+
+    // ── wallpapers ─────────────────────────────────────────────────
+    //  Painted by wallpapers.luau: the five on screen, in one row.
+    model walls max 6 { name: text; thumb: image 176, 99; current: bool; ready: bool; builtin: bool; sel: bool }
+
+    fact wall_tab = 0            // 0 all · 1 mine · 2 built in
+    fact wall_total = 0          // how many match the tab
+    fact wall_row = 0            // the first picture on screen (0-based)
+    fact wall_rows = 1           // how far it can scroll + 1
+    text wall_hint = ""
+
+    event wall_pick ->
+    event wall_scroll ->
+    event wall_tab_set ->
+    event wall_move ->
+    event wall_page ->
+    event wall_enter ->
+    event accent_now ->
+
+    //  One wallpaper: the picture, its name, a ring if it is the one on now, a small lift on hover.
+    component WallCard(w: record, pick: event) {
+        size: 176, 120
+        prop lift = 0 ~lively
+        zone box touch { from: 0, 0; size: 176, 99; corner: r_m; cursor: pointer }
+        group {
+            move: 0, -lift * 2
+            pivot: 88, 50
+            scale: 1 + 0.035 * lift
+            box { from: 0, 0; size: 176, 99; corner: r_m; color: item_solid }
+            group {
+                clip box { from: 0, 0; size: 176, 99; corner: r_m }
+                image w.thumb { at: 0, 0; size: 176, 99; show: w.ready }
+            }
+            box { from: 0, 0; size: 176, 99; corner: r_m; stroke: 3; color: accent_c; opacity: if(w.current, 100%, 0%) }
+            box { from: 0, 0; size: 176, 99; corner: r_m; stroke: 1.2; color: ink_c; opacity: max(lift * 35%, if(w.sel, 60%, 0%)) * if(w.current, 0, 1) }
+            //  a small tick on the one in use
+            group {
+                show: w.current
+                ellipse { at: 156, 80; radius: 10; color: accent_c }
+                path { at: 150.5, 76; color: on_accent; stroke: 2; move 0, 4.5; line 4, 8; line 11, 0 }
+            }
+        }
+        text w.name { at: 88, 111; anchor: center; size: t_micro; weight: if(w.current, 600, 400); color: if(w.current, ink_c, ink_sub); width: 168; lines: 1 }
+        on enter touch { lift: 1 }
+        on leave touch { lift: 0 }
+        on press touch { emit pick(w.index) }
+        on press right touch { }
+    }
+
+    //  An arrow (just the chevron, no circle) at one end of the strip; `dir` -1 left, 1 right. Dim when there is nowhere to go.
+    component ArrowBtn(dir: number) {
+        size: 32, 32
+        prop hot = 0 ~quick
+        let can = if(dir < 0, wall_row > 0, wall_row < wall_rows - 1)
+        path { at: 12 + dir * 0.5, 7; color: if(can and hot > 0.5, accent_c, ink_c); stroke: 2.6; opacity: if(can, 80% + hot * 20%, 25%); move 4 - dir * 4, 0; line 4 + dir * 4, 9; line 4 - dir * 4, 18 }
+        zone box hit { from: 0, 0; size: 32, 32; corner: 16; cursor: pointer; active: can }
+        on enter hit { hot: 1 }
+        on leave hit { hot: 0 }
+        on press hit { emit wall_page(dir) }
+        on press right hit { }
+    }
+
+    //  The glass is drawn by the frame: the dock island grows up and out into the strip (topbar.plm).
+    on key Left while cur == 5 { emit wall_move(-1) }
+    on key Right while cur == 5 { emit wall_move(1) }
+    on key Return while cur == 5 { emit wall_enter }
+    on key Escape while cur == 5 { open = false }
+    on blur while cur == 5 and not fresh { open = false }
+
+    // ── widget_bar ─────────────────────────────────────────────────
+    model kinds max 12 { id: number; name: text; icon: text }
+    model presets max 8 { id: number; name: text }
+    fact snap_on = true
+    fact can_undo = false
+
+    event wb_add ->
+    event wb_preset ->
+    event wb_undo ->
+    event wb_tidy ->
+    event wb_grid ->
+    event wb_done ->
+
+    component WbKindChip(k: record) {
+        prop hot = 0 ~quick
+        group {
+            move: 24 + (k.id - 1) * 86, 52
+            box { from: 0, 0; size: 78, 30; corner: 15; color: item_bg; opacity: item_bg_op + hot * 8% }
+            Sym(k.icon, 16, 15, 14, accent_c)
+            text k.name { at: 50, 15; anchor: center center; size: t_cap; weight: 500; color: ink_c }
+            zone box add_hit { from: 0, 0; size: 78, 30; corner: 15; cursor: pointer }
+            on enter add_hit { hot: 1 }
+            on leave add_hit { hot: 0 }
+            on press add_hit { emit wb_add(open_screen * 100 + k.id) }
+            on press right add_hit { }
+        }
+    }
+
+    component PresetChip(pr: record) {
+        prop hot = 0 ~quick
+        group {
+            move: 92 + (pr.id - 1) * 106, 84
+            box { from: 0, 0; size: 98, 28; corner: 14; color: item_bg; opacity: item_bg_op + hot * 8% }
+            text pr.name { at: 49, 14; anchor: center center; size: t_sub; weight: 500; color: ink_c }
+            zone box pr_hit { from: 0, 0; size: 98, 28; corner: 14; cursor: pointer }
+            on enter pr_hit { hot: 1 }
+            on leave pr_hit { hot: 0 }
+            on press pr_hit { emit wb_preset(pr.id) }
+            on press right pr_hit { }
+        }
+    }
+    on key Escape while cur == 10 { open = false }
+
+    // ── session dialog (shut down / restart / log out) and the polkit password dialog: they grow out of the dock too ──
+    fact ses_kind = 0            // 0: Shut Down, 1: Restart, 2: Log Out
+    fact countdown = 60      // 60-second automatic timer
+    fact ses_sel = 1         // the button Enter presses: 0 Cancel, 1 the action (the default)
+    fact reopen = true       // Reopen windows when logging back in
+    event confirm_action ->
+    event ses_enter ->
+    event dismiss
+    fact pk_secret = true
+    fact pk_asking = false
+    fact pk_wrong = false
+    text pk_message = ""
+    text pk_prompt = "Password"
+    text pk_info = ""
+    text password = ""
+    prop shake = 0 ~quick
+    event pk_cancel ->
+    event pk_answer ->
+    event pk_shake
+
+    surface session {
+        size: 520, 280
+        anchor: bottom
+        margin: 0, 0, 0, 0
+        level: overlay
+        keyboard: exclusive while open and cur == 11
+        screens: each
+        open: (open or seen > 0.02) and cur == 11 and open_screen == screen.index
+
+        zone box ses_dismiss { from: 0, 0; size: 520, 280; active: open and cur == 11 }
+        on press ses_dismiss { open = false }
+        on press right ses_dismiss { }
+
+        PanelBody(20, 280, 1) {
+            zone box ses_inside { from: 0, 0; size: 480, 250 }
+            on press right ses_inside { }
+
+            ellipse { at: 240, 40; radius: 24; color: pick(ses_kind, danger_c, warn_c, focus_c) }
+            text pick(ses_kind, "󰐥", "󰑐", "󰍃") { family: "JetBrainsMono Nerd Font Mono"; at: 240, 40; anchor: center; size: 24; color: on_accent }
+            text pick(ses_kind, "Are you sure you want to shut down your computer?", "Are you sure you want to restart your computer?", "Are you sure you want to log out?") {
+                at: 240, 88
+                anchor: center
+                size: 15
+                weight: 700
+                color: ink_c
+                width: 460
+                lines: 1
+            }
+            text pick(ses_kind, "Your computer will shut down automatically in {countdown} seconds.", "Your computer will restart automatically in {countdown} seconds.", "You will be logged out automatically in {countdown} seconds.") {
+                at: 240, 112
+                anchor: center
+                size: 12
+                color: ink_sub
+                width: 440
+                lines: 1
+            }
+            //  reopen checkbox
+            group {
+                move: 70, 128
+                box ses_hit_reopen { from: 0, 0; size: 340, 30; corner: 6; color: scrim_c; opacity: 0%; cursor: pointer }
+                box { from: 10, 7; size: 16, 16; corner: 4; color: if(reopen, accent_c, item_solid) }
+                text "󰄲" { family: "JetBrainsMono Nerd Font Mono"; at: 18, 15; anchor: center; size: 12; color: on_accent; show: reopen }
+                text "Reopen windows when logging back in" { at: 36, 15; anchor: left center; size: t_sub; color: ink_c }
+                on press ses_hit_reopen { toggle reopen }
+            }
+            //  Cancel on the left, the action on the right (Enter presses the one with the ring: the action, by default)
+            row {
+                at: 240, 190
+                gap: 16
+                anchor: center
+                group {
+                    size: 120, 32
+                    box { from: 0, 0; size: 120, 32; corner: 8; color: item_solid }
+                    box { from: -2, -2; size: 124, 36; corner: 10; stroke: 2; color: ink_c; opacity: if(ses_sel == 0, 80%, 0%) }
+                    text "Cancel" { at: 60, 16; anchor: center; size: t_body; weight: 500; color: ink_c }
+                    zone box ses_btn_cancel { from: 0, 0; size: 120, 32; cursor: pointer }
+                    on press ses_btn_cancel { emit dismiss }
+                    on press right ses_btn_cancel { }
+                }
+                group {
+                    size: 130, 32
+                    box { from: 0, 0; size: 130, 32; corner: 8; color: pick(ses_kind, danger_c, warn_c, accent_c) }
+                    box { from: -2, -2; size: 134, 36; corner: 10; stroke: 2; color: ink_c; opacity: if(ses_sel == 1, 80%, 0%) }
+                    text pick(ses_kind, "Shut Down", "Restart", "Log Out") { at: 65, 16; anchor: center; size: t_body; weight: 600; color: on_accent }
+                    zone box ses_btn_confirm { from: 0, 0; size: 130, 32; cursor: pointer }
+                    on press ses_btn_confirm { emit confirm_action }
+                    on press right ses_btn_confirm { }
+                }
+            }
+            KeyHint(240, 234, "Enter  confirm   ·   ← →  choose   ·   Esc  cancel")
+        }
+    }
+
+    surface auth {
+        size: 520, 340
+        anchor: bottom
+        margin: 0, 0, 0, 0
+        level: overlay
+        keyboard: exclusive while open and cur == 12
+        screens: each
+        open: (open or seen > 0.02) and cur == 12 and open_screen == screen.index
+
+        zone box pk_dismiss { from: 0, 0; size: 520, 340; active: open and cur == 12 }
+        on press pk_dismiss { }
+        on press right pk_dismiss { }
+
+        PanelBody(20, 340, 1) {
+            zone box pk_inside { from: 0, 0; size: 480, 310 }
+            on press right pk_inside { }
+
+            group {
+                move: shake, 0
+                ellipse { at: 240, 38; radius: 24; color: accent_c }
+                Sym("󰌾", 240, 38, 24, on_accent)
+                text "Authentication required" { at: 240, 84; anchor: center center; size: t_title; weight: 700; color: ink_c; width: 440; lines: 1; align: center }
+                //  what the program wants, as polkit words it
+                text pk_message { at: 240, 110; anchor: center center; size: t_sub; color: ink_sub; width: 440; lines: 2; align: center }
+
+                //  the password
+                text pk_prompt { at: 30, 158; anchor: left center; size: t_cap; weight: 600; color: ink_c; width: 340; lines: 1 }
+                box { from: 30, 172; size: 420, 38; corner: r_s; color: item_bg; opacity: item_bg_op }
+                box { from: 30, 172; size: 420, 38; corner: r_s; stroke: 1.5; color: if(pk_wrong, danger_c, accent_c); opacity: if(pk_wrong, 90%, 55%) }
+                input password {
+                    at: 42, 181
+                    width: 396
+                    size: 14
+                    color: ink_c
+                    placeholder: "Password"
+                    secret: true
+                    agent: no
+                }
+                text pick(if(pk_wrong, 1, 0), pk_info, "Wrong password, try again") { at: 240, 228; anchor: center center; size: t_cap; color: if(pk_wrong, danger_c, ink_sub); width: 440; lines: 1 }
+
+                //  Cancel / Authenticate
+                group {
+                    move: 135, 244
+                    box { from: 0, 0; size: 90, 30; corner: 8; color: item_solid }
+                    text "Cancel" { at: 45, 15; anchor: center center; size: t_body; weight: 500; color: ink_c }
+                    zone box pk_btn_cancel { from: 0, 0; size: 90, 30; corner: 8; cursor: pointer }
+                    on press pk_btn_cancel { emit pk_cancel }
+                    on press right pk_btn_cancel { }
+                }
+                group {
+                    move: 235, 244
+                    box { from: 0, 0; size: 110, 30; corner: 8; color: accent_c; opacity: if(pk_asking, 100%, 45%) }
+                    text "Authenticate" { at: 55, 15; anchor: center center; size: t_body; weight: 600; color: on_accent }
+                    zone box pk_btn_ok { from: 0, 0; size: 110, 30; corner: 8; cursor: pointer; active: pk_asking }
+                    on press pk_btn_ok { emit pk_answer }
+                    on press right pk_btn_ok { }
+                }
+                KeyHint(240, 290, "Enter  authenticate   ·   Esc  cancel")
+            }
+        }
+    }
+
+    surface spotlight {
+        size: 680, 520
+        anchor: bottom
+        margin: 0, 0, 0, 0
+        level: overlay
+        keyboard: exclusive while open and cur == 4
+        screens: each
+        open: (open or seen > 0.02) and cur == 4 and open_screen == screen.index
+
+    zone box sp_dismiss { from: 0, 0; size: 680, 520; active: open and cur == 4 }
+
+    PanelBody(20, 520, 1) {
+
+        // Results List
+        //  seven rows are seen; more results scroll (wheel, or the arrow keys carry the selection)
+        group {
+            clip box { from: 20, 10; size: 600, 314; corner: r_s }     // ends with this group: the search field below is not clipped
+            column list {
+                at: 32, 14 - sc
+                gap: 2
+                for h in hits { Row(h) }
+            }
+        }
+        zone box list_wheel { from: 20, 10; size: 600, 314; active: hits.count > 7 }
+        on scroll list_wheel { sc_t = clamp(sc_t - wheel * 44, 0, max(0, hits.count * 44 - 308)) }
+        group { move: 614, 14; ScrollBar(sc, hits.count * 44 - 2, 306) }
+
+        PanelSearch(640, ph)
+        input query {
+            at: 68, ph - 50
+            width: 530
+            size: 19
+            color: ink_c
+            placeholder: "Spotlight Search"
+            selection: accent_c
+        }
+    }
+        on press sp_dismiss { open = false }
+    }
+
+    surface clipboard {
+        size: 600, 560
+        anchor: bottom
+        margin: 0, 0, 0, 0
+        level: overlay
+        keyboard: exclusive while open and cur == 6
+        screens: each
+        open: (open or seen > 0.02) and cur == 6 and open_screen == screen.index
+
+        zone box clip_dismiss { from: 0, 0; size: 600, 560; active: open and cur == 6 }
+        on press clip_dismiss { open = false }
+        on press right clip_dismiss { }
+
+        PanelBody(20, 560, 1) {
+
+            //  clicks on the panel itself do not close it; the wheel scrolls the list
+            zone box clip_inside { from: 0, 0; size: 560, 520 }
+            on press right clip_inside { }
+            on scroll clip_inside { emit clip_scroll(wheel) }
+
+            // Header: title, count, Clear All
+            PanelHeader("󰅌", "Clipboard History")
+            text clip_count { at: 430, 30; anchor: right center; size: t_cap; color: ink_sub }
+            group { move: 450, 17; Pill("Clear All", 80, clear_all, 0, 26, true) }
+
+            // Search field: at the bottom, like every dock panel
+            PanelSearch(560, ph)
+            input clip_q {
+                at: 68, ph - 50
+                width: 450
+                size: 19
+                color: ink_c
+                placeholder: "Search clipboard history"
+                selection: accent_c
+            }
+
+            // Entries: pinned first, then the most recent
+            column clip_list {
+                at: 20, 58
+                gap: 4
+                for c in clips { ClipRow(c) }
+            }
+
+            group { show: clips.count < 1; EmptyState(280, 92, "󰅌", "Nothing copied yet", "Copy something and it shows up here") }
+        }
+    }
+
+    surface wallpapers {
+        size: 1000, 300
+        anchor: bottom
+        margin: 0, 0, 0, 0
+        level: overlay
+        keyboard: exclusive while open and cur == 5
+        screens: each
+        open: (open or seen > 0.02) and cur == 5 and open_screen == screen.index
+
+    zone box wp_dismiss { from: 0, 0; size: 1000, 300; active: open and cur == 5 }
+
+    PanelBody(10, 300, 1) {
+
+        //  clicks on the strip itself do not close it
+        zone box wp_inside { from: 0, 0; size: 980, 250 }
+        on press right wp_inside { }
+
+        PanelHeader("󰸉", "Wallpapers")
+        text wall_hint { at: 170, 32; anchor: left center; size: t_cap; color: ink_sub }
+        row {
+            at: 950, 30
+            anchor: right middle
+            gap: 8
+            Chip("All", wall_tab == 0, wall_tab_set, 0, 60)
+            Chip("Mine", wall_tab == 1, wall_tab_set, 1, 66)
+            Chip("Built-in", wall_tab == 2, wall_tab_set, 2, 84)
+        }
+
+        //  The wheel goes BEFORE the cards: the last declared zone is the one on top.
+        zone box wall_wheel { from: 20, 56; size: 940, 140 }
+        on scroll wall_wheel { emit wall_scroll(wheel) }
+
+        row {
+            at: 34, 62
+            gap: 8
+            for w in walls { WallCard(w, wall_pick) }
+        }
+        //  the arrow buttons, on both sides of the cards
+        group {
+            move: 1, 96
+            ArrowBtn(-1)
+        }
+        group {
+            move: 947, 96
+            ArrowBtn(1)
+        }
+
+        //  Nothing found
+        group { show: wall_total < 1; EmptyState(490, 130, "󰸉", "No pictures found", "Put some in ~/Pictures/wallpapers") }
+
+        //  Where you are in a long list: a thin bar under the cards
+        box { from: 28, 196; size: 924, 3; corner: 1.5; color: ink_c; opacity: if(wall_rows > 1, 10%, 0%) }
+        box { from: 28 + 924 * wall_row / max(1, wall_total), 196; size: max(30, 924 * 5 / max(1, wall_total)), 3; corner: 1.5; color: ink_c; opacity: if(wall_rows > 1, 45%, 0%) }
+
+        KeyHint(490, 222, "← →  browse   ·   Enter  apply   ·   Esc  close")
+    }
+        on press wp_dismiss { open = false }
+    }
+
+    surface widget_bar {
+        size: 820, 170
+        anchor: bottom
+        margin: 0, 0, 0, 0
+        level: overlay
+        keyboard: exclusive while open and cur == 10
+        screens: each
+        open: (open or seen > 0.02) and cur == 10 and open_screen == screen.index
+
+        zone box wb_dismiss { from: 0, 0; size: 820, 170; active: open and cur == 10 }
+
+        PanelBody(10, 170, 1) {
+
+            //  clicks on the bar itself do nothing
+            zone box wb_inside { from: 0, 0; size: 800, 132 }
+            on press right wb_inside { }
+
+            text "Add a widget" { at: 24, 31; anchor: left center; size: t_sub; weight: 600; color: ink_sub }
+            for k in kinds { WbKindChip(k) }
+            text "Layouts" { at: 24, 98; anchor: left center; size: t_sub; weight: 600; color: ink_sub }
+            for pr in presets { PresetChip(pr) }
+
+            group { move: 376, 14; Pill("Tidy up", 94, wb_tidy, 0, 34, true) }
+            group { move: 480, 14; Pill(if(snap_on, "Grid: on", "Grid: off"), 90, wb_grid, 0, 34, true) }
+            group { move: 580, 14; Pill("Undo", 70, wb_undo, 0, 34, true, can_undo) }
+            group { move: 660, 14; Pill("Done", 124, wb_done, 1, 34, true) }
+        }
+        on press wb_dismiss { open = false }
+    }
+
+    on key Escape while cur == 11 { open = false }
+    on key Return while cur == 11 { emit ses_enter }
+    on key KP_Enter while cur == 11 { emit ses_enter }
+    on key Left while cur == 11 { ses_sel = 0 }
+    on key Right while cur == 11 { ses_sel = 1 }
+    on key Tab while cur == 11 { ses_sel = 1 - ses_sel }
+    on key y while cur == 11 { emit confirm_action }
+    on key n while cur == 11 { open = false }
+    on key Escape while cur == 12 { emit pk_cancel }
+    on submit password { emit pk_answer }
+    on pk_shake { impulse shake 18 }
+    on change open while open and cur == 12 { focus password }
+    on change cur while open and cur == 12 { focus password }
+    on change open while open and cur == 4 { focus query }
+    on change cur while open and cur == 4 { focus query }
+    on change open while open and cur == 6 { focus clip_q }
+    on change cur while open and cur == 6 { focus clip_q }
+
+    // ── app switcher ────────────────────────────────────────────
+    fact sw_sel = 0
+    text sel_title = ""
+    prop bw = 260 ~calm
+    follow bw = max(260, sw_wins.count * 152 + 32)
+
+    model sw_wins max 7 { id: number; title: text; app_id: text; icon: image 48, 48; thumb: image 132, 78; has_thumb: bool }
+    event next_app ->
+    event prev_app ->
+    event sw_switch_to ->
+
+    component AppTile(w: record) {
+        size: 140, 112
+        prop on = 0 ~quick
+        follow on = if(sw_sel == w.index, 1, 0)
+
+        SelectCard(140, 112, sw_sel == w.index)
+        zone box hit { from: 0, 0; size: 140, 112; corner: r_l; cursor: pointer }
+
+        // Preview thumbnail area (clipped)
+        group {
+            move: 4, 4
+            clip box { from: 0, 0; size: 132, 78; corner: r_s }
+            box { from: 0, 0; size: 132, 78; corner: r_s; color: bg_color; opacity: 50% }
+            image w.thumb { at: 0, 0; size: 132, 78; fit: cover; show: w.has_thumb }
+            group {
+                show: not w.has_thumb
+                move: 66, 39
+                image w.icon { at: -22, -22; size: 44, 44 }
+            }
+        }
+
+        // App Icon Badge in corner of preview
+        group {
+            move: 8, 56
+            box { from: 0, 0; size: 22, 22; corner: 6; color: bg_color; opacity: 90% }
+            box { from: 0, 0; size: 22, 22; corner: 6; stroke: 1; color: stroke_c; opacity: stroke_op }
+            image w.icon { at: 2, 2; size: 18, 18 }
+        }
+
+        // Window Title below preview
+        text w.title {
+            at: 70, 96
+            anchor: center center
+            size: 10.5
+            weight: if(sw_sel == w.index, 600, 400)
+            color: if(sw_sel == w.index, ink_c, ink_sub)
+            width: 126
+            align: center
+            lines: 1
+        }
+
+        on press hit { emit sw_switch_to(w.index) }
+    }
+    on key Tab while cur == 21 { emit next_app }
+    on key Left while cur == 21 { emit prev_app }
+    on key Right while cur == 21 { emit next_app }
+    on key Return while cur == 21 { emit sw_switch_to(sw_sel) }
+    on key Escape while cur == 21 { open = false }
+    on blur while cur == 21 and not fresh { open = false }
+
+    // ── window overview ─────────────────────────────────────────
+    fact ov_sel = 0
+    text win_count_text = ""
+
+    model ov_wins max 16 { id: number; title: text; app_id: text; ws: number; ws_label: text; icon: image 48, 48; thumb: image 264, 120; has_thumb: bool }
+
+    // the sheet is as tall as its rows (a few windows no longer sit in a huge empty panel)
+    let ov_rows = max(1, ceil(ov_wins.count / 4))
+    let ov_w = max(560, 56 + min(4, max(1, ov_wins.count)) * 290)
+    let ov_h = min(800, 80 + ov_rows * 181)
+    event next_win ->
+    event prev_win ->
+    event up_win ->
+    event down_win ->
+    event ov_switch_to ->
+
+    component OverviewTile(w: record) {
+        size: 274, 165
+        prop on = 0 ~quick
+        follow on = if(ov_sel == w.index, 1, 0)
+
+        SelectCard(274, 165, ov_sel == w.index)
+        zone box hit { from: 0, 0; size: 274, 165; corner: r_l; cursor: pointer }
+
+        // Preview thumbnail area (clipped)
+        group {
+            move: 5, 5
+            clip box { from: 0, 0; size: 264, 120; corner: r_s }
+            box { from: 0, 0; size: 264, 120; corner: r_s; color: bg_color; opacity: 50% }
+            image w.thumb { at: 0, 0; size: 264, 120; fit: cover; show: w.has_thumb }
+            group {
+                show: not w.has_thumb
+                move: 132, 60
+                image w.icon { at: -24, -24; size: 48, 48 }
+            }
+        }
+
+        // App Icon Badge in corner of preview
+        group {
+            move: 10, 10
+            box { from: 0, 0; size: 24, 24; corner: 6; color: bg_color; opacity: 90% }
+            box { from: 0, 0; size: 24, 24; corner: 6; stroke: 1; color: stroke_c; opacity: stroke_op }
+            image w.icon { at: 3, 3; size: 18, 18 }
+        }
+
+        // Workspace Pill Badge in top-right of preview
+        group {
+            move: 206, 10
+            show: w.ws > 0
+            box { from: 0, 0; size: 58, 20; corner: 10; color: bg_color; opacity: 90% }
+            box { from: 0, 0; size: 58, 20; corner: 10; stroke: 1; color: stroke_c; opacity: stroke_op }
+            text w.ws_label { at: 29, 10; anchor: center center; size: t_micro; weight: 600; color: ink_sub }
+        }
+
+        // Window Title below preview
+        text w.title {
+            at: 137, 145
+            anchor: center center
+            size: 11
+            weight: if(ov_sel == w.index, 600, 400)
+            color: if(ov_sel == w.index, ink_c, ink_sub)
+            width: 254
+            align: center
+            lines: 1
+        }
+
+        on press hit { emit ov_switch_to(w.index) }
+    }
+    on key Tab while cur == 22 { emit next_win }
+    on key Left while cur == 22 { emit prev_win }
+    on key Right while cur == 22 { emit next_win }
+    on key Up while cur == 22 { emit up_win }
+    on key Down while cur == 22 { emit down_win }
+    on key Return while cur == 22 { emit ov_switch_to(ov_sel) }
+    on key Escape while cur == 22 { open = false }
+    on blur while cur == 22 and not fresh { open = false }
+
+    // ── capture ─────────────────────────────────────────────────
+    fact recording = false
+    fact record_secs = 0
+    fact cap_mode = 0          // 0 region, 1 focused window, 2 whole screen
+    fact cap_kind = 0          // 0 photo, 1 video
+    fact has_sel = false
+    fact sel_x = 0
+    fact sel_y = 0
+    fact sel_w = 0
+    fact sel_h = 0
+    fact fx = 0
+    fact fy = 0
+    fact hx = 0
+    fact hy = 0
+    fact o_x = 0
+    fact o_y = 0
+    fact scr_w = 1920
+    fact scr_h = 1080
+    text shot_path = ""
+    image shot = from shot_path, 0, 0
+    event toggle_record ->
+    event do_region ->
+    event confirm ->
+    event do_window ->
+    event shot_now ->
+    event do_screen ->
+
+    component ModeChip(x: number, idx: number, icon_t: text, name_t: text) {
+        group {
+            move: x, 8
+            box { from: 0, 0; size: 90, 36; corner: r_l; color: accent_c; opacity: if(cap_mode == idx, 22%, 0%) }
+            Sym(icon_t, 20, 18, 15, if(cap_mode == idx, accent_c, ink_c))
+            text name_t { at: 36, 18; anchor: left center; size: t_sub; weight: 600; color: if(cap_mode == idx, accent_c, ink_c) }
+            zone box chip_hit { from: 0, 0; size: 90, 36; corner: r_l; cursor: pointer; label: name_t }
+            on press chip_hit { cap_mode = idx; has_sel = false }
+            on press right chip_hit { open = false }
+        }
+    }
+
+    component KindChip(x: number, idx: number, icon_t: text, name_t: text) {
+        group {
+            move: x, 8
+            box { from: 0, 0; size: 72, 36; corner: r_l; color: if(idx == 1, danger_c, accent_c); opacity: if(cap_kind == idx, 24%, 0%) }
+            Sym(icon_t, 18, 18, 15, if(cap_kind == idx, if(idx == 1, danger_c, accent_c), ink_c))
+            text name_t { at: 32, 18; anchor: left center; size: t_sub; weight: 600; color: if(cap_kind == idx, if(idx == 1, danger_c, accent_c), ink_c) }
+            zone box kind_hit { from: 0, 0; size: 72, 36; corner: r_l; cursor: pointer; label: name_t }
+            on press kind_hit { cap_kind = idx }
+            on press right kind_hit { open = false }
+        }
+    }
+
+    surface switcher {
+        size: 1160, 220
+        anchor: center
+        level: overlay
+        keyboard: exclusive while open and cur == 21
+        screens: each
+        open: (open or mseen > 0.02) and cur == 21 and open_screen == screen.index
+
+        zone box sw_dismiss { from: 0, 0; size: 1160, 220; active: open and cur == 21 }
+
+        group {
+            move: 0, 24
+            pivot: 580, 86
+            scale: mscale
+            opacity: mseen
+
+            // Floating Capsule
+            body {
+                color: bg_color
+                glass: glass_amt
+                lens: false
+                frost: 100%
+                dispersion: 0
+                refraction: 0
+                tint: tint_amt
+                rim: rim_amt
+                box { from: 580 - bw / 2, 0; size: bw, 172; corner: 24 }
+            }
+            box { from: 580 - bw / 2, 0; size: bw, 172; corner: 24; stroke: 1; color: stroke_c; opacity: stroke_op }
+
+            // Horizontal Strip of Window Cards
+            row app_strip {
+                at: 580, 16
+                gap: 12
+                anchor: center top
+                align: center
+
+                for w in sw_wins {
+                    AppTile(w)
+                }
+            }
+
+            // Title of the selected window
+            text sel_title {
+                at: 580, 148
+                anchor: center center
+                size: 12
+                weight: 600
+                color: ink_c
+                width: bw - 40
+                align: center
+                lines: 1
+            }
+        }
+        on press sw_dismiss { open = false }
+        on press right sw_dismiss { }
+        }
+
+    surface overview {
+        size: 1280, 860
+        anchor: center
+        level: overlay
+        keyboard: exclusive while open and cur == 22
+        screens: each
+        open: (open or mseen > 0.02) and cur == 22 and open_screen == screen.index
+
+        zone box ov_dismiss { from: 0, 0; size: 1280, 860; active: open and cur == 22 }
+
+        group {
+            move: (1200 - ov_w) / 2, (800 - ov_h) / 2
+            pivot: 640, 430
+            scale: mscale
+            opacity: mseen
+
+            // Floating Glass Modal Surface
+            body {
+                color: bg_color
+                glass: glass_amt
+                lens: false
+                frost: 100%
+                dispersion: 0
+                refraction: 0
+                tint: tint_amt
+                rim: rim_amt
+                box { from: 40, 30; size: ov_w, ov_h; corner: 28 }
+            }
+            box { from: 40, 30; size: ov_w, ov_h; corner: 28; stroke: 1; color: stroke_c; opacity: stroke_op }
+
+            // Header Row
+            group {
+                move: 70, 56
+                ellipse { at: 14, 14; radius: 14; color: accent_c; opacity: 20% }
+                Sym("󰕰", 14, 14, 15, accent_c)
+                text "Window Overview" { at: 38, 14; anchor: left center; size: 16; weight: 700; color: ink_c }
+                text win_count_text { at: 200, 14; anchor: left center; size: t_sub; color: ink_sub }
+                KeyHint(ov_w - 230, 14, "← →  select   ·   Enter  focus   ·   Esc  close")
+            }
+
+            // Grid of Window Previews
+            grid {
+                at: 68, 96
+                columns: 4
+                gap: 16
+                width: 1144
+                row: 165
+
+                for w in ov_wins {
+                    OverviewTile(w)
+                }
+            }
+
+            // Empty state if no windows are open
+            group {
+                show: ov_wins.count < 1
+                move: 640, 430
+                EmptyState(0, 0, "󰕰", "No open windows")
+            }
+        }
+        on press ov_dismiss { open = false }
+        on press right ov_dismiss { }
+        }
+
+    surface picker {
+        size: full, full
+        anchor: top_left
+        level: overlay
+        reserve: -1
+        keyboard: exclusive while open and cur == 23
+        screens: each
+        open: (open or mseen > 0.02) and cur == 23 and open_screen == screen.index
+
+        // the frozen screen
+        image shot { at: 0, 0; size: picker.width, picker.height; fit: fill }
+        // dim everything that is not selected
+        box { from: 0, 0; size: picker.width, picker.height; color: scrim_c; opacity: if(has_sel and cap_mode == 0, 0%, 38%) }
+        group {
+            show: has_sel and cap_mode == 0
+            box { from: 0, 0; size: picker.width, sel_y; color: scrim_c; opacity: 38% }
+            box { from: 0, sel_y + sel_h; size: picker.width, picker.height - sel_y - sel_h; color: scrim_c; opacity: 38% }
+            box { from: 0, sel_y; size: sel_x, sel_h; color: scrim_c; opacity: 38% }
+            box { from: sel_x + sel_w, sel_y; size: picker.width - sel_x - sel_w, sel_h; color: scrim_c; opacity: 38% }
+        }
+
+        // ── what catches the mouse ───────────────────────────────────
+        // region: drag anywhere for a new selection
+        zone box catch { from: 0, 0; size: picker.width, picker.height; cursor: crosshair; label: "Select a region" }
+        on press catch while cap_mode == 0 { fx = local.x; fy = local.y; hx = local.x; hy = local.y; sel_x = local.x; sel_y = local.y; sel_w = 0; sel_h = 0; has_sel = false }
+        on drag catch while cap_mode == 0 {
+            has_sel = true
+            sel_x = min(fx, clamp(hx + drag.dx, 0, picker.width))
+            sel_y = min(fy, clamp(hy + drag.dy, 0, picker.height))
+            sel_w = abs(clamp(hx + drag.dx, 0, picker.width) - fx)
+            sel_h = abs(clamp(hy + drag.dy, 0, picker.height) - fy)
+        }
+        on release catch while cap_mode == 0 { has_sel = sel_w > 12 and sel_h > 12 }
+        // window / screen: a click takes it
+        on press catch while cap_mode == 1 { emit do_window }
+        on press catch while cap_mode == 2 { emit do_screen }
+        on press right catch { open = false }
+
+        // move the selection by its inside
+        zone box move_hit { from: sel_x, sel_y; size: sel_w, sel_h; cursor: move; active: has_sel and cap_mode == 0; label: "Move the selection" }
+        on press move_hit { o_x = sel_x; o_y = sel_y }
+        on drag move_hit {
+            sel_x = clamp(o_x + drag.dx, 0, picker.width - sel_w)
+            sel_y = clamp(o_y + drag.dy, 0, picker.height - sel_h)
+        }
+        on press right move_hit { open = false }
+
+        // four corners resize it: the opposite corner stays where it is
+        zone box h_tl { from: sel_x - 10, sel_y - 10; size: 20, 20; cursor: nwse_resize; active: has_sel and cap_mode == 0; label: "Resize top left" }
+        zone box h_tr { from: sel_x + sel_w - 10, sel_y - 10; size: 20, 20; cursor: nesw_resize; active: has_sel and cap_mode == 0; label: "Resize top right" }
+        zone box h_bl { from: sel_x - 10, sel_y + sel_h - 10; size: 20, 20; cursor: nesw_resize; active: has_sel and cap_mode == 0; label: "Resize bottom left" }
+        zone box h_br { from: sel_x + sel_w - 10, sel_y + sel_h - 10; size: 20, 20; cursor: nwse_resize; active: has_sel and cap_mode == 0; label: "Resize bottom right" }
+        on press h_tl { fx = sel_x + sel_w; fy = sel_y + sel_h; hx = sel_x; hy = sel_y }
+        on press h_tr { fx = sel_x; fy = sel_y + sel_h; hx = sel_x + sel_w; hy = sel_y }
+        on press h_bl { fx = sel_x + sel_w; fy = sel_y; hx = sel_x; hy = sel_y + sel_h }
+        on press h_br { fx = sel_x; fy = sel_y; hx = sel_x + sel_w; hy = sel_y + sel_h }
+        on drag h_tl { sel_x = min(fx, clamp(hx + drag.dx, 0, picker.width)); sel_y = min(fy, clamp(hy + drag.dy, 0, picker.height)); sel_w = abs(clamp(hx + drag.dx, 0, picker.width) - fx); sel_h = abs(clamp(hy + drag.dy, 0, picker.height) - fy) }
+        on drag h_tr { sel_x = min(fx, clamp(hx + drag.dx, 0, picker.width)); sel_y = min(fy, clamp(hy + drag.dy, 0, picker.height)); sel_w = abs(clamp(hx + drag.dx, 0, picker.width) - fx); sel_h = abs(clamp(hy + drag.dy, 0, picker.height) - fy) }
+        on drag h_bl { sel_x = min(fx, clamp(hx + drag.dx, 0, picker.width)); sel_y = min(fy, clamp(hy + drag.dy, 0, picker.height)); sel_w = abs(clamp(hx + drag.dx, 0, picker.width) - fx); sel_h = abs(clamp(hy + drag.dy, 0, picker.height) - fy) }
+        on drag h_br { sel_x = min(fx, clamp(hx + drag.dx, 0, picker.width)); sel_y = min(fy, clamp(hy + drag.dy, 0, picker.height)); sel_w = abs(clamp(hx + drag.dx, 0, picker.width) - fx); sel_h = abs(clamp(hy + drag.dy, 0, picker.height) - fy) }
+        on press right h_tl { open = false }
+        on press right h_tr { open = false }
+        on press right h_bl { open = false }
+        on press right h_br { open = false }
+
+        // ── the selection: border, size, handles ─────────────────────
+        group {
+            show: has_sel and cap_mode == 0
+            opacity: mseen
+            box { from: sel_x, sel_y; size: sel_w, sel_h; stroke: 2; color: accent_c }
+            // size label
+            group {
+                move: sel_x, max(sel_y - 30, 4)
+                Plate(96, 22, 11)
+                text "{sel_w} × {sel_h}" { at: 48, 11; anchor: center center; size: t_cap; weight: 600; color: ink_c }
+            }
+            ellipse { at: sel_x, sel_y; radius: 6; color: on_accent }
+            ellipse { at: sel_x + sel_w, sel_y; radius: 6; color: on_accent }
+            ellipse { at: sel_x, sel_y + sel_h; radius: 6; color: on_accent }
+            ellipse { at: sel_x + sel_w, sel_y + sel_h; radius: 6; color: on_accent }
+            ellipse { at: sel_x, sel_y; radius: 3.5; color: accent_c }
+            ellipse { at: sel_x + sel_w, sel_y; radius: 3.5; color: accent_c }
+            ellipse { at: sel_x, sel_y + sel_h; radius: 3.5; color: accent_c }
+            ellipse { at: sel_x + sel_w, sel_y + sel_h; radius: 3.5; color: accent_c }
+        }
+
+        // the action under the selection
+        group {
+            show: has_sel and cap_mode == 0
+            opacity: mseen
+            move: clamp(sel_x + sel_w / 2 - 74, 8, picker.width - 156), min(sel_y + sel_h + 14, picker.height - 54)
+            box { from: 0, 0; size: 148, 40; corner: r_m; color: accent_c }
+            text if(cap_kind == 1, "󰻂  Record  ⏎", "󰄀  Capture  ⏎") { family: "JetBrainsMono Nerd Font Mono"; at: 74, 20; anchor: center center; size: 13; weight: 700; color: on_accent }
+            zone box go_hit { from: 0, 0; size: 148, 40; corner: r_m; cursor: pointer; label: "Take it" }
+            on press go_hit { scr_w = picker.width; scr_h = picker.height; emit do_region }
+            on press right go_hit { open = false }
+        }
+
+        // hint when nothing is selected yet
+        group {
+            show: not (has_sel and cap_mode == 0)
+            opacity: mseen
+            move: picker.width / 2, picker.height / 2
+            group {
+                move: -190, -20
+                Plate(380, 40, 20)
+            }
+            text pick(cap_mode, "Drag to select an area", "Click to capture the screen with the focused window", "Click to capture the whole screen") { at: 0, 0; anchor: center center; size: 14; weight: 600; color: ink_c }
+        }
+
+        // ── the toolbar ──────────────────────────────────────────────
+        group {
+            opacity: mseen
+            move: picker.width / 2 - 262, 62 - (1 - mseen) * 14
+            body {
+                color: bg_color
+                glass: glass_amt
+                lens: false
+                frost: 100%
+                dispersion: 0
+                refraction: 0
+                tint: tint_amt
+                rim: rim_amt
+                box { from: 0, 0; size: 524, 52; corner: 26 }
+            }
+            box { from: 0, 0; size: 524, 52; corner: 26; stroke: 1; color: stroke_c; opacity: stroke_op }
+
+            // close
+            ellipse { at: 26, 26; radius: 14; color: item_solid }
+            Sym("󰅖", 26, 26, 13, ink_c)
+            zone box x_hit { from: 10, 10; size: 32, 32; corner: 16; cursor: pointer; label: "Close" }
+            on press x_hit { open = false }
+            on press right x_hit { open = false }
+
+            box { from: 52, 12; size: 1, 28; color: stroke_c; opacity: stroke_op }
+
+            // what to take
+            ModeChip(66, 0, "󰩭", "Region")
+            ModeChip(66 + 94, 1, "󰖲", "Window")
+            ModeChip(66 + 188, 2, "󰍹", "Screen")
+
+            box { from: 66 + 288, 12; size: 1, 28; color: stroke_c; opacity: stroke_op }
+
+            // photo or video
+            KindChip(66 + 304, 0, "󰄀", "Photo")
+            KindChip(66 + 304 + 76, 1, "󰻂", "Video")
+        }
+        }
+
+
+        on key Escape while cur == 23 { open = false }
+        on key Return while cur == 23 { emit confirm }
+        on key KP_Enter while cur == 23 { emit confirm }
+        on key r while cur == 23 { cap_kind = 1 }
+        on key p while cur == 23 { cap_kind = 0 }
+
+    // ── welcome ─────────────────────────────────────────────────
+    fact page = 0
+    fact wl_mode = 1            // 0 light · 1 dark · 2 auto (mirrors Settings)
+    fact wall_colours = false
+    fact theme_apps = true
+    event show_again ->
+    event wl_next ->
+    event wl_back ->
+    event wl_done ->
+    event choose_dark ->
+    event choose_light ->
+    event choose_auto ->
+    event toggle_colours ->
+    event toggle_apps_pref ->
+
+
+
+    surface welcome {
+        size: 720, 520
+        anchor: center
+        level: overlay
+        keyboard: exclusive while open and cur == 24
+        screens: each
+        open: (open or mseen > 0.02) and cur == 24 and open_screen == screen.index
+
+        zone box wl_scrim { from: 0, 0; size: 720, 520; active: open and cur == 24 }
+
+        group {
+            move: 40, 30
+            pivot: 320, 230
+            scale: mscale
+            opacity: mseen
+
+            body {
+                color: bg_color
+                glass: glass_amt
+                lens: false
+                frost: 100%
+                dispersion: 0
+                refraction: 0
+                tint: tint_amt
+                rim: rim_amt
+                box { from: 0, 0; size: 640, 460; corner: r_l }
+            }
+            box { from: 0, 0; size: 640, 460; corner: r_l; stroke: 1; color: card_stroke; opacity: card_stroke_op }
+
+            //  ── page 0: hello ──
+            group {
+                show: page == 0
+                ellipse { at: 320, 92; radius: 38; color: accent_c }
+                Sym("󰣇", 320, 92, 38, on_accent)
+                text "Welcome to Beskar" { at: 320, 168; anchor: center center; size: 26; weight: 700; color: ink_c }
+                text "A glass desktop for niri" { at: 320, 200; anchor: center center; size: 14; color: ink_sub }
+                Tip(60, 226, "󰍜", "The bar", "The clock opens the dashboard, the bell your notifications, the switches icon the Control Center.")
+                Tip(60, 288, "󰀻", "The dock", "Your apps. Spotlight (Super + Space) finds apps, does sums and runs commands.")
+                Tip(60, 350, "󰖲", "Widgets", "Clock, weather, system and more on the desktop. Super + Shift + W arranges them.")
+            }
+
+            //  ── page 1: make it yours ──
+            group {
+                show: page == 1
+                text "Make it yours" { at: 320, 62; anchor: center center; size: 22; weight: 700; color: ink_c }
+                text "You can change all of this later in Settings." { at: 320, 90; anchor: center center; size: t_sub; color: ink_sub }
+                Choice(60, 132, "󰖔", "Dark", wl_mode == 1, choose_dark)
+                Choice(228, 132, "󰖨", "Light", wl_mode == 0, choose_light)
+                Choice(396, 132, "󰔎", "Automatic", wl_mode == 2, choose_auto)
+                group { move: 60, 250; ToggleRow("Colours from the wallpaper", "The accent, highlights and glass tint follow the picture you choose.", wall_colours, toggle_colours, 520) }
+                group { move: 60, 318; ToggleRow("Theme other apps", "Terminals, Files and other GTK and Qt apps wear the same colours.", theme_apps, toggle_apps_pref, 520) }
+            }
+
+            //  ── page 2: shortcuts ──
+            group {
+                show: page == 2
+                text "Good to know" { at: 320, 62; anchor: center center; size: 22; weight: 700; color: ink_c }
+                Keys(100, 112, "Super + Space", "Spotlight")
+                Keys(100, 148, "Super + V", "Clipboard history")
+                Keys(100, 184, "Super + W", "Wallpapers")
+                Keys(100, 220, "Super + Tab", "Switch apps")
+                Keys(100, 256, "Super + ,", "Settings")
+                Keys(100, 292, "Super + Shift + W", "Arrange the widgets")
+                Keys(100, 328, "Super + /", "All shortcuts")
+                text "Everything else is in the bar and the Control Center." { at: 320, 380; anchor: center center; size: t_sub; color: ink_sub }
+            }
+
+            //  ── footer: dots, Back, Next / Start, Skip ──
+            repeat d in 0..3 {
+                ellipse { at: 296 + d * 24, 424; radius: 4; color: if(page == d, accent_c, ink_c); opacity: if(page == d, 100%, 25%) }
+            }
+            group {
+                show: page > 0
+                text "Back" { at: 60, 424; anchor: left center; size: t_body; weight: 500; color: ink_sub }
+                zone box wl_back_hit { from: 40, 408; size: 70, 32; corner: 10; cursor: pointer }
+                on press wl_back_hit { emit wl_back }
+                on press right wl_back_hit { }
+            }
+            group {
+                show: page < 2
+                box { from: 500, 408; size: 100, 32; corner: 16; color: accent_c }
+                text "Next" { at: 550, 424; anchor: center center; size: t_body; weight: 600; color: on_accent }
+                zone box wl_next_hit { from: 500, 408; size: 100, 32; corner: 16; cursor: pointer }
+                on press wl_next_hit { emit wl_next }
+                on press right wl_next_hit { }
+            }
+            group {
+                show: page == 2
+                box { from: 480, 408; size: 120, 32; corner: 16; color: accent_c }
+                text "Start using Beskar" { at: 540, 424; anchor: center center; size: t_sub; weight: 600; color: on_accent; width: 116; lines: 1; align: center }
+                zone box wl_done_hit { from: 480, 408; size: 120, 32; corner: 16; cursor: pointer }
+                on press wl_done_hit { emit wl_done }
+                on press right wl_done_hit { }
+            }
+            group {
+                show: page < 2
+                text "Skip" { at: 440, 424; anchor: right center; size: t_sub; color: ink_sub }
+                zone box wl_skip_hit { from: 380, 408; size: 70, 32; corner: 10; cursor: pointer }
+                on press wl_skip_hit { emit wl_done }
+                on press right wl_skip_hit { }
+            }
+        }
+        on press wl_scrim { }
+        on press right wl_scrim { }
+        }
+
+    on key Escape while cur == 24 { emit wl_done }
+    on key Right  while cur == 24 { emit wl_next }
+    on key Left   while cur == 24 { emit wl_back }
+    on key Return while cur == 24 { emit wl_next }
+
+    //  an icon, a title and a sentence
+    component Tip(x: number, y: number, icon: text, title: text, body: text) {
+        group {
+            move: x, y
+            ellipse { at: 22, 24; radius: 22; color: accent_c; opacity: 18% }
+            Sym(icon, 22, 24, 20, accent_c)
+            text title { at: 58, 8; anchor: left center; size: 14; weight: 600; color: ink_c }
+            text body { at: 58, 34; anchor: left top; size: t_sub; color: ink_sub; width: 500; lines: 2 }
+        }
+    }
+
+    //  Light / Dark / Automatic
+    component Choice(x: number, y: number, icon: text, label: text, on_: bool, tap: event) {
+        prop hot = 0 ~quick
+        group {
+            move: x, y
+            box { from: 0, 0; size: 160, 96; corner: r_l; color: item_bg; opacity: item_bg_op + hot * 6% }
+            box { from: 0, 0; size: 160, 96; corner: r_l; stroke: 2; color: accent_c; opacity: if(on_, 100%, 0%) }
+            Sym(icon, 80, 38, 26, if(on_, accent_c, ink_c))
+            text label { at: 80, 72; anchor: center center; size: t_body; weight: 600; color: ink_c }
+            zone box hit { from: 0, 0; size: 160, 96; corner: r_l; cursor: pointer }
+            on enter hit { hot: 1 }
+            on leave hit { hot: 0 }
+            on press hit { emit tap }
+            on press right hit { }
+        }
+    }
+
+    //  a row with a switch
+    //  a shortcut line
+    component Keys(x: number, y: number, keys: text, what: text) {
+        group {
+            move: x, y
+            box { from: 0, 0; size: 180, 26; corner: 8; color: item_bg; opacity: item_bg_op }
+            text keys { at: 90, 13; anchor: center center; size: t_sub; weight: 600; color: ink_c }
+            text what { at: 204, 13; anchor: left center; size: t_body; color: ink_c }
+        }
+    }
+
+}

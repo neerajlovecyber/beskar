@@ -35,7 +35,7 @@ kill_all() {
 
 check_status() {
     echo "macOS / iNiR Shell Status:"
-    for comp in topbar border control_center notifications settings lock panels modals dock dialogs; do
+    for comp in topbar border control_center notifications settings lock overlays; do
         if pgrep -f "pleamar.*$comp\.plm" >/dev/null 2>&1; then
             echo "  ✔ $comp is RUNNING"
         else
@@ -58,11 +58,11 @@ apply_saved_theme() {
         [ -z "$DM" ] && DM="true"
         [ -z "$SKIN" ] && SKIN="0"
 
-        for comp in topbar border control_center notifications settings panels modals dock dialogs widgets ; do
+        for comp in topbar border control_center notifications settings overlays widgets ; do
             "$BIN" --say "$comp" "fact dark_mode $DM" >/dev/null 2>&1 || true
             "$BIN" --say "$comp" "fact skin $SKIN" >/dev/null 2>&1 || true
         done
-        for comp in topbar control_center notifications settings lock panels modals dock dialogs widgets ; do
+        for comp in topbar control_center notifications settings lock overlays widgets ; do
             "$BIN" --say "$comp" "fact accent $ACCENT" >/dev/null 2>&1 || true
             "$BIN" --say "$comp" "fact accent_auto $AUTO" >/dev/null 2>&1 || true
             "$BIN" --say "$comp" "fact hour12 $H12" >/dev/null 2>&1 || true
@@ -107,10 +107,7 @@ start_shell() {
         "$S/settings.plm:/tmp/pleamar_settings.log" \
         "$S/lock.plm:/tmp/pleamar_lock.log" \
         "$S/widgets.plm:/tmp/pleamar_widgets.log" \
-        "$S/modals.plm:/tmp/pleamar_modals.log" \
-        "$S/dock.plm:/tmp/pleamar_dock.log" \
-        "$S/dialogs.plm:/tmp/pleamar_dialogs.log" \
-        "$S/panels.plm:/tmp/pleamar_panels.log" \
+        "$S/overlays.plm:/tmp/pleamar_overlays.log" \
         </dev/null >/dev/null 2>&1 &
     echo "$!" > "$PID_FILE"
     sleep 0.6
@@ -193,7 +190,7 @@ case "$1" in
         "$BIN" --say topbar "emit open_panel 4"
         ;;
     welcome)
-        "$BIN" --say dialogs "emit show_again"
+        "$BIN" --say overlays "emit show_again"
         ;;
     shortcuts)
         "$BIN" --say settings "fact tab 5" >/dev/null 2>&1 || true
@@ -207,11 +204,11 @@ case "$1" in
         ;;
     session)
         K_VAL="${2:-0}"
-        "$BIN" --say dock "fact kind $K_VAL"
+        "$BIN" --say overlays "fact ses_kind $K_VAL"
         "$BIN" --say topbar "emit open_panel 5"
         ;;
     shot)
-        "$BIN" --say modals "emit shot_now"
+        "$BIN" --say overlays "emit shot_now"
         ;;
     capture)
         "$BIN" --say topbar "emit open_panel 11"
@@ -258,7 +255,7 @@ case "$1" in
     dark-mode)
         VAL="true"
         [ "$2" = "off" ] && VAL="false"
-        for comp in topbar control_center notifications settings panels modals dock dialogs; do
+        for comp in topbar control_center notifications settings overlays; do
             "$BIN" --say "$comp" "fact dark_mode $VAL"
         done
         mkdir -p "$(dirname "$CONFIG_FILE")"
@@ -267,7 +264,7 @@ case "$1" in
         ;;
     skin)
         SKIN_VAL="${2:-0}"
-        for comp in topbar control_center notifications settings panels modals dock dialogs; do
+        for comp in topbar control_center notifications settings overlays; do
             "$BIN" --say "$comp" "fact skin $SKIN_VAL"
         done
         mkdir -p "$(dirname "$CONFIG_FILE")"

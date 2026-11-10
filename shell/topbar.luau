@@ -156,21 +156,21 @@ end)
 
 -- Weather, music, today and updates live in ONE scene, `panels` (panels.plm): one shared open / open_screen / cur
 -- (the panel id) / panel_h. `panel_say(name, words)` talks to whichever scene a panel is in.
-local MERGED = { dashboard = true, music = true, weather = true, updates = true }
+local MERGED = { dashboard = true, music = true, weather = true, updates = true }   -- (`cur` is set before opening)
 -- Spotlight, wallpapers, clipboard and the widget bar live in ONE scene, `dock` (panel id = its `cur`)
 local DOCK = { spotlight = 4, wallpapers = 5, clipboard = 6, widget_bar = 10, session = 11, polkit = 12 }
 local function panel_say(name, words)
-    pcall(sys.call, "say", MERGED[name] and "panels" or name, words)
+    pcall(sys.call, "say", (MERGED[name] or DOCK[name]) and "overlays" or name, words)
 end
 
 -- a click on nothing while a panel is open: close every panel (the widget bar stays: you work on the desktop with it)
 on("outside_click", function()
     for name, p in pairs(PANELS) do
-        if name ~= "banner" and not DOCK[name] then
+        if name ~= "banner" and not DOCK[name] and not MERGED[name] then
             panel_say(name, "fact open false")
         end
     end
-    pcall(sys.call, "say", "dock", "emit outside_close")      -- (the widget bar stays: you work on the desktop with it)
+    pcall(sys.call, "say", "overlays", "emit outside_close")      -- (the widget bar and the password dialog stay)
 end)
 
 on("panel_height", function(v)
@@ -249,7 +249,7 @@ on("open_notifications", open_island_panel("notifications"))
 on("open_music", open_island_panel("music"))
 on("open_weather", open_island_panel("weather"))
 on("rec_stop", function()
-    pcall(sys.call, "say", "modals", "emit toggle_record")
+    pcall(sys.call, "say", "overlays", "emit toggle_record")
 end)
 
 -- ── the clock: the time only (no date), 12 hour with AM / PM unless Settings says 24 ──
@@ -532,8 +532,8 @@ end)
 -- switcher) open on ONE monitor: the one with the focus. They are `screens: each` scenes that show their content
 -- only where `open_screen` says (common/here.plm). Everything that wants one asks us (`open_panel N`): a niri key
 -- through start.sh, a button in another panel. The toggle is the panel's own.
-local DIALOGS = { welcome = 3 }
-local MODALS = { appswitcher = 1, overview = 2, capture = 3 } -- app switcher, overview and the capture picker live in ONE scene, `modals` (cur = this id)     -- these three live in ONE scene, `dialogs` (cur = this id)
+-- EVERYTHING that opens over the desktop lives in ONE scene, `overlays` (rule 50): its `cur` is the panel id
+local OVERLAY = { spotlight = 4, wallpapers = 5, clipboard = 6, widget_bar = 10, session = 11, polkit = 12, appswitcher = 21, overview = 22, capture = 23, welcome = 24 }
 local FOCUS_PANELS = { [1] = "spotlight", [2] = "clipboard", [3] = "wallpapers", [4] = "settings", [5] = "session", [6] = "appswitcher", [7] = "widget_bar", [8] = "polkit", [9] = "welcome", [10] = "overview", [11] = "capture" }
 on("open_panel", function(n)
     local name = FOCUS_PANELS[tonumber(n) or 0]
@@ -545,19 +545,9 @@ on("open_panel", function(n)
         if p then
             fact[p.island .. "_screen"] = s          -- its glass is drawn by the frame, on that monitor
         end
-        if DOCK[name] then
-            pcall(sys.call, "say", "dock", "fact open_screen " .. s)
-            pcall(sys.call, "say", "dock", "emit toggle_dock " .. DOCK[name])
-            return
-        end
-        if MODALS[name] then
-            pcall(sys.call, "say", "modals", "fact open_screen " .. s)
-            pcall(sys.call, "say", "modals", name == "capture" and "emit cap_toggle" or ("emit toggle_dialog " .. MODALS[name]))
-            return
-        end
-        if DIALOGS[name] then
-            pcall(sys.call, "say", "dialogs", "fact open_screen " .. s)
-            pcall(sys.call, "say", "dialogs", "emit toggle_dialog " .. DIALOGS[name])
+        if OVERLAY[name] then
+            pcall(sys.call, "say", "overlays", "fact open_screen " .. s)
+            pcall(sys.call, "say", "overlays", name == "capture" and "emit cap_toggle" or ("emit toggle_dock " .. OVERLAY[name]))
             return
         end
         pcall(sys.call, "say", name, "fact open_screen " .. s)
@@ -572,8 +562,8 @@ end
 -- The monitor the power menu is on (`open_screen`), for the windows its items open.
 -- the session / polkit / welcome dialogs live in ONE scene, `dialogs`; `cur` says which (rule 51)
 local function show_dock_on_menu_monitor(id)        -- (the session dialog grows out of the dock: panel 11)
-    say("dock", "fact open_screen " .. (tonumber(fact.open_screen) or 0))
-    say("dock", "emit show_panel " .. id)
+    say("overlays", "fact open_screen " .. (tonumber(fact.open_screen) or 0))
+    say("overlays", "emit show_panel " .. id)
 end
 local function show_on_menu_monitor(name)
     say(name, "fact open_screen " .. (tonumber(fact.open_screen) or 0))
@@ -585,9 +575,9 @@ local PM = {
     [8] = function() say("widgets", "emit edit_toggle") end,                                     -- Edit Widgets…
     [3] = function() say("lock", "fact locked true") end,                                           -- Lock Screen
     [4] = function() run("systemctl", { "suspend" }, nil, { output = false }) end,                 -- Sleep
-    [5] = function() say("dock", "fact kind 2"); show_dock_on_menu_monitor(11) end,          -- Log Out…
-    [6] = function() say("dock", "fact kind 1"); show_dock_on_menu_monitor(11) end,          -- Restart…
-    [7] = function() say("dock", "fact kind 0"); show_dock_on_menu_monitor(11) end,          -- Shut Down…
+    [5] = function() say("overlays", "fact ses_kind 2"); show_dock_on_menu_monitor(11) end,          -- Log Out…
+    [6] = function() say("overlays", "fact ses_kind 1"); show_dock_on_menu_monitor(11) end,          -- Restart…
+    [7] = function() say("overlays", "fact ses_kind 0"); show_dock_on_menu_monitor(11) end,          -- Shut Down…
 }
 on("pm_item", function(n)
     local f = PM[tonumber(n) or 0]
