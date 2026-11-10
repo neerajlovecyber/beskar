@@ -35,7 +35,7 @@ kill_all() {
 
 check_status() {
     echo "macOS / iNiR Shell Status:"
-    for comp in topbar border spotlight control_center notifications dashboard wallpapers settings lock session capture appswitcher clipboard music weather updates overview; do
+    for comp in topbar border spotlight control_center notifications wallpapers settings lock session capture appswitcher clipboard overview panels; do
         if pgrep -f "pleamar.*$comp\.plm" >/dev/null 2>&1; then
             echo "  ✔ $comp is RUNNING"
         else
@@ -58,11 +58,11 @@ apply_saved_theme() {
         [ -z "$DM" ] && DM="true"
         [ -z "$SKIN" ] && SKIN="0"
 
-        for comp in topbar border spotlight control_center notifications dashboard wallpapers settings session capture appswitcher clipboard music weather updates overview widgets widget_bar polkit welcome; do
+        for comp in topbar border spotlight control_center notifications wallpapers settings session capture appswitcher clipboard overview panels widgets widget_bar polkit welcome; do
             "$BIN" --say "$comp" "fact dark_mode $DM" >/dev/null 2>&1 || true
             "$BIN" --say "$comp" "fact skin $SKIN" >/dev/null 2>&1 || true
         done
-        for comp in topbar control_center notifications dashboard settings wallpapers spotlight clipboard music session capture appswitcher lock overview widgets widget_bar polkit welcome; do
+        for comp in topbar control_center notifications settings wallpapers spotlight clipboard session capture appswitcher lock overview panels widgets widget_bar polkit welcome; do
             "$BIN" --say "$comp" "fact accent $ACCENT" >/dev/null 2>&1 || true
             "$BIN" --say "$comp" "fact accent_auto $AUTO" >/dev/null 2>&1 || true
             "$BIN" --say "$comp" "fact hour12 $H12" >/dev/null 2>&1 || true
@@ -105,7 +105,6 @@ start_shell() {
     PID_CC=$!
     setsid "$DIR/shell/supervise.sh" "$DIR/shell/notifications.plm" /tmp/pleamar_notifications.log </dev/null >/dev/null 2>&1 &
     PID_WIDGETS=$!
-    setsid "$DIR/shell/supervise.sh" "$DIR/shell/dashboard.plm" /tmp/pleamar_dashboard.log </dev/null >/dev/null 2>&1 &
     PID_DASH=$!
     setsid "$DIR/shell/supervise.sh" "$DIR/shell/wallpapers.plm" /tmp/pleamar_wallpapers.log </dev/null >/dev/null 2>&1 &
     PID_WALL=$!
@@ -120,9 +119,6 @@ start_shell() {
     setsid "$DIR/shell/supervise.sh" "$DIR/shell/appswitcher.plm" /tmp/pleamar_switcher.log </dev/null >/dev/null 2>&1 &
     PID_SWITCHER=$!
     setsid "$DIR/shell/supervise.sh" "$DIR/shell/clipboard.plm" /tmp/pleamar_clipboard.log </dev/null >/dev/null 2>&1 &
-    setsid "$DIR/shell/supervise.sh" "$DIR/shell/music.plm" /tmp/pleamar_music.log </dev/null >/dev/null 2>&1 &
-    setsid "$DIR/shell/supervise.sh" "$DIR/shell/weather.plm" /tmp/pleamar_weather.log </dev/null >/dev/null 2>&1 &
-    setsid "$DIR/shell/supervise.sh" "$DIR/shell/updates.plm" /tmp/pleamar_updates.log </dev/null >/dev/null 2>&1 &
     PID_CLIP=$!
     setsid "$DIR/shell/supervise.sh" "$DIR/shell/widgets.plm" /tmp/pleamar_widgets.log </dev/null >/dev/null 2>&1 &
     setsid "$DIR/shell/supervise.sh" "$DIR/shell/widget_bar.plm" /tmp/pleamar_widget_bar.log </dev/null >/dev/null 2>&1 &
@@ -134,6 +130,8 @@ start_shell() {
         setsid "$DIR/shell/supervise.sh" "$DIR/shell/welcome.plm" /tmp/pleamar_welcome.log </dev/null >/dev/null 2>&1 &
     fi
     # Window overview (Mission Control HUD grid)
+    # Weather, music, today (dashboard) and updates: ONE scene, four named surfaces (rule 50)
+    setsid "$DIR/shell/supervise.sh" "$DIR/shell/panels.plm" /tmp/pleamar_panels.log </dev/null >/dev/null 2>&1 &
     setsid "$DIR/shell/supervise.sh" "$DIR/shell/overview.plm" /tmp/pleamar_overview.log </dev/null >/dev/null 2>&1 &
 
     echo "$PID_BAR $PID_BORDER $PID_SPOTLIGHT $PID_CC $PID_WIDGETS $PID_DASH $PID_WALL $PID_SETTINGS $PID_LOCK $PID_SESSION $PID_CAPTURE $PID_SWITCHER $PID_CLIP" > "$PID_FILE"
@@ -286,7 +284,7 @@ case "$1" in
     dark-mode)
         VAL="true"
         [ "$2" = "off" ] && VAL="false"
-        for comp in topbar spotlight control_center notifications dashboard wallpapers settings session capture overview; do
+        for comp in topbar spotlight control_center notifications wallpapers settings session capture overview panels; do
             "$BIN" --say "$comp" "fact dark_mode $VAL"
         done
         mkdir -p "$(dirname "$CONFIG_FILE")"
@@ -295,7 +293,7 @@ case "$1" in
         ;;
     skin)
         SKIN_VAL="${2:-0}"
-        for comp in topbar spotlight control_center notifications dashboard wallpapers settings session capture overview; do
+        for comp in topbar spotlight control_center notifications wallpapers settings session capture overview panels; do
             "$BIN" --say "$comp" "fact skin $SKIN_VAL"
         done
         mkdir -p "$(dirname "$CONFIG_FILE")"

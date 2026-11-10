@@ -12,7 +12,7 @@ scene MacWidgetBar {
     include "common/morph_core.plm"
 
     permissions {
-        services: "say:widgets", "say:topbar", "say:spotlight", "say:clipboard", "say:music", "say:weather", "say:updates", "say:control_center", "say:notifications", "say:dashboard", "say:settings", "say:wallpapers"
+        services: "say:widgets", "say:topbar", "say:spotlight", "say:clipboard", "say:music", "say:weather", "say:panels", "say:updates", "say:control_center", "say:notifications", "say:dashboard", "say:settings", "say:wallpapers"
     }
 
     model kinds max 12 { id: number; name: text; icon: text }

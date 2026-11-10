@@ -19,7 +19,7 @@ scene MacMusic {
     }
 
     permissions {
-        services: "media", "media.*", "say:topbar", "say:control_center", "say:notifications", "say:dashboard", "say:settings", "say:wallpapers", "say:widget_bar", "say:spotlight", "say:clipboard", "say:weather", "say:updates"
+        services: "media", "media.*", "say:topbar", "say:control_center", "say:notifications", "say:dashboard", "say:settings", "say:wallpapers", "say:widget_bar", "say:spotlight", "say:clipboard", "say:weather", "say:panels", "say:updates"
     }
 
     //  Reported by music.luau

@@ -152,11 +152,18 @@ on("panel_open", function(id)
     end
 end)
 
+-- Weather, music, today and updates live in ONE scene, `panels` (panels.plm): one shared open / open_screen / cur
+-- (the panel id) / panel_h. `panel_say(name, words)` talks to whichever scene a panel is in.
+local MERGED = { dashboard = true, music = true, weather = true, updates = true }
+local function panel_say(name, words)
+    pcall(sys.call, "say", MERGED[name] and "panels" or name, words)
+end
+
 -- a click on nothing while a panel is open: close every panel (the widget bar stays: you work on the desktop with it)
 on("outside_click", function()
     for name, p in pairs(PANELS) do
         if name ~= "banner" and name ~= "widget_bar" then
-            pcall(sys.call, "say", name, "fact open false")
+            panel_say(name, "fact open false")
         end
     end
 end)
@@ -216,15 +223,16 @@ local function open_island_panel(name, page)
             local open_here = fact[p.island .. "_on"] == true and owner[p.island] == p.id
                 and tonumber(fact[p.island .. "_screen"]) == s
             if open_here and page == nil then
-                pcall(sys.call, "say", name, "fact open false")
+                panel_say(name, "fact open false")
                 return
             end
             fact[p.island .. "_screen"] = s
-            pcall(sys.call, "say", name, "fact open_screen " .. s)
+            panel_say(name, "fact open_screen " .. s)
+            if MERGED[name] then panel_say(name, "fact cur " .. p.id) end
             if name == "control_center" then
                 pcall(sys.call, "say", name, "fact page " .. (page or 0))
             end
-            pcall(sys.call, "say", name, "fact open true")
+            panel_say(name, "fact open true")
         end)
     end
 end

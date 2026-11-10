@@ -1,0 +1,552 @@
+// Panels: weather, music, today (dashboard) and updates in ONE process (one scene, four named surfaces that share
+// facts). The glass is drawn by the frame (topbar.plm); this scene draws only the content. The morph state is
+// ONE set (`open`, `open_screen`, `cur`, `panel_h`): only one panel is ever open, `cur` says which (its panel id:
+// 3 dashboard, 9 music, 15 weather, 16 updates). Logic: panels.luau (core) + the four panels' own parts.
+import "common/palette.plm"
+
+scene MacPanels {
+    include "common/theme.plm"
+    include "common/icons.plm"
+    include "common/ui.plm"
+
+    permissions {
+        run: "sh", "curl"
+        services: "clock", "battery", "media", "media.*", "say:topbar", "say:control_center", "say:notifications", "say:settings", "say:wallpapers", "say:widget_bar", "say:spotlight", "say:clipboard", "say:overview", "say:widgets"
+    }
+
+    // ── the morph state (shared by the four panels) ─────────────
+    fact open = false
+    fact open_screen = 0         // which monitor shows it (set by topbar.luau)
+    fact cur = 0                 // which panel: its id (3 / 9 / 15 / 16)
+    fact panel_h = 400           // its height, reported by panels.luau
+    prop seen = 0 ~calm
+    prop ph = 400 ~calm
+    follow ph = panel_h
+    layer panel ~quick {
+        shown while open { seen: 1 ~calm }
+        gone             { seen: 0 ~quick }
+    }
+    event panel_sync ->
+    on change open { emit panel_sync }
+    on change cur { emit panel_sync }
+    let mp_rh = ph * clamp(seen, 0, 1) + 4
+    let mp_fade = clamp(seen * 2.4 - 1.3, 0, 1)
+
+    //  a top panel's content: shown only inside the glass as it grows (the surface itself is per monitor), fading in late
+    component TopBody(x: number, y: number, sw: number) {
+        group {
+            move: x, y
+            opacity: mp_fade
+            clip box { from: -60, -20; size: sw + 120, mp_rh + 20 }
+            children
+        }
+    }
+
+    // ── weather ─────────────────────────────────────────────────
+    fact wx_view = 0              // 0 the forecast · 1 choose a place
+    fact wx_loaded = false
+    fact wx_loading = false
+    fact wx_searching = false
+    fact wx_q_has = false         // the search field has text (set by weather.luau from its text)
+    fact wx_lo = 0
+    fact wx_hi = 1
+    text wx_city = ""
+    text w_cond = ""
+    text w_temp = "--°"
+    text w_feels = ""
+    text w_range = ""
+    text w_icon = "󰅟"
+    text w_hum = "--"
+    text w_wind = "--"
+    text w_uv = "--"
+    text w_press = "--"
+    text w_sunrise = "--"
+    text w_sunset = "--"
+    text w_source = ""
+    text wq = ""
+
+    model hours max 8 { t: text; icon: text; temp: text }
+    model days max 5 { day: text; icon: text; lo: text; hi: text; lo_n: number; hi_n: number }
+    model places max 5 { name: text; sub: text }
+
+    event loc_change ->
+    event loc_back ->
+    event loc_ip ->
+    event loc_pick ->
+
+    event weather_reload ->
+    event open_weather ->
+
+    // ── music ───────────────────────────────────────────────────
+    //  Reported by music.luau
+    fact has_player = false
+    fact is_playing = false
+    fact has_art = false
+    fact track_len = 0
+    fact track_pos = 0
+    text track_title = ""
+    text track_artist = ""
+    text cover_art = ""
+    text time_pos = "0:00"
+    text time_len = "0:00"
+    image cover = from cover_art, 150, 84      // a wide cell: a 16:9 thumbnail fills it, a square cover sits in the middle; the tile shows the middle
+
+    event play_pause ->
+    event previous ->
+    event next ->
+    event seek ->
+
+
+    // ── today (dashboard) ───────────────────────────────────────
+    service battery as bat { present: bool; percent: number; charging: bool }
+
+    fact cpu_pct = 0
+    fact mem_pct = 0
+    fact disk_pct = 0
+    fact bat_ac = false
+    fact cal_shift = 0               // months away from this one (0 = now)
+    text greeting = "Hello"
+    text today_text = ""
+    text uptime_text = ""
+    text bat_state = ""
+    text bat_sub = ""
+    text cal_title = ""
+    text dw_temp = "--°"
+    text dw_cond = ""
+    text dw_city = "…"
+    text dw_icon = "󰅟"
+    text dw_range = ""
+    text dw_feels = ""
+    text dw_extra = ""
+
+    //  the month grid: Monday first; `dim` = a day of the month before / after; `today` = this very day
+    model cells max 42 { d: text; dim: bool; today: bool }
+
+    let bar_track = item_solid
+    prop d_hot = 0 ~quick
+
+    event d_toggle
+    event refresh_stats ->
+    event open_weather ->
+    event cal_prev ->
+    event cal_next ->
+    event cal_now ->
+
+
+    // ── updates ─────────────────────────────────────────────────
+    fact up_n = 0                  // updates waiting
+    fact up_checking = false
+    fact up_running = false        // pacman -Syu is running
+    fact up_failed = false
+    fact up_known = false          // a check has finished (before that, an empty list means "not looked yet")
+    text up_status = ""            // the line under the title
+    model up_pkgs max 60 { name: text; ver: text; aur: bool }
+
+    event do_update ->
+    event do_check ->
+
+
+    surface weather {
+        size: 420, 610
+        anchor: top
+        margin: 0, 0, 0, 0
+        level: overlay
+        keyboard: on_demand
+        screens: each
+        open: (open or seen > 0.02) and cur == 15 and open_screen == screen.index
+        zone box wx_dismiss { from: 0, 0; size: 420, 610; active: open and cur == 15 }
+        on press wx_dismiss { open = false }
+        on press right wx_dismiss { }
+    TopBody(16, -2, 420) {
+
+        //  clicks on the card itself do not close it
+        zone box wx_inside { from: 0, 0; size: 388, 600 }
+        on press right wx_inside { }
+
+        // ═══ wx_view 0: the forecast ═══════════════════════════════════
+        group {
+            show: wx_view == 0
+
+            //  place and its button
+            Sym("󰍎", 10, 22, 15, accent_c)
+            text wx_city { at: 26, 22; anchor: left center; size: t_title; weight: 700; color: ink_c; width: 250; lines: 1 }
+            group { move: 300, 9; Pill("Change", 88, loc_change, 0, 26, true) }
+            text w_cond { at: 4, 52; anchor: left center; size: t_sub; color: ink_sub; width: 380; lines: 1 }
+
+            //  now
+            text w_temp { at: 4, 100; anchor: left center; size: 56; weight: 700; color: ink_c }
+            Sym(w_icon, 340, 92, 54, accent_c)
+            text w_feels { at: 4, 140; anchor: left center; size: t_sub; color: ink_sub }
+            text w_range { at: 384, 140; anchor: right center; size: t_sub; weight: 600; color: ink_c }
+
+            //  details
+            group {
+                move: 0, 160
+                CardBg(388, 58, r_m)
+                Stat(14, "Humidity", w_hum)
+                Stat(112, "Wind", w_wind)
+                Stat(210, "UV index", w_uv)
+                Stat(300, "Pressure", w_press)
+            }
+            group {
+                move: 0, 226
+                CardBg(388, 42, r_m)
+                Sym("󰖜", 22, 21, 16, warn_c)
+                text "Sunrise" { at: 40, 21; anchor: left center; size: t_cap; color: ink_sub }
+                text w_sunrise { at: 92, 21; anchor: left center; size: t_sub; weight: 600; color: ink_c }
+                Sym("󰖛", 220, 21, 16, accent_c)
+                text "Sunset" { at: 238, 21; anchor: left center; size: t_cap; color: ink_sub }
+                text w_sunset { at: 288, 21; anchor: left center; size: t_sub; weight: 600; color: ink_c }
+            }
+
+            //  next hours
+            SectionLabel(4, 288, "NEXT HOURS")
+            group {
+                move: 0, 300
+                CardBg(388, 96, r_m)
+                row {
+                    at: 2, 0
+                    for h in hours {
+                        group {
+                            size: 48.5, 96
+                            text h.t { at: 24, 16; anchor: center center; size: t_micro; color: ink_sub }
+                            Sym(h.icon, 24, 48, 20, accent_c)
+                            text h.temp { at: 24, 78; anchor: center center; size: t_sub; weight: 600; color: ink_c }
+                        }
+                    }
+                }
+            }
+
+            //  next days
+            SectionLabel(4, 414, "NEXT DAYS")
+            group {
+                move: 0, 426
+                CardBg(388, 176, r_m)
+                column {
+                    at: 0, 4
+                    for d in days {
+                        group {
+                            size: 388, 34
+                            text d.day { at: 16, 17; anchor: left center; size: t_body; weight: 600; color: ink_c }
+                            Sym(d.icon, 100, 17, 17, accent_c)
+                            text d.lo { at: 146, 17; anchor: right center; size: t_sub; color: ink_sub }
+                            box { from: 158, 15; size: 168, 4; corner: 2; color: ink_c; opacity: 12% }
+                            box { from: 158 + 168 * (d.lo_n - wx_lo) / max(1, wx_hi - wx_lo), 15; size: max(8, 168 * (d.hi_n - d.lo_n) / max(1, wx_hi - wx_lo)), 4; corner: 2; color: accent_c }
+                            text d.hi { at: 372, 17; anchor: right center; size: t_sub; weight: 600; color: ink_c }
+                        }
+                    }
+                }
+            }
+
+            //  nothing yet
+            group { show: not wx_loaded; EmptyState(194, 300, "󰅟", "Loading the forecast", "Needs a network connection") }
+        }
+
+        // ═══ wx_view 1: choose a place ═════════════════════════════════
+        group {
+            show: wx_view == 1
+
+            text "Choose a location" { at: 4, 22; anchor: left center; size: t_title; weight: 700; color: ink_c }
+            group { move: 300, 9; Pill("Back", 88, loc_back, 0, 26, true) }
+
+            //  your IP
+            group { move: 0, 46; Pill("󰩟  Use my location (from my IP address)", 388, loc_ip, 1, 34, true) }
+
+            //  search
+            group {
+                move: 0, 94
+                CardBg(388, 40, r_m, true)
+                Sym("󰍉", 22, 20, 16, ink_sub)
+                input wq {
+                    at: 44, 10
+                    width: 330
+                    size: 15
+                    color: ink_c
+                    placeholder: "Search a city"
+                    selection: accent_c
+                }
+            }
+
+            //  results
+            column {
+                at: 0, 146
+                gap: 4
+                for p in places {
+                    group {
+                        size: 388, 44
+                        prop on = 0 ~quick
+                        RowFrame(388, 44, on)
+                        text p.name { at: 16, 15; anchor: left center; size: t_body; weight: 600; color: ink_c; width: 350; lines: 1 }
+                        text p.sub { at: 16, 32; anchor: left center; size: t_cap; color: ink_sub; width: 350; lines: 1 }
+                        zone box wx_pick_hit { from: 0, 0; size: 388, 44; corner: r_m; cursor: pointer }
+                        on enter wx_pick_hit { on: 1 }
+                        on leave wx_pick_hit { on: 0 }
+                        on press wx_pick_hit { emit loc_pick(p.index) }
+                        on press right wx_pick_hit { }
+                    }
+                }
+            }
+            group { show: places.count < 1 and not wx_q_has; text "Type a city name, or use your IP address" { at: 194, 190; anchor: center center; size: t_sub; color: ink_sub } }
+            group { show: places.count < 1 and wx_q_has and not wx_searching; EmptyState(194, 200, "󰍉", "No place found") }
+            text w_source { at: 4, 360; anchor: left center; size: t_cap; color: ink_sub; show: places.count < 1 }
+        }
+    }
+
+    }
+
+    surface music {
+        size: 380, 260
+        anchor: top
+        margin: 0, 0, 0, 0
+        level: overlay
+        screens: each
+        open: (open or seen > 0.02) and cur == 9 and open_screen == screen.index
+        zone box mu_dismiss { from: 0, 0; size: 380, 260; active: open and cur == 9 }
+        on press mu_dismiss { open = false }
+        on press right mu_dismiss { }
+    TopBody(16, -2, 380) {
+
+        //  clicks on the card itself do not close it
+        zone box mu_inside { from: 0, 0; size: 348, 200 }
+        on press right mu_inside { }
+
+        // ── nothing is playing ──
+        group {
+            show: not has_player
+            ellipse { at: 174, 70; radius: 26; color: item_solid }
+            path { at: 165, 56; color: ink_sub; move 0, 0; line 20, 14; line 0, 28; close }
+            text "Nothing playing" { at: 174, 124; anchor: center; size: t_body; weight: 600; color: ink_sub }
+            text "Start a song in any player" { at: 174, 144; anchor: center; size: t_cap; color: ink_sub; opacity: 70% }
+        }
+
+        // ── a player has something ──
+        group {
+            show: has_player
+
+            //  cover: a gradient, and the real artwork over it
+            body {
+                gradient: 0, 0 to 84, 84, accent_c, focus_c
+                box { from: 16, 14; size: 84, 84; corner: r_l }
+            }
+            group {
+                clip box { from: 16, 14; size: 84, 84; corner: r_l }
+                image cover { at: -18, 13; size: 152, 86; show: has_art }   // a pixel past the tile on every side: no seam
+            }
+            text track_title { at: 116, 36; anchor: left center; size: t_title; weight: 700; color: ink_c; width: 216; lines: 1 }
+            text track_artist { at: 116, 58; anchor: left center; size: t_sub; color: ink_sub; width: 216; lines: 1 }
+
+            //  progress: a click on the bar seeks
+            box { from: 16, 118; size: 316, 4; corner: 2; color: slider_bg; opacity: slider_bg_op }
+            box { from: 16, 118; size: max(4, 316 * clamp(track_pos / max(track_len, 1), 0, 1)), 4; corner: 2; color: ink_c; show: track_len > 0 }
+            text time_pos { at: 16, 136; anchor: left center; size: t_micro; color: ink_sub }
+            text time_len { at: 332, 136; anchor: right center; size: t_micro; color: ink_sub; show: track_len > 0 }
+            zone box seek_hit { from: 16, 110; size: 316, 20; cursor: pointer; active: track_len > 0 }
+            on press seek_hit { emit seek(clamp(local.x / 316, 0, 1)) }
+
+            //  previous · play/pause · next
+            path { at: 118, 158; color: ink_c; move 12, 0; line 0, 8; line 12, 16; close }
+            box { from: 115, 158; size: 3, 16; corner: 1.5; color: ink_c }
+            ellipse { at: 174, 166; radius: 20; color: item_solid }
+            group {
+                show: is_playing
+                box { from: 167, 157; size: 4.5, 18; corner: 2.2; color: ink_c }
+                box { from: 177, 157; size: 4.5, 18; corner: 2.2; color: ink_c }
+            }
+            path { at: 168, 156; color: ink_c; show: not is_playing; move 0, 0; line 16, 10; line 0, 20; close }
+            path { at: 220, 158; color: ink_c; move 0, 0; line 12, 8; line 0, 16; close }
+            box { from: 233, 158; size: 3, 16; corner: 1.5; color: ink_c }
+            zone box prev_hit { at: 125, 166; size: 40, 36; corner: r_l; cursor: pointer }
+            zone box play_hit { at: 174, 166; size: 44, 44; corner: r_l; cursor: pointer }
+            zone box next_hit { at: 227, 166; size: 40, 36; corner: r_l; cursor: pointer }
+            on press prev_hit { emit previous }
+            on press play_hit { emit play_pause }
+            on press next_hit { emit next }
+            on press right prev_hit { }
+            on press right play_hit { }
+            on press right next_hit { }
+            on press right seek_hit { }
+        }
+    }
+
+    }
+
+    surface today {
+        size: 380, 640
+        anchor: top
+        margin: 0, 0, 0, 0
+        level: overlay
+        screens: each
+        open: (open or seen > 0.02) and cur == 3 and open_screen == screen.index
+        zone box d_dismiss { from: 0, 0; size: 380, 640; active: open and cur == 3 }
+        on press d_dismiss { open = false }
+        on press right d_dismiss { }
+    TopBody(16, -2, 380) {
+
+        //  clicks on the card itself do not close it
+        zone box d_inside { from: 0, 0; size: 348, 620 }
+        on press right d_inside { }
+
+        // ── greeting ──────────────────────────────────────────────
+        text greeting { at: 20, 24; anchor: left center; size: t_title; weight: 700; color: ink_c }
+        text today_text { at: 20, 46; anchor: left center; size: t_sub; color: ink_sub }
+
+        // ── weather: a wide card, a click opens the weather panel ─
+        group {
+            move: 14, 62
+            CardBg(320, 92, r_l, true)
+            box { from: 0, 0; size: 320, 92; corner: r_l; color: ink_c; opacity: d_hot * 6% }
+            text dw_city { at: 16, 20; anchor: left center; size: t_body; weight: 700; color: ink_c; width: 190; lines: 1 }
+            text dw_cond { at: 16, 40; anchor: left center; size: t_sub; color: ink_sub; width: 190; lines: 1 }
+            text dw_temp { at: 16, 70; anchor: left center; size: 32; weight: 700; color: ink_c }
+            Sym(dw_icon, 290, 28, 30, warn_c)
+            text dw_range { at: 304, 56; anchor: right center; size: t_sub; weight: 600; color: ink_c }
+            text dw_feels { at: 304, 74; anchor: right center; size: t_cap; color: ink_sub }
+            zone box dw_hit { from: 0, 0; size: 320, 92; corner: r_l; cursor: pointer; label: "Open the weather" }
+            on enter dw_hit { d_hot: 1 }
+            on leave dw_hit { d_hot: 0 }
+            on press dw_hit { emit open_weather }
+            on press right dw_hit { }
+        }
+
+        // ── month calendar ────────────────────────────────────────
+        group {
+            move: 14, 166
+            CardBg(320, 232, r_l, true)
+            //  title and the month buttons; a click on the title comes back to this month
+            text cal_title { at: 16, 22; anchor: left center; size: t_body; weight: 700; color: ink_c }
+            zone box d_title_hit { from: 8, 8; size: 170, 30; corner: r_s; cursor: pointer; label: "This month" }
+            on press d_title_hit { emit cal_now }
+            on press right d_title_hit { }
+            group {
+                move: 248, 8
+                box { from: 0, 0; size: 28, 28; corner: r_s; color: item_bg; opacity: item_bg_op }
+                Sym("󰅁", 14, 14, 15, ink_c)
+                zone box d_prev_hit { from: 0, 0; size: 28, 28; corner: r_s; cursor: pointer; label: "Previous month" }
+                on press d_prev_hit { emit cal_prev }
+                on press right d_prev_hit { }
+            }
+            group {
+                move: 282, 8
+                box { from: 0, 0; size: 28, 28; corner: r_s; color: item_bg; opacity: item_bg_op }
+                Sym("󰅂", 14, 14, 15, ink_c)
+                zone box d_next_hit { from: 0, 0; size: 28, 28; corner: r_s; cursor: pointer; label: "Next month" }
+                on press d_next_hit { emit cal_next }
+                on press right d_next_hit { }
+            }
+            //  weekdays
+            repeat i in 0..7 {
+                text pick(i, "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun") { at: 16 + i * 41.3 + 20, 52; anchor: center center; size: t_micro; weight: 600; color: if(i >= 5, accent_c, ink_sub) }
+            }
+            //  days
+            grid {
+                at: 16, 66
+                columns: 7
+                gap: 0
+                width: 289
+                row: 27
+                for c in cells {
+                    group {
+                        size: 41.3, 27
+                        ellipse { at: 20.6, 13.5; radius: 12.5; color: accent_c; show: c.today }
+                        text c.d { at: 20.6, 13.5; anchor: center center; size: t_sub; weight: if(c.today, 700, 500); color: if(c.today, on_accent, ink_c); opacity: if(c.dim, 35%, 100%) }
+                    }
+                }
+            }
+        }
+
+        // ── how busy the machine is ───────────────────────────────
+        group {
+            move: 14, 410
+            CardBg(320, 124, r_l, true)
+            Sym("󰍹", 24, 20, 14, accent_c)
+            text "Activity" { at: 40, 20; anchor: left center; size: t_sub; weight: 600; color: ink_c }
+            text uptime_text { at: 304, 20; anchor: right center; size: t_cap; color: ink_sub }
+            Meter(34, "CPU", cpu_pct, accent_c)
+            Meter(62, "Memory", mem_pct, mint)
+            Meter(90, "Disk", disk_pct, purple)
+        }
+
+        // ── battery (laptops) ─────────────────────────────────────
+        group {
+            show: bat.present
+            move: 14, 546
+            CardBg(320, 66, r_l, true)
+            //  the cell: green with a bolt while on the charger
+            box { from: 16, 21; size: 34, 17; corner: 5; stroke: 1.8; color: ink_c }
+            box { from: 51, 26; size: 3, 6; corner: 1.5; color: ink_c }
+            box { from: 19, 24; size: max(3, 28 * clamp(bat.percent / 100, 0, 1)), 11; corner: 2.5; color: if(bat.charging or bat_ac, ok_c, if(bat.percent <= 20, danger_c, ink_c)) }
+            text bat_state { at: 70, 23; anchor: left center; size: t_sub; weight: 600; color: ink_c }
+            text bat_sub { at: 70, 43; anchor: left center; size: t_micro; color: ink_sub; width: 190; lines: 1 }
+            text "{bat.percent}%" { at: 304, 33; anchor: right center; size: 22; weight: 700; color: ink_c }
+        }
+    }
+
+    }
+
+    surface updates {
+        size: 400, 480
+        anchor: top_right
+        margin: 0, 0, 0, 0
+        level: overlay
+        screens: each
+        open: (open or seen > 0.02) and cur == 16 and open_screen == screen.index
+        zone box up_dismiss { from: 0, 0; size: 400, 480; active: open and cur == 16 }
+        on press up_dismiss { open = false }
+        on press right up_dismiss { }
+    TopBody(44, -2, 400) {
+        zone box up_inside { from: 0, 0; size: 340, 470 }
+        on press right up_inside { }
+
+        PanelHeader("󰇚", "Updates", 10, 22)
+        text up_status { at: 0, 52; anchor: left center; size: t_cap; color: ink_sub; width: 340; lines: 1 }
+        group { move: 252, 9; Pill(if(up_checking, "Checking…", "Check"), 88, do_check, 0, 26, true) }
+
+        //  the packages
+        group {
+            move: 0, 70
+            show: up_n > 0
+            CardBg(340, min(up_n, 8) * 34 + 8, r_m)
+            column up_list {
+                at: 0, 4
+                view: 322, 272
+                step: 34
+                for p in up_pkgs {
+                    group {
+                        size: 322, 34
+                        Sym(if(p.aur, "󰣇", "󰏗"), 22, 17, 14, if(p.aur, warn_c, accent_c))
+                        text p.name { at: 40, 17; anchor: left center; size: t_sub; weight: 600; color: ink_c; width: 130; lines: 1 }
+                        text p.ver { at: 322, 17; anchor: right center; size: t_micro; color: ink_sub; width: 150; lines: 1; align: right }
+                    }
+                }
+            }
+            group { move: 331, 4; ScrollBar(up_list.scroll, up_list.content, 272) }
+        }
+        group { move: 0, 70; show: up_n < 1; EmptyState(170, 60, if(up_known, "󰄬", "󰑐"), if(up_known, "Everything is up to date", "Checking…")) }
+
+        //  the button
+        group {
+            move: 0, 70 + min(max(up_n, 1), 8) * 34 + 24 + if(up_n < 1, 70, 0)
+            show: up_n > 0
+            Pill(if(up_running, "Updating…", "Update all"), 340, do_update, 1, 36, true)
+        }
+    }
+
+    }
+
+    //  one labelled number of the details card
+    component Stat(x: number, label: text, value: text) {
+        text label { at: x, 17; anchor: left center; size: t_micro; color: ink_sub }
+        text value { at: x, 38; anchor: left center; size: t_body; weight: 700; color: ink_c }
+    }
+
+    //  one labelled meter of the activity card (y = its row)
+    component Meter(y: number, label: text, pct: number, tone: color) {
+        text label { at: 16, y + 9; anchor: left center; size: t_cap; weight: 600; color: ink_c }
+        text "{pct}%" { at: 304, y + 9; anchor: right center; size: t_cap; weight: 600; color: tone }
+        box { from: 70, y + 6; size: 180, 6; corner: 3; color: bar_track }
+        box { from: 70, y + 6; size: max(6, 180 * clamp(pct / 100, 0, 1)), 6; corner: 3; color: tone }
+    }
+
+
+    on key Escape { open = false }
+}

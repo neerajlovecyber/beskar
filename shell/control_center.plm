@@ -17,7 +17,7 @@ scene MacControlCenter {
     }
 
     permissions {
-        services: "audio", "audio.*", "brightness", "brightness.*", "media", "media.*", "network", "network.*", "bluetooth", "bluetooth.*", "say:topbar", "say:dock", "say:settings", "say:clipboard", "say:music", "say:weather", "say:updates", "say:capture", "say:lock", "say:spotlight", "say:notifications", "say:dashboard", "say:wallpapers", "say:widget_bar"
+        services: "audio", "audio.*", "brightness", "brightness.*", "media", "media.*", "network", "network.*", "bluetooth", "bluetooth.*", "say:topbar", "say:dock", "say:settings", "say:clipboard", "say:music", "say:weather", "say:panels", "say:updates", "say:capture", "say:lock", "say:spotlight", "say:notifications", "say:dashboard", "say:wallpapers", "say:widget_bar"
     }
 
     // ── Built-in System Models ────────────────────────────────────

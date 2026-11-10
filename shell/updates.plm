@@ -20,7 +20,7 @@ scene MacUpdates {
 
     permissions {
         run: "sh"
-        services: "say:topbar", "say:control_center", "say:notifications", "say:dashboard", "say:settings", "say:wallpapers", "say:widget_bar", "say:spotlight", "say:clipboard", "say:music", "say:weather", "say:overview"
+        services: "say:topbar", "say:control_center", "say:notifications", "say:dashboard", "say:settings", "say:wallpapers", "say:widget_bar", "say:spotlight", "say:clipboard", "say:music", "say:weather", "say:panels", "say:overview"
     }
 
     fact n = 0                  // updates waiting
