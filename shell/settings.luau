@@ -4,8 +4,8 @@
 --   system    sound, brightness, displays (niri msg), Wi-Fi, Bluetooth, updates, shortcuts (read from niri's config)
 
 local THEMED = { "topbar", "control_center", "notifications", "panels", "settings", "wallpapers",
-                "spotlight", "clipboard", "session", "capture", "appswitcher", "lock", "widgets",
-                "overview", "widget_bar", "polkit", "welcome" }
+                "spotlight", "clipboard", "dialogs", "capture", "appswitcher", "lock", "widgets",
+                "overview", "widget_bar" }
 
 local function say(scene, words)
     pcall(sys.call, "say", scene, words)
@@ -730,7 +730,7 @@ end)
 local function session(kind)
     fact.open = false
     after(250, function()
-        say("session", "fact kind " .. kind)
+        say("dialogs", "fact kind " .. kind)
         say("topbar", "emit open_panel 5")
     end)
 end

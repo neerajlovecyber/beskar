@@ -510,6 +510,7 @@ end)
 -- switcher) open on ONE monitor: the one with the focus. They are `screens: each` scenes that show their content
 -- only where `open_screen` says (common/here.plm). Everything that wants one asks us (`open_panel N`): a niri key
 -- through start.sh, a button in another panel. The toggle is the panel's own.
+local DIALOGS = { session = 1, polkit = 2, welcome = 3 }     -- these three live in ONE scene, `dialogs` (cur = this id)
 local FOCUS_PANELS = { [1] = "spotlight", [2] = "clipboard", [3] = "wallpapers", [4] = "settings", [5] = "session", [6] = "appswitcher", [7] = "widget_bar", [8] = "polkit", [9] = "welcome", [10] = "overview", [11] = "capture" }
 on("open_panel", function(n)
     local name = FOCUS_PANELS[tonumber(n) or 0]
@@ -521,6 +522,11 @@ on("open_panel", function(n)
         if p then
             fact[p.island .. "_screen"] = s          -- its glass is drawn by the frame, on that monitor
         end
+        if DIALOGS[name] then
+            pcall(sys.call, "say", "dialogs", "fact open_screen " .. s)
+            pcall(sys.call, "say", "dialogs", "emit toggle_dialog " .. DIALOGS[name])
+            return
+        end
         pcall(sys.call, "say", name, "fact open_screen " .. s)
         pcall(sys.call, "say", name, "emit toggle")
     end)
@@ -531,6 +537,11 @@ local function say(scene, words)
     pcall(sys.call, "say", scene, words)
 end
 -- The monitor the power menu is on (`open_screen`), for the windows its items open.
+-- the session / polkit / welcome dialogs live in ONE scene, `dialogs`; `cur` says which (rule 51)
+local function show_dialog_on_menu_monitor(id)
+    say("dialogs", "fact open_screen " .. (tonumber(fact.open_screen) or 0))
+    say("dialogs", "emit show_dialog " .. id)
+end
 local function show_on_menu_monitor(name)
     say(name, "fact open_screen " .. (tonumber(fact.open_screen) or 0))
     say(name, "fact open true")
@@ -541,9 +552,9 @@ local PM = {
     [8] = function() say("widgets", "emit edit_toggle") end,                                     -- Edit Widgets…
     [3] = function() say("lock", "fact locked true") end,                                           -- Lock Screen
     [4] = function() run("systemctl", { "suspend" }, nil, { output = false }) end,                 -- Sleep
-    [5] = function() say("session", "fact kind 2"); show_on_menu_monitor("session") end,          -- Log Out…
-    [6] = function() say("session", "fact kind 1"); show_on_menu_monitor("session") end,          -- Restart…
-    [7] = function() say("session", "fact kind 0"); show_on_menu_monitor("session") end,          -- Shut Down…
+    [5] = function() say("dialogs", "fact kind 2"); show_dialog_on_menu_monitor(1) end,          -- Log Out…
+    [6] = function() say("dialogs", "fact kind 1"); show_dialog_on_menu_monitor(1) end,          -- Restart…
+    [7] = function() say("dialogs", "fact kind 0"); show_dialog_on_menu_monitor(1) end,          -- Shut Down…
 }
 on("pm_item", function(n)
     local f = PM[tonumber(n) or 0]

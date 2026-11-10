@@ -436,7 +436,7 @@ scene MacSettings {
     }
 
     permissions {
-        services: "clock", "audio", "audio.*", "brightness", "brightness.*", "network", "network.*", "bluetooth", "bluetooth.*", "say:topbar", "say:spotlight", "say:control_center", "say:notifications", "say:dashboard", "say:clipboard", "say:music", "say:weather", "say:panels", "say:updates", "say:wallpapers", "say:widget_bar", "say:lock", "say:capture", "say:session", "say:appswitcher", "say:widgets"
+        services: "clock", "audio", "audio.*", "brightness", "brightness.*", "network", "network.*", "bluetooth", "bluetooth.*", "say:topbar", "say:spotlight", "say:control_center", "say:notifications", "say:dashboard", "say:clipboard", "say:music", "say:weather", "say:panels", "say:updates", "say:wallpapers", "say:widget_bar", "say:lock", "say:capture", "say:session", "say:dialogs", "say:appswitcher", "say:widgets"
         run: "matugen", "powerprofilesctl", "magick", "gsettings", "systemctl", "loginctl", "kitty", "pacman", "yay", "paru", "sh", "niri msg"
     }
 

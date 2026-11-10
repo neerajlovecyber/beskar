@@ -35,7 +35,7 @@ kill_all() {
 
 check_status() {
     echo "macOS / iNiR Shell Status:"
-    for comp in topbar border spotlight control_center notifications wallpapers settings lock session capture appswitcher clipboard overview panels; do
+    for comp in topbar border spotlight control_center notifications wallpapers settings lock capture appswitcher clipboard overview panels dialogs; do
         if pgrep -f "pleamar.*$comp\.plm" >/dev/null 2>&1; then
             echo "  ✔ $comp is RUNNING"
         else
@@ -58,11 +58,11 @@ apply_saved_theme() {
         [ -z "$DM" ] && DM="true"
         [ -z "$SKIN" ] && SKIN="0"
 
-        for comp in topbar border spotlight control_center notifications wallpapers settings session capture appswitcher clipboard overview panels widgets widget_bar polkit welcome; do
+        for comp in topbar border spotlight control_center notifications wallpapers settings capture appswitcher clipboard overview panels dialogs widgets widget_bar ; do
             "$BIN" --say "$comp" "fact dark_mode $DM" >/dev/null 2>&1 || true
             "$BIN" --say "$comp" "fact skin $SKIN" >/dev/null 2>&1 || true
         done
-        for comp in topbar control_center notifications settings wallpapers spotlight clipboard session capture appswitcher lock overview panels widgets widget_bar polkit welcome; do
+        for comp in topbar control_center notifications settings wallpapers spotlight clipboard capture appswitcher lock overview panels dialogs widgets widget_bar ; do
             "$BIN" --say "$comp" "fact accent $ACCENT" >/dev/null 2>&1 || true
             "$BIN" --say "$comp" "fact accent_auto $AUTO" >/dev/null 2>&1 || true
             "$BIN" --say "$comp" "fact hour12 $H12" >/dev/null 2>&1 || true
@@ -112,7 +112,6 @@ start_shell() {
     PID_SETTINGS=$!
     setsid "$DIR/shell/supervise.sh" "$DIR/shell/lock.plm" /tmp/pleamar_lock.log </dev/null >/dev/null 2>&1 &
     PID_LOCK=$!
-    setsid "$DIR/shell/supervise.sh" "$DIR/shell/session.plm" /tmp/pleamar_session.log </dev/null >/dev/null 2>&1 &
     PID_SESSION=$!
     setsid "$DIR/shell/supervise.sh" "$DIR/shell/capture.plm" /tmp/pleamar_capture.log </dev/null >/dev/null 2>&1 &
     PID_CAPTURE=$!
@@ -122,15 +121,11 @@ start_shell() {
     PID_CLIP=$!
     setsid "$DIR/shell/supervise.sh" "$DIR/shell/widgets.plm" /tmp/pleamar_widgets.log </dev/null >/dev/null 2>&1 &
     setsid "$DIR/shell/supervise.sh" "$DIR/shell/widget_bar.plm" /tmp/pleamar_widget_bar.log </dev/null >/dev/null 2>&1 &
-    # The session's polkit authentication agent: the password dialog for programs that need administrator rights
-    setsid "$DIR/shell/supervise.sh" "$DIR/shell/polkit.plm" /tmp/pleamar_polkit.log </dev/null >/dev/null 2>&1 &
-    # First-run welcome: only while ~/.config/beskar/welcome-done does not exist (a scene is ~25 MB and 17 threads;
-    # `start.sh welcome` starts it on demand later)
-    if [ ! -e "$HOME/.config/beskar/welcome-done" ]; then
-        setsid "$DIR/shell/supervise.sh" "$DIR/shell/welcome.plm" /tmp/pleamar_welcome.log </dev/null >/dev/null 2>&1 &
-    fi
     # Window overview (Mission Control HUD grid)
     # Weather, music, today (dashboard) and updates: ONE scene, four named surfaces (rule 50)
+    # The session dialog, the polkit authentication agent (the password dialog for programs that need administrator
+    # rights) and the first-run welcome: ONE scene (rule 51)
+    setsid "$DIR/shell/supervise.sh" "$DIR/shell/dialogs.plm" /tmp/pleamar_dialogs.log </dev/null >/dev/null 2>&1 &
     setsid "$DIR/shell/supervise.sh" "$DIR/shell/panels.plm" /tmp/pleamar_panels.log </dev/null >/dev/null 2>&1 &
     setsid "$DIR/shell/supervise.sh" "$DIR/shell/overview.plm" /tmp/pleamar_overview.log </dev/null >/dev/null 2>&1 &
 
@@ -215,11 +210,7 @@ case "$1" in
         "$BIN" --say topbar "emit open_panel 4"
         ;;
     welcome)
-        if ! "$BIN" --say welcome "emit show_again" >/dev/null 2>&1; then
-            setsid "$DIR/shell/supervise.sh" "$DIR/shell/welcome.plm" /tmp/pleamar_welcome.log </dev/null >/dev/null 2>&1 &
-            sleep 4
-            "$BIN" --say welcome "emit show_again"
-        fi
+        "$BIN" --say dialogs "emit show_again"
         ;;
     shortcuts)
         "$BIN" --say settings "fact tab 5" >/dev/null 2>&1 || true
@@ -233,7 +224,7 @@ case "$1" in
         ;;
     session)
         K_VAL="${2:-0}"
-        "$BIN" --say session "fact kind $K_VAL"
+        "$BIN" --say dialogs "fact kind $K_VAL"
         "$BIN" --say topbar "emit open_panel 5"
         ;;
     shot)
@@ -284,7 +275,7 @@ case "$1" in
     dark-mode)
         VAL="true"
         [ "$2" = "off" ] && VAL="false"
-        for comp in topbar spotlight control_center notifications wallpapers settings session capture overview panels; do
+        for comp in topbar spotlight control_center notifications wallpapers settings capture overview panels dialogs; do
             "$BIN" --say "$comp" "fact dark_mode $VAL"
         done
         mkdir -p "$(dirname "$CONFIG_FILE")"
@@ -293,7 +284,7 @@ case "$1" in
         ;;
     skin)
         SKIN_VAL="${2:-0}"
-        for comp in topbar spotlight control_center notifications wallpapers settings session capture overview panels; do
+        for comp in topbar spotlight control_center notifications wallpapers settings capture overview panels dialogs; do
             "$BIN" --say "$comp" "fact skin $SKIN_VAL"
         done
         mkdir -p "$(dirname "$CONFIG_FILE")"
