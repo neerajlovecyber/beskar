@@ -93,40 +93,26 @@ start_shell() {
     # The wallpaper (chosen in the picker, Super+W) is painted by pleamar itself: shell/wallpaper.plm, first, so the
     # desktop is never bare. The old awww daemon is not used any more; stop one left from before.
     pkill -x awww-daemon 2>/dev/null || true
-    setsid "$DIR/shell/supervise.sh" "$DIR/shell/wallpaper.plm" /tmp/pleamar_wallpaper.log </dev/null >/dev/null 2>&1 &
 
-    setsid "$DIR/shell/supervise.sh" "$DIR/shell/topbar.plm" /tmp/pleamar_topbar.log </dev/null >/dev/null 2>&1 &
-    PID_BAR=$!
-    # Border neutralized - window borders handled natively by compositor
-    PID_BORDER=""
-    PID_SPOTLIGHT=$!
-    setsid "$DIR/shell/supervise.sh" "$DIR/shell/control_center.plm" /tmp/pleamar_cc.log </dev/null >/dev/null 2>&1 &
-    PID_CC=$!
-    setsid "$DIR/shell/supervise.sh" "$DIR/shell/notifications.plm" /tmp/pleamar_notifications.log </dev/null >/dev/null 2>&1 &
-    PID_WIDGETS=$!
-    PID_DASH=$!
-    PID_WALL=$!
-    setsid "$DIR/shell/supervise.sh" "$DIR/shell/settings.plm" /tmp/pleamar_settings.log </dev/null >/dev/null 2>&1 &
-    PID_SETTINGS=$!
-    setsid "$DIR/shell/supervise.sh" "$DIR/shell/lock.plm" /tmp/pleamar_lock.log </dev/null >/dev/null 2>&1 &
-    PID_LOCK=$!
-    PID_SESSION=$!
-    PID_CAPTURE=$!
-    PID_SWITCHER=$!
-    PID_CLIP=$!
-    setsid "$DIR/shell/supervise.sh" "$DIR/shell/widgets.plm" /tmp/pleamar_widgets.log </dev/null >/dev/null 2>&1 &
-    # Window overview (Mission Control HUD grid)
-    # Weather, music, today (dashboard) and updates: ONE scene, four named surfaces (rule 50)
-    # The app switcher, window overview and capture picker: ONE scene (rule 53)
-    setsid "$DIR/shell/supervise.sh" "$DIR/shell/modals.plm" /tmp/pleamar_modals.log </dev/null >/dev/null 2>&1 &
-    # Spotlight, clipboard history, wallpaper strip and widget bar: ONE scene (rule 52)
-    setsid "$DIR/shell/supervise.sh" "$DIR/shell/dock.plm" /tmp/pleamar_dock.log </dev/null >/dev/null 2>&1 &
-    # The session dialog, the polkit authentication agent (the password dialog for programs that need administrator
-    # rights) and the first-run welcome: ONE scene (rule 51)
-    setsid "$DIR/shell/supervise.sh" "$DIR/shell/dialogs.plm" /tmp/pleamar_dialogs.log </dev/null >/dev/null 2>&1 &
-    setsid "$DIR/shell/supervise.sh" "$DIR/shell/panels.plm" /tmp/pleamar_panels.log </dev/null >/dev/null 2>&1 &
 
-    echo "$PID_BAR $PID_BORDER $PID_SPOTLIGHT $PID_CC $PID_WIDGETS $PID_DASH $PID_WALL $PID_SETTINGS $PID_LOCK $PID_SESSION $PID_CAPTURE $PID_SWITCHER $PID_CLIP" > "$PID_FILE"
+    # ONE supervisor for every scene (rule 39): wallpaper first so the desktop is never bare. Merged scenes (rules 50-53):
+    # panels = weather, music, today, updates · dock = spotlight, clipboard, wallpapers, widget bar, session and polkit
+    # dialogs · modals = app switcher, overview, capture · dialogs = the first-run welcome
+    S="$DIR/shell"
+    setsid "$S/supervise.sh" \
+        "$S/wallpaper.plm:/tmp/pleamar_wallpaper.log" \
+        "$S/topbar.plm:/tmp/pleamar_topbar.log" \
+        "$S/control_center.plm:/tmp/pleamar_cc.log" \
+        "$S/notifications.plm:/tmp/pleamar_notifications.log" \
+        "$S/settings.plm:/tmp/pleamar_settings.log" \
+        "$S/lock.plm:/tmp/pleamar_lock.log" \
+        "$S/widgets.plm:/tmp/pleamar_widgets.log" \
+        "$S/modals.plm:/tmp/pleamar_modals.log" \
+        "$S/dock.plm:/tmp/pleamar_dock.log" \
+        "$S/dialogs.plm:/tmp/pleamar_dialogs.log" \
+        "$S/panels.plm:/tmp/pleamar_panels.log" \
+        </dev/null >/dev/null 2>&1 &
+    echo "$!" > "$PID_FILE"
     sleep 0.6
 
     apply_saved_theme
