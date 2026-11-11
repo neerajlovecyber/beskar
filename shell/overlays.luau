@@ -1643,6 +1643,13 @@ module("switcher", function(panel, opened, shown, closed)
     local thumbnails_list = {}
     local thumbnails_by_id = {}
 
+    -- the glass (drawn by the frame, out of the dock) is as wide as the strip of cards: 152 each, at least 260
+    panel.height(172)
+    panel.width(260)
+    local function resize_switcher(n)
+        panel.width(math.max(260, n * 152 + 32))
+    end
+
     local function lower(s)
         return string.lower(s or "")
     end
@@ -1798,6 +1805,7 @@ module("switcher", function(panel, opened, shown, closed)
 
             window_list = wins
             model.sw_wins = wins
+            resize_switcher(#wins)
             request_visible_thumbnails()
 
             -- the first press goes to the previous window (current one is first)
@@ -1847,6 +1855,13 @@ module("overview", function(panel, opened, shown, closed)
     local by_key = {}
     local thumbnails_list = {}
     local thumbnails_by_id = {}
+
+    -- the glass is as wide / tall as the grid (4 columns of 290, rows of 181): same sums as `ov_w` / `ov_h` in overlays.plm
+    local function resize_overview(n)
+        panel.width(math.max(560, 56 + math.min(4, math.max(1, n)) * 290))
+        panel.height(math.min(800, 80 + math.max(1, math.ceil(n / 4)) * 181))
+    end
+    resize_overview(0)
 
     local function lower(s)
         return string.lower(s or "")
@@ -1998,6 +2013,7 @@ module("overview", function(panel, opened, shown, closed)
 
             window_list = wins
             model.ov_wins = wins
+            resize_overview(#wins)
             text.win_count_text = string.format("%d %s", #wins, #wins == 1 and "window" or "windows")
 
             fact.ov_sel = 0
@@ -2058,6 +2074,9 @@ end)
 module("welcome", function(panel, opened, shown, closed)
     -- First-run welcome. Shown once: when ~/.config/beskar/welcome-done is missing, a few seconds after the shell starts
     -- (the other scenes need to be up). Its choices are sent to Settings, which owns the look and saves it.
+    panel.height(460)
+    panel.width(640)
+    panel.keep()                          -- a click outside does not close the welcome
     local function say(scene, words)
         pcall(sys.call, "say", scene, words)
     end

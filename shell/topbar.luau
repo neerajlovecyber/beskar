@@ -43,6 +43,9 @@ local PANELS = {
     widget_bar = { id = 10, island = "bp", w = 800 },
     session = { id = 11, island = "bp", w = 520 },      -- the session dialog and the polkit password dialog: from the dock
     polkit = { id = 12, island = "bp", w = 520 },
+    appswitcher = { id = 21, island = "bp", w = 520 },   -- the window switcher, overview and welcome grow out of the dock too
+    overview = { id = 22, island = "bp", w = 1000 },
+    welcome = { id = 24, island = "bp", w = 640 },
 }
 local BY_ID = {}
 for name, p in pairs(PANELS) do
@@ -51,6 +54,7 @@ for name, p in pairs(PANELS) do
 end
 local owner = {}        -- island → id of the panel that owns its glass
 local heights = {}      -- id → last height it reported
+local widths = {}       -- id → last width it reported (panels whose width follows their content)
 
 local PRIORITIES = {
     [3] = 100,  -- dashboard panel
@@ -143,7 +147,7 @@ on("panel_open", function(id)
             fact.cp_kind = p.kind or 0
         end
         owner[p.island] = p.id
-        fact[p.island .. "_w"] = p.w
+        fact[p.island .. "_w"] = widths[p.id] or p.w
         if heights[p.id] then
             fact[p.island .. "_h"] = heights[p.id]
         end
@@ -158,7 +162,7 @@ end)
 -- (the panel id) / panel_h. `panel_say(name, words)` talks to whichever scene a panel is in.
 local MERGED = { dashboard = true, music = true, weather = true, updates = true }   -- (`cur` is set before opening)
 -- Spotlight, wallpapers, clipboard and the widget bar live in ONE scene, `dock` (panel id = its `cur`)
-local DOCK = { spotlight = 4, wallpapers = 5, clipboard = 6, widget_bar = 10, session = 11, polkit = 12 }
+local DOCK = { spotlight = 4, wallpapers = 5, clipboard = 6, widget_bar = 10, session = 11, polkit = 12, appswitcher = 21, overview = 22, welcome = 24 }
 local function panel_say(name, words)
     pcall(sys.call, "say", (MERGED[name] or DOCK[name]) and "overlays" or name, words)
 end
@@ -185,6 +189,18 @@ on("panel_height", function(v)
     end
 end)
 
+on("panel_width", function(v)
+    v = tonumber(v) or 0
+    local id, w = math.floor(v / 10000), v % 10000
+    local p = BY_ID[id]
+    if p then
+        widths[id] = w
+        if owner[p.island] == id then
+            fact[p.island .. "_w"] = w
+        end
+    end
+end)
+
 on("panel_close", function(id)
     local p = BY_ID[tonumber(id) or 0]
     if p and owner[p.island] == p.id then
@@ -196,7 +212,49 @@ end)
 
 -- Which monitor a click was on: `last_screen` is set by the button's own rule just before it emits. Anything
 -- else (a niri key bound to start.sh) has none, and then the monitor with the focus is used.
-local OUTPUTS = {}                       -- monitor names by screen index (filled further down)
+local OUTPUTS = {}                       -- monitor names by screen index (0 -> OUTPUTS[1], 1 -> OUTPUTS[2])
+local push_mon                           -- forward declaration for sync_outputs listeners
+
+local function sync_outputs()
+    local map = {}
+    for s = 0, 7 do
+        local sname = text["screen." .. s .. ".name"]
+        if sname and sname ~= "" then
+            map[s + 1] = sname
+        end
+    end
+    if #map > 0 then
+        local changed = (#map ~= #OUTPUTS)
+        if not changed then
+            for i, n in ipairs(map) do
+                if OUTPUTS[i] ~= n then
+                    changed = true
+                    break
+                end
+            end
+        end
+        if changed then
+            OUTPUTS = map
+            return true
+        end
+    end
+    return false
+end
+
+sync_outputs()
+
+for s = 0, 7 do
+    on("text:screen." .. s .. ".name", function()
+        if sync_outputs() and push_mon then
+            push_mon()
+        end
+    end)
+end
+on("fact:screens.count", function()
+    if sync_outputs() and push_mon then
+        push_mon()
+    end
+end)
 
 local function monitor_of_click(cb)
     local s = tonumber(fact.last_screen)
@@ -266,20 +324,31 @@ on("fact:hour12", paint_clock)
 on("fact:pref_seconds", paint_clock)
 
 -- ── the little bars (music) and the recording dot move only while they show ──
--- (a plm `wave` paints the whole scene at the monitor's rate for ever; this phase ticks 20 times a second, and only
--- while something plays or records)
+-- (a plm `wave` paints the whole scene at the monitor's rate for ever; this phase ticks at 10 fps, and only
+-- while something plays or records and is visible: cuts render frames in half)
 local ph_timer = nil
 local function wave_tick()
     ph_timer = nil
-    if fact.m_playing == true or fact.rec_on == true then
-        fact.m_ph = (tonumber(fact.m_ph) or 0) + 0.05 * 57.2958
-        ph_timer = after(50, wave_tick)
+    local should_tick = ((fact.m_playing == true and fact.m_on == true) or fact.rec_on == true) and (tonumber(fact.act_kind) or 0) == 0
+    if should_tick then
+        fact.m_ph = (tonumber(fact.m_ph) or 0) + 0.125 * 57.2958
+        ph_timer = after(125, wave_tick)
     end
 end
 local function wave_kick()
-    if not ph_timer then ph_timer = after(50, wave_tick) end
+    if not ph_timer then
+        local should_tick = ((fact.m_playing == true and fact.m_on == true) or fact.rec_on == true) and (tonumber(fact.act_kind) or 0) == 0
+        if should_tick then
+            ph_timer = after(125, wave_tick)
+        end
+    end
 end
 on("fact:rec_on", wave_kick)
+on("fact:act_kind", function(k)
+    if (tonumber(k) or 0) == 0 then
+        wave_kick()
+    end
+end)
 
 -- ── music in the clock pill: the cover and a few bars while a player has something ──
 pcall(sys.watch, "media", function(m)
@@ -287,7 +356,12 @@ pcall(sys.watch, "media", function(m)
     local has = (m.player or "") ~= "" and (m.title or "") ~= ""
     fact.m_on = has
     fact.m_playing = m.playing == true
-    wave_kick()
+    if has and m.playing == true then
+        wave_kick()
+    elseif ph_timer and not fact.rec_on then
+        cancel(ph_timer)
+        ph_timer = nil
+    end
     fact.m_has_art = (m.art or "") ~= ""
     text.m_art = m.art or ""
 end)
@@ -401,14 +475,24 @@ local function show_charging_activity(ac, status, pct)
     card_open(12, 3000, { glyph = ac and "󰚥" or "󰁹", title = title, sub = sub, value = pct .. "%", tone = tone })
 end
 
+local POWER_SCRIPT = [[
+ac=0
+grep -q 1 /sys/class/power_supply/A*/online 2>/dev/null && ac=1
+echo "$ac $(cat /sys/class/power_supply/BAT*/status 2>/dev/null | head -1) $(cat /sys/class/power_supply/BAT*/capacity 2>/dev/null | head -1)"
+]]
+
 local last_ac = nil
 local function poll_power()
-    run("sh", { "-c", 'ac=0; for f in /sys/class/power_supply/A*/online /sys/class/power_supply/AC*/online; do [ -r "$f" ] && [ "$(cat "$f")" = 1 ] && ac=1; done; echo "$ac $(cat /sys/class/power_supply/BAT*/status 2>/dev/null | head -1) $(cat /sys/class/power_supply/BAT*/capacity 2>/dev/null | head -1)"' }, function(out)
+    run("sh", { "-c", POWER_SCRIPT }, function(out)
         local ac, status, pct = (out or ""):match("^(%d) (.-) (%d+)%s*$")
         if not ac then return end
         local plugged = ac == "1"
-        fact.bat_ac = plugged
-        text.bat_status = status
+        if fact.bat_ac ~= plugged then
+            fact.bat_ac = plugged
+        end
+        if text.bat_status ~= status then
+            text.bat_status = status
+        end
         if last_ac ~= nil and plugged ~= last_ac then
             show_charging_activity(plugged, status, tonumber(pct) or 0)
         end
@@ -416,7 +500,7 @@ local function poll_power()
     end)
 end
 poll_power()
-every(3000, poll_power)
+every(6000, poll_power)
 
 -- ── live activity: screenshot taken ──────────────────────────────
 local function show_screenshot_activity(file)
@@ -514,19 +598,7 @@ on("dismiss_timer_done", function()
     end
 end)
 
--- Keep the notification banner on the monitor with the focus: ask niri now and then, tell it when it changes.
-every(2000, function()
-    run("niri", { "msg", "-j", "focused-output" }, function(out)
-        local ok, o = pcall(json.decode, out or "")
-        local name = ok and type(o) == "table" and o.name
-        for i, n in ipairs(OUTPUTS) do
-            if n == name and (i - 1) ~= last_toast_screen then
-                last_toast_screen = i - 1
-                pcall(sys.call, "say", "notifications", "fact toast_screen " .. (i - 1))
-            end
-        end
-    end)
-end)
+-- Note: last_toast_screen is kept up to date event-driven in push_mon() from niri workspaces.
 
 -- Panels that are their own window (Spotlight, clipboard, wallpapers, Settings, the session dialog, the app
 -- switcher) open on ONE monitor: the one with the focus. They are `screens: each` scenes that show their content
@@ -641,7 +713,7 @@ local function read_tray_hide()
     end)
 end
 read_tray_hide()
-every(10000, read_tray_hide)
+every(30000, read_tray_hide)
 
 local function tray_action(call)
     return function(i)
@@ -967,7 +1039,7 @@ local function read_pins()
     end)
 end
 read_pins()
-every(5000, read_pins)
+every(15000, read_pins)
 
 -- ── workspaces: one capsule per workspace of each monitor ──
 -- `model ws_list`: one record per workspace, `out` the monitor (0 = first of `niri msg outputs`, sorted by name).
@@ -1075,32 +1147,45 @@ local function build_cur()
     model.cur_apps = list
 end
 
-local function push_mon()
-    local shown, busy = {}, {}
-    for _, w in ipairs(WS) do
-        if w.is_active and w.output then
-            shown[w.output] = w.idx or 1
-            busy[w.output] = w.id
+push_mon = function()
+        sync_outputs()
+        local shown, busy = {}, {}
+        local focused_output = nil
+        for _, w in ipairs(WS) do
+            if w.is_active and w.output then
+                shown[w.output] = w.idx or 1
+                busy[w.output] = w.id
+            end
+            if w.is_focused and w.output then
+                focused_output = w.output
+            end
         end
-    end
-    local count = {}
-    for _, win in ipairs(WINS) do
-        if win.workspace_id then
-            count[win.workspace_id] = (count[win.workspace_id] or 0) + 1
+        if focused_output then
+            for i, n in ipairs(OUTPUTS) do
+                if n == focused_output and (i - 1) ~= last_toast_screen then
+                    last_toast_screen = i - 1
+                    pcall(sys.call, "say", "notifications", "fact toast_screen " .. (i - 1))
+                end
+            end
         end
+        local count = {}
+        for _, win in ipairs(WINS) do
+            if win.workspace_id then
+                count[win.workspace_id] = (count[win.workspace_id] or 0) + 1
+            end
+        end
+        local per_out = {}
+        for _, w in ipairs(WS) do
+            per_out[w.output or ""] = (per_out[w.output or ""] or 0) + 1
+        end
+        local recs = {}
+        for i, name in ipairs(OUTPUTS) do
+            recs[i] = { active = shown[name] or 1, busy = count[busy[name] or -1] or 0, nws = per_out[name] or 1 }
+        end
+        model.mon = recs
+        build_ws()
+        build_cur()
     end
-    local per_out = {}
-    for _, w in ipairs(WS) do
-        per_out[w.output or ""] = (per_out[w.output or ""] or 0) + 1
-    end
-    local recs = {}
-    for i, name in ipairs(OUTPUTS) do
-        recs[i] = { active = shown[name] or 1, busy = count[busy[name] or -1] or 0, nws = per_out[name] or 1 }
-    end
-    model.mon = recs
-    build_ws()
-    build_cur()
-end
 
 local function refresh_running()
     run("niri", { "msg", "-j", "windows" }, function(out, code)
@@ -1117,7 +1202,7 @@ local function refresh_running()
     end)
 end
 
--- ── niri: the workspace each monitor shows ───────────────────────
+-- ── niri: the workspace each monitor shows ─────────────────────
 -- `model mon` has one record per monitor, in the order of `niri msg outputs`.
 local function refresh_workspaces()
     run("niri", { "msg", "-j", "workspaces" }, function(out, code)
@@ -1134,6 +1219,7 @@ local function refresh_workspaces()
 end
 
 local function refresh_niri()
+    sync_outputs()
     refresh_workspaces()
     refresh_running()
 end
@@ -1141,37 +1227,49 @@ end
 run("niri", { "msg", "-j", "outputs" }, function(out, code)
     local ok, o = pcall(json.decode, out or "")
     if code == 0 and ok and type(o) == "table" then
-        for name in pairs(o) do
-            OUTPUTS[#OUTPUTS + 1] = name
+        if not sync_outputs() or #OUTPUTS == 0 then
+            local names = {}
+            for name in pairs(o) do
+                names[#names + 1] = name
+            end
+            table.sort(names)
+            OUTPUTS = names
         end
-        table.sort(OUTPUTS)
     end
     refresh_niri()
 end)
 
--- Which copy of the scene is on which monitor is up to the compositor and changes between runs (screen 0 was
--- HDMI one day and eDP the next), so sorting the names is only a guess. pleamar logs the truth at startup
--- ("surface 0 on eDP-1 …"); read it from the log start.sh keeps, and use it for every per-monitor model.
-local learned = false
+-- Screen learning fallback: sync_outputs() gets monitor names directly from pleamar
+-- (text["screen.0.name"], text["screen.1.name"]), but if delayed, learn from log.
 local function learn_screens(tries)
+    if #OUTPUTS >= 2 then return end
     run("sh", { "-c", "grep 'surface [0-9]* on' /tmp/pleamar_topbar.log 2>/dev/null | head -8" }, function(out)
         local map = {}
         for idx, name in (out or ""):gmatch("surface (%d+) on (%S+)") do
             map[tonumber(idx) + 1] = name
         end
-        if #map > 0 then
+        if #map >= 2 or (#map > 0 and tries == 0) then
             OUTPUTS = map
-            learned = true
             push_mon()
         elseif tries > 0 then
-            after(3000, function() learn_screens(tries - 1) end)
+            after(2000, function() learn_screens(tries - 1) end)
         end
     end)
 end
-after(2500, function() learn_screens(6) end)
+after(2000, function() learn_screens(4) end)
 
--- niri prints one JSON object per event. Workspaces and windows are all that can change what we
--- show; ask niri again instead of reading the event.
+-- niri prints one JSON object per event. Debounce rapid window/workspace bursts
+-- so moving or resizing windows doesn't flood process calls.
+local refresh_timer = nil
+local function schedule_refresh_niri()
+    if not refresh_timer then
+        refresh_timer = after(60, function()
+            refresh_timer = nil
+            refresh_niri()
+        end)
+    end
+end
+
 local streaming = false
 local function follow_niri()
     if streaming then
@@ -1180,7 +1278,7 @@ local function follow_niri()
     streaming = true
     spawn("niri", { "msg", "-j", "event-stream" }, function(line)
         if line:find("Workspace", 1, true) or line:find("WindowOpenedOrChanged", 1, true) or line:find("WindowClosed", 1, true) then
-            refresh_niri()
+            schedule_refresh_niri()
         end
     end, function()
         streaming = false      -- niri went away; the timer below retries
@@ -1241,9 +1339,9 @@ on("weather_reload", refresh_weather)
 -- is recording from a source (PipeWire / PulseAudio source-outputs). Nothing is recorded or logged here.
 local PRIVACY = [[
 cam=0
-for d in /dev/video*; do [ -e "$d" ] && fuser "$d" >/dev/null 2>&1 && cam=1; done
-mic=$(pactl list short source-outputs 2>/dev/null | wc -l)
-[ "$mic" -gt 0 ] && mic=1
+fuser /dev/video* >/dev/null 2>&1 && cam=1
+mic=0
+pactl list short source-outputs 2>/dev/null | grep -q . && mic=1
 echo "$cam $mic"
 ]]
 
@@ -1262,8 +1360,12 @@ local function poll_privacy()
         if cam then
             local is_cam = cam == "1"
             local is_mic = mic == "1"
-            fact.priv_cam = is_cam
-            fact.priv_mic = is_mic
+            if fact.priv_cam ~= is_cam then
+                fact.priv_cam = is_cam
+            end
+            if fact.priv_mic ~= is_mic then
+                fact.priv_mic = is_mic
+            end
             if last_cam ~= nil and (not last_cam) and is_cam then
                 show_privacy_activity(true)
             elseif last_mic ~= nil and (not last_mic) and is_mic then
@@ -1275,7 +1377,7 @@ local function poll_privacy()
     end)
 end
 poll_privacy()
-every(4000, poll_privacy)
+every(6000, poll_privacy)
 
 -- ── updates: updates.luau checks pacman and tells us the count (`upd_n`); the arrow opens its panel ──
 on("open_updates", open_island_panel("updates"))

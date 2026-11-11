@@ -5,6 +5,7 @@
 --     local module = require("panelcore")({ weather = 15, music = 9 })
 --     module("weather", function(panel, opened, shown, closed)
 --         panel.height(612)            -- this panel's height (the frame's glass)
+--         panel.width(400)             -- optional: its width, when it depends on its content
 --         opened(function() … end)     -- it was just opened (or became the one shown)
 --         closed(function() … end)     -- it was just closed (or another took its place)
 --         if shown() then … end        -- is MY panel the one up
@@ -14,7 +15,7 @@
 -- `on change open { emit panel_sync }` and `on change cur { emit panel_sync }` (morph_core.plm does the first).
 -- Events `toggle_dock(id)` / `show_panel(id)` / `close_panel(id)` open and close by id (cur is set first).
 return function(IDS)
-    local heights, hooks_open, hooks_close = {}, {}, {}
+    local heights, widths, hooks_open, hooks_close = {}, {}, {}, {}
     local current = nil                -- the id shown now (open and cur), or nil
     local fresh_timer = nil
 
@@ -42,6 +43,7 @@ return function(IDS)
             if heights[id] then fact.panel_h = heights[id] end
             say_topbar("emit panel_open " .. id)
             if heights[id] then say_topbar("emit panel_height " .. (id * 10000 + heights[id])) end
+            if widths[id] then say_topbar("emit panel_width " .. (id * 10000 + widths[id])) end
             if hooks_open[id] then hooks_open[id]() end
         end
     end
@@ -81,6 +83,12 @@ return function(IDS)
                 fact.panel_h = h
                 say_topbar("emit panel_height " .. (id * 10000 + h))
             end
+        end
+        function panel.width(w)                 -- a panel whose glass width depends on its content (app switcher, overview)
+            w = math.floor(w)
+            if widths[id] == w then return end
+            widths[id] = w
+            if current == id then say_topbar("emit panel_width " .. (id * 10000 + w)) end
         end
         function panel.keep() heights.keep = heights.keep or {}; heights.keep[id] = true end   -- survives a click outside
         init(panel,

@@ -2,12 +2,12 @@
 // state; only one is ever open):
 //   top island panels  weather 15 · music 9 · today 3 · updates 16        (glass drawn by the frame, topbar.plm)
 //   dock panels        spotlight 4 · wallpapers 5 · clipboard 6 · widget bar 10 · session dialog 11 · polkit dialog 12
-//   centred windows    app switcher 21 · window overview 22 · capture picker 23 · first-run welcome 24
+//   more dock panels   app switcher 21 · window overview 22 · first-run welcome 24   (the capture picker, 23, is its own scene)
 // `cur` is the id of the open one. Logic: overlays.luau (+ panelcore.luau).
 import "common/palette.plm"
 
 scene MacOverlays {
-    let mp_sw = 1000
+    let mp_sw = 1300
     let mp_sh = 560
     include "common/theme.plm"
     include "common/ui.plm"
@@ -26,13 +26,6 @@ scene MacOverlays {
     event toggle_dock ->
     event close_panel ->
     event outside_close ->
-    //  the centred windows (switcher, overview, capture, welcome): their own fade / scale
-    prop mseen = 0 ~quick
-    prop mscale = 0.95 ~lively
-    layer modal ~quick {
-        shown while open and cur >= 21 { mseen: 1 ~quick; mscale: 1 ~lively }
-        gone                           { mseen: 0 ~quick; mscale: 0.95 ~quick }
-    }
     let stroke_c = card_stroke
     let stroke_op = card_stroke_op
 
@@ -1298,97 +1291,50 @@ scene MacOverlays {
     on key Escape while cur == 22 { open = false }
     on blur while cur == 22 and not fresh { open = false }
 
+    //  The app switcher grows out of the dock like Spotlight: the frame draws the glass (width follows the number of windows,
+    //  reported by the logic with panel.width), this surface draws the cards. Content is centred on the surface.
     surface switcher {
-        size: 1160, 220
-        anchor: center
+        size: 1120, 200
+        anchor: bottom
+        margin: 0, 0, 0, 0
         level: overlay
         keyboard: exclusive while open and cur == 21
         screens: each
-        open: (open or mseen > 0.02) and cur == 21 and open_screen == screen.index
+        open: (open or seen > 0.02) and cur == 21 and open_screen == screen.index
 
-        zone box sw_dismiss { from: 0, 0; size: 1160, 220; active: open and cur == 21 }
+        zone box sw_dismiss { from: 0, 0; size: 1120, 200; active: open and cur == 21 }
 
-        group {
-            move: 0, 24
-            pivot: 580, 86
-            scale: mscale
-            opacity: mseen
-
-            // Floating Capsule
-            body {
-                color: bg_color
-                glass: glass_amt
-                lens: false
-                frost: 100%
-                dispersion: 0
-                refraction: 0
-                tint: tint_amt
-                rim: rim_amt
-                box { from: 580 - bw / 2, 0; size: bw, 172; corner: 24 }
-            }
-            box { from: 580 - bw / 2, 0; size: bw, 172; corner: 24; stroke: 1; color: stroke_c; opacity: stroke_op }
-
-            // Horizontal Strip of Window Cards
+        PanelBody(0, 200, 1) {
+            //  Horizontal strip of window cards
             row app_strip {
-                at: 580, 16
+                at: 560, 16
                 gap: 12
                 anchor: center top
                 align: center
-
-                for w in sw_wins {
-                    AppTile(w)
-                }
+                for w in sw_wins { AppTile(w) }
             }
-
-            // Title of the selected window
-            text sel_title {
-                at: 580, 148
-                anchor: center center
-                size: 12
-                weight: 600
-                color: ink_c
-                width: bw - 40
-                align: center
-                lines: 1
-            }
+            //  Title of the selected window
+            text sel_title { at: 560, 148; anchor: center center; size: 12; weight: 600; color: ink_c; width: bw - 40; align: center; lines: 1 }
         }
         on press sw_dismiss { open = false }
         on press right sw_dismiss { }
-        }
+    }
 
     surface overview {
-        size: 1280, 860
-        anchor: center
+        size: 1240, 820
+        anchor: bottom
+        margin: 0, 0, 0, 0
         level: overlay
         keyboard: exclusive while open and cur == 22
         screens: each
-        open: (open or mseen > 0.02) and cur == 22 and open_screen == screen.index
+        open: (open or seen > 0.02) and cur == 22 and open_screen == screen.index
 
-        zone box ov_dismiss { from: 0, 0; size: 1280, 860; active: open and cur == 22 }
+        zone box ov_dismiss { from: 0, 0; size: 1240, 820; active: open and cur == 22 }
 
-        group {
-            move: (1200 - ov_w) / 2, (800 - ov_h) / 2
-            pivot: 640, 430
-            scale: mscale
-            opacity: mseen
-
-            // Floating Glass Modal Surface
-            body {
-                color: bg_color
-                glass: glass_amt
-                lens: false
-                frost: 100%
-                dispersion: 0
-                refraction: 0
-                tint: tint_amt
-                rim: rim_amt
-                box { from: 40, 30; size: ov_w, ov_h; corner: 28 }
-            }
-            box { from: 40, 30; size: ov_w, ov_h; corner: 28; stroke: 1; color: stroke_c; opacity: stroke_op }
-
-            // Header Row
+        PanelBody(0, 820, 1) {
+            //  Header row
             group {
-                move: 70, 56
+                move: 620 - ov_w / 2 + 30, 26
                 ellipse { at: 14, 14; radius: 14; color: accent_c; opacity: 20% }
                 Sym("󰕰", 14, 14, 15, accent_c)
                 text "Window Overview" { at: 38, 14; anchor: left center; size: 16; weight: 700; color: ink_c }
@@ -1396,33 +1342,27 @@ scene MacOverlays {
                 KeyHint(ov_w - 230, 14, "← →  select   ·   Enter  focus   ·   Esc  close")
             }
 
-            // Grid of Window Previews
+            //  Grid of window previews
             grid {
-                at: 68, 96
+                at: 620 - ov_w / 2 + 28, 66
                 columns: 4
                 gap: 16
                 width: 1144
                 row: 165
-
-                for w in ov_wins {
-                    OverviewTile(w)
-                }
+                for w in ov_wins { OverviewTile(w) }
             }
 
-            // Empty state if no windows are open
+            //  Empty state if no windows are open
             group {
                 show: ov_wins.count < 1
-                move: 640, 430
+                move: 620, ov_h / 2
                 EmptyState(0, 0, "󰕰", "No open windows")
             }
         }
         on press ov_dismiss { open = false }
         on press right ov_dismiss { }
-        }
+    }
 
-
-
-                    
     // ── welcome ─────────────────────────────────────────────────
     fact page = 0
     fact wl_mode = 1            // 0 light · 1 dark · 2 auto (mirrors Settings)
@@ -1441,33 +1381,17 @@ scene MacOverlays {
 
 
     surface welcome {
-        size: 720, 520
-        anchor: center
+        size: 680, 480
+        anchor: bottom
+        margin: 0, 0, 0, 0
         level: overlay
         keyboard: exclusive while open and cur == 24
         screens: each
-        open: (open or mseen > 0.02) and cur == 24 and open_screen == screen.index
+        open: (open or seen > 0.02) and cur == 24 and open_screen == screen.index
 
-        zone box wl_scrim { from: 0, 0; size: 720, 520; active: open and cur == 24 }
+        zone box wl_scrim { from: 0, 0; size: 680, 480; active: open and cur == 24 }
 
-        group {
-            move: 40, 30
-            pivot: 320, 230
-            scale: mscale
-            opacity: mseen
-
-            body {
-                color: bg_color
-                glass: glass_amt
-                lens: false
-                frost: 100%
-                dispersion: 0
-                refraction: 0
-                tint: tint_amt
-                rim: rim_amt
-                box { from: 0, 0; size: 640, 460; corner: r_l }
-            }
-            box { from: 0, 0; size: 640, 460; corner: r_l; stroke: 1; color: card_stroke; opacity: card_stroke_op }
+        PanelBody(20, 480, 1) {
 
             //  ── page 0: hello ──
             group {

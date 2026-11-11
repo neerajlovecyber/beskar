@@ -136,6 +136,7 @@ scene MacTopBar {
     event osd_popup ->
     event panel_open ->
     event panel_height ->
+    event panel_width ->
     event panel_close ->
     event open_control_center ->
     event open_panel ->      // a number: which separate panel to toggle on the focused monitor (see topbar.luau)

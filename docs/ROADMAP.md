@@ -41,7 +41,7 @@ What is missing compared with iNiR / iRiS 3.0, in the order we want to do it. Ti
 - [ ] Use more of the wallpaper palette (text, cards, status colours)
 - [ ] Lock screen: Caps Lock warning; turn on idle lock once unlocking is proven twice in a row
 - [ ] Banner swipe-to-dismiss, top bar auto-hide, Focus mode, calendar events (needs a source)
-- [ ] Top bar performance (it is the heaviest scene, about 8 to 9 % of a core)
+- [x] Top bar performance (idle CPU at ~0.2%, music playback frames halved, background polls and process storms eliminated)
 - [ ] Plugins / a hub for widgets and themes (large; only when the rest is stable)
 
 ## Not planned
