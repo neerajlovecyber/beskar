@@ -85,7 +85,7 @@ local function cancel_activity(id)
         if card_timers[id] then cancel(card_timers[id]); card_timers[id] = nil end
         if owner.cp == id then fact.cp_on = false end
     elseif id == 7 then
-        pcall(sys.call, "say", "notifications", "fact banner_on false")
+        pcall(sys.call, "say", "overlays", "fact banner_on false")
     end
     if owner.cp == id then
         owner.cp = nil
@@ -131,7 +131,7 @@ on("panel_open", function(id)
         if p.kind == 1 then
             -- a banner never takes the island from a panel that is open there or something higher priority
             if owner[p.island] and (PRIORITIES[owner[p.island]] or 0) >= 70 then
-                pcall(sys.call, "say", "notifications", "fact banner_on false")
+                pcall(sys.call, "say", "overlays", "fact banner_on false")
                 return
             end
             if owner[p.island] and owner[p.island] ~= p.id then
@@ -160,7 +160,7 @@ end)
 
 -- Weather, music, today and updates live in ONE scene, `panels` (panels.plm): one shared open / open_screen / cur
 -- (the panel id) / panel_h. `panel_say(name, words)` talks to whichever scene a panel is in.
-local MERGED = { dashboard = true, music = true, weather = true, updates = true }   -- (`cur` is set before opening)
+local MERGED = { dashboard = true, music = true, weather = true, updates = true, control_center = true, notifications = true }   -- (`cur` is set before opening)
 -- Spotlight, wallpapers, clipboard and the widget bar live in ONE scene, `dock` (panel id = its `cur`)
 local DOCK = { spotlight = 4, wallpapers = 5, clipboard = 6, widget_bar = 10, session = 11, polkit = 12, appswitcher = 21, overview = 22, welcome = 24 }
 local function panel_say(name, words)
@@ -293,7 +293,7 @@ local function open_island_panel(name, page)
             panel_say(name, "fact open_screen " .. s)
             if MERGED[name] then panel_say(name, "fact cur " .. p.id) end
             if name == "control_center" then
-                pcall(sys.call, "say", name, "fact page " .. (page or 0))
+                pcall(sys.call, "say", "overlays", "fact cc_page " .. (page or 0))
             end
             panel_say(name, "fact open true")
         end)
@@ -1164,7 +1164,7 @@ push_mon = function()
             for i, n in ipairs(OUTPUTS) do
                 if n == focused_output and (i - 1) ~= last_toast_screen then
                     last_toast_screen = i - 1
-                    pcall(sys.call, "say", "notifications", "fact toast_screen " .. (i - 1))
+                    pcall(sys.call, "say", "overlays", "fact toast_screen " .. (i - 1))
                 end
             end
         end

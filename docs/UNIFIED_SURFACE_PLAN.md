@@ -73,7 +73,9 @@ Done inside the existing `overlays` scene, before the big merge, so it ships on 
 - Delete: the `modal` layer code, `mseen`/`mscale`, the centred-window rules in `AGENTS.md`.
 - Check: every panel closes the same way (rule 42): Esc, click outside, blur.
 
-## Phase 2 - Fold `control_center` and `notifications` into `overlays`
+## Phase 2 - Fold `control_center` and `notifications` into `overlays` - DONE, committed with this note
+
+Implemented as `shell/parts/*.plm` + `cc.luau` / `notif.luau`; 8 always-on processes became 6. Tested on the real shell: Control Center (pages, media card), notification centre, banner in the centre pill.
 
 The "planned next" from rule 55. Their panels (right island) and the banner / centre cards join the
 overlays scene as more `cur` ids. Removes two processes and the `say` between them and `exclusive.luau`.

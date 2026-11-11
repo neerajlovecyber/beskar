@@ -1,3 +1,5 @@
+-- (a part of overlays.luau: module("control_center", require("cc")))
+return function(panel, opened, shown, closed)
 -- Control Center companion logic
 
 -- The theme is owned by Settings: it tells every scene (accent and skin too), saves the look to disk and
@@ -47,9 +49,8 @@ end)
 -- Counts of what the pages list are kept by the code below.
 local wifi_n, bt_n, outs_n, apps_n = 0, 0, 1, 0
 local last_h = nil
-local panel = require("panel")("control_center")
 local function push_height()
-    local page = tonumber(fact.page) or 0
+    local page = tonumber(fact.cc_page) or 0
     local h
     if page == 0 then
         h = 434
@@ -65,7 +66,7 @@ local function push_height()
         panel.height(h)
     end
 end
-on("fact:page", push_height)
+on("fact:cc_page", push_height)
 on("fact:asking", push_height)
 
 -- ── Wi-Fi ────────────────────────────────────────────────────────
@@ -205,7 +206,6 @@ on("toggle_dnd", function()
     local now_on = not (fact.dnd == true)
     fact.dnd = now_on
     local v = tostring(now_on)
-    pcall(sys.call, "say", "notifications", "fact dnd " .. v)
     pcall(sys.call, "say", "topbar", "fact dnd " .. v)
 end)
 
@@ -226,52 +226,7 @@ on("open_settings", function()
     pcall(sys.call, "say", "settings", "emit toggle")
 end)
 
--- ── Now playing ──────────────────────────────────────────────────
-local playing, pos, len, rate = false, 0, 0, 1
-
-local function clock(sec)
-    sec = math.max(0, math.floor(sec or 0))
-    return string.format("%d:%02d", sec // 60, sec % 60)
-end
-
-local function paint_time()
-    text.time_pos = clock(pos)
-    text.time_len = clock(len)
-    fact.track_pos = pos
-end
-
-sys.watch("media", function(m)
-    m = m or {}
-    local title = m.title or ""
-    local has = (m.player or "") ~= "" or title ~= ""
-    playing = m.playing == true
-    pos, len, rate = m.position or 0, m.length or 0, m.rate or 1
-    fact.has_player = has
-    fact.is_playing = playing
-    fact.track_len = len
-    fact.has_art = (m.art or "") ~= ""
-    text.track_title = title ~= "" and title or "Unknown title"
-    text.track_artist = m.artist or ""
-    text.cover_art = m.art or ""
-    paint_time()
-end)
-
--- The player reports the position once; carry it on between reports.
-every(1000, function()
-    if playing and len > 0 then
-        pos = math.min(pos + rate, len)
-        paint_time()
-    end
-end)
-
-on("play_pause", function() pcall(sys.call, "media.toggle") end)
-on("previous", function() pcall(sys.call, "media.previous") end)
-on("next", function() pcall(sys.call, "media.next") end)
-on("seek", function(frac)
-    if len > 0 then
-        pcall(sys.call, "media.seek", math.floor((tonumber(frac) or 0) * len))
-    end
-end)
+-- (the music card reads the `media` facts that the music part of overlays.luau keeps; play / previous / next / seek are its events)
 
 -- ── Bluetooth ────────────────────────────────────────────────────
 -- Paired devices (connected first) and, while searching, the new ones near. Each row carries one
@@ -417,14 +372,10 @@ on("bt_scan", function()
 end)
 
 -- Stop listening for new devices when the panel closes.
-on("fact:open", function(v)
-    if v == true or v == 1 then
-        push_height()
-    end
-    if not v then
-        stop_asking()
-    end
-    if not v and bt_state.discovering then
+opened(push_height)
+closed(function()
+    stop_asking()
+    if bt_state.discovering then
         pcall(sys.call, "bluetooth.scan", false)
     end
 end)
@@ -462,4 +413,5 @@ on("app_volume", function(v)
 end)
 
 -- one panel at a time
-require("exclusive")("control_center")
+
+end

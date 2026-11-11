@@ -1,4 +1,6 @@
+-- (a part of overlays.luau: module("notifications", require("notif")))
 -- Notification centre logic, after Marea's: this logic is the receiver of the desktop's notifications.
+return function(panel, opened, shown, closed)
 --
 --   · what arrives is KEPT until somebody deals with it (`notifications.keep`): a centre is not a bar of
 --     bubbles, so a notification that asks to expire after 5 s does not vanish before you open it
@@ -6,7 +8,6 @@
 --     newest first, and to disk (`history.json`), so a restart does not wash it away
 --   · the top bar's bell is told how many are waiting
 
-local panel = require("panel")("notifications")   -- the frame draws the glass: tell it the height
 local MAX_LIVE = 6          -- cards in the centre
 local MAX_PAST = 5          -- rows of history shown
 local KEEP_PAST = 100       -- rows of history kept on disk
@@ -203,7 +204,7 @@ local function arm_banner()
 end
 
 local function banner_show()
-    if fact.dnd == true or fact.open == true or fact.banners == false then
+    if fact.dnd == true or shown() or fact.banners == false then
         return
     end
     if not banner_visible then
@@ -227,13 +228,9 @@ on("fact:banner_on", function(v)
 end)
 
 -- opening the centre hides the banner; a click on the banner opens the centre
-on("fact:open", function(v)
-    if v == true or v == 1 then
-        banner_hide()
-    end
-end)
+opened(banner_hide)
 on("card_click", function()
-    if fact.open == true then
+    if shown() then
         return
     end
     banner_hide()
@@ -322,5 +319,5 @@ end)
 -- Ages move on; and the bell has to hear again if the top bar was restarted.
 every(30000, paint)
 
--- one panel at a time
-require("exclusive")("notifications")
+
+end

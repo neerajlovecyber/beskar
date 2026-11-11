@@ -1,6 +1,6 @@
 // Overlays: EVERY panel and window that opens over the desktop, in ONE scene (one process, named surfaces that share
 // state; only one is ever open):
-//   top island panels  weather 15 · music 9 · today 3 · updates 16        (glass drawn by the frame, topbar.plm)
+//   top island panels  control center 1 · notifications 2 (+ the banner) · weather 15 · music 9 · today 3 · updates 16        (glass drawn by the frame, topbar.plm)
 //   dock panels        spotlight 4 · wallpapers 5 · clipboard 6 · widget bar 10 · session dialog 11 · polkit dialog 12
 //   more dock panels   app switcher 21 · window overview 22 · first-run welcome 24   (the capture picker, 23, is its own scene)
 // `cur` is the id of the open one. Logic: overlays.luau (+ panelcore.luau).
@@ -13,10 +13,12 @@ scene MacOverlays {
     include "common/ui.plm"
     include "common/icons.plm"
     include "common/morph_core.plm"
+    include "parts/control_center.plm"       // panel 1 (right island)
+    include "parts/notifications.plm"        // panel 2 (right island) + the banner card in the centre pill
 
     permissions {
         run: "sh", "curl", "xdg-open", "wl-copy", "systemctl", "niri msg", "systemctl suspend", "cliphist", "notify-send", "magick", "fd", "grim", "slurp", "wf-recorder", "pkill", "rm", "cp"
-        services: "clock", "battery", "media", "media.*", "polkit", "polkit.*", "apps", "apps.launch", "files", "files.write", "window", "thumbnails", "thumbnails.*", "say:topbar", "say:settings", "say:widgets", "say:lock", "say:control_center", "say:notifications", "say:overlays", "say:capture"
+        services: "clock", "battery", "media", "media.*", "polkit", "polkit.*", "apps", "apps.launch", "files", "files.write", "window", "thumbnails", "thumbnails.*", "say:topbar", "say:settings", "say:widgets", "say:lock", "say:control_center", "say:notifications", "say:overlays", "say:capture", "audio", "audio.*", "brightness", "brightness.*", "network", "network.*", "bluetooth", "bluetooth.*", "notifications", "notifications.*"
     }
 
     fact cur = 4                 // which one is up: its id

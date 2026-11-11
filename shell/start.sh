@@ -35,7 +35,7 @@ kill_all() {
 
 check_status() {
     echo "macOS / iNiR Shell Status:"
-    for comp in topbar border control_center notifications settings lock overlays; do
+    for comp in topbar border settings lock overlays; do
         if pgrep -f "pleamar.*$comp\.plm" >/dev/null 2>&1; then
             echo "  ✔ $comp is RUNNING"
         else
@@ -58,11 +58,11 @@ apply_saved_theme() {
         [ -z "$DM" ] && DM="true"
         [ -z "$SKIN" ] && SKIN="0"
 
-        for comp in topbar border control_center notifications settings overlays widgets ; do
+        for comp in topbar border settings overlays widgets ; do
             "$BIN" --say "$comp" "fact dark_mode $DM" >/dev/null 2>&1 || true
             "$BIN" --say "$comp" "fact skin $SKIN" >/dev/null 2>&1 || true
         done
-        for comp in topbar control_center notifications settings lock overlays widgets ; do
+        for comp in topbar settings lock overlays widgets ; do
             "$BIN" --say "$comp" "fact accent $ACCENT" >/dev/null 2>&1 || true
             "$BIN" --say "$comp" "fact accent_auto $AUTO" >/dev/null 2>&1 || true
             "$BIN" --say "$comp" "fact hour12 $H12" >/dev/null 2>&1 || true
@@ -115,8 +115,6 @@ start_shell() {
     setsid "$S/supervise.sh" \
         "$S/wallpaper.plm:/tmp/pleamar_wallpaper.log" \
         "$S/topbar.plm:/tmp/pleamar_topbar.log" \
-        "$S/control_center.plm:/tmp/pleamar_cc.log" \
-        "$S/notifications.plm:/tmp/pleamar_notifications.log" \
         "$S/settings.plm:/tmp/pleamar_settings.log" \
         "$S/lock.plm:/tmp/pleamar_lock.log" \
         "$S/widgets.plm:/tmp/pleamar_widgets.log" \
@@ -244,7 +242,7 @@ case "$1" in
         "$BIN" --say topbar "fact open true"
         ;;
     notifications|widgets)
-        "$BIN" --say notifications "emit toggle"
+        "$BIN" --say topbar "emit open_notifications"
         ;;
     dashboard)
         "$BIN" --say topbar "emit open_dashboard"
@@ -273,7 +271,7 @@ case "$1" in
     dark-mode)
         VAL="true"
         [ "$2" = "off" ] && VAL="false"
-        for comp in topbar control_center notifications settings overlays; do
+        for comp in topbar settings overlays; do
             "$BIN" --say "$comp" "fact dark_mode $VAL"
         done
         mkdir -p "$(dirname "$CONFIG_FILE")"
@@ -282,7 +280,7 @@ case "$1" in
         ;;
     skin)
         SKIN_VAL="${2:-0}"
-        for comp in topbar control_center notifications settings overlays; do
+        for comp in topbar settings overlays; do
             "$BIN" --say "$comp" "fact skin $SKIN_VAL"
         done
         mkdir -p "$(dirname "$CONFIG_FILE")"

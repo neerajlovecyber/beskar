@@ -1,25 +1,6 @@
-// Notification centre + banners. This scene IS the notification server (org.freedesktop.Notifications).
-//
-//   · the bell in the top bar opens a centre under the right island: one card per notification
-//   · a new notification also drops a banner from the right island for a few seconds
-//
-// Cards follow the macOS notification look: a rounded icon on the left, the app name small above a bold
-// title and two lines of body, and a round × in the corner that appears on hover.
-import "common/palette.plm"
-
-scene MacNotifications {
-    let mp_sw = 412
-    let mp_sh = 800
-    include "common/theme.plm"
-    include "common/ui.plm"
-    include "common/morph.plm"
-    //  `notifications` is what makes this the receiver of the desktop's notifications (the logic asks for
-    //  them); `files` / `files.write` keep the history of dismissed ones across restarts; `say:topbar`
-    //  tells the bell how many are waiting.
-    permissions {
-        services: "notifications", "notifications.*", "files", "files.write", "say:topbar", "say:lock", "say:spotlight", "say:clipboard", "say:music", "say:weather", "say:overlays", "say:overlays", "say:updates", "say:control_center", "say:dashboard", "say:settings", "say:wallpapers", "say:widget_bar"
-    }
-
+// The notification centre and the banner: parts of `overlays` (centre = panel id 2, right island; the banner is a card
+// in the centre pill, driven by banner_on). Included by overlays.plm. The logic is notif.luau.
+part Notifications {
     //  Both are painted by notifications.luau. `icon` is the application's own icon (a name or a path).
     //  `notices` are the ones waiting; `past` the ones already dealt with, newest first.
     model notices max 6 { id: number; app: text; title: text; body: text; icon: image 40, 40; age: text }
@@ -37,7 +18,6 @@ scene MacNotifications {
     fact banner_ms = 5500       // …and for how long
     fact dnd = false            // Do Not Disturb: no banners (they still land in the centre)
 
-    event toggle
     event clear_notices ->
     event card_click ->
     event clear_past ->
@@ -136,17 +116,19 @@ scene MacNotifications {
     }
 
     // ── the centre: content only; the frame draws the glass, melting it out of the right island ──
-    surface {
+    surface centre {
         size: 412, 800
         anchor: top_right
         margin: 0, 0, 0, 0
         level: overlay
         screens: each
-    }
+        open: (open or seen > 0.02) and cur == 2 and open_screen == screen.index
 
-    on press dismiss { open = false }
+        zone box nc_dismiss { from: 0, 0; size: 412, 800; active: open and cur == 2 }
+        on press nc_dismiss { open = false }
+        on press right nc_dismiss { }
 
-    PanelBody(26, -2) {
+    TopBody(26, -2, 412) {
 
         PanelHeader("󰂚", "Notifications", 30, 32)
         //  Clear all
@@ -190,6 +172,7 @@ scene MacNotifications {
             text "No Notifications" { at: 190, 148; anchor: center; size: t_body; weight: 600; color: ink_c }
         }
     }
+    }
 
     // ── the banner: a new notification appears INSIDE the centre pill ─────────────────────────────
     //  The frame (topbar.plm) draws the glass: the centre island grows to hold it and the clock fades. This surface
@@ -221,7 +204,6 @@ scene MacNotifications {
         }
     }
 
-    on toggle     { toggle open }
-    on key Escape { open = false }
-    on blur       { open = false }
+    on key Escape while cur == 2 { open = false }
+    on blur while cur == 2 and not fresh { open = false }
 }

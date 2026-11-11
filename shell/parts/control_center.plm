@@ -1,25 +1,5 @@
-// macOS Control Center for Wayland Compositors
-import "common/palette.plm"
-
-scene MacControlCenter {
-    let mp_sw = 440
-    let mp_sh = 520
-    include "common/theme.plm"
-    include "common/ui.plm"
-    include "common/morph.plm"
-    surface {
-        size: 440, 520
-        anchor: top_right
-        margin: 0, 0, 0, 0
-        level: overlay
-        screens: each
-        keyboard: exclusive while asking
-    }
-
-    permissions {
-        services: "audio", "audio.*", "brightness", "brightness.*", "media", "media.*", "network", "network.*", "bluetooth", "bluetooth.*", "say:topbar", "say:overlays", "say:settings", "say:clipboard", "say:music", "say:weather", "say:overlays", "say:updates", "say:capture", "say:lock", "say:spotlight", "say:notifications", "say:dashboard", "say:wallpapers", "say:widget_bar"
-    }
-
+// The Control Center: a panel of `overlays` (id 1, right island). Included by overlays.plm.
+part ControlCenter {
     // ── Built-in System Models ────────────────────────────────────
     model nets max 8 { ssid: text; strength: number; secure: bool; known: bool; active: bool }
     //  One row per Bluetooth device, painted by control_center.luau. kind: 0 any · 1 headphones · 2 mouse ·
@@ -37,8 +17,7 @@ scene MacControlCenter {
 
     // ── Navigation & Theme Facts ──────────────────────────────────
     // Navigation: 0 = Main, 1 = Wi-Fi, 2 = Bluetooth, 3 = Sound
-    fact page = 0
-    fact dnd = false
+    fact cc_page = 0
     prop dm_k = 0 ~quick
     follow dm_k = if(dark_mode, 1, 0)
 
@@ -57,27 +36,12 @@ scene MacControlCenter {
     fact bt_present = true
     fact bt_scanning = false
     text bt_sub = "Off"
-    fact has_player = false
-    fact is_playing = false
-    fact has_art = false
-    fact track_len = 0
-    fact track_pos = 0
-    text track_title = ""
-    text track_artist = ""
-    text cover_art = ""
-    text time_pos = "0:00"
-    text time_len = "0:00"
-    image cover = from cover_art, 82, 46
-
-
-    event toggle
     event toggle_dark ->
     event set_dark_mode ->
     event choose_skin ->
 
     event volume_set ->
     event brightness_set ->
-    event play_pause ->
     event pick_network ->
     event wifi_power ->
     event wifi_disconnect ->
@@ -96,9 +60,6 @@ scene MacControlCenter {
     event sc_clip ->
     event sc_shot ->
     event sc_lock ->
-    event previous ->
-    event next ->
-    event seek ->
     event pick_output ->
     event toggle_wifi ->
     event toggle_bt ->
@@ -150,19 +111,31 @@ scene MacControlCenter {
 
 
     // Dismiss click zone for outside
-    on press dismiss { open = false; page = 0 }
 
     //  The glass behind this is drawn by the frame (topbar.plm), so it can melt out of the right island:
     //  this scene only draws the content, placed where the card is.
-    PanelBody(74, -2) {
+    //  The Control Center grows out of the right island: the frame draws the glass, this surface draws the content.
+    surface cc {
+        size: 440, 520
+        anchor: top_right
+        margin: 0, 0, 0, 0
+        level: overlay
+        screens: each
+        keyboard: exclusive while asking and cur == 1
+        open: (open or seen > 0.02) and cur == 1 and open_screen == screen.index
+
+        zone box cc_dismiss { from: 0, 0; size: 440, 520; active: open and cur == 1 }
+        on press cc_dismiss { open = false; cc_page = 0 }
+        on press right cc_dismiss { }
+    TopBody(74, -2, 440) {
 
         // ==========================================================
         // PAGE 0: MAIN CONTROL CENTER OVERVIEW
         // ==========================================================
         group {
-            show: page == 0
+            show: cc_page == 0
 
-            // ── Wi-Fi: a wide pill. The disc toggles the radio, the rest opens the page ──
+            // ── Wi-Fi: a wide pill. The disc toggles the radio, the rest opens the cc_page ──
             group {
                 move: 16, 16
                 size: 158, 60
@@ -344,7 +317,7 @@ scene MacControlCenter {
         // PAGE 1: WI-FI
         // ==========================================================
         group {
-            show: page == 1
+            show: cc_page == 1
 
             group {
                 move: 16, 20
@@ -466,7 +439,7 @@ scene MacControlCenter {
         // PAGE 2: BLUETOOTH DEVICES SUB-PAGE
         // ==========================================================
         group {
-            show: page == 2
+            show: cc_page == 2
 
             group {
                 move: 16, 20
@@ -521,7 +494,7 @@ scene MacControlCenter {
         // PAGE 3: SOUND  (output, then each app's own volume)
         // ==========================================================
         group {
-            show: page == 3
+            show: cc_page == 3
 
             group {
                 move: 16, 20
@@ -587,39 +560,40 @@ scene MacControlCenter {
 
     // Sliders & Media Actions
     on press play_hit { emit play_pause }
-    on open_sound { page = 3 }
+    on open_sound { cc_page = 3 }
     on press prev_hit { emit previous }
     on press next_hit { emit next }
     on press seek_hit { emit seek(clamp(local.x / 130, 0, 1)) }
     on press dnd_hit { emit toggle_dnd }
-    on press sc_search_hit { emit sc_search; open = false; page = 0 }
-    on press sc_clip_hit   { emit sc_clip; open = false; page = 0 }
-    on press sc_shot_hit   { emit sc_shot; open = false; page = 0 }
-    on press sc_lock_hit   { emit sc_lock; open = false; page = 0 }
-    on press settings_tile_hit { emit open_settings; open = false; page = 0 }
+    on press sc_search_hit { emit sc_search; open = false; cc_page = 0 }
+    on press sc_clip_hit   { emit sc_clip; open = false; cc_page = 0 }
+    on press sc_shot_hit   { emit sc_shot; open = false; cc_page = 0 }
+    on press sc_lock_hit   { emit sc_lock; open = false; cc_page = 0 }
+    on press settings_tile_hit { emit open_settings; open = false; cc_page = 0 }
     on press bt_power_hit { emit bt_power }
     on press bt_scan_hit  { emit bt_scan }
 
     // Navigation Transitions
-    on press wifi_chevron_hit { page = 1 }
-    on press wifi_back_hit    { page = 0 }
+    on press wifi_chevron_hit { cc_page = 1 }
+    on press wifi_back_hit    { cc_page = 0 }
     on press wifi_icon_hit    { emit toggle_wifi }
     on press wifi_switch_hit  { emit toggle_wifi }
     on press wifi_rescan_hit  { emit wifi_rescan }
     on submit wifi_pw         { emit wifi_join }
     on change asking          { focus wifi_pw }
 
-    on press bt_chevron_hit   { page = 2 }
-    on press bt_back_hit      { page = 0 }
+    on press bt_chevron_hit   { cc_page = 2 }
+    on press bt_back_hit      { cc_page = 0 }
     on press bt_icon_hit      { emit toggle_bt }
 
-    on press snd_back_hit     { page = 0 }
+    on press snd_back_hit     { cc_page = 0 }
 
     // Theme Actions
     on press dm_tile_hit   { emit toggle_dark }
 
-    // Window Lifecycle
-    on toggle     { toggle open; page = 0 }
-    on key Escape { open = false; page = 0 }
-    on blur while askhold < 0.2 { open = false; page = 0 }
+    }
+
+    // Window lifecycle (the shared `open` / `cur` are the panels' own: id 1)
+    on key Escape while cur == 1 { open = false; cc_page = 0 }
+    on blur while cur == 1 and not fresh and askhold < 0.2 { open = false; cc_page = 0 }
 }
