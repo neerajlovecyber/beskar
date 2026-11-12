@@ -12,6 +12,7 @@
 // click goes through to the windows.
 import "common/palette.plm"
 import "common/icons.plm"
+uses scene "panels.plm" as Panels      // the owner of which panel is open: read here to order a hand-over to Settings
 
 scene MacTopBar {
     include "common/theme.plm"
@@ -497,7 +498,10 @@ scene MacTopBar {
         prop pv = 0 ~calm                                   // left: the power menu
         follow pv = if(open and open_screen == screen.index, 1, 0)
         prop cv = 0 ~calm                                   // centre
-        follow cv = if(cp_on and cp_screen == screen.index, 1, 0)
+        layer centre_glass ~quick {                              // opens at the calm pace, CLOSES quickly: a slow-closing glass lingered over
+            up   while cp_on and cp_screen == screen.index { cv: 1 ~calm }       // whatever took over (Spotlight opening Settings, say)
+            down { cv: 0 ~quick }
+        }
         prop bnv = 0 ~calm                                  // the banner: the clock fades while it shows
         follow bnv = if(cp_on and cp_kind == 1 and cp_screen == screen.index, 1, 0)
         prop ov = 0 ~calm                                   // the volume / brightness feedback
@@ -507,13 +511,19 @@ scene MacTopBar {
         prop cph = 496 ~calm
         follow cph = cp_h
         prop bv = 0 ~calm                                   // bottom: the dock island
-        follow bv = if(bp_on and bp_screen == screen.index, 1, 0)
+        layer bottom_glass ~quick {                              // opens at the calm pace, CLOSES quickly: a slow-closing glass lingered over
+            up   while bp_on and bp_screen == screen.index { bv: 1 ~calm }       // whatever took over (Spotlight opening Settings, say)
+            down { bv: 0 ~quick }
+        }
         prop bpw = 680 ~calm
         follow bpw = bp_w
         prop bph = 300 ~calm
         follow bph = bp_h
         prop rv = 0 ~calm                                   // right
-        follow rv = if(rp_on and rp_screen == screen.index, 1, 0)
+        layer right_glass ~quick {                              // opens at the calm pace, CLOSES quickly: a slow-closing glass lingered over
+            up   while rp_on and rp_screen == screen.index { rv: 1 ~calm }       // whatever took over (Spotlight opening Settings, say)
+            down { rv: 0 ~quick }
+        }
         prop rpw = 372 ~calm
         follow rpw = rp_w
         prop rph = 434 ~calm

@@ -647,8 +647,18 @@ on("open_panel", function(n)
             pcall(sys.call, "say", "panels", "emit toggle " .. OVERLAY[name])
             return
         end
-        overlay_screen(s, name)
-        pcall(sys.call, "say", name, "emit toggle")
+        local function go()
+            overlay_screen(s, name)
+            pcall(sys.call, "say", name, "emit toggle")
+        end
+        if name == "settings" and (fact["Panels.open"] == true or fact["Panels.open"] == 1) then
+            -- Settings opened FROM a panel (Spotlight, the Control Center…): close the panel first and let its closing
+            -- animation finish, or the old panel lingers over the new window, dimming it
+            pcall(sys.call, "say", "panels", "emit close")
+            after(260, go)
+        else
+            go()
+        end
     end
     monitor_of_click(function(s)
         if name == "capture" then

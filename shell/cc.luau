@@ -225,7 +225,7 @@ on("sc_lock", function() say_later("lock", "fact locked true") end)
 
 -- ── Settings shortcut ────────────────────────────────────────────
 on("open_settings", function()
-    pcall(sys.call, "say", "settings", "emit toggle")
+    pcall(sys.call, "say", "topbar", "emit open_panel 4")          -- through the frame: it lets this panel finish closing first
 end)
 
 -- ── Now playing ──────────────────────────────────────────────────
