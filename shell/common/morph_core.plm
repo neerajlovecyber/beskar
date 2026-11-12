@@ -30,9 +30,9 @@ part MorphCore {
     component PanelBody(x: number, y: number, up: number = 0) {
         group {
             show: up > 0 or mp_here    // a bottom panel is a named surface with its own per-monitor open: (screen.index reads 0 there)
-            move: x, if(up > 0, y - ph, y)
+            move: x, if(up > 0, y - panel_h, y)      // a bottom panel's content sits at its FINAL place (panel_h) and is only revealed by the clip: it never moves while the glass grows
             opacity: mp_fade
-            clip box { from: -60, if(up > 0, ph - mp_bh - 4, -20); size: mp_sw + 120, if(up > 0, mp_bh + 90, mp_rh + 20) }
+            clip box { from: -60, if(up > 0, panel_h - mp_bh - 4, -20); size: mp_sw + 120, if(up > 0, mp_bh + 90, mp_rh + 20) }
             children
         }
     }

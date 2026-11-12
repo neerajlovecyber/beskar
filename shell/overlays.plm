@@ -988,9 +988,9 @@ scene MacOverlays {
         on scroll list_wheel { sc_t = clamp(sc_t - wheel * 44, 0, max(0, hits.count * 44 - 308)) }
         group { move: 614, 14; ScrollBar(sc, hits.count * 44 - 2, 306) }
 
-        PanelSearch(640, ph)
+        PanelSearch(640, panel_h)
         input query {
-            at: 68, ph - 50
+            at: 68, panel_h - 50
             width: 530
             size: 19
             color: ink_c
@@ -1027,9 +1027,9 @@ scene MacOverlays {
             group { move: 450, 17; Pill("Clear All", 80, clear_all, 0, 26, true) }
 
             // Search field: at the bottom, like every dock panel
-            PanelSearch(560, ph)
+            PanelSearch(560, panel_h)
             input clip_q {
-                at: 68, ph - 50
+                at: 68, panel_h - 50
                 width: 450
                 size: 19
                 color: ink_c
