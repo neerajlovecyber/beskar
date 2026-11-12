@@ -122,11 +122,11 @@ part Notifications {
         anchor: top_right
         margin: 0, 0, 0, 0
         level: overlay
-        screens: panel_mon
+        screens: Panels.panel_mon
         open: (open or seen > 0.02) and cur == 2
 
         zone box nc_dismiss { from: 0, 0; size: 412, 800; active: open and cur == 2 }
-        on press nc_dismiss { open = false }
+        on press nc_dismiss { emit Panels.close }
         on press right nc_dismiss { }
 
     PanelBody(26, -2, 0, 412, Topbar.rp_w) {
@@ -205,6 +205,6 @@ part Notifications {
         }
     }
 
-    on key Escape while cur == 2 { open = false }
-    on blur while cur == 2 and not fresh { open = false }
+    on key Escape while cur == 2 { emit Panels.close }
+    on blur while cur == 2 and not fresh { emit Panels.close }
 }

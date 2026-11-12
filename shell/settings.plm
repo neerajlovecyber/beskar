@@ -3,6 +3,7 @@
 //
 //   0 Appearance · 1 Displays · 2 Sound · 3 Notifications · 4 Menu Bar & Dock · 5 Shortcuts · 6 General
 import "common/palette.plm"
+uses scene "panels.plm" as Panels
 import "common/icons.plm"
 import "common/ui.plm"
 
@@ -14,7 +15,7 @@ scene MacSettings {
         anchor: center
         level: overlay
         keyboard: on_demand
-        screens: panel_mon   // (Overlays' text: `screens:` finds only one `panel_mon` when scenes are brought into one; only one panel or window is open at a time)
+        screens: Panels.panel_mon   // the monitor text of the whole desktop, owned by the Panels scene
         open: (open or seen > 0.02)
 
     zone box dismiss { from: 0, 0; size: 900, 620; active: open }
@@ -436,7 +437,7 @@ scene MacSettings {
     }
 
     permissions {
-        services: "clock", "audio", "audio.*", "brightness", "brightness.*", "network", "network.*", "bluetooth", "bluetooth.*", "say:topbar", "say:spotlight", "say:control_center", "say:notifications", "say:dashboard", "say:clipboard", "say:music", "say:weather", "say:overlays", "say:capture", "say:overlays", "say:updates", "say:wallpapers", "say:widget_bar", "say:lock", "say:session", "say:overlays", "say:appswitcher", "say:widgets"
+        services: "clock", "audio", "audio.*", "brightness", "brightness.*", "network", "network.*", "bluetooth", "bluetooth.*", "say:topbar", "say:spotlight", "say:control_center", "say:notifications", "say:dashboard", "say:clipboard", "say:music", "say:weather", "say:overlays", "say:capture", "say:overlays", "say:updates", "say:wallpapers", "say:widget_bar", "say:lock", "say:session", "say:overlays", "say:appswitcher", "say:widgets", "say:panels"
         run: "matugen", "powerprofilesctl", "magick", "gsettings", "systemctl", "loginctl", "kitty", "pacman", "yay", "paru", "sh", "niri msg"
     }
 

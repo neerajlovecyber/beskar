@@ -3,6 +3,7 @@
 // The WALLPAPER is its own process on purpose: brought in beside the frame, pleamar treats the picture as scene content
 // under the glass and repaints it (and the frame) whenever a panel morphs: 44-68 slow frames per 8 panel opens, 0 without.
 // Widgets (a level: bottom surface), the lock screen and the on-demand capture picker stay their own processes too.
+import scene "panels.plm" as Panels       // owns the shared panel state
 import scene "topbar.plm" as Topbar
 import scene "overlays.plm" as Overlays
 import scene "settings.plm" as Settings

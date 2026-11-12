@@ -1,10 +1,13 @@
 // The shared core of every panel that grows out of an island or the dock: the facts (`open`, `panel_h`…), the springs and
 // THE one content wrapper, `PanelBody`. The scene includes this and each surface writes its own dismiss zone inside it.
 part MorphCore {
-    fact open = false
-    fact open_screen = 0         // which monitor shows it (set by topbar.luau)
-    text panel_mon = "none"      // …and its NAME: every panel is ONE surface that follows this monitor (`screens: panel_mon`)
-    fact panel_h = 400           // its height, reported by its logic through panel.height(h)
+    //  the shared state is OWNED by the `Panels` scene (panels.plm); a panel scene reads it by these names and changes it
+    //  with events (`emit Panels.close`, `emit Panels.height`…): a scene writes only its own facts
+    let open = Panels.open
+    let open_screen = Panels.open_screen
+    let cur = Panels.cur
+    let fresh = Panels.fresh
+    let panel_h = Panels.panel_h
     prop seen = 0 ~calm
     prop ph = 400 ~calm
     follow ph = panel_h
@@ -12,10 +15,6 @@ part MorphCore {
         shown while open { seen: 1 ~calm }
         gone             { seen: 0 ~quick }
     }
-    //  Any change of `open` (a button, a `say`, or the logic setting it) is reported to panel.luau, which tells the frame:
-    //  without this, a panel the logic closes itself (copy a clip, launch an app) left its glass open and empty.
-    event panel_sync ->
-    on change open { emit panel_sync }
     //  the content is only seen down to where the glass has grown (the glass is a spring, the content is not)
     let mp_rh = ph * clamp(seen, 0, 1) + 4
     //  the same for a panel that grows UP out of the dock: the glass is dock_h (64) tall and rises to ph

@@ -5,6 +5,7 @@
 //   more dock panels   app switcher 21 · window overview 22 · first-run welcome 24   (the capture picker, 23, is its own scene)
 // `cur` is the id of the open one. Logic: overlays.luau (+ panelcore.luau).
 import "common/palette.plm"
+uses scene "panels.plm" as Panels       // who owns `open`, `cur`, `panel_h`, `panel_mon`, `fresh`: we read them and send it events
 uses scene "topbar.plm" as Topbar      // the frame draws every panel's glass: we read its width (`Topbar.bp_w`) to show content only once the glass has arrived
 import "common/icons.plm"
 import "common/ui.plm"
@@ -19,16 +20,10 @@ scene MacOverlays {
 
     permissions {
         run: "sh", "curl", "xdg-open", "wl-copy", "systemctl", "niri msg", "systemctl suspend", "cliphist", "notify-send", "magick", "fd", "grim", "slurp", "wf-recorder", "pkill", "rm", "cp"
-        services: "clock", "battery", "media", "media.*", "polkit", "polkit.*", "apps", "apps.launch", "files", "files.write", "window", "thumbnails", "thumbnails.*", "say:topbar", "say:settings", "say:widgets", "say:lock", "say:control_center", "say:notifications", "say:overlays", "say:capture", "audio", "audio.*", "brightness", "brightness.*", "network", "network.*", "bluetooth", "bluetooth.*", "notifications", "notifications.*"
+        services: "clock", "battery", "media", "media.*", "polkit", "polkit.*", "apps", "apps.launch", "files", "files.write", "window", "thumbnails", "thumbnails.*", "say:topbar", "say:settings", "say:widgets", "say:lock", "say:control_center", "say:notifications", "say:overlays", "say:panels", "say:capture", "audio", "audio.*", "brightness", "brightness.*", "network", "network.*", "bluetooth", "bluetooth.*", "notifications", "notifications.*"
     }
 
-    fact cur = 4                 // which one is up: its id
-    fact fresh = false           // one has just taken over (panelcore.luau): its `on blur` is ignored for a moment
-    on change cur { emit panel_sync }
-    event show_panel ->
-    event toggle_dock ->
-    event close_panel ->
-    event outside_close ->
+    //  the shared panel state is OWNED by the `Panels` scene (panels.plm): read here by name, changed with its events
     let stroke_c = card_stroke
     let stroke_op = card_stroke_op
 
@@ -142,10 +137,10 @@ scene MacOverlays {
         margin: 0, 0, 0, 0
         level: overlay
         keyboard: on_demand
-        screens: panel_mon
+        screens: Panels.panel_mon
         open: (open or seen > 0.02) and cur == 15
         zone box wx_dismiss { from: 0, 0; size: 420, 610; active: open and cur == 15 }
-        on press wx_dismiss { open = false }
+        on press wx_dismiss { emit Panels.close }
         on press right wx_dismiss { }
     PanelBody(16, -2, 0, 420, Topbar.cp_w) {
 
@@ -289,10 +284,10 @@ scene MacOverlays {
         anchor: top
         margin: 0, 0, 0, 0
         level: overlay
-        screens: panel_mon
+        screens: Panels.panel_mon
         open: (open or seen > 0.02) and cur == 9
         zone box mu_dismiss { from: 0, 0; size: 380, 260; active: open and cur == 9 }
-        on press mu_dismiss { open = false }
+        on press mu_dismiss { emit Panels.close }
         on press right mu_dismiss { }
     PanelBody(16, -2, 0, 380, Topbar.cp_w) {
 
@@ -365,10 +360,10 @@ scene MacOverlays {
         anchor: top
         margin: 0, 0, 0, 0
         level: overlay
-        screens: panel_mon
+        screens: Panels.panel_mon
         open: (open or seen > 0.02) and cur == 3
         zone box d_dismiss { from: 0, 0; size: 380, 640; active: open and cur == 3 }
-        on press d_dismiss { open = false }
+        on press d_dismiss { emit Panels.close }
         on press right d_dismiss { }
     PanelBody(16, -2, 0, 380, Topbar.cp_w) {
 
@@ -478,10 +473,10 @@ scene MacOverlays {
         anchor: top_right
         margin: 0, 0, 0, 0
         level: overlay
-        screens: panel_mon
+        screens: Panels.panel_mon
         open: (open or seen > 0.02) and cur == 16
         zone box up_dismiss { from: 0, 0; size: 400, 480; active: open and cur == 16 }
-        on press up_dismiss { open = false }
+        on press up_dismiss { emit Panels.close }
         on press right up_dismiss { }
     PanelBody(44, -2, 0, 400, Topbar.rp_w) {
         zone box up_inside { from: 0, 0; size: 340, 470 }
@@ -538,8 +533,8 @@ scene MacOverlays {
     }
 
 
-    on key Escape { open = false }
-    on blur while cur == 3 and not fresh { open = false }     // today (dashboard) closes when it loses the focus
+    on key Escape { emit Panels.close }
+    on blur while cur == 3 and not fresh { emit Panels.close }     // today (dashboard) closes when it loses the focus
 
     // ── spotlight ─────────────────────────────────────────────────
     let line_color = card_stroke
@@ -603,9 +598,9 @@ scene MacOverlays {
         on enter hit { sp_sel = h.index }
         on press hit { emit launch(h.index) }
     }
-    on key Escape while cur == 4 { open = false }
+    on key Escape while cur == 4 { emit Panels.close }
     on key Tab while cur == 4 { sp_sel = min(sp_sel + 1, max(hits.count - 1, 0)); sc_t = clamp(sc_t, (min(sp_sel + 1, max(hits.count - 1, 0)) - 6) * 44, min(sp_sel + 1, max(hits.count - 1, 0)) * 44) }
-    on blur while cur == 4 and not fresh { open = false }
+    on blur while cur == 4 and not fresh { emit Panels.close }
     on key Down while cur == 4 { sp_sel = min(sp_sel + 1, max(hits.count - 1, 0)); sc_t = clamp(sc_t, (min(sp_sel + 1, max(hits.count - 1, 0)) - 6) * 44, min(sp_sel + 1, max(hits.count - 1, 0)) * 44) }
     on key Up while cur == 4 { sp_sel = max(sp_sel - 1, 0); sc_t = clamp(sc_t, (max(sp_sel - 1, 0) - 6) * 44, max(sp_sel - 1, 0) * 44) }
     on change sp_sel while sp_sel == 0 { sc_t = 0 }
@@ -682,8 +677,8 @@ scene MacOverlays {
     on key Up while cur == 6 { clip_sel = max(clip_sel - 1, 0) }
     on key Return while cur == 6 { emit copy_clip(clip_sel) }
     on key Tab while cur == 6 { clip_sel = min(clip_sel + 1, max(clips.count - 1, 0)) }
-    on key Escape while cur == 6 { open = false }
-    on blur while cur == 6 and not fresh { open = false }
+    on key Escape while cur == 6 { emit Panels.close }
+    on blur while cur == 6 and not fresh { emit Panels.close }
 
     // ── wallpapers ─────────────────────────────────────────────────
     //  Painted by wallpapers.luau: the five on screen, in one row.
@@ -750,8 +745,8 @@ scene MacOverlays {
     on key Left while cur == 5 { emit wall_move(-1) }
     on key Right while cur == 5 { emit wall_move(1) }
     on key Return while cur == 5 { emit wall_enter }
-    on key Escape while cur == 5 { open = false }
-    on blur while cur == 5 and not fresh { open = false }
+    on key Escape while cur == 5 { emit Panels.close }
+    on blur while cur == 5 and not fresh { emit Panels.close }
 
     // ── widget_bar ─────────────────────────────────────────────────
     model kinds max 12 { id: number; name: text; icon: text }
@@ -794,7 +789,7 @@ scene MacOverlays {
             on press right pr_hit { }
         }
     }
-    on key Escape while cur == 10 { open = false }
+    on key Escape while cur == 10 { emit Panels.close }
 
     // ── session dialog (shut down / restart / log out) and the polkit password dialog: they grow out of the dock too ──
     fact ses_kind = 0            // 0: Shut Down, 1: Restart, 2: Log Out
@@ -822,11 +817,11 @@ scene MacOverlays {
         margin: 0, 0, 0, 0
         level: overlay
         keyboard: exclusive while open and cur == 11
-        screens: panel_mon
+        screens: Panels.panel_mon
         open: (open or seen > 0.02) and cur == 11
 
         zone box ses_dismiss { from: 0, 0; size: 520, 280; active: open and cur == 11 }
-        on press ses_dismiss { open = false }
+        on press ses_dismiss { emit Panels.close }
         on press right ses_dismiss { }
 
         PanelBody(20, 280, 1, 0, Topbar.bp_w) {
@@ -895,7 +890,7 @@ scene MacOverlays {
         margin: 0, 0, 0, 0
         level: overlay
         keyboard: exclusive while open and cur == 12
-        screens: panel_mon
+        screens: Panels.panel_mon
         open: (open or seen > 0.02) and cur == 12
 
         zone box pk_dismiss { from: 0, 0; size: 520, 340; active: open and cur == 12 }
@@ -957,7 +952,7 @@ scene MacOverlays {
         margin: 0, 0, 0, 0
         level: overlay
         keyboard: exclusive while open and cur == 4
-        screens: panel_mon
+        screens: Panels.panel_mon
         open: (open or seen > 0.02) and cur == 4
 
     zone box sp_dismiss { from: 0, 0; size: 680, 520; active: open and cur == 4 }
@@ -988,7 +983,7 @@ scene MacOverlays {
             selection: accent_c
         }
     }
-        on press sp_dismiss { open = false }
+        on press sp_dismiss { emit Panels.close }
     }
 
     surface clipboard {
@@ -997,11 +992,11 @@ scene MacOverlays {
         margin: 0, 0, 0, 0
         level: overlay
         keyboard: exclusive while open and cur == 6
-        screens: panel_mon
+        screens: Panels.panel_mon
         open: (open or seen > 0.02) and cur == 6
 
         zone box clip_dismiss { from: 0, 0; size: 600, 560; active: open and cur == 6 }
-        on press clip_dismiss { open = false }
+        on press clip_dismiss { emit Panels.close }
         on press right clip_dismiss { }
 
         PanelBody(20, 560, 1, 0, Topbar.bp_w) {
@@ -1044,7 +1039,7 @@ scene MacOverlays {
         margin: 0, 0, 0, 0
         level: overlay
         keyboard: exclusive while open and cur == 5
-        screens: panel_mon
+        screens: Panels.panel_mon
         open: (open or seen > 0.02) and cur == 5
 
     zone box wp_dismiss { from: 0, 0; size: 1000, 300; active: open and cur == 5 }
@@ -1094,7 +1089,7 @@ scene MacOverlays {
 
         KeyHint(490, 222, "← →  browse   ·   Enter  apply   ·   Esc  close")
     }
-        on press wp_dismiss { open = false }
+        on press wp_dismiss { emit Panels.close }
     }
 
     surface widget_bar {
@@ -1103,7 +1098,7 @@ scene MacOverlays {
         margin: 0, 0, 0, 0
         level: overlay
         keyboard: exclusive while open and cur == 10
-        screens: panel_mon
+        screens: Panels.panel_mon
         open: (open or seen > 0.02) and cur == 10
 
         zone box wb_dismiss { from: 0, 0; size: 820, 170; active: open and cur == 10 }
@@ -1124,17 +1119,17 @@ scene MacOverlays {
             group { move: 580, 14; Pill("Undo", 70, wb_undo, 0, 34, true, can_undo) }
             group { move: 660, 14; Pill("Done", 124, wb_done, 1, 34, true) }
         }
-        on press wb_dismiss { open = false }
+        on press wb_dismiss { emit Panels.close }
     }
 
-    on key Escape while cur == 11 { open = false }
+    on key Escape while cur == 11 { emit Panels.close }
     on key Return while cur == 11 { emit ses_enter }
     on key KP_Enter while cur == 11 { emit ses_enter }
     on key Left while cur == 11 { ses_sel = 0 }
     on key Right while cur == 11 { ses_sel = 1 }
     on key Tab while cur == 11 { ses_sel = 1 - ses_sel }
     on key y while cur == 11 { emit confirm_action }
-    on key n while cur == 11 { open = false }
+    on key n while cur == 11 { emit Panels.close }
     on key Escape while cur == 12 { emit pk_cancel }
     on submit password { emit pk_answer }
     on pk_shake { impulse shake 18 }
@@ -1203,8 +1198,8 @@ scene MacOverlays {
     on key Left while cur == 21 { emit prev_app }
     on key Right while cur == 21 { emit next_app }
     on key Return while cur == 21 { emit sw_switch_to(sw_sel) }
-    on key Escape while cur == 21 { open = false }
-    on blur while cur == 21 and not fresh { open = false }
+    on key Escape while cur == 21 { emit Panels.close }
+    on blur while cur == 21 and not fresh { emit Panels.close }
 
     // ── window overview ─────────────────────────────────────────
     fact ov_sel = 0
@@ -1280,8 +1275,8 @@ scene MacOverlays {
     on key Up while cur == 22 { emit up_win }
     on key Down while cur == 22 { emit down_win }
     on key Return while cur == 22 { emit ov_switch_to(ov_sel) }
-    on key Escape while cur == 22 { open = false }
-    on blur while cur == 22 and not fresh { open = false }
+    on key Escape while cur == 22 { emit Panels.close }
+    on blur while cur == 22 and not fresh { emit Panels.close }
 
     //  The app switcher grows out of the dock like Spotlight: the frame draws the glass (width follows the number of windows,
     //  reported by the logic with panel.width), this surface draws the cards. Content is centred on the surface.
@@ -1291,7 +1286,7 @@ scene MacOverlays {
         margin: 0, 0, 0, 0
         level: overlay
         keyboard: exclusive while open and cur == 21
-        screens: panel_mon
+        screens: Panels.panel_mon
         open: (open or seen > 0.02) and cur == 21
 
         zone box sw_dismiss { from: 0, 0; size: 1120, 200; active: open and cur == 21 }
@@ -1308,7 +1303,7 @@ scene MacOverlays {
             //  Title of the selected window
             text sel_title { at: 560, 148; anchor: center center; size: 12; weight: 600; color: ink_c; width: bw - 40; align: center; lines: 1 }
         }
-        on press sw_dismiss { open = false }
+        on press sw_dismiss { emit Panels.close }
         on press right sw_dismiss { }
     }
 
@@ -1318,7 +1313,7 @@ scene MacOverlays {
         margin: 0, 0, 0, 0
         level: overlay
         keyboard: exclusive while open and cur == 22
-        screens: panel_mon
+        screens: Panels.panel_mon
         open: (open or seen > 0.02) and cur == 22
 
         zone box ov_dismiss { from: 0, 0; size: 1240, 820; active: open and cur == 22 }
@@ -1351,7 +1346,7 @@ scene MacOverlays {
                 EmptyState(0, 0, "󰕰", "No open windows")
             }
         }
-        on press ov_dismiss { open = false }
+        on press ov_dismiss { emit Panels.close }
         on press right ov_dismiss { }
     }
 
@@ -1378,7 +1373,7 @@ scene MacOverlays {
         margin: 0, 0, 0, 0
         level: overlay
         keyboard: exclusive while open and cur == 24
-        screens: panel_mon
+        screens: Panels.panel_mon
         open: (open or seen > 0.02) and cur == 24
 
         zone box wl_scrim { from: 0, 0; size: 680, 480; active: open and cur == 24 }

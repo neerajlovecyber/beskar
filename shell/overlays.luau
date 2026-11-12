@@ -1,10 +1,11 @@
 -- Overlays: every panel and window that opens over the desktop, in ONE scene (overlays.plm), one logic. The shared core is
--- panelcore.luau: ONE `fact.open` / `fact.open_screen` / `fact.cur` (the open one's id), reports to the frame
--- (topbar.luau) the panels whose glass it draws, and gives each part `panel.height(h)`, `panel.keep()`, `opened(fn)`,
--- `shown()`, `closed(fn)`. Parts: weather, music, dashboard, updates · spotlight, clipboard, wallpapers, widget_bar,
+-- panelclient.luau: the shared state (`open`, `cur`…) is OWNED by the `Panels` scene (panels.plm / panels.luau, which reports
+-- to the frame, topbar.luau, that draws the glass): here it is read and changed with events; each part gets `panel.height(h)`,
+-- `panel.keep()`, `opened(fn)`, `shown()`, `closed(fn)`. Parts: weather, music, dashboard, updates · spotlight, clipboard, wallpapers, widget_bar,
 -- session, polkit · switcher, overview, welcome (ids in the table below). The capture picker is NOT here: it is its own
 -- scene (capture.plm), started on demand by start.sh, so its full-screen buffers are not held while idle.
-local module = require("panelcore")({ control_center = 1, notifications = 2, dashboard = 3, music = 9, weather = 15, updates = 16, spotlight = 4, wallpapers = 5, clipboard = 6, widget_bar = 10, session = 11, polkit = 12, switcher = 21, overview = 22, welcome = 24 })
+local function close_panel() pcall(sys.call, "say", "panels", "emit close") end    -- (see panelclient.luau: why `say` and not `emit`)
+local module = require("panelclient")({ control_center = 1, notifications = 2, dashboard = 3, music = 9, weather = 15, updates = 16, spotlight = 4, wallpapers = 5, clipboard = 6, widget_bar = 10, session = 11, polkit = 12, switcher = 21, overview = 22, welcome = 24 })
 
 -- the capture picker is its own scene, started on demand (start.sh capture-ensure), then told what to do
 local function capture_start(mode, kind)
@@ -945,7 +946,7 @@ module("spotlight", function(panel, opened, shown, closed)
 
     on("launch", function(i)
         local e = entries[(tonumber(i) or 0) + 1]
-        fact.open = false
+        close_panel()
         if e and e.run then
             after(150, e.run)
         end
@@ -1117,7 +1118,7 @@ module("clipboard", function(panel, opened, shown, closed)
 
     on("copy_clip", function(i)
         local v = entry_at(i)
-        fact.open = false
+        close_panel()
         if not v then
             return
         end
@@ -1516,7 +1517,7 @@ module("session", function(panel, opened, shown, closed)
 
     on("confirm_action", function()
         clear_timer()
-        fact.open = false
+        close_panel()
         local k = fact.ses_kind or 0
         if k == 0 then
             log("Session: Powering off system...")
@@ -1557,10 +1558,10 @@ module("session", function(panel, opened, shown, closed)
         if (tonumber(fact.ses_sel) or 1) == 1 then
             emit("confirm_action")
         else
-            fact.open = false
+            close_panel()
         end
     end)
-    on("dismiss", function() if shown() then fact.open = false end end)
+    on("dismiss", function() if shown() then close_panel() end end)
 end)
 
 module("polkit", function(panel, opened, shown, closed)
@@ -1597,7 +1598,7 @@ module("polkit", function(panel, opened, shown, closed)
         elseif pending then
             pending = false
             text.password = ""
-            if shown() then fact.open = false end
+            if shown() then close_panel() end
         end
 
         if fact.pk_wrong and not was_wrong then
@@ -1617,7 +1618,7 @@ module("polkit", function(panel, opened, shown, closed)
         if not shown() then return end
         text.password = ""
         pcall(sys.call, "polkit.cancel")
-        fact.open = false
+        close_panel()
         pending = false
     end)
 
@@ -1833,7 +1834,7 @@ module("switcher", function(panel, opened, shown, closed)
     end)
 
     on("sw_switch_to", function(idx)
-        fact.open = false
+        close_panel()
         pcall(sys.call, "thumbnails.want")
         local i = tonumber(idx) or fact.sw_sel or 0
         local target = window_list[i + 1]
@@ -2061,7 +2062,7 @@ module("overview", function(panel, opened, shown, closed)
     end)
 
     on("ov_switch_to", function(idx)
-        fact.open = false
+        close_panel()
         pcall(sys.call, "thumbnails.live")
         local i = tonumber(idx) or fact.ov_sel or 0
         local target = window_list[i + 1]
@@ -2110,7 +2111,7 @@ module("welcome", function(panel, opened, shown, closed)
     on("wl_back", function() fact.page = math.max(0, (tonumber(fact.page) or 0) - 1) end)
 
     on("wl_done", function()
-        if shown() then fact.open = false end
+        if shown() then close_panel() end
         sh('mkdir -p "$HOME/.config/beskar" && : > "$HOME/.config/beskar/welcome-done"')
     end)
 
@@ -2133,5 +2134,3 @@ end)
 module("control_center", require("cc"))
 module("notifications", require("notif"))
 
--- opening one closes the other panels (Control Center, notifications, Settings …)
-require("exclusive")("overlays")

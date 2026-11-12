@@ -33,7 +33,7 @@ compiles and the panels are separate scenes. So the owner-scene pattern is possi
 
 ## Slices (each one ships on its own; the shell must work after every one)
 
-1. **`Panels` owner scene.** New `shell/panels.plm` (+ `panels.luau` = what panelcore.luau does today): owns `open`, `cur`,
+1. **`Panels` owner scene. DONE.** New `shell/panels.plm` (+ `panels.luau` = what panelcore.luau does today): owns `open`, `cur`,
    `panel_h`, `panel_mon`, `fresh`, `open_screen`, the events `toggle(id)`, `show(id)`, `close(id)`, `outside_close`, and reports to
    the frame. `desktop.plm` imports it. Overlays still holds the panels but READS `Panels.*` and emits events.
 2. **Typed contracts with the frame.** Replace the `say topbar "emit panel_open N"` / `say overlays "fact open_screen"` strings
@@ -61,3 +61,13 @@ compiles and the panels are separate scenes. So the owner-scene pattern is possi
 ## Order of work
 
 Slice 1, then 2, then 3 panel by panel (with the smoke script from the first moved panel), then 4, 5; 6 and 7 follow upstream.
+
+## Status
+
+- Slice 1 done and live: `shell/panels.plm` + `panels.luau` own the panel state; overlays (via `panelclient.luau`), the frame,
+  widgets and Settings read it / talk to it. Settings now follows `Panels.panel_mon` (no more borrowing Overlays' text).
+  Checked on the real shell: panel switching, heights/widths, keys, Esc, click outside, widget bar, Settings closing panels.
+- Finding (pleamar 0.8-exp.3): an event emitted by a scene's LOGIC (`emit("Panels.height")`) reaches the other scene's `.plm`
+  rules but not its logic; the logic side uses `say panels "emit ..."` meanwhile. Typed events from logic wait for upstream.
+- Next: slice 2 (typed contracts where the runtime allows: `.plm` rules can already emit and read across scenes), then slice 3
+  panel by panel.

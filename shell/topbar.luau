@@ -163,18 +163,27 @@ end)
 local MERGED = { dashboard = true, music = true, weather = true, updates = true, control_center = true, notifications = true }   -- (`cur` is set before opening)
 -- Spotlight, wallpapers, clipboard and the widget bar live in ONE scene, `dock` (panel id = its `cur`)
 local DOCK = { spotlight = 4, wallpapers = 5, clipboard = 6, widget_bar = 10, session = 11, polkit = 12, appswitcher = 21, overview = 22, welcome = 24 }
--- Every overlay panel is ONE surface that follows the monitor named in `panel_mon` (`screens: panel_mon`): tell it
--- the monitor's index (`open_screen`) and its output NAME. Ours (OUTPUTS) is filled in below.
+-- Every panel is ONE surface that follows the monitor named in `Panels.panel_mon`: the `Panels` scene owns it (panels.plm),
+-- so we tell IT the monitor's index (`open_screen`) and its output NAME. Settings' sheet has its own `open_screen`.
+-- Ours (OUTPUTS) is filled in below.
 local OUTPUT_NAMES
 local function overlay_screen(s, name)
     local n = OUTPUT_NAMES and OUTPUT_NAMES()[s + 1] or ""
-    local target = (name and (MERGED[name] or DOCK[name])) and "overlays" or (name or "overlays")
-    -- (Settings' sheet follows Overlays' `panel_mon` too: it is the one monitor text of the whole desktop)
-    pcall(sys.call, "say", (target == "settings") and "overlays" or target, "text panel_mon " .. n)
-    pcall(sys.call, "say", target, "fact open_screen " .. s)
+    pcall(sys.call, "say", "panels", "text panel_mon " .. n)
+    pcall(sys.call, "say", "panels", "fact open_screen " .. s)
+    if name == "settings" then
+        pcall(sys.call, "say", "settings", "fact open_screen " .. s)
+    elseif name and not (MERGED[name] or DOCK[name]) then
+        pcall(sys.call, "say", name, "fact open_screen " .. s)
+    end
 end
+local PANELS_FACTS = { open = true, cur = true, open_screen = true, panel_h = true }   -- owned by the Panels scene
 local function panel_say(name, words)
-    pcall(sys.call, "say", (MERGED[name] or DOCK[name]) and "overlays" or name, words)
+    local target = name
+    if MERGED[name] or DOCK[name] then
+        target = PANELS_FACTS[words:match("^fact (%S+)") or ""] and "panels" or "overlays"
+    end
+    pcall(sys.call, "say", target, words)
 end
 
 -- a click on nothing while a panel is open: close every panel (the widget bar stays: you work on the desktop with it)
@@ -184,7 +193,7 @@ on("outside_click", function()
             panel_say(name, "fact open false")
         end
     end
-    pcall(sys.call, "say", "overlays", "emit outside_close")      -- (the widget bar and the password dialog stay)
+    pcall(sys.call, "say", "panels", "emit outside_close")      -- (the widget bar and the password dialog stay)
 end)
 
 on("panel_height", function(v)
@@ -630,7 +639,7 @@ on("open_panel", function(n)
         end
         if OVERLAY[name] then
             overlay_screen(s)
-            pcall(sys.call, "say", "overlays", "emit toggle_dock " .. OVERLAY[name])
+            pcall(sys.call, "say", "panels", "emit toggle " .. OVERLAY[name])
             return
         end
         overlay_screen(s, name)
@@ -654,7 +663,7 @@ end
 -- the session / polkit / welcome dialogs live in ONE scene, `dialogs`; `cur` says which (rule 51)
 local function show_dock_on_menu_monitor(id)        -- (the session dialog grows out of the dock: panel 11)
     overlay_screen(tonumber(fact.open_screen) or 0)
-    say("overlays", "emit show_panel " .. id)
+    say("panels", "emit show " .. id)
 end
 local function show_on_menu_monitor(name)
     overlay_screen(tonumber(fact.open_screen) or 0, name)

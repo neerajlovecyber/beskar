@@ -16,7 +16,7 @@ import "common/icons.plm"
 scene Widgets {
     include "common/theme.plm"
     permissions {
-        services: "clock", "battery", "media", "media.*", "audio", "audio.*", "brightness", "brightness.*", "say:topbar", "say:settings", "say:overlays"
+        services: "clock", "battery", "media", "media.*", "audio", "audio.*", "brightness", "brightness.*", "say:topbar", "say:settings", "say:overlays", "say:panels"
         run: "sh", "curl", "cat", "niri msg"
     }
 

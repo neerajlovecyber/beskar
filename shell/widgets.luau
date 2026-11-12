@@ -207,7 +207,7 @@ local function set_editing(on)
         HISTORY = {}
         fact.can_undo = false
     else
-        say("overlays", "emit close_panel 10")
+        say("panels", "emit close_id 10")
         save_now()
     end
 end
