@@ -38,7 +38,7 @@ check "app switcher"    "$B --say topbar 'emit open_panel 6'" 21
 check "widget bar"      "$B --say topbar 'emit open_panel 7'" 10
 check "overview"        "$B --say topbar 'emit open_panel 10'" 22
 check "welcome"         "$B --say topbar 'emit open_panel 9'" 24
-check "session dialog"  "$B --say overlays 'fact ses_kind 0'; $B --say topbar 'emit open_panel 5'" 11
+check "session dialog"  "$B --say dialogs 'fact ses_kind 0'; $B --say topbar 'emit open_panel 5'" 11
 # updates has no hotkey: ask the owner directly
 check "updates"         "$B --say panels 'emit show 16'" 16
 # settings (its own window)

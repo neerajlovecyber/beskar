@@ -5,7 +5,10 @@
 // Widgets (a level: bottom surface), the lock screen and the on-demand capture picker stay their own processes too.
 import scene "panels.plm" as Panels       // owns the shared panel state
 import scene "topbar.plm" as Topbar
-import scene "overlays.plm" as Overlays
+import scene "infopanels.plm" as Infopanels
+import scene "dockpanels.plm" as Dockpanels
+import scene "dialogs.plm" as Dialogs
+import scene "windows.plm" as Windows
 import scene "controlcenter.plm" as Controlcenter
 import scene "notifications.plm" as Notifications
 import scene "settings.plm" as Settings

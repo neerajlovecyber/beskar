@@ -3,7 +3,7 @@
 --   prefs     bar / dock / notification options          → saved in ~/.config/beskar/prefs.json, pushed to the scenes
 --   system    sound, brightness, displays (niri msg), Wi-Fi, Bluetooth, updates, shortcuts (read from niri's config)
 
-local THEMED = { "topbar", "overlays", "controlcenter", "notifications", "settings", "capture",
+local THEMED = { "topbar", "infopanels", "dockpanels", "dialogs", "windows", "controlcenter", "notifications", "settings", "capture",
                 "lock", "widgets" }
 
 local function say(scene, words)
@@ -729,7 +729,7 @@ end)
 local function session(kind)
     fact.open = false
     after(250, function()
-        say("overlays", "fact ses_kind " .. kind)
+        say("dialogs", "fact ses_kind " .. kind)
         say("topbar", "emit open_panel 5")
     end)
 end

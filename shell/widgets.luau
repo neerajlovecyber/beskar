@@ -84,8 +84,8 @@ local function snapshot()
 end
 
 function push_bar()
-    say("overlays", "fact snap_on " .. tostring(fact.snap_on and true or false))
-    say("overlays", "fact can_undo " .. tostring(fact.can_undo and true or false))
+    say("dockpanels", "fact snap_on " .. tostring(fact.snap_on and true or false))
+    say("dockpanels", "fact can_undo " .. tostring(fact.can_undo and true or false))
 end
 
 local function changed()

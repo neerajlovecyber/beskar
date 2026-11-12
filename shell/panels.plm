@@ -5,7 +5,7 @@
 // Logic: panels.luau (reports to the frame, `topbar.luau`, which draws every panel's glass).
 scene Panels {
     permissions {
-        services: "say:topbar", "say:settings", "say:overlays"
+        services: "say:topbar", "say:settings"
     }
 
     fact open = false

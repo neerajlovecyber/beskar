@@ -178,12 +178,15 @@ local function overlay_screen(s, name)
     end
 end
 -- the scene each panel's own content lives in (default: overlays)
-local SCENE_OF = { control_center = "controlcenter", notifications = "notifications" }
+local SCENE_OF = { control_center = "controlcenter", notifications = "notifications",
+    dashboard = "infopanels", music = "infopanels", weather = "infopanels", updates = "infopanels",
+    spotlight = "dockpanels", wallpapers = "dockpanels", clipboard = "dockpanels", widget_bar = "dockpanels",
+    session = "dialogs", polkit = "dialogs", welcome = "dialogs", appswitcher = "windows", overview = "windows" }
 local PANELS_FACTS = { open = true, cur = true, open_screen = true, panel_h = true }   -- owned by the Panels scene
 local function panel_say(name, words)
     local target = name
     if MERGED[name] or DOCK[name] then
-        target = PANELS_FACTS[words:match("^fact (%S+)") or ""] and "panels" or (SCENE_OF[name] or "overlays")
+        target = PANELS_FACTS[words:match("^fact (%S+)") or ""] and "panels" or (SCENE_OF[name] or name)
     end
     pcall(sys.call, "say", target, words)
 end
@@ -626,7 +629,7 @@ end)
 -- switcher) open on ONE monitor: the one with the focus. They are `screens: each` scenes that show their content
 -- only where `open_screen` says (common/here.plm). Everything that wants one asks us (`open_panel N`): a niri key
 -- through start.sh, a button in another panel. The toggle is the panel's own.
--- EVERYTHING that opens over the desktop lives in ONE scene, `overlays` (rule 50): its `cur` is the panel id
+-- EVERYTHING that opens over the desktop is a panel of the `Panels` owner (its `cur` is the panel id), drawn by one of the panel scenes
 local OVERLAY = { spotlight = 4, wallpapers = 5, clipboard = 6, widget_bar = 10, session = 11, polkit = 12, appswitcher = 21, overview = 22, welcome = 24 }
 local FOCUS_PANELS = { [1] = "spotlight", [2] = "clipboard", [3] = "wallpapers", [4] = "settings", [5] = "session", [6] = "appswitcher", [7] = "widget_bar", [8] = "polkit", [9] = "welcome", [10] = "overview", [11] = "capture" }
 on("open_panel", function(n)
@@ -677,9 +680,9 @@ local PM = {
     [8] = function() say("widgets", "emit edit_toggle") end,                                     -- Edit Widgets…
     [3] = function() say("lock", "fact locked true") end,                                           -- Lock Screen
     [4] = function() run("systemctl", { "suspend" }, nil, { output = false }) end,                 -- Sleep
-    [5] = function() say("overlays", "fact ses_kind 2"); show_dock_on_menu_monitor(11) end,          -- Log Out…
-    [6] = function() say("overlays", "fact ses_kind 1"); show_dock_on_menu_monitor(11) end,          -- Restart…
-    [7] = function() say("overlays", "fact ses_kind 0"); show_dock_on_menu_monitor(11) end,          -- Shut Down…
+    [5] = function() say("dialogs", "fact ses_kind 2"); show_dock_on_menu_monitor(11) end,          -- Log Out…
+    [6] = function() say("dialogs", "fact ses_kind 1"); show_dock_on_menu_monitor(11) end,          -- Restart…
+    [7] = function() say("dialogs", "fact ses_kind 0"); show_dock_on_menu_monitor(11) end,          -- Shut Down…
 }
 on("pm_item", function(n)
     local f = PM[tonumber(n) or 0]
