@@ -5,6 +5,7 @@
 // Widgets and the wallpaper are their OWN processes for the same reason: brought in beside the frame, their cards / picture count as
 // scene content under the glass and are repainted with every panel morph (widgets in: 189 slow frames per 8 opens, 0 without).
 // The lock screen and the on-demand capture picker stay their own processes too.
+import scene "system.plm" as System       // the system services, held once
 import scene "panels.plm" as Panels       // owns the shared panel state
 import scene "topbar.plm" as Topbar
 import scene "infopanels.plm" as Infopanels

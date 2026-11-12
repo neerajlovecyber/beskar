@@ -11,6 +11,7 @@
 // The surface is the whole monitor, but only the zones catch the mouse: everywhere else the
 // click goes through to the windows.
 import "common/palette.plm"
+uses scene "system.plm" as System        // battery, network, audio, brightness: declared ONCE there
 uses scene "settings.plm" as Settings      // owns the look (dark mode, skin, accent, palette, clock format): read by name
 import "common/icons.plm"
 uses scene "panels.plm" as Panels      // the owner of which panel is open: read here to order a hand-over to Settings
@@ -33,8 +34,6 @@ scene MacTopBar {
     }
 
     service clock as now { time: text = "--:--"; date: text }
-    service network as net { online: bool; name: text; strength: number; wifi: bool }
-    service battery as bat { present: bool; percent: number; charging: bool }
     service window as win { title: text }
 
     //  The tray list is filled by topbar.luau (`sys.watch("tray")` → `model.icons = list`). It must
@@ -212,11 +211,11 @@ scene MacTopBar {
         prop hot = 0 ~quick
         box { from: 0, 0; size: 24, 24; corner: 8; color: ink_c; opacity: hot * 14% }
         //  three arcs that fill with the signal; dim and slashed when there is no connection
-        arc { at: 12, 17; radius: 4.2; span: 90deg; width: 1.9; color: ink_c; opacity: if(net.online, 100%, 30%) }
-        arc { at: 12, 17; radius: 8; span: 90deg; width: 1.9; color: ink_c; opacity: if(net.online and net.strength > 0.33, 100%, 30%) }
-        arc { at: 12, 17; radius: 11.8; span: 90deg; width: 1.9; color: ink_c; opacity: if(net.online and net.strength > 0.66, 100%, 30%) }
-        ellipse { at: 12, 17.4; radius: 1.5; color: ink_c; opacity: if(net.online, 100%, 30%) }
-        line { from: 5, 5; to: 19, 19; width: 1.8; color: ink_c; opacity: if(net.online, 0%, 100%) }
+        arc { at: 12, 17; radius: 4.2; span: 90deg; width: 1.9; color: ink_c; opacity: if(System.net.online, 100%, 30%) }
+        arc { at: 12, 17; radius: 8; span: 90deg; width: 1.9; color: ink_c; opacity: if(System.net.online and System.net.strength > 0.33, 100%, 30%) }
+        arc { at: 12, 17; radius: 11.8; span: 90deg; width: 1.9; color: ink_c; opacity: if(System.net.online and System.net.strength > 0.66, 100%, 30%) }
+        ellipse { at: 12, 17.4; radius: 1.5; color: ink_c; opacity: if(System.net.online, 100%, 30%) }
+        line { from: 5, 5; to: 19, 19; width: 1.8; color: ink_c; opacity: if(System.net.online, 0%, 100%) }
         zone box hit { from: 0, 0; size: 24, 24; corner: 8; cursor: pointer }
         on enter hit { hot: 1 }
         on leave hit { hot: 0 }
@@ -243,9 +242,9 @@ scene MacTopBar {
         box { from: 0, 0; size: 54, 24; corner: 8; color: ink_c; opacity: hot * 14% }
         box { from: 6, 6.5; size: 24, 11; corner: 3.2; stroke: 1.3; color: ink_c; opacity: 80% }
         box { from: 31, 10; size: 2, 4; corner: 1; color: ink_c; opacity: 80% }
-        box { from: 8, 8.5; size: max(2, 20 * clamp(bat.percent / 100, 0, 1)), 7; corner: 1.6; color: if(bat.charging or bat_ac, ok_c, if(bat.percent <= 20, danger_c, ink_c)); opacity: if(bat.charging, 100%, if(bat_ac, 60%, 100%)) }
-        path { at: 16.5, 7; color: if(bat.charging, #0c1410, ink_c); opacity: if(bat.charging or bat_ac, 100%, 0%); move 2.5, 0; line 0, 5.5; line 2.4, 5.5; line 1.5, 10; line 5, 4; line 2.6, 4; close }
-        text "{bat.percent}" { at: 36, 12; anchor: left center; size: t_body; weight: 700; color: hint_c }
+        box { from: 8, 8.5; size: max(2, 20 * clamp(System.bat.percent / 100, 0, 1)), 7; corner: 1.6; color: if(System.bat.charging or bat_ac, ok_c, if(System.bat.percent <= 20, danger_c, ink_c)); opacity: if(System.bat.charging, 100%, if(bat_ac, 60%, 100%)) }
+        path { at: 16.5, 7; color: if(System.bat.charging, #0c1410, ink_c); opacity: if(System.bat.charging or bat_ac, 100%, 0%); move 2.5, 0; line 0, 5.5; line 2.4, 5.5; line 1.5, 10; line 5, 4; line 2.6, 4; close }
+        text "{System.bat.percent}" { at: 36, 12; anchor: left center; size: t_body; weight: 700; color: hint_c }
         zone box hit { from: 0, 0; size: 54, 24; corner: 8; cursor: pointer }
         on enter hit { hot: 1 }
         on leave hit { hot: 0 }
@@ -831,7 +830,7 @@ scene MacTopBar {
                 BluetoothIcon(open_cc_bt)
             }
             group {
-                show: bat.present
+                show: System.bat.present
                 BatteryIcon(open_dashboard)
             }
             SwitchesIcon(open_control_center)

@@ -449,8 +449,8 @@ module("dashboard", function(panel, opened, shown)
     local function push_height()
         panel.height(has_battery and 632 or 556)
     end
-    sys.watch("battery", function(b)
-        local present = not (b and b.present == false)
+    on("fact:System.bat.present", function(v)        -- the System scene holds the battery service
+        local present = not (v == false or v == 0)
         if present ~= has_battery then
             has_battery = present
             push_height()

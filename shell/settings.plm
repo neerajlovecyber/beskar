@@ -3,6 +3,7 @@
 //
 //   0 Appearance · 1 Displays · 2 Sound · 3 Notifications · 4 Menu Bar & Dock · 5 Shortcuts · 6 General
 import "common/palette.plm"
+uses scene "system.plm" as System        // battery, network, audio, brightness: declared ONCE there
 uses scene "panels.plm" as Panels
 import "common/icons.plm"
 import "common/ui.plm"
@@ -209,7 +210,7 @@ scene MacSettings {
                         for r in hzlist { Chip(r.label, r.cur, disp_hz, r.index, 80) }
                     }
                 }
-                SliderRow("Brightness", bright.level, brightness_set, 0, true)
+                SliderRow("Brightness", System.display.level, brightness_set, 0, true)
             }
             group { move: 566, 0; ScrollBar(tcol_1.scroll, tcol_1.content, 500) }
         }
@@ -222,8 +223,8 @@ scene MacSettings {
                 view: 560, 500
                 step: 56
                 gap: 12
-                SliderRow("Output volume", sound.volume, volume_set, 1, not sound.muted)
-                ToggleRow("Mute", "Silences the output", sound.muted, toggle_mute)
+                SliderRow("Output volume", System.sound.volume, volume_set, 1, not System.sound.muted)
+                ToggleRow("Mute", "Silences the output", System.sound.muted, toggle_mute)
                 SliderRow("Input volume", in_level, input_set, 2, true)
                 text "Output device" { size: t_body; weight: 600; color: ink_c }
                 column {
@@ -442,8 +443,6 @@ scene MacSettings {
         run: "matugen", "powerprofilesctl", "magick", "gsettings", "systemctl", "loginctl", "kitty", "pacman", "yay", "paru", "sh", "niri msg"
     }
 
-    service audio as sound { volume: number; muted: bool }
-    service brightness as bright { level: number }
 
     fact open = false
     text user_name = ""

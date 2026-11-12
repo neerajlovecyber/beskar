@@ -2,6 +2,7 @@
 // One of the panel scenes (the shared panel state is OWNED by `Panels`; the frame, `topbar`, draws every panel's glass).
 // Logic: infopanels.luau.
 import "common/palette.plm"
+uses scene "system.plm" as System        // battery, network, audio, brightness: declared ONCE there
 uses scene "settings.plm" as Settings      // owns the look (dark mode, skin, accent, palette, clock format): read by name
 import "common/icons.plm"
 import "common/ui.plm"
@@ -16,7 +17,7 @@ scene MacInfoPanels {
 
     permissions {
         run: "curl", "sh"
-        services: "battery", "media", "media.*", "clock", "say:panels", "say:topbar"
+        services: "media", "media.*", "clock", "say:panels", "say:topbar"
     }
 
     let stroke_c = card_stroke
@@ -78,7 +79,6 @@ scene MacInfoPanels {
 
 
     // ── today (dashboard) ───────────────────────────────────────
-    service battery as bat { present: bool; percent: number; charging: bool }
 
     fact cpu_pct = 0
     fact mem_pct = 0
@@ -448,16 +448,16 @@ scene MacInfoPanels {
 
         // ── battery (laptops) ─────────────────────────────────────
         group {
-            show: bat.present
+            show: System.bat.present
             move: 14, 546
             CardBg(320, 66, r_l, true)
             //  the cell: green with a bolt while on the charger
             box { from: 16, 21; size: 34, 17; corner: 5; stroke: 1.8; color: ink_c }
             box { from: 51, 26; size: 3, 6; corner: 1.5; color: ink_c }
-            box { from: 19, 24; size: max(3, 28 * clamp(bat.percent / 100, 0, 1)), 11; corner: 2.5; color: if(bat.charging or bat_ac, ok_c, if(bat.percent <= 20, danger_c, ink_c)) }
+            box { from: 19, 24; size: max(3, 28 * clamp(System.bat.percent / 100, 0, 1)), 11; corner: 2.5; color: if(System.bat.charging or bat_ac, ok_c, if(System.bat.percent <= 20, danger_c, ink_c)) }
             text bat_state { at: 70, 23; anchor: left center; size: t_sub; weight: 600; color: ink_c }
             text bat_sub { at: 70, 43; anchor: left center; size: t_micro; color: ink_sub; width: 190; lines: 1 }
-            text "{bat.percent}%" { at: 304, 33; anchor: right center; size: 22; weight: 700; color: ink_c }
+            text "{System.bat.percent}%" { at: 304, 33; anchor: right center; size: 22; weight: 700; color: ink_c }
         }
     }
 

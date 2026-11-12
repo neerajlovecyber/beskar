@@ -1,0 +1,2 @@
+-- System has no logic: pleamar fills its service facts (system.plm). The file exists because a scene that declares
+-- `permissions` needs a .luau next to it.

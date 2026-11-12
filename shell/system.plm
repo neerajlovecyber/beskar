@@ -1,0 +1,14 @@
+// System: the scene that holds the system services ONCE (battery, network, audio, brightness). The other scenes read them by
+// name (`System.bat.percent`, `System.net.online`, `System.sound.volume`, `System.display.level`) instead of each declaring its
+// own `service` line. No logic: pleamar fills the facts. Scenes that need more than these fields (the output list and the
+// streams of the audio service, the Wi-Fi list, Bluetooth, media) still watch the service themselves for what is theirs.
+scene System {
+    permissions {
+        services: "battery", "network", "audio", "brightness"
+    }
+
+    service battery as bat { present: bool; percent: number; charging: bool }
+    service network as net { online: bool; name: text; strength: number; wifi: bool }
+    service audio as sound { volume: number; muted: bool }
+    service brightness as display { present: bool; level: number }
+}
