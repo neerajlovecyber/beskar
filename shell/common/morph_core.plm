@@ -23,6 +23,12 @@ part MorphCore {
     //  the same for a panel that grows UP out of the dock: the glass is dock_h (64) tall and rises to ph
     let mp_bh = 64 + max(0, ph - 64) * clamp(seen, 0, 1)
     let mp_fade = clamp(seen * 2.4 - 1.3, 0, 1)
+    //  a bottom panel's glass is drawn by the frame: its width (`Topbar.bp_w`) chased by the frame's spring. The same spring here
+    //  tells when the glass has ARRIVED (width and height), so the content never shows while the glass is still widening (a
+    //  switch from Spotlight to the wallpaper strip, say): 0 while far, 1 when within a few pixels.
+    prop pw = 680 ~calm
+    follow pw = Topbar.bp_w
+    let mp_fit = clamp(1 - max(abs(Topbar.bp_w - pw), abs(panel_h - ph)) / 24, 0, 1)
 
     //  THE ONE WAY a panel shows its content: wrap it in `PanelBody(x, y, up) { … }`. It is shown only on the monitor
     //  that has the panel, only inside the glass as the glass grows (from the top island down, or from the dock up when
@@ -31,7 +37,7 @@ part MorphCore {
         group {
             show: up > 0 or mp_here    // a bottom panel is a named surface with its own per-monitor open: (screen.index reads 0 there)
             move: x, if(up > 0, y - panel_h, y)      // a bottom panel's content sits at its FINAL place (panel_h) and is only revealed by the clip: it never moves while the glass grows
-            opacity: mp_fade
+            opacity: if(up > 0, mp_fade * mp_fit, mp_fade)
             clip box { from: -60, if(up > 0, panel_h - mp_bh - 4, -20); size: mp_sw + 120, if(up > 0, mp_bh + 90, mp_rh + 20) }
             children
         }

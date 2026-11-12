@@ -5,6 +5,7 @@
 //   more dock panels   app switcher 21 · window overview 22 · first-run welcome 24   (the capture picker, 23, is its own scene)
 // `cur` is the id of the open one. Logic: overlays.luau (+ panelcore.luau).
 import "common/palette.plm"
+uses scene "topbar.plm" as Topbar      // the frame draws every panel's glass: we read its width (`Topbar.bp_w`) to show content only once the glass has arrived
 import "common/icons.plm"
 import "common/ui.plm"
 
