@@ -84,3 +84,10 @@ Slice 1, then 2, then 3 panel by panel (with the smoke script from the first mov
 - Slice 2 (typed events): possible only from `.plm` rules; from logic an event does not reach the other scene's logic in
   0.8.0-exp.3 (reported: k4ditano/pleamar#145), so logic keeps `say`. Redo when it is fixed.
 - Waiting on upstream: #143, #144 (widgets), #145 (typed events from logic), shared facts with an owner, runtime copies per monitor.
+
+## Update: pleamar 0.8.0-exp.6 (2026-11-12)
+
+#143, #144 and #145 are fixed upstream (exp.4 / exp.5). The shell runs on exp.6. Done with it: slice 2 (typed events between the scenes
+of `desktop`: panels, frame, panel scenes, Settings; 35 `say` strings became `emit("Scene.event", payload)`, with `uses scene` declarations).
+Still `say`: writes of another scene's facts, and every message to the separate processes. Widgets are still kept out of `desktop`
+by the repaint measurement, not by the compile problem.

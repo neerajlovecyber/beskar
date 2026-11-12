@@ -5,15 +5,15 @@ return function(panel, opened, shown, closed)
 -- The look is owned by Settings (it tells every scene, saves it to disk and tells GTK apps): here we only ASK it.
 on("toggle_dark", function()
     local cur = (fact["Settings.dark_mode"] == true or fact["Settings.dark_mode"] == 1)
-    pcall(sys.call, "say", "settings", "emit set_dark_mode " .. (cur and "0" or "1"))
+    emit("Settings.set_dark_mode", (cur and "0" or "1"))
 end)
 
 on("set_dark_mode", function(val)
-    pcall(sys.call, "say", "settings", "emit set_dark_mode " .. ((val == true or val == 1) and "1" or "0"))
+    emit("Settings.set_dark_mode", (val == true or val == 1) and 1 or 0)
 end)
 
 on("choose_skin", function(val)
-    pcall(sys.call, "say", "settings", "emit choose_skin " .. (tonumber(val) or 0))
+    emit("Settings.choose_skin", tonumber(val) or 0)
 end)
 
 on("volume_set", function(val)
@@ -203,20 +203,18 @@ on("toggle_dnd", function()
 end)
 
 -- ── the four round shortcuts ─────────────────────────────────────
-local function say_later(scene, words)
+local function open_later(n)
     -- the panel is closing; give it a moment so the new window does not fight it for focus
-    after(250, function()
-        pcall(sys.call, "say", scene, words)
-    end)
+    after(250, function() emit("Topbar.open_panel", n) end)
 end
-on("sc_search", function() say_later("topbar", "emit open_panel 1") end)
-on("sc_clip", function() say_later("topbar", "emit open_panel 2") end)
-on("sc_shot", function() say_later("topbar", "emit open_panel 11") end)
+on("sc_search", function() open_later(1) end)
+on("sc_clip", function() open_later(2) end)
+on("sc_shot", function() open_later(11) end)
 on("sc_lock", function() say_later("lock", "fact locked true") end)
 
 -- ── Settings shortcut ────────────────────────────────────────────
 on("open_settings", function()
-    pcall(sys.call, "say", "topbar", "emit open_panel 4")          -- through the frame: it lets this panel finish closing first
+    emit("Topbar.open_panel", 4)          -- through the frame: it lets this panel finish closing first
 end)
 
 -- ── Now playing ──────────────────────────────────────────────────

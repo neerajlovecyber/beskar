@@ -412,7 +412,7 @@ end)
 on("toggle_group", function() fact.group_apps = not b(fact.group_apps); changed_pref() end)
 on("toggle_banners", function() fact.banners = not b(fact.banners); changed_pref() end)
 on("banner_secs_pick", function(n) fact.banner_i = tonumber(n) or 1; changed_pref() end)
-on("clear_notif_history", function() say("notifications", "emit clear_past") end)
+on("clear_notif_history", function() emit("Notifications.clear_past") end)
 
 -- ── Sound ────────────────────────────────────────────────────────
 local out_ids = {}
@@ -725,7 +725,7 @@ local function session(kind)
     fact.open = false
     after(250, function()
         say("dialogs", "fact ses_kind " .. kind)
-        say("topbar", "emit open_panel 5")
+        emit("Topbar.open_panel", 5)
     end)
 end
 on("session_restart", function() session(1) end)

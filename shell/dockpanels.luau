@@ -1,14 +1,14 @@
 -- The dock panels: Spotlight, clipboard, wallpaper strip, widget bar (dockpanels.plm).
 local module = require("panelclient")({ spotlight = 4, wallpapers = 5, clipboard = 6, widget_bar = 10 })
 
-local function close_panel() pcall(sys.call, "say", "panels", "emit close") end
+local function close_panel() emit("Panels.close") end
 
 -- the capture picker is its own scene, started on demand (start.sh capture-ensure), then told what to do
 local function capture_start(mode, kind)
     run("sh", { "-c", '"$(cat "$HOME/.config/beskar/shell-dir")/shell/start.sh" capture-ensure' }, function()
         pcall(sys.call, "say", "capture", "fact mode " .. mode)
         pcall(sys.call, "say", "capture", "fact kind " .. kind)
-        pcall(sys.call, "say", "topbar", "emit open_panel 11")
+        emit("Topbar.open_panel", 11)
     end)
 end
 
@@ -215,25 +215,25 @@ module("spotlight", function(panel, opened, shown, closed)
     end
 
     local COMMANDS = {
-        { "Timer 5 min", "timer 5", function() say("topbar", "emit timer_start 300") end },
-        { "Timer 10 min", "timer 10", function() say("topbar", "emit timer_start 600") end },
-        { "Timer 25 min", "timer 25", function() say("topbar", "emit timer_start 1500") end },
+        { "Timer 5 min", "timer 5", function() emit("Topbar.timer_start", 300) end },
+        { "Timer 10 min", "timer 10", function() emit("Topbar.timer_start", 600) end },
+        { "Timer 25 min", "timer 25", function() emit("Topbar.timer_start", 1500) end },
         { "Lock Screen", "lock", function() say("lock", "fact locked true") end },
         { "Sleep", "suspend", function() run("systemctl", { "suspend" }, nil, { output = false }) end },
-        { "Log Out…", "logout", function() say("dialogs", "fact ses_kind 2"); say("topbar", "emit open_panel 5") end },
-        { "Restart…", "reboot", function() say("dialogs", "fact ses_kind 1"); say("topbar", "emit open_panel 5") end },
-        { "Shut Down…", "poweroff", function() say("dialogs", "fact ses_kind 0"); say("topbar", "emit open_panel 5") end },
+        { "Log Out…", "logout", function() say("dialogs", "fact ses_kind 2"); emit("Topbar.open_panel", 5) end },
+        { "Restart…", "reboot", function() say("dialogs", "fact ses_kind 1"); emit("Topbar.open_panel", 5) end },
+        { "Shut Down…", "poweroff", function() say("dialogs", "fact ses_kind 0"); emit("Topbar.open_panel", 5) end },
         { "Take Screenshot", "screenshot", function() capture_start(2, 0) end },
         { "Select Area Screenshot", "area", function() capture_start(0, 0) end },
         { "Record Screen", "record", function() capture_start(0, 1) end },
-        { "Clipboard History", "clipboard", function() say("topbar", "emit open_panel 2") end },
-        { "Wallpapers", "wallpapers", function() say("topbar", "emit open_panel 3") end },
+        { "Clipboard History", "clipboard", function() emit("Topbar.open_panel", 2) end },
+        { "Wallpapers", "wallpapers", function() emit("Topbar.open_panel", 3) end },
         { "Edit Widgets", "widgets", function() say("widgets", "emit edit_toggle") end },
-        { "Settings", "settings", function() say("topbar", "emit open_panel 4") end },
-        { "Notifications", "notifications", function() say("topbar", "emit open_notifications") end },
-        { "Control Center", "control", function() say("topbar", "emit open_control_center") end },
-        { "Music", "music", function() say("topbar", "emit open_music") end },
-        { "Window Overview", "overview", function() say("topbar", "emit open_panel 10") end },
+        { "Settings", "settings", function() emit("Topbar.open_panel", 4) end },
+        { "Notifications", "notifications", function() emit("Topbar.open_notifications") end },
+        { "Control Center", "control", function() emit("Topbar.open_control_center") end },
+        { "Music", "music", function() emit("Topbar.open_music") end },
+        { "Window Overview", "overview", function() emit("Topbar.open_panel", 10) end },
     }
 
     -- ── the list ─────────────────────────────────────────────────────
@@ -276,7 +276,7 @@ module("spotlight", function(panel, opened, shown, closed)
                     kind = 3,
                     icon = "󰔛",
                     run = function()
-                        say("topbar", "emit timer_start " .. sec)
+                        emit("Topbar.timer_start", sec)
                     end,
                 }
             end

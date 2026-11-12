@@ -8,9 +8,13 @@ local WEATHER_EVERY_MS = 15 * 60 * 1000
 -- (the bar style and the other preferences are Settings' facts, read by name: `fact["Settings.bar_style"]`)
 
 -- ── panels ───────────────────────────────────────────────────────
+local ALIAS = { settings = "Settings", panels = "Panels" }       -- scenes of `desktop` an event can be sent to by name
+local function send_toggle(panel)
+    if ALIAS[panel] then emit(ALIAS[panel] .. ".toggle") else pcall(sys.call, "say", panel, "emit toggle") end
+end
 local function toggle(panel)
     return function()
-        pcall(sys.call, "say", panel, "emit toggle")
+        send_toggle(panel)
     end
 end
 
@@ -189,12 +193,11 @@ on("outside_click", function()
             panel_say(name, "fact open false")
         end
     end
-    pcall(sys.call, "say", "panels", "emit outside_close")      -- (the widget bar and the password dialog stay)
+    emit("Panels.outside_close")      -- (the widget bar and the password dialog stay)
 end)
 
 on("panel_height", function(v)
-    v = tonumber(v) or 0
-    local id, h = math.floor(v / 10000), v % 10000
+    local id, h = tonumber(v and v.id) or 0, math.floor(tonumber(v and v.h) or 0)       -- {id, h} from the Panels scene
     local p = BY_ID[id]
     if p then
         heights[id] = h
@@ -205,8 +208,7 @@ on("panel_height", function(v)
 end)
 
 on("panel_width", function(v)
-    v = tonumber(v) or 0
-    local id, w = math.floor(v / 10000), v % 10000
+    local id, w = tonumber(v and v.id) or 0, math.floor(tonumber(v and v.w) or 0)       -- {id, w} from the Panels scene
     local p = BY_ID[id]
     if p then
         widths[id] = w
@@ -635,17 +637,17 @@ on("open_panel", function(n)
         end
         if OVERLAY[name] then
             overlay_screen(s)
-            pcall(sys.call, "say", "panels", "emit toggle " .. OVERLAY[name])
+            emit("Panels.toggle", OVERLAY[name])
             return
         end
         local function go()
             overlay_screen(s, name)
-            pcall(sys.call, "say", name, "emit toggle")
+            send_toggle(name)
         end
         if name == "settings" and (fact["Panels.open"] == true or fact["Panels.open"] == 1) then
             -- Settings opened FROM a panel (Spotlight, the Control Center…): close the panel first and let its closing
             -- animation finish, or the old panel lingers over the new window, dimming it
-            pcall(sys.call, "say", "panels", "emit close")
+            emit("Panels.close")
             after(260, go)
         else
             go()
@@ -669,7 +671,7 @@ end
 -- the session / polkit / welcome dialogs live in ONE scene, `dialogs`; `cur` says which (rule 51)
 local function show_dock_on_menu_monitor(id)        -- (the session dialog grows out of the dock: panel 11)
     overlay_screen(tonumber(fact.open_screen) or 0)
-    say("panels", "emit show " .. id)
+    emit("Panels.show", id)
 end
 local function show_on_menu_monitor(name)
     overlay_screen(tonumber(fact.open_screen) or 0, name)

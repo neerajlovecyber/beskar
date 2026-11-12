@@ -1,7 +1,7 @@
 -- The dialogs: session (shut down / restart / log out), the polkit password dialog and the first-run welcome (dialogs.plm).
 local module = require("panelclient")({ session = 11, polkit = 12, welcome = 24 })
 
-local function close_panel() pcall(sys.call, "say", "panels", "emit close") end
+local function close_panel() emit("Panels.close") end
 
 module("session", function(panel, opened, shown, closed)
     -- Session dialog logic: shut down, restart, log out (with a 60 s countdown). Enter presses the highlighted button
@@ -76,7 +76,7 @@ module("polkit", function(panel, opened, shown, closed)
 
     local function open_on_focused_monitor()
         -- the frame knows which monitor has the focus (FOCUS_PANELS in topbar.luau toggles us there)
-        pcall(sys.call, "say", "topbar", "emit open_panel 8")
+        emit("Topbar.open_panel", 8)
     end
 
     sys.watch("polkit", function(p)
@@ -150,7 +150,7 @@ module("welcome", function(panel, opened, shown, closed)
 
     local function show()
         fact.page = 0
-        if not shown() then say("topbar", "emit open_panel 9") end     -- the frame picks the monitor with the focus
+        if not shown() then emit("Topbar.open_panel", 9) end     -- the frame picks the monitor with the focus
     end
 
     -- mirror what Settings has now, so the switches on page 2 start right
@@ -178,16 +178,16 @@ module("welcome", function(panel, opened, shown, closed)
         sh('mkdir -p "$HOME/.config/beskar" && : > "$HOME/.config/beskar/welcome-done"')
     end)
 
-    on("choose_dark", function() fact.wl_mode = 1; say("settings", "emit set_mode 1") end)
-    on("choose_light", function() fact.wl_mode = 0; say("settings", "emit set_mode 0") end)
-    on("choose_auto", function() fact.wl_mode = 2; say("settings", "emit set_mode 2") end)
+    on("choose_dark", function() fact.wl_mode = 1; emit("Settings.set_mode", 1) end)
+    on("choose_light", function() fact.wl_mode = 0; emit("Settings.set_mode", 0) end)
+    on("choose_auto", function() fact.wl_mode = 2; emit("Settings.set_mode", 2) end)
     on("toggle_colours", function()
         fact.wall_colours = not (fact.wall_colours == true)
-        say("settings", "emit toggle_accent_auto")
+        emit("Settings.toggle_accent_auto")
     end)
     on("toggle_apps_pref", function()
         fact.theme_apps = not (fact.theme_apps == true)
-        say("settings", "emit toggle_apps")
+        emit("Settings.toggle_apps")
     end)
 
     -- `./beskar welcome` and Settings ask for it again

@@ -11,15 +11,13 @@
 --         if shown() then … end        -- is MY panel the one up
 --     end)
 --
--- It reads `Panels.open` / `Panels.cur` (a scene writes only its own facts) and asks for changes with `say` (pleamar 0.8-exp.3:
--- an event emitted by a scene's LOGIC reaches the other scene's .plm rules but not its logic, so `emit("Panels.height")` from
--- here would never arrive; the .plm rules of the panel scenes DO `emit Panels.close`). The `say` strings go to panels.luau's events.
+-- It reads `Panels.open` / `Panels.cur` (a scene writes only its own facts) and asks for changes with typed events:
+-- `emit("Panels.close")`, `Panels.height`, `Panels.width`, `Panels.keep` (handled in panels.luau).
 return function(IDS)
     local hooks_open, hooks_close = {}, {}
     local heights, widths = {}, {}
     local current = nil
-    local function ask(words) pcall(sys.call, "say", "panels", words) end
-
+    
     local function sync()
         local o = fact["Panels.open"] == true or fact["Panels.open"] == 1
         local id = o and (tonumber(fact["Panels.cur"]) or 0) or nil
@@ -40,16 +38,16 @@ return function(IDS)
             h = math.floor(h)
             if heights[id] == h then return end
             heights[id] = h
-            ask("emit height " .. (id * 10000 + h))
+            emit("Panels.height", { id = id, h = h })
         end
         function panel.width(w)
             w = math.floor(w)
             if widths[id] == w then return end
             widths[id] = w
-            ask("emit width " .. (id * 10000 + w))
+            emit("Panels.width", { id = id, w = w })
         end
-        function panel.keep() ask("emit keep " .. id) end
-        function panel.close() ask("emit close") end
+        function panel.keep() emit("Panels.keep", id) end
+        function panel.close() emit("Panels.close") end
         init(panel,
             function(fn) hooks_open[id] = fn end,
             function() return current == id end,

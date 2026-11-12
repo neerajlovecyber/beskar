@@ -7,9 +7,7 @@ local KNOWN = { [1] = true, [2] = true, [3] = true, [4] = true, [5] = true, [6] 
 local current = nil                -- the id shown now (open and cur), or nil
 local fresh_timer = nil
 
-local function say_topbar(words)
-    pcall(sys.call, "say", "topbar", words)
-end
+-- (typed events to the frame, topbar.luau; pleamar 0.8-exp.5 delivers a scene's logic events to the other scene's logic)
 
 local function sync()
     local o = fact.open == true or fact.open == 1
@@ -18,16 +16,16 @@ local function sync()
     if id == current then return end
     local prev = current
     current = id
-    if prev then say_topbar("emit panel_close " .. prev) end
+    if prev then emit("Topbar.panel_close", prev) end
     if id then
         -- a panel that has just taken over gets a `blur` from the one it replaced: `fresh` lets its `on blur` rule ignore it
         if fresh_timer then cancel(fresh_timer) end
         fact.fresh = true
         fresh_timer = after(500, function() fresh_timer = nil; fact.fresh = false end)
         if heights[id] then fact.panel_h = heights[id] end
-        say_topbar("emit panel_open " .. id)
-        if heights[id] then say_topbar("emit panel_height " .. (id * 10000 + heights[id])) end
-        if widths[id] then say_topbar("emit panel_width " .. (id * 10000 + widths[id])) end
+        emit("Topbar.panel_open", id)
+        if heights[id] then emit("Topbar.panel_height", { id = id, h = heights[id] }) end
+        if widths[id] then emit("Topbar.panel_width", { id = id, w = widths[id] }) end
     end
 end
 on("fact:open", sync)
@@ -54,21 +52,19 @@ on("outside_close", function()
 end)
 on("keep", function(id) keeps[tonumber(id) or 0] = true end)
 on("height", function(v)
-    v = tonumber(v) or 0
-    local id, h = math.floor(v / 10000), v % 10000
+    local id, h = tonumber(v and v.id) or 0, math.floor(tonumber(v and v.h) or 0)
     if heights[id] == h then return end
     heights[id] = h
     if current == id then
         fact.panel_h = h
-        say_topbar("emit panel_height " .. v)
+        emit("Topbar.panel_height", { id = id, h = h })
     end
 end)
 on("width", function(v)
-    v = tonumber(v) or 0
-    local id, w = math.floor(v / 10000), v % 10000
+    local id, w = tonumber(v and v.id) or 0, math.floor(tonumber(v and v.w) or 0)
     if widths[id] == w then return end
     widths[id] = w
-    if current == id then say_topbar("emit panel_width " .. v) end
+    if current == id then emit("Topbar.panel_width", { id = id, w = w }) end
 end)
 
 -- opening one closes the other windows (Settings, the power menu)

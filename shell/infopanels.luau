@@ -1,7 +1,7 @@
 -- The info panels: today, weather, music, updates (infopanels.plm). Their state is read from / asked of `Panels`.
 local module = require("panelclient")({ dashboard = 3, music = 9, weather = 15, updates = 16 })
 
-local function close_panel() pcall(sys.call, "say", "panels", "emit close") end
+local function close_panel() emit("Panels.close") end
 
 module("weather", function(panel, opened, shown)
     -- Weather panel logic: Open-Meteo forecast for the place in ~/.config/beskar/location ("LAT LON City"), and the place
@@ -129,9 +129,8 @@ module("weather", function(panel, opened, shown)
             panel.height(VIEW_FORECAST_H)
             load()
             -- the other scenes that show the weather read the place again
-            for _, scene in ipairs({ "topbar", "dashboard", "widgets" }) do
-                pcall(sys.call, "say", scene, "emit weather_reload")
-            end
+            emit("Topbar.weather_reload")
+            pcall(sys.call, "say", "widgets", "emit weather_reload")        -- (its own process: still `say`)
         end, { output = false })
     end
 
@@ -442,7 +441,7 @@ module("dashboard", function(panel, opened, shown)
     refresh_weather()
     every(15 * 60 * 1000, refresh_weather)
     on("weather_reload", refresh_weather)
-    on("open_weather", function() pcall(sys.call, "say", "topbar", "emit open_weather") end)
+    on("open_weather", function() emit("Topbar.open_weather") end)
 
     -- ── tell the frame (it draws the glass) how tall the card is ──
     local has_battery = true

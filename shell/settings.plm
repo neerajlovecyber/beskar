@@ -3,6 +3,8 @@
 //
 //   0 Appearance · 1 Displays · 2 Sound · 3 Notifications · 4 Menu Bar & Dock · 5 Shortcuts · 6 General
 import "common/palette.plm"
+uses scene "notifications.plm" as Notifications
+uses scene "topbar.plm" as Topbar
 uses scene "system.plm" as System        // battery, network, audio, brightness: declared ONCE there
 uses scene "panels.plm" as Panels
 import "common/icons.plm"

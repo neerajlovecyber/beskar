@@ -1,7 +1,7 @@
 -- The window panels: app switcher and window overview (windows.plm).
 local module = require("panelclient")({ switcher = 21, overview = 22 })
 
-local function close_panel() pcall(sys.call, "say", "panels", "emit close") end
+local function close_panel() emit("Panels.close") end
 
 local watchers, last = {}, {}
 local function shared_watch(kind, fn)

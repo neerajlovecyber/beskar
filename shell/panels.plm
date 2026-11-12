@@ -1,3 +1,4 @@
+uses scene "topbar.plm" as Topbar
 // Panels: the OWNER of the state every panel shares (pleamar way: one scene owns a value, the others read it by its full
 // name and ask for a change with an event). Which panel is open (`cur`), whether one is (`open`), on which monitor
 // (`panel_mon` = its NAME, `open_screen` = its index), how tall it is (`panel_h`). It has no drawing: the panels are scenes
@@ -17,14 +18,14 @@ scene Panels {
     text panel_mon = "none"      // the NAME of the monitor the open panel is on: every panel surface says `screens: Panels.panel_mon`
 
     //  asked by the panels / the frame / other scenes (a scene writes only its own facts):
-    event toggle ->              // a panel id: open it, or close it if it is the one open
-    event show ->                // a panel id: open it
+    event toggle(id) ->          // a panel id: open it, or close it if it is the one open
+    event show(id) ->            // a panel id: open it
     event close ->               // close whatever is open
-    event close_id ->            // a panel id: close it only if it is the one open (a click outside, the widgets scene)
+    event close_id(id) ->        // a panel id: close it only if it is the one open (a click outside, the widgets scene)
     event outside_close ->       // a click on nothing: closes the open panel, except `keep` ones
-    event height ->              // id * 10000 + height: a panel's glass height, for the frame
-    event width ->               // id * 10000 + width
-    event keep ->                // a panel id: it survives a click outside
+    event height(id, h) ->       // a panel's glass height, for the frame
+    event width(id, w) ->        // a panel's glass width
+    event keep(id) ->            // a panel id: it survives a click outside
     event panel_sync ->          // `open` changed (exclusive.luau closes the other windows)
     on change open { emit panel_sync }
 }
