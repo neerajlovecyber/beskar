@@ -50,6 +50,11 @@ end)
 on("outside_close", function()
     if current ~= nil and not keeps[current] then fact.open = false end
 end)
+on("set_screen", function(v)
+    fact.open_screen = tonumber(v and v.s) or 0
+    text.panel_mon = (v and v.name) or ""
+end)
+on("set_toast_mon", function(name) text.toast_mon = name or "" end)
 on("keep", function(id) keeps[tonumber(id) or 0] = true end)
 on("height", function(v)
     local id, h = tonumber(v and v.id) or 0, math.floor(tonumber(v and v.h) or 0)

@@ -27,6 +27,7 @@ scene MacDialogs {
     fact countdown = 60      // 60-second automatic timer
     fact ses_sel = 1         // the button Enter presses: 0 Cancel, 1 the action (the default)
     fact reopen = true       // Reopen windows when logging back in
+    event set_kind(k) ->         // 0 shut down / 1 restart / 2 log out (from Spotlight, the power menu, Settings)
     event confirm_action ->
     event ses_enter ->
     event dismiss

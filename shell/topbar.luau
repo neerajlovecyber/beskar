@@ -80,7 +80,7 @@ local function cancel_activity(id)
         if card_timers[id] then cancel(card_timers[id]); card_timers[id] = nil end
         if owner.cp == id then fact.cp_on = false end
     elseif id == 7 then
-        pcall(sys.call, "say", "notifications", "fact banner_on false")
+        emit("Notifications.hide_banner")
     end
     if owner.cp == id then
         owner.cp = nil
@@ -126,7 +126,7 @@ on("panel_open", function(id)
         if p.kind == 1 then
             -- a banner never takes the island from a panel that is open there or something higher priority
             if owner[p.island] and (PRIORITIES[owner[p.island]] or 0) >= 70 then
-                pcall(sys.call, "say", "notifications", "fact banner_on false")
+                emit("Notifications.hide_banner")
                 return
             end
             if owner[p.island] and owner[p.island] ~= p.id then
@@ -164,35 +164,16 @@ local DOCK = { spotlight = 4, wallpapers = 5, clipboard = 6, widget_bar = 10, se
 local OUTPUT_NAMES
 local function overlay_screen(s, name)
     local n = OUTPUT_NAMES and OUTPUT_NAMES()[s + 1] or ""
-    pcall(sys.call, "say", "panels", "text panel_mon " .. n)
-    pcall(sys.call, "say", "panels", "fact open_screen " .. s)
+    emit("Panels.set_screen", { s = s, name = n })
     if name == "settings" then
-        pcall(sys.call, "say", "settings", "fact open_screen " .. s)
+        emit("Settings.set_screen", s)               -- Settings' sheet has its own `open_screen`
     elseif name and not (MERGED[name] or DOCK[name]) then
-        pcall(sys.call, "say", name, "fact open_screen " .. s)
+        pcall(sys.call, "say", name, "fact open_screen " .. s)         -- the capture picker (its own process)
     end
-end
--- the scene each panel's own content lives in
-local SCENE_OF = { control_center = "controlcenter", notifications = "notifications",
-    dashboard = "infopanels", music = "infopanels", weather = "infopanels", updates = "infopanels",
-    spotlight = "dockpanels", wallpapers = "dockpanels", clipboard = "dockpanels", widget_bar = "dockpanels",
-    session = "dialogs", polkit = "dialogs", welcome = "dialogs", appswitcher = "windows", overview = "windows" }
-local PANELS_FACTS = { open = true, cur = true, open_screen = true, panel_h = true }   -- owned by the Panels scene
-local function panel_say(name, words)
-    local target = name
-    if MERGED[name] or DOCK[name] then
-        target = PANELS_FACTS[words:match("^fact (%S+)") or ""] and "panels" or (SCENE_OF[name] or name)
-    end
-    pcall(sys.call, "say", target, words)
 end
 
 -- a click on nothing while a panel is open: close every panel (the widget bar stays: you work on the desktop with it)
 on("outside_click", function()
-    for name, p in pairs(PANELS) do
-        if name ~= "banner" and not DOCK[name] and not MERGED[name] then
-            panel_say(name, "fact open false")
-        end
-    end
     emit("Panels.outside_close")      -- (the widget bar and the password dialog stay)
 end)
 
@@ -304,16 +285,15 @@ local function open_island_panel(name, page)
             local open_here = fact[p.island .. "_on"] == true and owner[p.island] == p.id
                 and tonumber(fact[p.island .. "_screen"]) == s
             if open_here and page == nil then
-                panel_say(name, "fact open false")
+                emit("Panels.close")
                 return
             end
             fact[p.island .. "_screen"] = s
             overlay_screen(s, name)
-            if MERGED[name] then panel_say(name, "fact cur " .. p.id) end
             if name == "control_center" then
-                pcall(sys.call, "say", "controlcenter", "fact cc_page " .. (page or 0))
+                emit("Controlcenter.set_page", page or 0)
             end
-            panel_say(name, "fact open true")
+            emit("Panels.show", p.id)
         end)
     end
 end
@@ -675,17 +655,17 @@ local function show_dock_on_menu_monitor(id)        -- (the session dialog grows
 end
 local function show_on_menu_monitor(name)
     overlay_screen(tonumber(fact.open_screen) or 0, name)
-    say(name, "fact open true")
+    emit(ALIAS[name] .. ".show")           -- only Settings is opened this way
 end
 local PM = {
-    [1] = function() say("settings", "fact tab 6"); show_on_menu_monitor("settings") end,         -- About This PC
-    [2] = function() say("settings", "fact tab 0"); show_on_menu_monitor("settings") end,         -- System Settings
+    [1] = function() emit("Settings.set_tab", 6); show_on_menu_monitor("settings") end,         -- About This PC
+    [2] = function() emit("Settings.set_tab", 0); show_on_menu_monitor("settings") end,         -- System Settings
     [8] = function() say("widgets", "emit edit_toggle") end,                                     -- Edit Widgets…
     [3] = function() say("lock", "fact locked true") end,                                           -- Lock Screen
     [4] = function() run("systemctl", { "suspend" }, nil, { output = false }) end,                 -- Sleep
-    [5] = function() say("dialogs", "fact ses_kind 2"); show_dock_on_menu_monitor(11) end,          -- Log Out…
-    [6] = function() say("dialogs", "fact ses_kind 1"); show_dock_on_menu_monitor(11) end,          -- Restart…
-    [7] = function() say("dialogs", "fact ses_kind 0"); show_dock_on_menu_monitor(11) end,          -- Shut Down…
+    [5] = function() emit("Dialogs.set_kind", 2); show_dock_on_menu_monitor(11) end,          -- Log Out…
+    [6] = function() emit("Dialogs.set_kind", 1); show_dock_on_menu_monitor(11) end,          -- Restart…
+    [7] = function() emit("Dialogs.set_kind", 0); show_dock_on_menu_monitor(11) end,          -- Shut Down…
 }
 on("pm_item", function(n)
     local f = PM[tonumber(n) or 0]
@@ -1192,8 +1172,8 @@ push_mon = function()
             for i, n in ipairs(OUTPUTS) do
                 if n == focused_output and (i - 1) ~= last_toast_screen then
                     last_toast_screen = i - 1
-                    pcall(sys.call, "say", "panels", "text toast_mon " .. n)
-                    pcall(sys.call, "say", "notifications", "fact toast_screen " .. (i - 1))
+                    emit("Panels.set_toast_mon", n)
+                    emit("Notifications.set_toast_screen", i - 1)
                 end
             end
         end

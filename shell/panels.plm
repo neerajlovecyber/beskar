@@ -1,3 +1,4 @@
+uses scene "settings.plm" as Settings
 uses scene "topbar.plm" as Topbar
 // Panels: the OWNER of the state every panel shares (pleamar way: one scene owns a value, the others read it by its full
 // name and ask for a change with an event). Which panel is open (`cur`), whether one is (`open`), on which monitor
@@ -26,6 +27,8 @@ scene Panels {
     event height(id, h) ->       // a panel's glass height, for the frame
     event width(id, w) ->        // a panel's glass width
     event keep(id) ->            // a panel id: it survives a click outside
+    event set_screen(s, name) ->    // the monitor a panel opens on: its index and its output NAME (from the frame)
+    event set_toast_mon(name) ->    // the monitor the notification banner drops on
     event panel_sync ->          // `open` changed (exclusive.luau closes the other windows)
     on change open { emit panel_sync }
 }

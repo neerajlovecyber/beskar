@@ -473,7 +473,7 @@ module("updates", function(panel, opened, shown)
     end
 
     local function tell_bar(n)
-        pcall(sys.call, "say", "topbar", "fact upd_n " .. n)
+        fact.upd_n = tonumber(n) or 0
     end
 
     local fresh = false          -- checked within the last 5 minutes

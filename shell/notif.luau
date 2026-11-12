@@ -151,7 +151,7 @@ local function paint()
     panel.height(height)
 
     -- the bell
-    pcall(sys.call, "say", "topbar", "fact notif_count " .. tostring(#order))
+    fact.notif_count = #order
     pcall(sys.call, "say", "lock", "fact notif_count " .. tostring(#order))        -- the lock screen shows how many, never what
 end
 
@@ -173,9 +173,6 @@ local BANNER_ID = 7
 local banner_timer = nil
 local banner_visible = false
 
-local function to_topbar(words)
-    pcall(sys.call, "say", "topbar", words)
-end
 
 local function banner_hide()
     if banner_timer then
@@ -185,7 +182,7 @@ local function banner_hide()
     if banner_visible then
         banner_visible = false
         fact.banner_on = false
-        to_topbar("emit panel_close " .. BANNER_ID)
+        emit("Topbar.panel_close", BANNER_ID)
     end
 end
 
@@ -210,11 +207,17 @@ local function banner_show()
     if not banner_visible then
         banner_visible = true
         fact.banner_on = true
-        to_topbar("emit panel_open " .. BANNER_ID)
-        to_topbar("emit panel_height " .. (BANNER_ID * 10000 + 58))
+        emit("Topbar.panel_open", BANNER_ID)
+        emit("Topbar.panel_height", { id = BANNER_ID, h = 58 })
     end
     arm_banner()
 end
+
+-- asked by the other scenes (the owner sets its own facts)
+on("set_dnd", function(v) fact.dnd = (v == true or v == 1) end)
+on("set_banner_ms", function(v) fact.banner_ms = tonumber(v) or 5500 end)
+on("set_toast_screen", function(i) fact.toast_screen = tonumber(i) or 0 end)
+on("hide_banner", function() banner_hide() end)
 
 -- the frame may refuse (a panel owns the centre island) and turns `banner_on` off itself
 on("fact:banner_on", function(v)
@@ -234,7 +237,7 @@ on("card_click", function()
         return
     end
     banner_hide()
-    to_topbar("emit open_notifications")
+    emit("Topbar.open_notifications")
 end)
 
 local first_list = true

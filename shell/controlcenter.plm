@@ -70,6 +70,7 @@ scene ControlCenter {
     text wifi_pw = ""
 
     //  Reported by control_center.luau: Bluetooth, and what is playing
+    fact bt_connected = false   // a Bluetooth device is connected (the frame's icon reads it as Controlcenter.bt_connected)
     fact bt_on = false
     fact bt_present = true
     fact bt_scanning = false
@@ -92,6 +93,7 @@ scene ControlCenter {
     event bt_scan ->
     event open_settings ->
     event toggle_dnd ->
+    event set_page(n) ->
     event open_sound
     event open_nothing
     event sc_search ->

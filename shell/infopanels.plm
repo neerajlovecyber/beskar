@@ -114,6 +114,7 @@ scene MacInfoPanels {
 
 
     // ── updates ─────────────────────────────────────────────────
+    fact upd_n = 0                 // updates waiting, for the bar's arrow (read as Infopanels.upd_n)
     fact up_n = 0                  // updates waiting
     fact up_checking = false
     fact up_running = false        // pacman -Syu is running

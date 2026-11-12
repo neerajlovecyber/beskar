@@ -171,6 +171,12 @@ local function extract_current()
     end)
 end
 
+on("set_screen", function(i) fact.open_screen = tonumber(i) or 0 end)
+on("set_tab", function(n) fact.tab = tonumber(n) or 0 end)
+on("set_pal_src", function(path)
+    text.pal_src = path or ""
+    if fact.accent_auto == true then extract_palette(path) end
+end)
 on("text:pal_src", function(path)
     if fact.accent_auto == true then
         extract_palette(path)
@@ -272,8 +278,7 @@ local function push_prefs()
     -- the bar's and the notifications' preferences are Settings' own facts, read by name by the scenes in `desktop`;
     -- only what is NOT: the widgets (own process) and values computed here
     say("widgets", "fact widgets_on " .. tostring(b(fact.pref_widgets)))
-    say("notifications", "fact banner_ms " .. tostring(BANNER_MS[tonumber(fact.banner_i) or 1] or 5500))
-    say("notifications", "fact dnd " .. tostring(b(fact.dnd)))
+    emit("Notifications.set_banner_ms", BANNER_MS[tonumber(fact.banner_i) or 1] or 5500)
 end
 
 local function changed_pref()
@@ -402,7 +407,7 @@ on("toggle_dock_auto", function() fact.pref_dock_auto = not b(fact.pref_dock_aut
 on("bar_style_pick", function(n) fact.bar_style = tonumber(n) or 0; changed_pref() end)
 
 -- ── Notifications ────────────────────────────────────────────────
-on("toggle_dnd", function() fact.dnd = not b(fact.dnd); changed_pref() end)
+on("toggle_dnd", function() emit("Notifications.set_dnd", not (fact["Notifications.dnd"] == true)) end)
 on("lock_pick", function(n)
     fact.lock_i = tonumber(n) or 0
     save_prefs()
@@ -724,7 +729,7 @@ end)
 local function session(kind)
     fact.open = false
     after(250, function()
-        say("dialogs", "fact ses_kind " .. kind)
+        emit("Dialogs.set_kind", tonumber(kind) or 0)
         emit("Topbar.open_panel", 5)
     end)
 end

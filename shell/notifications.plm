@@ -36,6 +36,12 @@ scene Notifications {
     let banners = Settings.banners          // Settings → Notifications: show banners at all
     fact banner_ms = 5500       // …and for how long
     fact dnd = false            // Do Not Disturb: no banners (they still land in the centre)
+    fact notif_count = 0        // how many are waiting (the bell in the frame reads it as Notifications.notif_count)
+    //  asked by the other scenes (a scene writes only its own facts): Settings, the Control Center, the frame
+    event set_dnd(on) ->
+    event set_banner_ms(ms) ->
+    event set_toast_screen(i) ->
+    event hide_banner ->
 
     event clear_notices ->
     event card_click ->

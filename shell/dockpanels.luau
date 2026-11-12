@@ -220,9 +220,9 @@ module("spotlight", function(panel, opened, shown, closed)
         { "Timer 25 min", "timer 25", function() emit("Topbar.timer_start", 1500) end },
         { "Lock Screen", "lock", function() say("lock", "fact locked true") end },
         { "Sleep", "suspend", function() run("systemctl", { "suspend" }, nil, { output = false }) end },
-        { "Log Out…", "logout", function() say("dialogs", "fact ses_kind 2"); emit("Topbar.open_panel", 5) end },
-        { "Restart…", "reboot", function() say("dialogs", "fact ses_kind 1"); emit("Topbar.open_panel", 5) end },
-        { "Shut Down…", "poweroff", function() say("dialogs", "fact ses_kind 0"); emit("Topbar.open_panel", 5) end },
+        { "Log Out…", "logout", function() emit("Dialogs.set_kind", 2); emit("Topbar.open_panel", 5) end },
+        { "Restart…", "reboot", function() emit("Dialogs.set_kind", 1); emit("Topbar.open_panel", 5) end },
+        { "Shut Down…", "poweroff", function() emit("Dialogs.set_kind", 0); emit("Topbar.open_panel", 5) end },
         { "Take Screenshot", "screenshot", function() capture_start(2, 0) end },
         { "Select Area Screenshot", "area", function() capture_start(0, 0) end },
         { "Record Screen", "record", function() capture_start(0, 1) end },
@@ -795,7 +795,7 @@ module("wallpapers", function(panel, opened, shown, closed)
 
     -- The palette engine lives in settings.luau (matugen on the wallpaper, sent to every scene).
     local function accent_from(path)
-        pcall(sys.call, "say", "settings", "text pal_src " .. path)
+        emit("Settings.set_pal_src", path)
     end
 
     on("accent_now", function()

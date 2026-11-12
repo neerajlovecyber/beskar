@@ -11,6 +11,10 @@
 // The surface is the whole monitor, but only the zones catch the mouse: everywhere else the
 // click goes through to the windows.
 import "common/palette.plm"
+uses scene "dialogs.plm" as Dialogs
+uses scene "notifications.plm" as Notifications
+uses scene "controlcenter.plm" as Controlcenter
+uses scene "infopanels.plm" as Infopanels
 uses scene "system.plm" as System        // battery, network, audio, brightness: declared ONCE there
 uses scene "settings.plm" as Settings      // owns the look (dark mode, skin, accent, palette, clock format): read by name
 import "common/icons.plm"
@@ -42,10 +46,12 @@ scene MacTopBar {
 
     fact priv_cam = false       // a program is using the camera (topbar.luau polls)
     fact priv_mic = false       // a program is recording from a microphone
-    fact upd_n = 0              // pacman updates waiting (topbar.luau polls checkupdates; settings reports its own check too)
-    fact bt_connected = false   // set by control_center.luau: a Bluetooth device is connected
-    fact dnd = false            // Do Not Disturb, from the Control Center
-    fact notif_count = 0       // set by notifications.luau: how many are waiting
+    //  other scenes' state, read by name (each scene writes only its own): updates waiting, a Bluetooth device connected,
+    //  Do Not Disturb, notifications waiting
+    let upd_n        = Infopanels.upd_n
+    let bt_connected = Controlcenter.bt_connected
+    let dnd          = Notifications.dnd
+    let notif_count  = Notifications.notif_count
 
     //  Reported by topbar.luau
     //  The dock is data: topbar.luau fills this from the apps you pinned plus the ones that are running.
@@ -57,6 +63,8 @@ scene MacTopBar {
     model dock_items max 12 { icon: image 38, 38; name: text; running: bool; pinned: bool; canpin: bool; sep: bool; preview_thumb: image 160, 96; preview_title: text; preview_has: bool }
     //  The power menu (the gem button): `open` is what shell/exclusive.luau closes, `open_screen` which monitor shows it.
     fact open = false
+    event close_menu            // another window opened: the power menu closes (a rule, so `exclusive` hears it too)
+    on close_menu { open = false }
     fact open_screen = -1
     //  The glass of a panel that grows out of an island is drawn here, one shape per island, driven by facts:
     //  `lp_` left (the power menu, below), `cp_` centre, `rp_` right. on = open, screen = which monitor, w / h = size.

@@ -1,4 +1,5 @@
 -- The dialogs: session (shut down / restart / log out), the polkit password dialog and the first-run welcome (dialogs.plm).
+on("set_kind", function(k) fact.ses_kind = tonumber(k) or 0 end)
 local module = require("panelclient")({ session = 11, polkit = 12, welcome = 24 })
 
 local function close_panel() emit("Panels.close") end

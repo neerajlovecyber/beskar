@@ -3,6 +3,7 @@
 //
 //   0 Appearance · 1 Displays · 2 Sound · 3 Notifications · 4 Menu Bar & Dock · 5 Shortcuts · 6 General
 import "common/palette.plm"
+uses scene "dialogs.plm" as Dialogs
 uses scene "notifications.plm" as Notifications
 uses scene "topbar.plm" as Topbar
 uses scene "system.plm" as System        // battery, network, audio, brightness: declared ONCE there
@@ -245,7 +246,7 @@ scene MacSettings {
                 view: 560, 500
                 step: 56
                 gap: 12
-                ToggleRow("Do Not Disturb", "Notifications still arrive, silently, in the centre", dnd, toggle_dnd)
+                ToggleRow("Do Not Disturb", "Notifications still arrive, silently, in the centre", Notifications.dnd, toggle_dnd)
                 ToggleRow("Group by app", "Stack several notifications from one app into a pile", group_apps, toggle_group)
                 ToggleRow("Show banners", "A new notification drops into the clock pill", banners, toggle_banners)
                 Card(64) {
@@ -475,7 +476,6 @@ scene MacSettings {
     fact group_apps = false
     fact lock_i = 0              // 0 never · 1 3 min · 2 5 · 3 10 · 4 15 (off until you have tried the lock screen)
     fact banner_i = 1
-    fact dnd = false
     fact pref_seconds = false
     fact pref_weather = true
     fact pref_tray = true
@@ -516,6 +516,11 @@ scene MacSettings {
     let stroke_op = card_stroke_op
 
     event toggle
+    event show               // open the window (a rule: `open` changes in the scene, so `exclusive` hears it)
+    event close              // close it (the same)
+    event set_screen(s) ->   // the monitor it opens on (index)
+    event set_tab(n) ->      // the tab to show
+    event set_pal_src(path) -> // the wallpaper to take the palette from (the picker says it)
     event set_mode ->
     event set_dark_mode ->
     event choose_skin ->
@@ -700,5 +705,7 @@ scene MacSettings {
     }
 
     on toggle     { toggle open }
+    on show       { open = true }
+    on close      { open = false }
     on key Escape { open = false }
 }

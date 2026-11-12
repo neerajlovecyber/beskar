@@ -195,11 +195,12 @@ end)
 on("wifi_rescan", function() pcall(sys.call, "network.scan") end)
 
 -- ── Do Not Disturb: no banners while it is on (they still land in the centre) ──
+on("set_page", function(n) fact.cc_page = tonumber(n) or 0 end)
+
 on("toggle_dnd", function()
     local now_on = not (fact["Notifications.dnd"] == true)           -- the notification centre owns it: ask it
     local v = tostring(now_on)
-    pcall(sys.call, "say", "notifications", "fact dnd " .. v)
-    pcall(sys.call, "say", "topbar", "fact dnd " .. v)
+    emit("Notifications.set_dnd", now_on)
 end)
 
 -- ── the four round shortcuts ─────────────────────────────────────
@@ -336,7 +337,7 @@ local function paint_bt()
     end
     if any_connected ~= last_connected then
         last_connected = any_connected
-        pcall(sys.call, "say", "topbar", "fact bt_connected " .. tostring(any_connected))
+        fact.bt_connected = any_connected == true
     end
     local first = mine[1]
     text.bt_sub = (first and first.connected) and first.name
@@ -362,7 +363,7 @@ end)
 -- The top bar may have been restarted: tell it again now and then.
 every(15000, function()
     if last_connected ~= nil then
-        pcall(sys.call, "say", "topbar", "fact bt_connected " .. tostring(last_connected))
+        fact.bt_connected = last_connected == true
     end
 end)
 
