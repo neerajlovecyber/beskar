@@ -119,6 +119,7 @@ start_shell() {
     S="$DIR/shell"
     if [ "$DESKTOP" = 1 ]; then
         setsid "$S/supervise.sh" \
+            "$S/wallpaper.plm:/tmp/pleamar_wallpaper.log" \
             "$S/desktop.plm:/tmp/pleamar_desktop.log" \
             "$S/lock.plm:/tmp/pleamar_lock.log" \
             "$S/widgets.plm:/tmp/pleamar_widgets.log" \

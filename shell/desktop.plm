@@ -1,7 +1,8 @@
 // The whole shell in ONE process (pleamar 0.8 `import scene`): every scene keeps its own file, logic, permissions and
 // `--say` name (`--say topbar …` still reaches Topbar). Started by start.sh instead of one process per scene.
-// Widgets (a level: bottom surface), the lock screen and the on-demand capture picker stay their own processes.
-import scene "wallpaper.plm" as Wallpaper
+// The WALLPAPER is its own process on purpose: brought in beside the frame, pleamar treats the picture as scene content
+// under the glass and repaints it (and the frame) whenever a panel morphs: 44-68 slow frames per 8 panel opens, 0 without.
+// Widgets (a level: bottom surface), the lock screen and the on-demand capture picker stay their own processes too.
 import scene "topbar.plm" as Topbar
 import scene "overlays.plm" as Overlays
 import scene "settings.plm" as Settings
