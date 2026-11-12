@@ -2,27 +2,18 @@
 return function(panel, opened, shown, closed)
 -- Control Center companion logic
 
--- The theme is owned by Settings: it tells every scene (accent and skin too), saves the look to disk and
--- tells GTK apps. Here we only ask it, with the value we want.
-local function broadcast_theme()
-    local dm = (fact.dark_mode == true or fact.dark_mode == 1)
-    pcall(sys.call, "say", "settings", "emit set_dark_mode " .. (dm and "1" or "0"))
-end
-
+-- The look is owned by Settings (it tells every scene, saves it to disk and tells GTK apps): here we only ASK it.
 on("toggle_dark", function()
-    local cur = (fact.dark_mode == true or fact.dark_mode == 1)
-    fact.dark_mode = not cur
-    broadcast_theme()
+    local cur = (fact["Settings.dark_mode"] == true or fact["Settings.dark_mode"] == 1)
+    pcall(sys.call, "say", "settings", "emit set_dark_mode " .. (cur and "0" or "1"))
 end)
 
 on("set_dark_mode", function(val)
-    fact.dark_mode = (val == true or val == 1)
-    broadcast_theme()
+    pcall(sys.call, "say", "settings", "emit set_dark_mode " .. ((val == true or val == 1) and "1" or "0"))
 end)
 
 on("choose_skin", function(val)
-    fact.skin = tonumber(val) or 0
-    broadcast_theme()
+    pcall(sys.call, "say", "settings", "emit choose_skin " .. (tonumber(val) or 0))
 end)
 
 on("volume_set", function(val)

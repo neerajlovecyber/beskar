@@ -1,0 +1,19 @@
+// The look for a scene inside `desktop`: the facts are OWNED by the Settings scene (it has the controls, the saved file and the
+// palette engine), so here they are lets that read `Settings.<name>`; a scene writes only its own facts. The scene says
+// `uses scene "settings.plm" as Settings` before `scene`, includes this FIRST, then common/theme.plm (the colours).
+part ThemeOwner {
+    let dark_mode = Settings.dark_mode
+    let skin = Settings.skin
+    let accent = Settings.accent
+    let hour12 = Settings.hour12
+    let accent_auto = Settings.accent_auto
+    let pal_ar = Settings.pal_ar
+    let pal_ag = Settings.pal_ag
+    let pal_ab = Settings.pal_ab
+    let pal_br = Settings.pal_br
+    let pal_bg = Settings.pal_bg
+    let pal_bb = Settings.pal_bb
+    let pal_sr = Settings.pal_sr
+    let pal_sg = Settings.pal_sg
+    let pal_sb = Settings.pal_sb
+}

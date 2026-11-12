@@ -19,7 +19,7 @@ module("weather", function(panel, opened, shown)
     end
 
     local function hour_text(h)
-        if fact.hour12 == false then
+        if fact["Settings.hour12"] == false then
             return string.format("%02d", h)
         end
         local ap = h < 12 and "AM" or "PM"
@@ -32,7 +32,7 @@ module("weather", function(panel, opened, shown)
         local h, m = (iso or ""):match("T(%d+):(%d+)")
         if not h then return "--" end
         h = tonumber(h)
-        if fact.hour12 == false then
+        if fact["Settings.hour12"] == false then
             return string.format("%02d:%s", h, m)
         end
         local x = h % 12

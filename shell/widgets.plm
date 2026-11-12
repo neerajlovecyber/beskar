@@ -14,6 +14,7 @@ import "common/palette.plm"
 import "common/icons.plm"
 
 scene Widgets {
+    include "common/theme_facts.plm"
     include "common/theme.plm"
     permissions {
         services: "clock", "battery", "media", "media.*", "audio", "audio.*", "brightness", "brightness.*", "say:topbar", "say:settings", "say:panels", "say:infopanels", "say:dockpanels", "say:dialogs", "say:windows", "say:controlcenter", "say:notifications"

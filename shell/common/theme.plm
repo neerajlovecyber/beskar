@@ -1,7 +1,7 @@
 // The shell's ONE colour system. Every panel imports this instead of defining its own colours.
 //
-//   facts   dark_mode · skin · accent · accent_auto     (Settings changes them; control_center / settings broadcast
-//                                            them to every scene, so they all follow)
+//   facts   dark_mode · skin · accent · accent_auto · hour12 · pal_*    (owned by Settings: a scene in `desktop` includes
+//           theme_owner.plm and reads Settings.<name>; a scene of its own process includes theme_facts.plm and is told by `say`)
 //   accent  accent_c                        (blue by default; Settings → Appearance picks it)
 //   status  ok_c · warn_c · danger_c · focus_c
 //   text    ink_c · ink_sub
@@ -9,26 +9,10 @@
 //   cards   card_fill(+_op) · card_stroke(+_op) · item_bg(+_op) · item_solid
 //   sliders slider_bg · slider_bar · slider_icon (+ _op)
 //
-// Used with `include "common/theme.plm"` as the first line of a scene: a part is the scene's own text, so
-// the facts are the scene's facts (`say <scene> "fact dark_mode false"` keeps working).
+// Used with `include "common/theme_owner.plm"` (scene in `desktop`) or `include "common/theme_facts.plm"` (own process) and then
+// `include "common/theme.plm"`: the colours below are lets over those names.
 // A scene may tread on a name by declaring its own `let` of the same name; do that only on purpose.
 part Theme {
-    fact dark_mode = true
-    fact skin = 0            // 0 liquid glass · 1 light acrylic · 2 classic solid
-    fact accent = 0          // 0 blue · 1 purple · 2 pink · 3 red · 4 orange · 5 green · 6 graphite
-    fact hour12 = true       // clock format: true 2:05 PM · false 14:05 (Settings → Appearance)
-    fact accent_auto = false // true: the colours come from the wallpaper (palette engine in settings.luau)
-    //  The wallpaper palette (settings.luau runs matugen on the wallpaper and sends the colours for the current
-    //  light / dark mode as 0..1 numbers; -1 until there is one): accent, a second colour, and the surface tint.
-    fact pal_ar = -1
-    fact pal_ag = 0
-    fact pal_ab = 0
-    fact pal_br = 0
-    fact pal_bg = 0
-    fact pal_bb = 0
-    fact pal_sr = 0
-    fact pal_sg = 0
-    fact pal_sb = 0
     let pal_on = accent_auto and pal_ar >= 0
 
     // ── the accent, and what colours mean ────────────────────────

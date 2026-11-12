@@ -829,7 +829,7 @@ module("wallpapers", function(panel, opened, shown, closed)
         -- Remember it (start.sh and the lock screen read this file) and let the wallpaper scene reveal it.
         run("sh", { "-c", 'mkdir -p "$HOME/.config/beskar" && printf "%s\\n" "$1" > "$HOME/.config/beskar/wallpaper"', "x", w.path }, nil, { output = false })
         pcall(sys.call, "say", "wallpaper", "text wp_new " .. w.path)
-        if fact.accent_auto == true then
+        if fact["Settings.accent_auto"] == true then
             accent_from(w.path)
         end
     end

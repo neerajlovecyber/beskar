@@ -2,6 +2,7 @@
 // owns `dnd`, `banners`, `banner_ms`, `group_apps`, `banner_on`… (Settings and the Control Center ask it with `say`, the frame
 // too), and it is THE notification server (org.freedesktop.Notifications). Logic: notifications.luau (+ notif.luau, the body).
 import "common/palette.plm"
+uses scene "settings.plm" as Settings      // owns the look (dark mode, skin, accent, palette, clock format): read by name
 import "common/icons.plm"
 import "common/ui.plm"
 import "common/panelbody.plm"
@@ -9,6 +10,7 @@ uses scene "panels.plm" as Panels
 uses scene "topbar.plm" as Topbar
 
 scene Notifications {
+    include "common/theme_owner.plm"
     include "common/theme.plm"
     include "common/morph_core.plm"
 

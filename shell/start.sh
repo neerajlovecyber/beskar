@@ -4,6 +4,8 @@ set -e
 export PLEAMAR_NO_LENS=1
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BIN="$DIR/bin/pleamar"
+# The look (dark mode, skin, accent, palette, clock) is OWNED by the settings scene: the scenes in `desktop` read it by name, the
+# others (lock, widgets, capture) are told with `say`, as below.
 # pleamar 0.8 (`bin/exp/pleamar`) can bring scenes into ONE process (`shell/desktop.plm`, docs/UNIFIED_SURFACE_PLAN.md);
 # with the older runtime every scene is its own process, as before.
 DESKTOP=0
@@ -63,11 +65,11 @@ apply_saved_theme() {
         [ -z "$DM" ] && DM="true"
         [ -z "$SKIN" ] && SKIN="0"
 
-        for comp in topbar border settings infopanels dockpanels dialogs windows controlcenter notifications widgets ; do
+        for comp in settings lock widgets capture ; do
             "$BIN" --say "$comp" "fact dark_mode $DM" >/dev/null 2>&1 || true
             "$BIN" --say "$comp" "fact skin $SKIN" >/dev/null 2>&1 || true
         done
-        for comp in topbar settings lock infopanels dockpanels dialogs windows controlcenter notifications widgets ; do
+        for comp in settings lock widgets capture ; do
             "$BIN" --say "$comp" "fact accent $ACCENT" >/dev/null 2>&1 || true
             "$BIN" --say "$comp" "fact accent_auto $AUTO" >/dev/null 2>&1 || true
             "$BIN" --say "$comp" "fact hour12 $H12" >/dev/null 2>&1 || true
@@ -284,7 +286,7 @@ case "$1" in
     dark-mode)
         VAL="true"
         [ "$2" = "off" ] && VAL="false"
-        for comp in topbar settings infopanels dockpanels dialogs windows controlcenter notifications; do
+        for comp in settings lock widgets capture; do
             "$BIN" --say "$comp" "fact dark_mode $VAL"
         done
         mkdir -p "$(dirname "$CONFIG_FILE")"
@@ -293,7 +295,7 @@ case "$1" in
         ;;
     skin)
         SKIN_VAL="${2:-0}"
-        for comp in topbar settings infopanels dockpanels dialogs windows controlcenter notifications; do
+        for comp in settings lock widgets capture; do
             "$BIN" --say "$comp" "fact skin $SKIN_VAL"
         done
         mkdir -p "$(dirname "$CONFIG_FILE")"

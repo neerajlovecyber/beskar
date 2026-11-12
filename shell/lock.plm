@@ -11,6 +11,7 @@ import "common/palette.plm"
 import "common/icons.plm"
 
 scene MacLock {
+    include "common/theme_facts.plm"
     include "common/theme.plm"
 
     permissions {

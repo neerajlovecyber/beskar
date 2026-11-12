@@ -338,14 +338,14 @@ end)
 -- ── the clock: the time only (no date), 12 hour with AM / PM unless Settings says 24 ──
 local clockfmt = require("clockfmt")
 local function paint_clock()
-    local t = clockfmt(fact.hour12, fact.pref_seconds)
+    local t = clockfmt(fact["Settings.hour12"], fact.pref_seconds)
     if text.clock_text ~= t then
         text.clock_text = t
     end
 end
 paint_clock()
 every(1000, paint_clock)
-on("fact:hour12", paint_clock)
+on("fact:Settings.hour12", paint_clock)
 on("fact:pref_seconds", paint_clock)
 
 -- ── the little bars (music) and the recording dot move only while they show ──

@@ -3,8 +3,8 @@
 --   prefs     bar / dock / notification options          → saved in ~/.config/beskar/prefs.json, pushed to the scenes
 --   system    sound, brightness, displays (niri msg), Wi-Fi, Bluetooth, updates, shortcuts (read from niri's config)
 
-local THEMED = { "topbar", "infopanels", "dockpanels", "dialogs", "windows", "controlcenter", "notifications", "settings", "capture",
-                "lock", "widgets" }
+-- the scenes of their OWN process that do not read Settings' facts by name (everything in `desktop` does): they are told by `say`
+local THEMED = { "settings", "capture", "lock", "widgets" }
 
 local function say(scene, words)
     pcall(sys.call, "say", scene, words)

@@ -2,6 +2,7 @@
 // One of the panel scenes (the shared panel state is OWNED by `Panels`; the frame, `topbar`, draws every panel's glass).
 // Logic: infopanels.luau.
 import "common/palette.plm"
+uses scene "settings.plm" as Settings      // owns the look (dark mode, skin, accent, palette, clock format): read by name
 import "common/icons.plm"
 import "common/ui.plm"
 import "common/panelbody.plm"
@@ -9,6 +10,7 @@ uses scene "panels.plm" as Panels
 uses scene "topbar.plm" as Topbar
 
 scene MacInfoPanels {
+    include "common/theme_owner.plm"
     include "common/theme.plm"
     include "common/morph_core.plm"
 

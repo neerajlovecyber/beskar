@@ -2,6 +2,7 @@
 // notification centre's Do Not Disturb is `Notifications.dnd` (a scene writes only its own facts: we ask the owner with `say`).
 // Logic: controlcenter.luau (+ cc.luau, the panel's body).
 import "common/palette.plm"
+uses scene "settings.plm" as Settings      // owns the look (dark mode, skin, accent, palette, clock format): read by name
 import "common/icons.plm"
 import "common/ui.plm"
 import "common/panelbody.plm"
@@ -10,6 +11,7 @@ uses scene "topbar.plm" as Topbar
 uses scene "notifications.plm" as Notifications
 
 scene ControlCenter {
+    include "common/theme_owner.plm"
     include "common/theme.plm"
     include "common/morph_core.plm"
 

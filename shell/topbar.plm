@@ -11,10 +11,12 @@
 // The surface is the whole monitor, but only the zones catch the mouse: everywhere else the
 // click goes through to the windows.
 import "common/palette.plm"
+uses scene "settings.plm" as Settings      // owns the look (dark mode, skin, accent, palette, clock format): read by name
 import "common/icons.plm"
 uses scene "panels.plm" as Panels      // the owner of which panel is open: read here to order a hand-over to Settings
 
 scene MacTopBar {
+    include "common/theme_owner.plm"
     include "common/theme.plm"
     surface {
         size: full, full
