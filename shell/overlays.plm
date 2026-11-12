@@ -32,17 +32,6 @@ scene MacOverlays {
     let stroke_c = card_stroke
     let stroke_op = card_stroke_op
 
-    //  a top panel's content: shown only inside the glass as it grows (the surface itself is per monitor), fading in late
-    component TopBody(x: number, y: number, sw: number) {
-        group {
-            move: x, y
-            opacity: mp_fade
-            clip box { from: -60, -20; size: sw + 120, mp_rh + 20 }
-            children
-        }
-    }
-
-
     // ── weather ─────────────────────────────────────────────────
     fact wx_view = 0              // 0 the forecast · 1 choose a place
     fact wx_loaded = false
@@ -158,7 +147,7 @@ scene MacOverlays {
         zone box wx_dismiss { from: 0, 0; size: 420, 610; active: open and cur == 15 }
         on press wx_dismiss { open = false }
         on press right wx_dismiss { }
-    TopBody(16, -2, 420) {
+    PanelBody(16, -2, 0, 420, Topbar.cp_w) {
 
         //  clicks on the card itself do not close it
         zone box wx_inside { from: 0, 0; size: 388, 600 }
@@ -305,7 +294,7 @@ scene MacOverlays {
         zone box mu_dismiss { from: 0, 0; size: 380, 260; active: open and cur == 9 }
         on press mu_dismiss { open = false }
         on press right mu_dismiss { }
-    TopBody(16, -2, 380) {
+    PanelBody(16, -2, 0, 380, Topbar.cp_w) {
 
         //  clicks on the card itself do not close it
         zone box mu_inside { from: 0, 0; size: 348, 200 }
@@ -381,7 +370,7 @@ scene MacOverlays {
         zone box d_dismiss { from: 0, 0; size: 380, 640; active: open and cur == 3 }
         on press d_dismiss { open = false }
         on press right d_dismiss { }
-    TopBody(16, -2, 380) {
+    PanelBody(16, -2, 0, 380, Topbar.cp_w) {
 
         //  clicks on the card itself do not close it
         zone box d_inside { from: 0, 0; size: 348, 620 }
@@ -494,7 +483,7 @@ scene MacOverlays {
         zone box up_dismiss { from: 0, 0; size: 400, 480; active: open and cur == 16 }
         on press up_dismiss { open = false }
         on press right up_dismiss { }
-    TopBody(44, -2, 400) {
+    PanelBody(44, -2, 0, 400, Topbar.rp_w) {
         zone box up_inside { from: 0, 0; size: 340, 470 }
         on press right up_inside { }
 
@@ -840,7 +829,7 @@ scene MacOverlays {
         on press ses_dismiss { open = false }
         on press right ses_dismiss { }
 
-        PanelBody(20, 280, 1) {
+        PanelBody(20, 280, 1, 0, Topbar.bp_w) {
             zone box ses_inside { from: 0, 0; size: 480, 250 }
             on press right ses_inside { }
 
@@ -913,7 +902,7 @@ scene MacOverlays {
         on press pk_dismiss { }
         on press right pk_dismiss { }
 
-        PanelBody(20, 340, 1) {
+        PanelBody(20, 340, 1, 0, Topbar.bp_w) {
             zone box pk_inside { from: 0, 0; size: 480, 310 }
             on press right pk_inside { }
 
@@ -973,7 +962,7 @@ scene MacOverlays {
 
     zone box sp_dismiss { from: 0, 0; size: 680, 520; active: open and cur == 4 }
 
-    PanelBody(20, 520, 1) {
+    PanelBody(20, 520, 1, 0, Topbar.bp_w) {
 
         // Results List
         //  seven rows are seen; more results scroll (wheel, or the arrow keys carry the selection)
@@ -1015,7 +1004,7 @@ scene MacOverlays {
         on press clip_dismiss { open = false }
         on press right clip_dismiss { }
 
-        PanelBody(20, 560, 1) {
+        PanelBody(20, 560, 1, 0, Topbar.bp_w) {
 
             //  clicks on the panel itself do not close it; the wheel scrolls the list
             zone box clip_inside { from: 0, 0; size: 560, 520 }
@@ -1060,7 +1049,7 @@ scene MacOverlays {
 
     zone box wp_dismiss { from: 0, 0; size: 1000, 300; active: open and cur == 5 }
 
-    PanelBody(10, 300, 1) {
+    PanelBody(10, 300, 1, 0, Topbar.bp_w) {
 
         //  clicks on the strip itself do not close it
         zone box wp_inside { from: 0, 0; size: 980, 250 }
@@ -1119,7 +1108,7 @@ scene MacOverlays {
 
         zone box wb_dismiss { from: 0, 0; size: 820, 170; active: open and cur == 10 }
 
-        PanelBody(10, 170, 1) {
+        PanelBody(10, 170, 1, 0, Topbar.bp_w) {
 
             //  clicks on the bar itself do nothing
             zone box wb_inside { from: 0, 0; size: 800, 132 }
@@ -1307,7 +1296,7 @@ scene MacOverlays {
 
         zone box sw_dismiss { from: 0, 0; size: 1120, 200; active: open and cur == 21 }
 
-        PanelBody(0, 200, 1) {
+        PanelBody(0, 200, 1, 0, Topbar.bp_w) {
             //  Horizontal strip of window cards
             row app_strip {
                 at: 560, 16
@@ -1334,7 +1323,7 @@ scene MacOverlays {
 
         zone box ov_dismiss { from: 0, 0; size: 1240, 820; active: open and cur == 22 }
 
-        PanelBody(0, 820, 1) {
+        PanelBody(0, 820, 1, 0, Topbar.bp_w) {
             //  Header row
             group {
                 move: 620 - ov_w / 2 + 30, 26
@@ -1394,7 +1383,7 @@ scene MacOverlays {
 
         zone box wl_scrim { from: 0, 0; size: 680, 480; active: open and cur == 24 }
 
-        PanelBody(20, 480, 1) {
+        PanelBody(20, 480, 1, 0, Topbar.bp_w) {
 
             //  ── page 0: hello ──
             group {

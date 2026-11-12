@@ -129,7 +129,7 @@ part Notifications {
         on press nc_dismiss { open = false }
         on press right nc_dismiss { }
 
-    TopBody(26, -2, 412) {
+    PanelBody(26, -2, 0, 412, Topbar.rp_w) {
 
         PanelHeader("󰂚", "Notifications", 30, 32)
         //  Clear all
