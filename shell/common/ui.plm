@@ -17,7 +17,7 @@
 //   CardBg(w, h, r, edge)   the fill (and edge) of a card; use it instead of a hand-drawn box
 //   Divider(len)                   a 1 px line
 //   ScrollBar(sc, ct, h)           a thin scroll bar for a `view:` layout (list.scroll, list.content, the seen height)
-part Ui {
+library Ui {
     //  The shell's own glass plate.
     component Plate(w: number, h: number, r: number) {
         body {

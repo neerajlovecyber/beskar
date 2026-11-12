@@ -4,6 +4,11 @@ set -e
 export PLEAMAR_NO_LENS=1
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BIN="$DIR/bin/pleamar"
+# pleamar 0.8 (`bin/exp/pleamar`) can bring scenes into ONE process (`shell/desktop.plm`, docs/UNIFIED_SURFACE_PLAN.md);
+# with the older runtime every scene is its own process, as before.
+DESKTOP=0
+if [ -x "$DIR/bin/exp/pleamar" ]; then BIN="$DIR/bin/exp/pleamar"; DESKTOP=1; fi
+export PLEAMAR_BIN="$BIN"
 # One pid file per Wayland display, so a second shell (say, one in a nested pleamar-wm) never touches the first.
 PID_FILE="/tmp/pleamar_macos_shell.${WAYLAND_DISPLAY:-wayland-0}.pids"
 CONFIG_FILE="$HOME/.config/pleamar_shell.json"
@@ -112,6 +117,13 @@ start_shell() {
     # panels = weather, music, today, updates · dock = spotlight, clipboard, wallpapers, widget bar, session and polkit
     # dialogs · modals = app switcher, overview, capture · dialogs = the first-run welcome
     S="$DIR/shell"
+    if [ "$DESKTOP" = 1 ]; then
+        setsid "$S/supervise.sh" \
+            "$S/desktop.plm:/tmp/pleamar_desktop.log" \
+            "$S/lock.plm:/tmp/pleamar_lock.log" \
+            "$S/widgets.plm:/tmp/pleamar_widgets.log" \
+            </dev/null >/dev/null 2>&1 &
+    else
     setsid "$S/supervise.sh" \
         "$S/wallpaper.plm:/tmp/pleamar_wallpaper.log" \
         "$S/topbar.plm:/tmp/pleamar_topbar.log" \
@@ -120,6 +132,7 @@ start_shell() {
         "$S/widgets.plm:/tmp/pleamar_widgets.log" \
         "$S/overlays.plm:/tmp/pleamar_overlays.log" \
         </dev/null >/dev/null 2>&1 &
+    fi
     echo "$!" > "$PID_FILE"
     sleep 0.6
 

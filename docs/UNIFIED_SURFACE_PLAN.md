@@ -146,3 +146,13 @@ panel, `include`d), `each max` copies compiled per monitor (set `max 2`), full-s
   commit or stash them before starting.
 - Never start the shell from a tool call directly (rule 47): use
   `systemd-run --user --unit=beskar-shell --remain-after-exit --collect shell/start.sh restart`.
+
+
+## Status after phases 3 and 4 (done with `import scene` of pleamar 0.8-exp.3, not by rewriting into one surface)
+
+The approach changed: pleamar 0.8 lets a scene bring whole scenes into one process (`import scene`) and draw a panel once on a
+surface that follows a monitor (`screens: <text>`). So: processes 6 -> 3 (desktop, widgets, lock; capture on demand) and
+overlay surfaces from ~26 to 13 (one per panel, mapped only while open). See AGENTS.md rule 57 for what it took and the
+measured numbers. Not done: widgets and lock inside the desktop (pleamar issues above), the frame itself is still a
+`screens: each` surface, and settings is still a window of its own inside the desktop. When 0.8.0 is released, move
+`bin/exp/pleamar` to the stable build.

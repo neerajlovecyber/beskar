@@ -1,7 +1,6 @@
 // The Control Center: a panel of `overlays` (id 1, right island). Included by overlays.plm.
 part ControlCenter {
     // ── Built-in System Models ────────────────────────────────────
-    model nets max 8 { ssid: text; strength: number; secure: bool; known: bool; active: bool }
     //  One row per Bluetooth device, painted by control_center.luau. kind: 0 any · 1 headphones · 2 mouse ·
     //  3 keyboard · 4 phone · 5 computer · 6 gamepad · 7 speaker. state: 0 paired · 1 connected · 2 working · 3 new.
     model bt_rows max 8 { name: text; status: text; kind: number; state: number; battery: number = -1 }
@@ -11,9 +10,12 @@ part ControlCenter {
     model app_rows max 4 { name: text; volume: number; muted: bool }
 
     // ── System Services & Lists ───────────────────────────────────
-    service audio as sound { volume: number; muted: bool; outputs: outs }
-    service brightness as display { present: bool; level: number }
-    service network as net { online: bool; name: text; networks: nets }
+    //  (kept by cc.luau: plain watchers, not `service` lines, so the part also works brought into another scene)
+    fact snd_volume = 0
+    fact snd_muted = false
+    fact disp_level = 1
+    fact net_online = false
+    text net_name = ""
 
     // ── Navigation & Theme Facts ──────────────────────────────────
     // Navigation: 0 = Main, 1 = Wi-Fi, 2 = Bluetooth, 3 = Sound
@@ -120,9 +122,9 @@ part ControlCenter {
         anchor: top_right
         margin: 0, 0, 0, 0
         level: overlay
-        screens: each
+        screens: panel_mon
         keyboard: exclusive while asking and cur == 1
-        open: (open or seen > 0.02) and cur == 1 and open_screen == screen.index
+        open: (open or seen > 0.02) and cur == 1
 
         zone box cc_dismiss { from: 0, 0; size: 440, 520; active: open and cur == 1 }
         on press cc_dismiss { open = false; cc_page = 0 }
@@ -140,16 +142,17 @@ part ControlCenter {
                 move: 16, 16
                 size: 158, 60
                 CardBg(158, 60, 30)
-                box { from: 0, 0; size: 158, 60; corner: 30; color: accent_c; opacity: if(net.online, 100%, 0%) }
+                box { from: 0, 0; size: 158, 60; corner: 30; color: accent_c; opacity: if(net_online, 100%, 0%) }
                 box { from: 0, 0; size: 158, 60; corner: 30; stroke: 1; color: card_stroke; opacity: card_stroke_op }
-                ellipse { at: 30, 30; radius: 20; color: if(net.online, on_accent, item_solid) }
+                ellipse { at: 30, 30; radius: 20; color: if(net_online, on_accent, item_solid) }
                 repeat a in 1..4 {
-                    arc { at: 30, 37; radius: a * 4.8; span: 100deg; width: 2.2; color: if(net.online, accent_c, ink_c) }
+                    arc { at: 30, 37; radius: a * 4.8; span: 100deg; width: 2.2; color: if(net_online, accent_c, ink_c) }
                 }
-                ellipse { at: 30, 37.5; radius: 1.9; color: if(net.online, accent_c, ink_c) }
-                text "Wi-Fi" { at: 58, 22; anchor: left center; size: t_sub; weight: 600; color: if(net.online, on_accent, ink_c) }
-                text if(net.online, net.name, "Off") { at: 58, 38; anchor: left center; size: t_micro; color: if(net.online, on_accent, ink_sub); opacity: if(net.online, 80%, 100%); width: 80; lines: 1 }
+                ellipse { at: 30, 37.5; radius: 1.9; color: if(net_online, accent_c, ink_c) }
+                text "Wi-Fi" { at: 58, 22; anchor: left center; size: t_sub; weight: 600; color: if(net_online, on_accent, ink_c) }
+                text if(net_online, net_name, "Off") { at: 58, 38; anchor: left center; size: t_micro; color: if(net_online, on_accent, ink_sub); opacity: if(net_online, 80%, 100%); width: 80; lines: 1 }
                 zone box wifi_chevron_hit { from: 52, 0; size: 106, 60; corner: 30; cursor: pointer }
+                on press wifi_chevron_hit { cc_page = 1 }
                 zone box wifi_icon_hit { at: 30, 30; size: 40, 40; corner: r_l; cursor: pointer }
             }
 
@@ -199,6 +202,7 @@ part ControlCenter {
                     box { from: 14, 102; size: 130, 3; corner: 1.5; color: slider_bg; opacity: slider_bg_op }
                     box { from: 14, 102; size: max(3, 130 * clamp(track_pos / max(track_len, 1), 0, 1)), 3; corner: 1.5; color: slider_bar; opacity: slider_bar_op; show: track_len > 0 }
                     zone box seek_hit { from: 14, 96; size: 130, 14; cursor: pointer; active: track_len > 0 }
+                    on press seek_hit { emit seek(clamp(local.x / 130, 0, 1)) }
 
                     //  previous · play/pause · next
                     path { at: 38, 112; color: ink_c; move 9, 0; line 9, 11; line 0, 5.5; close }
@@ -212,8 +216,11 @@ part ControlCenter {
                     path { at: 112, 112; color: ink_c; move 0, 0; line 9, 5.5; line 0, 11; close }
                     box { from: 122, 112; size: 2, 11; corner: 1; color: ink_c }
                     zone box prev_hit { at: 43, 117.5; size: 26, 22; corner: 11; cursor: pointer }
+                    on press prev_hit { emit previous }
                     zone box play_hit { at: 79, 117.5; size: 30, 22; corner: 11; cursor: pointer }
+                    on press play_hit { emit play_pause }
                     zone box next_hit { at: 117, 117.5; size: 26, 22; corner: 11; cursor: pointer }
+                    on press next_hit { emit next }
                 }
             }
 
@@ -231,6 +238,7 @@ part ControlCenter {
                 text "Do Not" { at: 58, 24; anchor: left center; size: t_sub; weight: 600; color: if(dnd, on_accent, ink_c) }
                 text "Disturb" { at: 58, 38; anchor: left center; size: t_sub; weight: 600; color: if(dnd, on_accent, ink_c) }
                 zone box dnd_hit { from: 0, 0; size: 158, 60; corner: 30; cursor: pointer }
+                on press dnd_hit { emit toggle_dnd }
             }
 
             // ── Dark Mode: a square that is a sun or a moon ──
@@ -267,14 +275,15 @@ part ControlCenter {
                 ellipse { at: 42, 30; radius: 3; color: ink_c }
                 ellipse { at: 35, 37; radius: 3; color: ink_c }
                 zone box settings_tile_hit { from: 0, 0; size: 73, 60; corner: r_l; cursor: pointer }
+                on press settings_tile_hit { emit open_settings; open = false; cc_page = 0 }
             }
 
             // Sliders Section
             column {
                 at: 16, 232
                 gap: 10
-                LevelSlider("Display", display.level, "{display.level * 100, 0}%", 0, brightness_set, open_nothing)
-                LevelSlider("Sound", sound.volume, "{sound.volume * 100, 0}% ›", 1, volume_set, open_sound)
+                LevelSlider("Display", disp_level, "{disp_level * 100, 0}%", 0, brightness_set, open_nothing)
+                LevelSlider("Sound", snd_volume, "{snd_volume * 100, 0}% ›", 1, volume_set, open_sound)
             }
 
             // ── four round shortcuts ──
@@ -286,6 +295,7 @@ part ControlCenter {
                 ellipse { at: 26, 26; radius: 8; stroke: 2.2; color: ink_c }
                 line { from: 32, 32; to: 38, 38; width: 2.4; color: ink_c }
                 zone box sc_search_hit { at: 28, 28; size: 56, 56; corner: 28; cursor: pointer }
+                on press sc_search_hit { emit sc_search; open = false; cc_page = 0 }
 
                 //  Clipboard
                 ellipse { at: 118.7, 28; radius: 28; color: card_fill; opacity: card_fill_op }
@@ -457,6 +467,7 @@ part ControlCenter {
             box { from: 306, 25; size: 38, 22; corner: 11; color: if(bt_on, ok_c, item_bg); opacity: if(bt_on, 100%, item_bg_op) }
             ellipse { at: if(bt_on, 335, 316), 36; radius: 9; color: on_accent }
             zone box bt_power_hit { from: 306, 25; size: 38, 22; corner: 11; cursor: pointer; active: bt_present }
+            on press bt_power_hit { emit bt_power }
             text if(bt_scanning, "Searching…", "Search") { at: 292, 36; anchor: right center; size: t_cap; weight: 500; color: if(bt_scanning, accent_c, ink_sub); show: bt_on }
             zone box bt_scan_hit { from: 200, 24; size: 94, 24; corner: 12; cursor: pointer; active: bt_on }
 
@@ -559,22 +570,13 @@ part ControlCenter {
     }
 
     // Sliders & Media Actions
-    on press play_hit { emit play_pause }
     on open_sound { cc_page = 3 }
-    on press prev_hit { emit previous }
-    on press next_hit { emit next }
-    on press seek_hit { emit seek(clamp(local.x / 130, 0, 1)) }
-    on press dnd_hit { emit toggle_dnd }
-    on press sc_search_hit { emit sc_search; open = false; cc_page = 0 }
     on press sc_clip_hit   { emit sc_clip; open = false; cc_page = 0 }
     on press sc_shot_hit   { emit sc_shot; open = false; cc_page = 0 }
     on press sc_lock_hit   { emit sc_lock; open = false; cc_page = 0 }
-    on press settings_tile_hit { emit open_settings; open = false; cc_page = 0 }
-    on press bt_power_hit { emit bt_power }
     on press bt_scan_hit  { emit bt_scan }
 
     // Navigation Transitions
-    on press wifi_chevron_hit { cc_page = 1 }
     on press wifi_back_hit    { cc_page = 0 }
     on press wifi_icon_hit    { emit toggle_wifi }
     on press wifi_switch_hit  { emit toggle_wifi }

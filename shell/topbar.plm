@@ -11,10 +11,10 @@
 // The surface is the whole monitor, but only the zones catch the mouse: everywhere else the
 // click goes through to the windows.
 import "common/palette.plm"
+import "common/icons.plm"
 
 scene MacTopBar {
     include "common/theme.plm"
-    include "common/icons.plm"
     surface {
         size: full, full
         anchor: top

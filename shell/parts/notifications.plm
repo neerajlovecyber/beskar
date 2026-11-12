@@ -121,8 +121,8 @@ part Notifications {
         anchor: top_right
         margin: 0, 0, 0, 0
         level: overlay
-        screens: each
-        open: (open or seen > 0.02) and cur == 2 and open_screen == screen.index
+        screens: panel_mon
+        open: (open or seen > 0.02) and cur == 2
 
         zone box nc_dismiss { from: 0, 0; size: 412, 800; active: open and cur == 2 }
         on press nc_dismiss { open = false }

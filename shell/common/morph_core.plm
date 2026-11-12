@@ -4,6 +4,7 @@
 part MorphCore {
     fact open = false
     fact open_screen = 0         // which monitor shows it (set by topbar.luau)
+    text panel_mon = "none"      // …and its NAME: every panel is ONE surface that follows this monitor (`screens: panel_mon`)
     fact panel_h = 400           // its height, reported by its logic through panel.height(h)
     prop seen = 0 ~calm
     prop ph = 400 ~calm

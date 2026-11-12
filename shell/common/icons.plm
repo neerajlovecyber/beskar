@@ -5,9 +5,9 @@
 //   Sym("󰕾", 38, 69, 20, ink_c)               // centred on x, y
 //   SymTile("󰃟", 18, 49, 40, 12, ink_c, 12%)    // a rounded square (left, top, size, corner) with the glyph in its middle
 //
-// Put `include "common/icons.plm"` in the scene (after theme.plm). A glyph that must change with a fact uses a
+// Put `import "common/icons.plm"` before `scene` (it is a library: imported once even when several scenes share a process). A glyph that must change with a fact uses a
 // `text` of its own with `family: "JetBrainsMono Nerd Font Mono"` (a component's text parameter is a literal).
-part Icons {
+library Icons {
     component Sym(g: text, x: number, y: number, sz: number, col: color, op: number = 1) {
         text g { at: x, y; anchor: center center; size: sz; family: "JetBrainsMono Nerd Font Mono"; color: col; opacity: op }
     }

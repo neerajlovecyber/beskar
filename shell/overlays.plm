@@ -5,13 +5,13 @@
 //   more dock panels   app switcher 21 · window overview 22 · first-run welcome 24   (the capture picker, 23, is its own scene)
 // `cur` is the id of the open one. Logic: overlays.luau (+ panelcore.luau).
 import "common/palette.plm"
+import "common/icons.plm"
+import "common/ui.plm"
 
 scene MacOverlays {
     let mp_sw = 1300
     let mp_sh = 560
     include "common/theme.plm"
-    include "common/ui.plm"
-    include "common/icons.plm"
     include "common/morph_core.plm"
     include "parts/control_center.plm"       // panel 1 (right island)
     include "parts/notifications.plm"        // panel 2 (right island) + the banner card in the centre pill
@@ -152,8 +152,8 @@ scene MacOverlays {
         margin: 0, 0, 0, 0
         level: overlay
         keyboard: on_demand
-        screens: each
-        open: (open or seen > 0.02) and cur == 15 and open_screen == screen.index
+        screens: panel_mon
+        open: (open or seen > 0.02) and cur == 15
         zone box wx_dismiss { from: 0, 0; size: 420, 610; active: open and cur == 15 }
         on press wx_dismiss { open = false }
         on press right wx_dismiss { }
@@ -299,8 +299,8 @@ scene MacOverlays {
         anchor: top
         margin: 0, 0, 0, 0
         level: overlay
-        screens: each
-        open: (open or seen > 0.02) and cur == 9 and open_screen == screen.index
+        screens: panel_mon
+        open: (open or seen > 0.02) and cur == 9
         zone box mu_dismiss { from: 0, 0; size: 380, 260; active: open and cur == 9 }
         on press mu_dismiss { open = false }
         on press right mu_dismiss { }
@@ -375,8 +375,8 @@ scene MacOverlays {
         anchor: top
         margin: 0, 0, 0, 0
         level: overlay
-        screens: each
-        open: (open or seen > 0.02) and cur == 3 and open_screen == screen.index
+        screens: panel_mon
+        open: (open or seen > 0.02) and cur == 3
         zone box d_dismiss { from: 0, 0; size: 380, 640; active: open and cur == 3 }
         on press d_dismiss { open = false }
         on press right d_dismiss { }
@@ -488,8 +488,8 @@ scene MacOverlays {
         anchor: top_right
         margin: 0, 0, 0, 0
         level: overlay
-        screens: each
-        open: (open or seen > 0.02) and cur == 16 and open_screen == screen.index
+        screens: panel_mon
+        open: (open or seen > 0.02) and cur == 16
         zone box up_dismiss { from: 0, 0; size: 400, 480; active: open and cur == 16 }
         on press up_dismiss { open = false }
         on press right up_dismiss { }
@@ -832,8 +832,8 @@ scene MacOverlays {
         margin: 0, 0, 0, 0
         level: overlay
         keyboard: exclusive while open and cur == 11
-        screens: each
-        open: (open or seen > 0.02) and cur == 11 and open_screen == screen.index
+        screens: panel_mon
+        open: (open or seen > 0.02) and cur == 11
 
         zone box ses_dismiss { from: 0, 0; size: 520, 280; active: open and cur == 11 }
         on press ses_dismiss { open = false }
@@ -905,8 +905,8 @@ scene MacOverlays {
         margin: 0, 0, 0, 0
         level: overlay
         keyboard: exclusive while open and cur == 12
-        screens: each
-        open: (open or seen > 0.02) and cur == 12 and open_screen == screen.index
+        screens: panel_mon
+        open: (open or seen > 0.02) and cur == 12
 
         zone box pk_dismiss { from: 0, 0; size: 520, 340; active: open and cur == 12 }
         on press pk_dismiss { }
@@ -967,8 +967,8 @@ scene MacOverlays {
         margin: 0, 0, 0, 0
         level: overlay
         keyboard: exclusive while open and cur == 4
-        screens: each
-        open: (open or seen > 0.02) and cur == 4 and open_screen == screen.index
+        screens: panel_mon
+        open: (open or seen > 0.02) and cur == 4
 
     zone box sp_dismiss { from: 0, 0; size: 680, 520; active: open and cur == 4 }
 
@@ -1007,8 +1007,8 @@ scene MacOverlays {
         margin: 0, 0, 0, 0
         level: overlay
         keyboard: exclusive while open and cur == 6
-        screens: each
-        open: (open or seen > 0.02) and cur == 6 and open_screen == screen.index
+        screens: panel_mon
+        open: (open or seen > 0.02) and cur == 6
 
         zone box clip_dismiss { from: 0, 0; size: 600, 560; active: open and cur == 6 }
         on press clip_dismiss { open = false }
@@ -1054,8 +1054,8 @@ scene MacOverlays {
         margin: 0, 0, 0, 0
         level: overlay
         keyboard: exclusive while open and cur == 5
-        screens: each
-        open: (open or seen > 0.02) and cur == 5 and open_screen == screen.index
+        screens: panel_mon
+        open: (open or seen > 0.02) and cur == 5
 
     zone box wp_dismiss { from: 0, 0; size: 1000, 300; active: open and cur == 5 }
 
@@ -1113,8 +1113,8 @@ scene MacOverlays {
         margin: 0, 0, 0, 0
         level: overlay
         keyboard: exclusive while open and cur == 10
-        screens: each
-        open: (open or seen > 0.02) and cur == 10 and open_screen == screen.index
+        screens: panel_mon
+        open: (open or seen > 0.02) and cur == 10
 
         zone box wb_dismiss { from: 0, 0; size: 820, 170; active: open and cur == 10 }
 
@@ -1301,8 +1301,8 @@ scene MacOverlays {
         margin: 0, 0, 0, 0
         level: overlay
         keyboard: exclusive while open and cur == 21
-        screens: each
-        open: (open or seen > 0.02) and cur == 21 and open_screen == screen.index
+        screens: panel_mon
+        open: (open or seen > 0.02) and cur == 21
 
         zone box sw_dismiss { from: 0, 0; size: 1120, 200; active: open and cur == 21 }
 
@@ -1328,8 +1328,8 @@ scene MacOverlays {
         margin: 0, 0, 0, 0
         level: overlay
         keyboard: exclusive while open and cur == 22
-        screens: each
-        open: (open or seen > 0.02) and cur == 22 and open_screen == screen.index
+        screens: panel_mon
+        open: (open or seen > 0.02) and cur == 22
 
         zone box ov_dismiss { from: 0, 0; size: 1240, 820; active: open and cur == 22 }
 
@@ -1388,8 +1388,8 @@ scene MacOverlays {
         margin: 0, 0, 0, 0
         level: overlay
         keyboard: exclusive while open and cur == 24
-        screens: each
-        open: (open or seen > 0.02) and cur == 24 and open_screen == screen.index
+        screens: panel_mon
+        open: (open or seen > 0.02) and cur == 24
 
         zone box wl_scrim { from: 0, 0; size: 680, 480; active: open and cur == 24 }
 

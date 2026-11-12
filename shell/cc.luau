@@ -131,6 +131,8 @@ end
 
 sys.watch("network", function(n)
     net_state = n or {}
+    fact.net_online = (n and n.online) == true
+    text.net_name = (n and n.name) or ""
     paint_wifi()
 end)
 
@@ -398,8 +400,18 @@ sys.watch("audio", function(a)
     end
     model.app_rows = rows
     apps_n = #rows
-    outs_n = math.max(1, #((a and a.outputs) or {}))
+    local outs = {}
+    for _, o in ipairs((a and a.outputs) or {}) do
+        outs[#outs + 1] = { id = o.id, name = o.name or "", default = o.default == true }
+    end
+    model.outs = outs
+    outs_n = math.max(1, #outs)
+    fact.snd_volume = tonumber(a and a.volume) or 0
+    fact.snd_muted = (a and a.muted) == true
     push_height()
+end)
+sys.watch("brightness", function(b)
+    fact.disp_level = tonumber(b and b.level) or 1
 end)
 
 on("app_volume", function(v)

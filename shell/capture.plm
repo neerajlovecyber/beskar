@@ -2,12 +2,12 @@
 // Opened through the frame (`start.sh capture`, Print / Super+Shift+5): panel number 11 in topbar.luau's FOCUS_PANELS,
 // so it opens on the monitor with the focus. capture.luau grabs the frozen picture first, then opens it.
 import "common/palette.plm"
+import "common/icons.plm"
+import "common/ui.plm"
 
 scene MacCapture {
     include "common/theme.plm"
     include "common/here.plm"
-    include "common/icons.plm"
-    include "common/ui.plm"
 
     surface picker {
         size: full, full

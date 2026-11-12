@@ -163,6 +163,15 @@ end)
 local MERGED = { dashboard = true, music = true, weather = true, updates = true, control_center = true, notifications = true }   -- (`cur` is set before opening)
 -- Spotlight, wallpapers, clipboard and the widget bar live in ONE scene, `dock` (panel id = its `cur`)
 local DOCK = { spotlight = 4, wallpapers = 5, clipboard = 6, widget_bar = 10, session = 11, polkit = 12, appswitcher = 21, overview = 22, welcome = 24 }
+-- Every overlay panel is ONE surface that follows the monitor named in `panel_mon` (`screens: panel_mon`): tell it
+-- the monitor's index (`open_screen`) and its output NAME. Ours (OUTPUTS) is filled in below.
+local OUTPUT_NAMES
+local function overlay_screen(s, name)
+    local n = OUTPUT_NAMES and OUTPUT_NAMES()[s + 1] or ""
+    local target = (name and (MERGED[name] or DOCK[name])) and "overlays" or (name or "overlays")
+    pcall(sys.call, "say", target, "text panel_mon " .. n)
+    pcall(sys.call, "say", target, "fact open_screen " .. s)
+end
 local function panel_say(name, words)
     pcall(sys.call, "say", (MERGED[name] or DOCK[name]) and "overlays" or name, words)
 end
@@ -213,6 +222,7 @@ end)
 -- Which monitor a click was on: `last_screen` is set by the button's own rule just before it emits. Anything
 -- else (a niri key bound to start.sh) has none, and then the monitor with the focus is used.
 local OUTPUTS = {}                       -- monitor names by screen index (0 -> OUTPUTS[1], 1 -> OUTPUTS[2])
+OUTPUT_NAMES = function() return OUTPUTS end
 local push_mon                           -- forward declaration for sync_outputs listeners
 
 local function sync_outputs()
@@ -290,7 +300,7 @@ local function open_island_panel(name, page)
                 return
             end
             fact[p.island .. "_screen"] = s
-            panel_say(name, "fact open_screen " .. s)
+            overlay_screen(s, name)
             if MERGED[name] then panel_say(name, "fact cur " .. p.id) end
             if name == "control_center" then
                 pcall(sys.call, "say", "overlays", "fact cc_page " .. (page or 0))
@@ -618,7 +628,7 @@ on("open_panel", function(n)
             fact[p.island .. "_screen"] = s          -- its glass is drawn by the frame, on that monitor
         end
         if OVERLAY[name] then
-            pcall(sys.call, "say", "overlays", "fact open_screen " .. s)
+            overlay_screen(s)
             pcall(sys.call, "say", "overlays", "emit toggle_dock " .. OVERLAY[name])
             return
         end
@@ -642,7 +652,7 @@ end
 -- The monitor the power menu is on (`open_screen`), for the windows its items open.
 -- the session / polkit / welcome dialogs live in ONE scene, `dialogs`; `cur` says which (rule 51)
 local function show_dock_on_menu_monitor(id)        -- (the session dialog grows out of the dock: panel 11)
-    say("overlays", "fact open_screen " .. (tonumber(fact.open_screen) or 0))
+    overlay_screen(tonumber(fact.open_screen) or 0)
     say("overlays", "emit show_panel " .. id)
 end
 local function show_on_menu_monitor(name)
@@ -1242,11 +1252,25 @@ end)
 -- Screen learning fallback: sync_outputs() gets monitor names directly from pleamar
 -- (text["screen.0.name"], text["screen.1.name"]), but if delayed, learn from log.
 local function learn_screens(tries)
-    if #OUTPUTS >= 2 then return end
-    run("sh", { "-c", "grep 'surface [0-9]* on' /tmp/pleamar_topbar.log 2>/dev/null | head -8" }, function(out)
+    -- one process for the whole desktop (desktop.plm): the log lines say which scene each surface is
+    -- (`surface 5 on HDMI-A-1 · … · Topbar copy 1`); with one process per scene the topbar's own log has `surface N on NAME`
+    local script = "if grep -q 'surface [0-9]* on .* Topbar' /tmp/pleamar_desktop.log 2>/dev/null; then "
+        .. "grep 'surface [0-9]* on .* Topbar' /tmp/pleamar_desktop.log | head -8; "
+        .. "else grep 'surface [0-9]* on' /tmp/pleamar_topbar.log 2>/dev/null | head -8; fi"
+    run("sh", { "-c", script }, function(out)
         local map = {}
-        for idx, name in (out or ""):gmatch("surface (%d+) on (%S+)") do
-            map[tonumber(idx) + 1] = name
+        local n = 0
+        for line in (out or ""):gmatch("[^\n]+") do
+            local name = line:match("surface %d+ on (%S+)")
+            if name then
+                local copy = line:match("Topbar copy (%d+)")
+                local idx = copy and tonumber(copy) or (line:find("Topbar", 1, true) and 0 or nil)
+                if idx == nil then
+                    idx = tonumber(line:match("surface (%d+) on")) or n
+                end
+                map[idx + 1] = name
+                n = n + 1
+            end
         end
         if #map >= 2 or (#map > 0 and tries == 0) then
             OUTPUTS = map

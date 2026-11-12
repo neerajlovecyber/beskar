@@ -11,10 +11,10 @@
 //
 // Kinds: 1 clock · 2 date · 3 weather · 4 battery · 5 system · 6 media · 7 month calendar
 import "common/palette.plm"
+import "common/icons.plm"
 
 scene Widgets {
     include "common/theme.plm"
-    include "common/icons.plm"
     permissions {
         services: "clock", "battery", "media", "media.*", "audio", "audio.*", "brightness", "brightness.*", "say:topbar", "say:settings", "say:overlays"
         run: "sh", "curl", "cat", "niri msg"
@@ -138,11 +138,11 @@ scene Widgets {
                 GridCells()
             }
         }
-        for w in ws { Card(w) }
+        for w in ws { WCard(w) }
     }
 
     // ── a card ──
-    component Card(w: record) {
+    component WCard(w: record) {
         prop px = 0 ~calm
         prop py = 0 ~calm
         prop appear = 0 ~calm

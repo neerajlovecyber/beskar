@@ -1,0 +1,9 @@
+// The whole shell in ONE process (pleamar 0.8 `import scene`): every scene keeps its own file, logic, permissions and
+// `--say` name (`--say topbar …` still reaches Topbar). Started by start.sh instead of one process per scene.
+// Widgets (a level: bottom surface), the lock screen and the on-demand capture picker stay their own processes.
+import scene "wallpaper.plm" as Wallpaper
+import scene "topbar.plm" as Topbar
+import scene "overlays.plm" as Overlays
+import scene "settings.plm" as Settings
+
+scene Desktop { }

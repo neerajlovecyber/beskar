@@ -8,10 +8,10 @@
 // If the process holding the lock dies, the session STAYS locked (on purpose). To get back in from a text console:
 //     XDG_RUNTIME_DIR=/run/user/$UID WAYLAND_DISPLAY=wayland-1 bin/pleamar --say lock "fact locked false"
 import "common/palette.plm"
+import "common/icons.plm"
 
 scene MacLock {
     include "common/theme.plm"
-    include "common/icons.plm"
 
     permissions {
         services: "clock", "auth", "say:topbar", "say:session"

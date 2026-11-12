@@ -14,7 +14,7 @@ launch() {      # launch <index> <delay seconds>: the subshell sleeps, then BECO
     T0[$i]=$(( $(date +%s) + d ))
     (
         [ "$d" -gt 0 ] && sleep "$d"
-        exec "$DIR/bin/pleamar" --no-hud --scene "${SCENE[$i]}" </dev/null >>"${LOGF[$i]}" 2>&1
+        exec "${PLEAMAR_BIN:-$DIR/bin/pleamar}" --no-hud --scene "${SCENE[$i]}" </dev/null >>"${LOGF[$i]}" 2>&1
     ) &
     BYPID[$!]=$i
 }
