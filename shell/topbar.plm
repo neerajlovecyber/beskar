@@ -570,10 +570,10 @@ scene MacTopBar {
 
             //  The dock, rising from the floor.
             //  The dock island. Hidden it is zero wide as well as sunk (no bump of its fillet is left on the floor); while a panel opens
-            //  its width is the dock's width THAT SHOWS plus what the panel adds (subtracting the full dock width while the dock was
+            //  its width is the dock's width THAT SHOWS (a panel that starts to open brings the dock's width in at once: `bv * 6`, so a hidden dock does not start as a small box and grow) plus what the panel adds (subtracting the full dock width while the dock was
             //  still hidden made a narrow tower for the first moments, then a jump when the dock appeared);
             //  with a bottom panel open (Spotlight, wallpapers) it grows up and out into the panel's glass.
-            box dock_island { from: screen.width / 2 - (dw * clamp((vis - 0.3) * 1.8, 0, 1) + max(0, bpw - dw * clamp((vis - 0.3) * 1.8, 0, 1)) * bv) / 2, screen.height - dock_h * vis - max(0, bph - dock_h) * bv; size: dw * clamp((vis - 0.3) * 1.8, 0, 1) + max(0, bpw - dw * clamp((vis - 0.3) * 1.8, 0, 1)) * bv, dock_h + ext + max(0, bph - dock_h) * bv; corner: 24; blend: dock_fillet }
+            box dock_island { from: screen.width / 2 - (dw * clamp(max((vis - 0.3) * 1.8, bv * 6), 0, 1) + max(0, bpw - dw * clamp(max((vis - 0.3) * 1.8, bv * 6), 0, 1)) * bv) / 2, screen.height - dock_h * vis - max(0, bph - dock_h) * bv; size: dw * clamp(max((vis - 0.3) * 1.8, bv * 6), 0, 1) + max(0, bpw - dw * clamp(max((vis - 0.3) * 1.8, bv * 6), 0, 1)) * bv, dock_h + ext + max(0, bph - dock_h) * bv; corner: 24; blend: dock_fillet }
         }
 
         //  A click anywhere that is neither the panel nor a bar / dock button closes the open panel (as macOS does). It is
