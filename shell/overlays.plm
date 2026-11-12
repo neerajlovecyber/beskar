@@ -14,12 +14,11 @@ import "common/panelbody.plm"
 scene MacOverlays {
     include "common/theme.plm"
     include "common/morph_core.plm"
-    include "parts/control_center.plm"       // panel 1 (right island)
     include "parts/notifications.plm"        // panel 2 (right island) + the banner card in the centre pill
 
     permissions {
         run: "sh", "curl", "xdg-open", "wl-copy", "systemctl", "niri msg", "systemctl suspend", "cliphist", "notify-send", "magick", "fd", "grim", "slurp", "wf-recorder", "pkill", "rm", "cp"
-        services: "clock", "battery", "media", "media.*", "polkit", "polkit.*", "apps", "apps.launch", "files", "files.write", "window", "thumbnails", "thumbnails.*", "say:topbar", "say:settings", "say:widgets", "say:lock", "say:control_center", "say:notifications", "say:overlays", "say:panels", "say:capture", "audio", "audio.*", "brightness", "brightness.*", "network", "network.*", "bluetooth", "bluetooth.*", "notifications", "notifications.*"
+        services: "clock", "battery", "media", "media.*", "polkit", "polkit.*", "apps", "apps.launch", "files", "files.write", "window", "thumbnails", "thumbnails.*", "say:topbar", "say:settings", "say:widgets", "say:lock", "say:control_center", "say:notifications", "say:overlays", "say:panels", "say:capture", "notifications", "notifications.*"
     }
 
     //  the shared panel state is OWNED by the `Panels` scene (panels.plm): read here by name, changed with its events

@@ -177,11 +177,13 @@ local function overlay_screen(s, name)
         pcall(sys.call, "say", name, "fact open_screen " .. s)
     end
 end
+-- the scene each panel's own content lives in (default: overlays)
+local SCENE_OF = { control_center = "controlcenter" }
 local PANELS_FACTS = { open = true, cur = true, open_screen = true, panel_h = true }   -- owned by the Panels scene
 local function panel_say(name, words)
     local target = name
     if MERGED[name] or DOCK[name] then
-        target = PANELS_FACTS[words:match("^fact (%S+)") or ""] and "panels" or "overlays"
+        target = PANELS_FACTS[words:match("^fact (%S+)") or ""] and "panels" or (SCENE_OF[name] or "overlays")
     end
     pcall(sys.call, "say", target, words)
 end
@@ -313,7 +315,7 @@ local function open_island_panel(name, page)
             overlay_screen(s, name)
             if MERGED[name] then panel_say(name, "fact cur " .. p.id) end
             if name == "control_center" then
-                pcall(sys.call, "say", "overlays", "fact cc_page " .. (page or 0))
+                pcall(sys.call, "say", "controlcenter", "fact cc_page " .. (page or 0))
             end
             panel_say(name, "fact open true")
         end)
@@ -1184,7 +1186,7 @@ push_mon = function()
             for i, n in ipairs(OUTPUTS) do
                 if n == focused_output and (i - 1) ~= last_toast_screen then
                     last_toast_screen = i - 1
-                    pcall(sys.call, "say", "overlays", "text toast_mon " .. n)
+                    pcall(sys.call, "say", "panels", "text toast_mon " .. n)
                     pcall(sys.call, "say", "overlays", "fact toast_screen " .. (i - 1))
                 end
             end

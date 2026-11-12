@@ -13,6 +13,7 @@ scene Panels {
     fact cur = 0
     fact panel_h = 400
     fact fresh = false           // a panel has just taken over from another: its `on blur` is ignored for a moment
+    text toast_mon = "none"      // …and the NAME of the monitor the notification banner drops on (`screens: Panels.toast_mon`)
     text panel_mon = "none"      // the NAME of the monitor the open panel is on: every panel surface says `screens: Panels.panel_mon`
 
     //  asked by the panels / the frame / other scenes (a scene writes only its own facts):
