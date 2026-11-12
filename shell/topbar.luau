@@ -169,7 +169,8 @@ local OUTPUT_NAMES
 local function overlay_screen(s, name)
     local n = OUTPUT_NAMES and OUTPUT_NAMES()[s + 1] or ""
     local target = (name and (MERGED[name] or DOCK[name])) and "overlays" or (name or "overlays")
-    pcall(sys.call, "say", target, "text panel_mon " .. n)
+    -- (Settings' sheet follows Overlays' `panel_mon` too: it is the one monitor text of the whole desktop)
+    pcall(sys.call, "say", (target == "settings") and "overlays" or target, "text panel_mon " .. n)
     pcall(sys.call, "say", target, "fact open_screen " .. s)
 end
 local function panel_say(name, words)
@@ -632,7 +633,7 @@ on("open_panel", function(n)
             pcall(sys.call, "say", "overlays", "emit toggle_dock " .. OVERLAY[name])
             return
         end
-        pcall(sys.call, "say", name, "fact open_screen " .. s)
+        overlay_screen(s, name)
         pcall(sys.call, "say", name, "emit toggle")
     end
     monitor_of_click(function(s)
@@ -656,7 +657,7 @@ local function show_dock_on_menu_monitor(id)        -- (the session dialog grows
     say("overlays", "emit show_panel " .. id)
 end
 local function show_on_menu_monitor(name)
-    say(name, "fact open_screen " .. (tonumber(fact.open_screen) or 0))
+    overlay_screen(tonumber(fact.open_screen) or 0, name)
     say(name, "fact open true")
 end
 local PM = {
@@ -1174,6 +1175,7 @@ push_mon = function()
             for i, n in ipairs(OUTPUTS) do
                 if n == focused_output and (i - 1) ~= last_toast_screen then
                     last_toast_screen = i - 1
+                    pcall(sys.call, "say", "overlays", "text toast_mon " .. n)
                     pcall(sys.call, "say", "overlays", "fact toast_screen " .. (i - 1))
                 end
             end

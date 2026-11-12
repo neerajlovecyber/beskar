@@ -14,8 +14,8 @@ scene MacSettings {
         anchor: center
         level: overlay
         keyboard: on_demand
-        screens: each
-        open: (open or seen > 0.02) and open_screen == screen.index
+        screens: panel_mon   // (Overlays' text: `screens:` finds only one `panel_mon` when scenes are brought into one; only one panel or window is open at a time)
+        open: (open or seen > 0.02)
 
     zone box dismiss { from: 0, 0; size: 900, 620; active: open }
 
