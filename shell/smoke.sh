@@ -7,7 +7,7 @@ B="$DIR/bin/exp/pleamar"; [ -x "$B" ] || B="$DIR/bin/pleamar"
 L=/tmp/pleamar_desktop.log
 fail=0
 say() { "$B" --say "$@" 2>&1 | head -1; }
-err0=$(grep -ciE 'runtime error|panic|thread .* panicked' "$L" 2>/dev/null || echo 0)
+err0=$(grep -ciE "runtime error|panic|thread .* panicked" "$L" 2>/dev/null); err0=${err0:-0}
 check() {      # check <label> <command to open> <expected cur>
     local label="$1" cmd="$2" want="$3"
     local cur open try
@@ -45,7 +45,7 @@ check "updates"         "$B --say panels 'emit show 16'" 16
 "$B" --say topbar "emit open_panel 4" >/dev/null 2>&1; sleep 1.6
 if [ "$(say settings 'get open')" = true ]; then echo "ok    settings"; else echo "FAIL  settings"; fail=1; fi
 "$B" --say settings "fact open false" >/dev/null 2>&1
-err1=$(grep -ciE 'runtime error|panic|thread .* panicked' "$L" 2>/dev/null || echo 0)
+err1=$(grep -ciE "runtime error|panic|thread .* panicked" "$L" 2>/dev/null); err1=${err1:-0}
 if [ "$err1" -gt "$err0" ]; then echo "FAIL  $((err1 - err0)) new error(s) in $L:"; grep -iE 'runtime error|panic' "$L" | tail -3 | cut -c1-200; fail=1; else echo "ok    no new errors in the log"; fi
 [ "$fail" = 0 ] && echo "SMOKE PASSED" || echo "SMOKE FAILED"
 exit "$fail"

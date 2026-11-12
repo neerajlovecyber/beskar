@@ -511,10 +511,23 @@ local function load_layout()
 end
 
 local function learn(tries)
-    sh("grep 'surface [0-9]* on' /tmp/pleamar_widgets.log 2>/dev/null | head -8", function(out)
+    -- in the one-process desktop the log lines say which scene each surface is (`surface 9 on HDMI-A-1 · … · Widgets copy 1`);
+    -- as its own process (older layout) the widgets' own log has `surface N on NAME`
+    local script = "if grep -q 'surface [0-9]* on .* Widgets' /tmp/pleamar_desktop.log 2>/dev/null; then "
+        .. "grep 'surface [0-9]* on .* Widgets' /tmp/pleamar_desktop.log | head -8; "
+        .. "else grep 'surface [0-9]* on' /tmp/pleamar_widgets.log 2>/dev/null | head -8; fi"
+    sh(script, function(out)
         local map = {}
-        for idx, name in (out or ""):gmatch("surface (%d+) on (%S+)") do
-            map[tonumber(idx) + 1] = name
+        local n = 0
+        for line in (out or ""):gmatch("[^\n]+") do
+            local name = line:match("surface %d+ on (%S+)")
+            if name then
+                local copy = line:match("Widgets copy (%d+)")
+                local idx = copy and tonumber(copy) or (line:find("Widgets", 1, true) and 0 or nil)
+                if idx == nil then idx = tonumber(line:match("surface (%d+) on")) or n end
+                map[idx + 1] = name
+                n = n + 1
+            end
         end
         if #map > 0 then
             OUTPUTS = map

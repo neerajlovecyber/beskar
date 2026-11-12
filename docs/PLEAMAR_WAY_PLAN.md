@@ -71,3 +71,16 @@ Slice 1, then 2, then 3 panel by panel (with the smoke script from the first mov
   rules but not its logic; the logic side uses `say panels "emit ..."` meanwhile. Typed events from logic wait for upstream.
 - Next: slice 2 (typed contracts where the runtime allows: `.plm` rules can already emit and read across scenes), then slice 3
   panel by panel.
+
+## Final status (2026-11-12)
+
+- Slice 1 done (owner scene `Panels`). Slice 3 done: `overlays` is gone; `controlcenter`, `notifications`, `infopanels`, `dockpanels`,
+  `dialogs`, `windows` are scenes of their own in `desktop`, 9 scenes in one process, `PanelBody` a library, `shell/smoke.sh` checks all.
+- Slice 4 done: each panel scene has only the permissions its own code uses.
+- Slice 6: widgets and the wallpaper stay their own processes (measured: brought in beside the frame their drawing is repainted
+  with every panel morph); the lock stays separate on purpose (a crash must not take the screen locker down).
+- Slice 5 (plugins): not done on purpose. A plugin needs a per-user `--approve`, and our scenes already have their own Luau state,
+  thread and permissions without it; feeds would better be a headless scene, which is not worth the rewiring now.
+- Slice 2 (typed events): possible only from `.plm` rules; from logic an event does not reach the other scene's logic in
+  0.8.0-exp.3 (reported: k4ditano/pleamar#145), so logic keeps `say`. Redo when it is fixed.
+- Waiting on upstream: #143, #144 (widgets), #145 (typed events from logic), shared facts with an owner, runtime copies per monitor.
