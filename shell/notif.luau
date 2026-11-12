@@ -111,7 +111,7 @@ local function paint()
             group_ids[key][i] = n.id
         end
         local k = key - 1                                  -- keys count from 0 in the scene
-        if #g.items == 1 or fact.group_apps ~= true then
+        if #g.items == 1 or fact["Settings.group_apps"] ~= true then
             -- a plain list: every notification is its own card
             for _, n in ipairs(g.items) do
                 add(row_of(n, 0, k, ROW_CARD))
@@ -204,7 +204,7 @@ local function arm_banner()
 end
 
 local function banner_show()
-    if fact.dnd == true or shown() or fact.banners == false then
+    if fact.dnd == true or shown() or fact["Settings.banners"] == false then
         return
     end
     if not banner_visible then
@@ -291,7 +291,7 @@ on("dismiss_notice", function(id)
     end
 end)
 
-on("fact:group_apps", paint)
+on("fact:Settings.group_apps", paint)
 on("group_toggle", function(key)
     local app = group_apps[(tonumber(key) or -1) + 1]
     if app ~= nil then

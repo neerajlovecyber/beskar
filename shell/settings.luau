@@ -269,15 +269,10 @@ local function save_prefs()
 end
 
 local function push_prefs()
-    say("topbar", "fact bar_style " .. tostring(tonumber(fact.bar_style) or 0))
-    say("topbar", "fact pref_seconds " .. tostring(b(fact.pref_seconds)))
-    say("topbar", "fact pref_weather " .. tostring(b(fact.pref_weather)))
-    say("topbar", "fact pref_tray " .. tostring(b(fact.pref_tray)))
-    say("topbar", "fact pref_dock_auto " .. tostring(b(fact.pref_dock_auto)))
+    -- the bar's and the notifications' preferences are Settings' own facts, read by name by the scenes in `desktop`;
+    -- only what is NOT: the widgets (own process) and values computed here
     say("widgets", "fact widgets_on " .. tostring(b(fact.pref_widgets)))
-    say("notifications", "fact banners " .. tostring(b(fact.banners)))
     say("notifications", "fact banner_ms " .. tostring(BANNER_MS[tonumber(fact.banner_i) or 1] or 5500))
-    say("notifications", "fact group_apps " .. tostring(b(fact.group_apps)))
     say("notifications", "fact dnd " .. tostring(b(fact.dnd)))
 end
 

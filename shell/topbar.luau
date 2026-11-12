@@ -5,16 +5,7 @@
 local locate = require("location")      -- where you are (see location.luau)
 local WEATHER_EVERY_MS = 15 * 60 * 1000
 
--- Load saved bar style from prefs.json
-local function load_bar_style()
-    run("sh", { "-c", 'cat "$HOME/.config/beskar/prefs.json" 2>/dev/null' }, function(out)
-        local ok, p = pcall(json.decode, out or "")
-        if ok and type(p) == "table" and p.bar_style ~= nil then
-            fact.bar_style = tonumber(p.bar_style) or 0
-        end
-    end)
-end
-load_bar_style()
+-- (the bar style and the other preferences are Settings' facts, read by name: `fact["Settings.bar_style"]`)
 
 -- ── panels ───────────────────────────────────────────────────────
 local function toggle(panel)
@@ -338,7 +329,7 @@ end)
 -- ── the clock: the time only (no date), 12 hour with AM / PM unless Settings says 24 ──
 local clockfmt = require("clockfmt")
 local function paint_clock()
-    local t = clockfmt(fact["Settings.hour12"], fact.pref_seconds)
+    local t = clockfmt(fact["Settings.hour12"], fact["Settings.pref_seconds"])
     if text.clock_text ~= t then
         text.clock_text = t
     end
@@ -346,7 +337,7 @@ end
 paint_clock()
 every(1000, paint_clock)
 on("fact:Settings.hour12", paint_clock)
-on("fact:pref_seconds", paint_clock)
+on("fact:Settings.pref_seconds", paint_clock)
 
 -- ── the little bars (music) and the recording dot move only while they show ──
 -- (a plm `wave` paints the whole scene at the monitor's rate for ever; this phase ticks at 10 fps, and only
