@@ -129,7 +129,7 @@ part Notifications {
         on press nc_dismiss { emit Panels.close }
         on press right nc_dismiss { }
 
-    PanelBody(26, -2, 0, 412, Topbar.rp_w) {
+    PanelBody(26, -2, 0, 412, Topbar.rp_w, panel_h, ph, seen) {
 
         PanelHeader("󰂚", "Notifications", 30, 32)
         //  Clear all

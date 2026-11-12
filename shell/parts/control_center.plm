@@ -129,7 +129,7 @@ part ControlCenter {
         zone box cc_dismiss { from: 0, 0; size: 440, 520; active: open and cur == 1 }
         on press cc_dismiss { emit Panels.close; cc_page = 0 }
         on press right cc_dismiss { }
-    PanelBody(74, -2, 0, 440, Topbar.rp_w) {
+    PanelBody(74, -2, 0, 440, Topbar.rp_w, panel_h, ph, seen) {
 
         // ==========================================================
         // PAGE 0: MAIN CONTROL CENTER OVERVIEW
