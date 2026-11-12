@@ -1,6 +1,6 @@
 -- The owner of the panel state (panels.plm). It is the old panelcore.luau without the panels' own hooks: it knows which panel
 -- is open, tells the frame (topbar.luau, which draws the glass) and answers the panels' events. The panels' scenes
--- (overlays) read `Panels.open` / `Panels.cur` and hear them change to run their `opened` / `closed` hooks.
+-- (the panel scenes) read `Panels.open` / `Panels.cur` and hear them change to run their `opened` / `closed` hooks.
 local heights, widths, keeps = {}, {}, {}
 local KNOWN = { [1] = true, [2] = true, [3] = true, [4] = true, [5] = true, [6] = true, [9] = true, [10] = true, [11] = true,
     [12] = true, [15] = true, [16] = true, [21] = true, [22] = true, [24] = true }

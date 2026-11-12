@@ -1,4 +1,4 @@
--- (a part of overlays.luau: module("notifications", require("notif")))
+-- (the body of the notifications scene: notifications.luau runs it as module("notifications", require("notif")))
 -- Notification centre logic, after Marea's: this logic is the receiver of the desktop's notifications.
 return function(panel, opened, shown, closed)
 --

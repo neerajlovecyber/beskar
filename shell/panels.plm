@@ -1,7 +1,7 @@
 // Panels: the OWNER of the state every panel shares (pleamar way: one scene owns a value, the others read it by its full
 // name and ask for a change with an event). Which panel is open (`cur`), whether one is (`open`), on which monitor
 // (`panel_mon` = its NAME, `open_screen` = its index), how tall it is (`panel_h`). It has no drawing: the panels are scenes
-// of their own (today `overlays`) that read `Panels.open`, `Panels.cur`... and send `Panels.close`, `Panels.height`...
+// of their own (controlcenter, notifications, infopanels, dockpanels, dialogs, windows) that read `Panels.open`, `Panels.cur`... and send `Panels.close`, `Panels.height`...
 // Logic: panels.luau (reports to the frame, `topbar.luau`, which draws every panel's glass).
 scene Panels {
     permissions {

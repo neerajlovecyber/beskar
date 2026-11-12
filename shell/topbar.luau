@@ -177,7 +177,7 @@ local function overlay_screen(s, name)
         pcall(sys.call, "say", name, "fact open_screen " .. s)
     end
 end
--- the scene each panel's own content lives in (default: overlays)
+-- the scene each panel's own content lives in
 local SCENE_OF = { control_center = "controlcenter", notifications = "notifications",
     dashboard = "infopanels", music = "infopanels", weather = "infopanels", updates = "infopanels",
     spotlight = "dockpanels", wallpapers = "dockpanels", clipboard = "dockpanels", widget_bar = "dockpanels",

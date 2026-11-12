@@ -244,7 +244,7 @@ module("overview", function(panel, opened, shown, closed)
     local thumbnails_list = {}
     local thumbnails_by_id = {}
 
-    -- the glass is as wide / tall as the grid (4 columns of 290, rows of 181): same sums as `ov_w` / `ov_h` in overlays.plm
+    -- the glass is as wide / tall as the grid (4 columns of 290, rows of 181): same sums as `ov_w` / `ov_h` in windows.plm
     local function resize_overview(n)
         panel.width(math.max(560, 56 + math.min(4, math.max(1, n)) * 290))
         panel.height(math.min(800, 80 + math.max(1, math.ceil(n / 4)) * 181))

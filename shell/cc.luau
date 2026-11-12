@@ -1,4 +1,4 @@
--- (a part of overlays.luau: module("control_center", require("cc")))
+-- (the body of the Control Center scene: controlcenter.luau runs it as module("control_center", require("cc")))
 return function(panel, opened, shown, closed)
 -- Control Center companion logic
 

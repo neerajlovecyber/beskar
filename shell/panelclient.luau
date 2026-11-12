@@ -13,7 +13,7 @@
 --
 -- It reads `Panels.open` / `Panels.cur` (a scene writes only its own facts) and asks for changes with `say` (pleamar 0.8-exp.3:
 -- an event emitted by a scene's LOGIC reaches the other scene's .plm rules but not its logic, so `emit("Panels.height")` from
--- here would never arrive; the .plm rules of overlays DO `emit Panels.close`). The `say` strings go to panels.luau's events.
+-- here would never arrive; the .plm rules of the panel scenes DO `emit Panels.close`). The `say` strings go to panels.luau's events.
 return function(IDS)
     local hooks_open, hooks_close = {}, {}
     local heights, widths = {}, {}
