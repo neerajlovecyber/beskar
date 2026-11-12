@@ -1,5 +1,5 @@
 // The Control Center: a panel scene of its own (panel id 1, right island). The shared panel state is OWNED by `Panels`; the
-// notification centre's Do Not Disturb is `Overlays.dnd` (a scene writes only its own facts: we ask the owner with `say`).
+// notification centre's Do Not Disturb is `Notifications.dnd` (a scene writes only its own facts: we ask the owner with `say`).
 // Logic: controlcenter.luau (+ cc.luau, the panel's body).
 import "common/palette.plm"
 import "common/icons.plm"
@@ -7,14 +7,14 @@ import "common/ui.plm"
 import "common/panelbody.plm"
 uses scene "panels.plm" as Panels
 uses scene "topbar.plm" as Topbar
-uses scene "overlays.plm" as Overlays
+uses scene "notifications.plm" as Notifications
 
 scene ControlCenter {
     include "common/theme.plm"
     include "common/morph_core.plm"
 
     permissions {
-        services: "audio", "audio.*", "brightness", "brightness.*", "network", "network.*", "bluetooth", "bluetooth.*", "media", "media.*", "say:topbar", "say:settings", "say:lock", "say:panels", "say:overlays", "say:capture"
+        services: "audio", "audio.*", "brightness", "brightness.*", "network", "network.*", "bluetooth", "bluetooth.*", "media", "media.*", "say:topbar", "say:settings", "say:lock", "say:panels", "say:notifications", "say:capture"
     }
 
     //  Reported by controlcenter.luau (its own watcher of `media`): what is playing
@@ -263,14 +263,14 @@ scene ControlCenter {
                 move: 16, 160
                 size: 158, 60
                 CardBg(158, 60, 30)
-                box { from: 0, 0; size: 158, 60; corner: 30; color: focus_c; opacity: if(Overlays.dnd, 100%, 0%) }
+                box { from: 0, 0; size: 158, 60; corner: 30; color: focus_c; opacity: if(Notifications.dnd, 100%, 0%) }
                 box { from: 0, 0; size: 158, 60; corner: 30; stroke: 1; color: card_stroke; opacity: card_stroke_op }
-                ellipse { at: 30, 30; radius: 20; color: if(Overlays.dnd, on_accent, item_solid) }
+                ellipse { at: 30, 30; radius: 20; color: if(Notifications.dnd, on_accent, item_solid) }
                 //  the moon: a disc with a bite out of it, the bite in the disc's own colour
-                ellipse { at: 29, 31; radius: 9; color: if(Overlays.dnd, focus_c, ink_c) }
-                ellipse { at: 34, 27; radius: 8; color: if(Overlays.dnd, on_accent, item_solid) }
-                text "Do Not" { at: 58, 24; anchor: left center; size: t_sub; weight: 600; color: if(Overlays.dnd, on_accent, ink_c) }
-                text "Disturb" { at: 58, 38; anchor: left center; size: t_sub; weight: 600; color: if(Overlays.dnd, on_accent, ink_c) }
+                ellipse { at: 29, 31; radius: 9; color: if(Notifications.dnd, focus_c, ink_c) }
+                ellipse { at: 34, 27; radius: 8; color: if(Notifications.dnd, on_accent, item_solid) }
+                text "Do Not" { at: 58, 24; anchor: left center; size: t_sub; weight: 600; color: if(Notifications.dnd, on_accent, ink_c) }
+                text "Disturb" { at: 58, 38; anchor: left center; size: t_sub; weight: 600; color: if(Notifications.dnd, on_accent, ink_c) }
                 zone box dnd_hit { from: 0, 0; size: 158, 60; corner: 30; cursor: pointer }
                 on press dnd_hit { emit toggle_dnd }
             }

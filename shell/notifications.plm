@@ -1,6 +1,23 @@
-// The notification centre and the banner: parts of `overlays` (centre = panel id 2, right island; the banner is a card
-// in the centre pill, driven by banner_on). Included by overlays.plm. The logic is notif.luau.
-part Notifications {
+// The notification centre (panel id 2, right island) and the BANNER card that drops in the centre pill: a scene of its own. It
+// owns `dnd`, `banners`, `banner_ms`, `group_apps`, `banner_on`… (Settings and the Control Center ask it with `say`, the frame
+// too), and it is THE notification server (org.freedesktop.Notifications). Logic: notifications.luau (+ notif.luau, the body).
+import "common/palette.plm"
+import "common/icons.plm"
+import "common/ui.plm"
+import "common/panelbody.plm"
+uses scene "panels.plm" as Panels
+uses scene "topbar.plm" as Topbar
+
+scene Notifications {
+    include "common/theme.plm"
+    include "common/morph_core.plm"
+
+    //  `notifications` makes this the receiver of the desktop's notifications; `files` / `files.write` keep the history of
+    //  dismissed ones across restarts; `say:topbar` / `say:lock` tell the bell and the lock screen how many are waiting.
+    permissions {
+        services: "notifications", "notifications.*", "files", "files.write", "say:topbar", "say:lock", "say:panels", "say:settings"
+    }
+
     //  Both are painted by notifications.luau. `icon` is the application's own icon (a name or a path).
     //  `notices` are the ones waiting; `past` the ones already dealt with, newest first.
     model notices max 6 { id: number; app: text; title: text; body: text; icon: image 40, 40; age: text }

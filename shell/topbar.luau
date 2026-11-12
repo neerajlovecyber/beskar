@@ -85,7 +85,7 @@ local function cancel_activity(id)
         if card_timers[id] then cancel(card_timers[id]); card_timers[id] = nil end
         if owner.cp == id then fact.cp_on = false end
     elseif id == 7 then
-        pcall(sys.call, "say", "overlays", "fact banner_on false")
+        pcall(sys.call, "say", "notifications", "fact banner_on false")
     end
     if owner.cp == id then
         owner.cp = nil
@@ -131,7 +131,7 @@ on("panel_open", function(id)
         if p.kind == 1 then
             -- a banner never takes the island from a panel that is open there or something higher priority
             if owner[p.island] and (PRIORITIES[owner[p.island]] or 0) >= 70 then
-                pcall(sys.call, "say", "overlays", "fact banner_on false")
+                pcall(sys.call, "say", "notifications", "fact banner_on false")
                 return
             end
             if owner[p.island] and owner[p.island] ~= p.id then
@@ -178,7 +178,7 @@ local function overlay_screen(s, name)
     end
 end
 -- the scene each panel's own content lives in (default: overlays)
-local SCENE_OF = { control_center = "controlcenter" }
+local SCENE_OF = { control_center = "controlcenter", notifications = "notifications" }
 local PANELS_FACTS = { open = true, cur = true, open_screen = true, panel_h = true }   -- owned by the Panels scene
 local function panel_say(name, words)
     local target = name
@@ -1187,7 +1187,7 @@ push_mon = function()
                 if n == focused_output and (i - 1) ~= last_toast_screen then
                     last_toast_screen = i - 1
                     pcall(sys.call, "say", "panels", "text toast_mon " .. n)
-                    pcall(sys.call, "say", "overlays", "fact toast_screen " .. (i - 1))
+                    pcall(sys.call, "say", "notifications", "fact toast_screen " .. (i - 1))
                 end
             end
         end

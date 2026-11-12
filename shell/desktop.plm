@@ -7,6 +7,7 @@ import scene "panels.plm" as Panels       // owns the shared panel state
 import scene "topbar.plm" as Topbar
 import scene "overlays.plm" as Overlays
 import scene "controlcenter.plm" as Controlcenter
+import scene "notifications.plm" as Notifications
 import scene "settings.plm" as Settings
 
 scene Desktop { }

@@ -205,9 +205,9 @@ on("wifi_rescan", function() pcall(sys.call, "network.scan") end)
 
 -- ── Do Not Disturb: no banners while it is on (they still land in the centre) ──
 on("toggle_dnd", function()
-    local now_on = not (fact["Overlays.dnd"] == true)           -- the notification centre owns it: ask it
+    local now_on = not (fact["Notifications.dnd"] == true)           -- the notification centre owns it: ask it
     local v = tostring(now_on)
-    pcall(sys.call, "say", "overlays", "fact dnd " .. v)
+    pcall(sys.call, "say", "notifications", "fact dnd " .. v)
     pcall(sys.call, "say", "topbar", "fact dnd " .. v)
 end)
 

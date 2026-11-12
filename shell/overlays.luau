@@ -5,7 +5,7 @@
 -- session, polkit · switcher, overview, welcome (ids in the table below). The capture picker is NOT here: it is its own
 -- scene (capture.plm), started on demand by start.sh, so its full-screen buffers are not held while idle.
 local function close_panel() pcall(sys.call, "say", "panels", "emit close") end    -- (see panelclient.luau: why `say` and not `emit`)
-local module = require("panelclient")({ notifications = 2, dashboard = 3, music = 9, weather = 15, updates = 16, spotlight = 4, wallpapers = 5, clipboard = 6, widget_bar = 10, session = 11, polkit = 12, switcher = 21, overview = 22, welcome = 24 })
+local module = require("panelclient")({ dashboard = 3, music = 9, weather = 15, updates = 16, spotlight = 4, wallpapers = 5, clipboard = 6, widget_bar = 10, session = 11, polkit = 12, switcher = 21, overview = 22, welcome = 24 })
 
 -- the capture picker is its own scene, started on demand (start.sh capture-ensure), then told what to do
 local function capture_start(mode, kind)
@@ -2131,5 +2131,4 @@ module("welcome", function(panel, opened, shown, closed)
     on("show_again", show)
 end)
 
-module("notifications", require("notif"))
 

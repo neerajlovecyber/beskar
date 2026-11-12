@@ -3,7 +3,7 @@
 --   prefs     bar / dock / notification options          → saved in ~/.config/beskar/prefs.json, pushed to the scenes
 --   system    sound, brightness, displays (niri msg), Wi-Fi, Bluetooth, updates, shortcuts (read from niri's config)
 
-local THEMED = { "topbar", "overlays", "controlcenter", "settings", "capture",
+local THEMED = { "topbar", "overlays", "controlcenter", "notifications", "settings", "capture",
                 "lock", "widgets" }
 
 local function say(scene, words)
@@ -275,10 +275,10 @@ local function push_prefs()
     say("topbar", "fact pref_tray " .. tostring(b(fact.pref_tray)))
     say("topbar", "fact pref_dock_auto " .. tostring(b(fact.pref_dock_auto)))
     say("widgets", "fact widgets_on " .. tostring(b(fact.pref_widgets)))
-    say("overlays", "fact banners " .. tostring(b(fact.banners)))
-    say("overlays", "fact banner_ms " .. tostring(BANNER_MS[tonumber(fact.banner_i) or 1] or 5500))
-    say("overlays", "fact group_apps " .. tostring(b(fact.group_apps)))
-    say("overlays", "fact dnd " .. tostring(b(fact.dnd)))
+    say("notifications", "fact banners " .. tostring(b(fact.banners)))
+    say("notifications", "fact banner_ms " .. tostring(BANNER_MS[tonumber(fact.banner_i) or 1] or 5500))
+    say("notifications", "fact group_apps " .. tostring(b(fact.group_apps)))
+    say("notifications", "fact dnd " .. tostring(b(fact.dnd)))
 end
 
 local function changed_pref()
@@ -417,7 +417,7 @@ end)
 on("toggle_group", function() fact.group_apps = not b(fact.group_apps); changed_pref() end)
 on("toggle_banners", function() fact.banners = not b(fact.banners); changed_pref() end)
 on("banner_secs_pick", function(n) fact.banner_i = tonumber(n) or 1; changed_pref() end)
-on("clear_notif_history", function() say("overlays", "emit clear_past") end)
+on("clear_notif_history", function() say("notifications", "emit clear_past") end)
 
 -- ── Sound ────────────────────────────────────────────────────────
 local out_ids = {}
