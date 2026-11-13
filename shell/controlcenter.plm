@@ -16,25 +16,17 @@ scene ControlCenter {
     include "common/morph_core.plm"
 
     permissions {
-        services: "audio", "audio.*", "brightness", "brightness.*", "network", "network.*", "bluetooth", "bluetooth.*", "media", "media.*", "say:topbar", "say:settings", "say:lock", "say:panels", "say:notifications", "say:capture"
+        services: "audio", "audio.*", "brightness", "brightness.*", "network", "network.*", "bluetooth", "bluetooth.*", "say:topbar", "say:settings", "say:lock", "say:panels", "say:notifications", "say:capture"
     }
 
     //  Reported by controlcenter.luau (its own watcher of `media`): what is playing
-    fact has_player = false
-    fact is_playing = false
-    fact has_art = false
-    fact track_len = 0
-    fact track_pos = 0
-    text track_title = ""
-    text track_artist = ""
-    text cover_art = ""
-    text time_pos = "0:00"
-    text time_len = "0:00"
-    image cover = from cover_art, 82, 46
-    event play_pause ->
-    event previous ->
-    event next ->
-    event seek ->
+    //  what is playing is held ONCE by the System scene (system.luau); the player controls are its events
+    let has_player  = System.has_player
+    let is_playing  = System.is_playing
+    let has_art     = System.has_art
+    let track_len   = System.track_len
+    let track_pos   = System.track_pos
+    image cover = from System.cover_art, 82, 46
 
     // ── Built-in System Models ────────────────────────────────────
     //  One row per Bluetooth device, painted by control_center.luau. kind: 0 any · 1 headphones · 2 mouse ·
@@ -233,14 +225,14 @@ scene ControlCenter {
                         clip box { from: 14, 14; size: 46, 46; corner: 11 }
                         image cover { at: -5, 13; size: 84, 48; show: has_art }
                     }
-                    text track_title { at: 14, 74; anchor: left center; size: t_sub; weight: 600; color: ink_c; width: 132; lines: 1 }
-                    text track_artist { at: 14, 90; anchor: left center; size: t_micro; color: ink_sub; width: 132; lines: 1 }
+                    text System.track_title { at: 14, 74; anchor: left center; size: t_sub; weight: 600; color: ink_c; width: 132; lines: 1 }
+                    text System.track_artist { at: 14, 90; anchor: left center; size: t_micro; color: ink_sub; width: 132; lines: 1 }
 
                     //  progress
                     box { from: 14, 102; size: 130, 3; corner: 1.5; color: slider_bg; opacity: slider_bg_op }
                     box { from: 14, 102; size: max(3, 130 * clamp(track_pos / max(track_len, 1), 0, 1)), 3; corner: 1.5; color: slider_bar; opacity: slider_bar_op; show: track_len > 0 }
                     zone box seek_hit { from: 14, 96; size: 130, 14; cursor: pointer; active: track_len > 0 }
-                    on press seek_hit { emit seek(clamp(local.x / 130, 0, 1)) }
+                    on press seek_hit { emit System.seek(clamp(local.x / 130, 0, 1)) }
 
                     //  previous · play/pause · next
                     path { at: 38, 112; color: ink_c; move 9, 0; line 9, 11; line 0, 5.5; close }
@@ -254,11 +246,11 @@ scene ControlCenter {
                     path { at: 112, 112; color: ink_c; move 0, 0; line 9, 5.5; line 0, 11; close }
                     box { from: 122, 112; size: 2, 11; corner: 1; color: ink_c }
                     zone box prev_hit { at: 43, 117.5; size: 26, 22; corner: 11; cursor: pointer }
-                    on press prev_hit { emit previous }
+                    on press prev_hit { emit System.previous }
                     zone box play_hit { at: 79, 117.5; size: 30, 22; corner: 11; cursor: pointer }
-                    on press play_hit { emit play_pause }
+                    on press play_hit { emit System.play_pause }
                     zone box next_hit { at: 117, 117.5; size: 26, 22; corner: 11; cursor: pointer }
-                    on press next_hit { emit next }
+                    on press next_hit { emit System.next }
                 }
             }
 

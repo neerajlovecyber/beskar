@@ -1,14 +1,32 @@
 // System: the scene that holds the system services ONCE (battery, network, audio, brightness). The other scenes read them by
 // name (`System.bat.percent`, `System.net.online`, `System.sound.volume`, `System.display.level`) instead of each declaring its
-// own `service` line. No logic: pleamar fills the facts. Scenes that need more than these fields (the output list and the
-// streams of the audio service, the Wi-Fi list, Bluetooth, media) still watch the service themselves for what is theirs.
+// own `service` line. Battery, network, audio and brightness need no logic (pleamar fills the facts); MEDIA (what is playing,
+// its progress, and the player controls as events) is system.luau. Scenes that need more than these fields (the output list and
+// the streams of the audio service, the Wi-Fi list, Bluetooth, apps) still watch the service themselves for what is theirs.
 scene System {
     permissions {
-        services: "battery", "network", "audio", "brightness"
+        services: "battery", "network", "audio", "brightness", "media", "media.*"
     }
 
     service battery as bat { present: bool; percent: number; charging: bool }
     service network as net { online: bool; name: text; strength: number; wifi: bool }
     service audio as sound { volume: number; muted: bool }
     service brightness as display { present: bool; level: number }
+
+    // ── what is playing (system.luau watches the `media` service ONCE: the clock pill, the Control Center and the music panel read it) ──
+    fact media_on = false        // a player with a title: the pill shows its cover and bars
+    fact has_player = false      // a player, or a title
+    fact is_playing = false
+    fact has_art = false
+    fact track_len = 0
+    fact track_pos = 0
+    text track_title = ""
+    text track_artist = ""
+    text cover_art = ""
+    text time_pos = "0:00"
+    text time_len = "0:00"
+    event play_pause ->
+    event previous ->
+    event next ->
+    event seek ->                // a fraction 0..1 of the track
 }

@@ -327,7 +327,7 @@ on("fact:Settings.pref_seconds", paint_clock)
 local ph_timer = nil
 local function wave_tick()
     ph_timer = nil
-    local should_tick = ((fact.m_playing == true and fact.m_on == true) or fact.rec_on == true) and (tonumber(fact.act_kind) or 0) == 0
+    local should_tick = ((fact["System.is_playing"] == true and fact["System.media_on"] == true) or fact.rec_on == true) and (tonumber(fact.act_kind) or 0) == 0
     if should_tick then
         fact.m_ph = (tonumber(fact.m_ph) or 0) + 0.125 * 57.2958
         ph_timer = after(125, wave_tick)
@@ -335,7 +335,7 @@ local function wave_tick()
 end
 local function wave_kick()
     if not ph_timer then
-        local should_tick = ((fact.m_playing == true and fact.m_on == true) or fact.rec_on == true) and (tonumber(fact.act_kind) or 0) == 0
+        local should_tick = ((fact["System.is_playing"] == true and fact["System.media_on"] == true) or fact.rec_on == true) and (tonumber(fact.act_kind) or 0) == 0
         if should_tick then
             ph_timer = after(125, wave_tick)
         end
@@ -349,20 +349,16 @@ on("fact:act_kind", function(k)
 end)
 
 -- ── music in the clock pill: the cover and a few bars while a player has something ──
-pcall(sys.watch, "media", function(m)
-    m = m or {}
-    local has = (m.player or "") ~= "" and (m.title or "") ~= ""
-    fact.m_on = has
-    fact.m_playing = m.playing == true
-    if has and m.playing == true then
+local function media_changed()
+    if fact["System.media_on"] == true and fact["System.is_playing"] == true then
         wave_kick()
     elseif ph_timer and not fact.rec_on then
         cancel(ph_timer)
         ph_timer = nil
     end
-    fact.m_has_art = (m.art or "") ~= ""
-    text.m_art = m.art or ""
-end)
+end
+on("fact:System.media_on", media_changed)        -- the System scene watches the media service once
+on("fact:System.is_playing", media_changed)
 
 -- ── volume / brightness feedback, inside the centre pill ─────────────────────────────────────
 -- (replaces the floating bezel). It borrows the centre island for a moment: not from the dashboard, but from a
