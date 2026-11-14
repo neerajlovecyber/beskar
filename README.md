@@ -18,7 +18,7 @@ is named after Apple, and nothing is hard-coded to one machine.
 
 **The frame** (`shell/topbar.plm`) is a single glass silhouette, so every junction melts into the next:
 
-- **Left island:** the gem button (opens the power menu: About, Settings, Lock, Sleep, Log Out, Restart, Shut Down), a capsule per workspace of the monitor it is on, then the icons of the apps open in the current workspace (the focused one highlighted).
+- **Left island:** the gem button (About, Settings, Edit Widgets and the keyboard-driven Session menu), a capsule per workspace of the monitor it is on, then the icons of the apps open in the current workspace (the focused one highlighted).
 - **Centre island:** date, time and weather. Click it for the dashboard. It also shows new notifications and the volume / brightness feedback, growing around them.
 - **Right island:** tray apps, Wi-Fi (with signal), Bluetooth while a device is connected, battery, Control
   Center, and the notification bell (with an unread count and a Do Not Disturb slash). Each icon does
@@ -35,25 +35,46 @@ is named after Apple, and nothing is hard-coded to one machine.
 | **Control Center** | the switches icon, the Wi-Fi / Bluetooth icons, `Super+Shift+C` | Wi-Fi and Bluetooth (join networks with a password, connect, pair, per-app volume), Now Playing with seek, Do Not Disturb, dark mode, brightness and volume sliders, shortcuts |
 | **Notifications** | the bell, `Super+N` | The notification server; grows out of the right island. Cards with icon, title and body, hover ×, Clear All, a saved history ("Earlier"), a banner that appears inside the centre pill |
 | **Dashboard** | click the clock | Date, live weather, CPU / memory / disk, battery, clocks |
-| **Spotlight** | `Super+Space` | Search and launch apps |
+| **Spotlight** | `Super+Space` | Apps with recent/frequent ranking, open windows (`@`), Settings (`?`), files/folders (`/`), commands (`>`), calculator and web searches |
+| **Timer** | Spotlight → Timer, timer pill/widget, `./beskar timer` | Presets and custom duration, pause/resume/cancel, saved deadline across sleep and restart; [timer contract](docs/TIMERS.md) |
 | **Clipboard** | `Super+V` | Clipboard history (cliphist) |
-| **Wallpapers** | `Super+W` | Thumbnails of your wallpapers and the built-in ones; applies with a transition |
-| **Settings** | Control Center → Settings | Appearance (dark mode, glass skin, accent colour), displays, sound, Wi-Fi, Bluetooth, wallpaper, about this PC |
-| **Power menu** | the gem button | Grows out of the left island |
+| **Wallpapers** | `Super+W` | Thumbnails, favourites and unavailable-file states; validated Circle/Fade/Wipe transitions and previous-picture restore |
+| **Settings** | Control Center → Settings | Searchable Appearance controls, safe restore/undo, saved looks and appearance sharing, display Keep/Revert, sound, quiet modes/hours/app delivery, bar/dock controls and owned shortcuts |
+| **Session menu** | `Super+Shift+Q` / `Super+X`, gem menu → Session…, Control Center power button | Dock chooser for Lock, Sleep, Log Out, Restart and Shut Down; arrows/Tab, Enter, Escape |
 | **Lock screen** | `start.sh lock` | `ext-session-lock`, password checked by PAM |
 | **Also** | | App switcher, screenshot / screen-recording toolbar, session (shut down / restart / log out) dialog |
 
 **One colour system** (`shell/common/theme.plm`): dark mode, three glass skins and seven accent colours reach every
 scene. The accent can follow your wallpaper.
 
+**One geometry system** (`shell/common/geometry.plm`) supplies shared spacing,
+control sizes, corners and typography. New UI follows [UI standards](docs/UI_STANDARDS.md);
+`python3 shell/check-ui.py` checks those conventions and runs with panel smoke checks.
+
+---
+
+## Spotlight file search
+
+Type `/ report` in Spotlight to find filenames and folders under your home directory. A result shows its parent folder; Enter opens it with your usual application or file manager. `/ Documents/report` also matches a path within the search folders.
+
+Queries wait 300 ms after typing, return at most 24 results, search up to eight directory levels and stop after two seconds. Hidden files, ignore rules, dependency/build folders, symlinked directories and other mounted filesystems are skipped. A timeout is labelled, and changing modes or closing Spotlight discards late results. File queries and paths are not added to app history.
+
+To restrict searches, put `spotlight-files.json` in the dock panel scene's data directory (normally `~/.local/share/pleamar/dockpanels/`, or under `$XDG_DATA_HOME/pleamar/dockpanels/`):
+
+```json
+{ "roots": ["~/Documents", "~/Downloads"] }
+```
+
+Use one to eight existing folders, as absolute paths or `~/` paths. Each selected folder is searched on its own filesystem. With no roots configured, Spotlight searches your home directory.
+
 ---
 
 ## Requirements
 
 - **niri** (workspaces, windows and outputs are read with `niri msg`)
-- **[pleamar](https://github.com/k4ditano/pleamar)**, built from source: needs a Rust toolchain. `start.sh` builds it
-  into `bin/` the first time if it is missing (expects a checkout at `cloned_repos/pleamar`)
-- **matugen** (colours from the wallpaper), **ImageMagick** (`magick`), **fd**, **curl**
+- **[pleamar](https://github.com/k4ditano/pleamar)**, **0.8.0-exp.16**, built from source: needs a Rust toolchain. `./beskar install`
+  (or the first start) fetches the pinned tag and builds it into `bin/exp/`; `./beskar update` keeps that pin.
+- **matugen** (colours from the wallpaper), **ImageMagick** (`magick`), **fd**, **GNU timeout** (coreutils), **curl**
 - **grim**, **slurp** and **wf-recorder** (screenshots and recording), **wl-clipboard** and **cliphist** (clipboard)
 - A **Nerd Font** (a few status glyphs), and a PipeWire/PulseAudio, NetworkManager and BlueZ desktop for the
   audio, Wi-Fi and Bluetooth pages
@@ -87,13 +108,32 @@ binds {
     Mod+N           { spawn "/path/to/beskar/shell/start.sh" "notifications"; }
     Mod+W           { spawn "/path/to/beskar/shell/start.sh" "wallpapers"; }
     Mod+Shift+C     { spawn "/path/to/beskar/shell/start.sh" "control-center"; }
+    Mod+Shift+Q repeat=false { spawn "/path/to/beskar/shell/start.sh" "power-menu"; }
+    Mod+X repeat=false { spawn "/path/to/beskar/shell/start.sh" "power-menu"; }
+    Mod+Alt+L repeat=false { spawn "/path/to/beskar/shell/start.sh" "lock"; }
 }
 ```
 
-The other commands: `settings`, `lock`, `session [0|1|2]`, `capture`, `appswitcher`, `dashboard`,
+The other commands: `settings`, `lock`, `session [0|1|2|3]`, `capture`, `appswitcher`, `dashboard`,
 `vol-up|vol-down|mute`, `bright-up|bright-down`, `dark-mode [on|off]`, `skin [0|1|2]`.
 
+See [Session menu and shortcuts](docs/SESSION_MENU.md) for navigation, confirmation
+behaviour, routes and the reference-shell decisions.
+
 ---
+
+## Shared weather
+
+The menu bar, Today, weather panel and desktop widgets share one forecast and location.
+Click the weather chip for eight hourly readings and a five-day outlook, including rain
+chance, temperatures in °C, wind in km/h and the last update time. **Change** selects a
+city or looks up your location from your IP address; **Refresh** updates the shared forecast.
+Forecast hours and sunrise/sunset follow the 12/24-hour clock preference.
+
+Forecasts refresh after 15 minutes. A failed request keeps the last successful reading,
+labelled **Cached** (and `~` before the bar/widget temperature). The cache survives a shell
+restart; widgets reconnect to the owner's snapshot without another weather API poller.
+See [the weather contract](docs/WEATHER.md) for storage and event details.
 
 ## Configuring it
 
@@ -102,6 +142,10 @@ Everything is plain files under your home; nothing is hard-coded.
 | File | What it holds |
 | :--- | :--- |
 | `~/.config/pleamar_shell.json` | Dark mode, glass skin, accent (written by Settings, restored by `start.sh`) |
+| `~/.config/beskar/prefs.json` | Versioned frame, notification, quiet-hours and general preferences, owned by Settings |
+| `~/.config/beskar/appearance-looks.json` | Up to 16 named appearance looks; sharing exports only portable appearance choices |
+| `~/.config/beskar/widgets.json` | Version 2 per-output widget placement and per-card options |
+| `~/.config/beskar/widget-layouts.json` | Up to 24 saved widget desktops; loading has one-step undo |
 | `~/.config/beskar/dock` | Pinned dock apps, one desktop id per line (`org.gnome.Nautilus`, `kitty`, …). Delete it for the defaults |
 | `~/.config/beskar/tray-hide` | Tray icons to hide, one id per line. nm-applet and blueman are hidden by default; write `-nm-applet` to show one |
 | `~/.config/beskar/location` | `LAT LON City` for the weather. Without it the place is looked up once from your IP and saved here |
@@ -112,17 +156,31 @@ Everything is plain files under your home; nothing is hard-coded.
 
 ---
 
+See [Customization plan and delivered controls](docs/CUSTOMIZATION_PLAN.md) for
+current limits and recovery behaviour. Edit Widgets has Widgets, Desktops and Card
+tabs; the Card tab opens when you select a card during editing. Position locks affect
+placement, while each clock can override date, seconds and 12/24-hour format.
+
 ## How it is built
 
-Each panel is its own pleamar scene, run as its own process by `shell/start.sh`; they talk through
-`say <scene> "fact …"`. A few shared pieces keep them consistent:
+The frame, panels, Settings and shared owners are scenes imported by `shell/desktop.plm`
+into one process. They communicate through typed events. Wallpaper, widgets, lock and
+the on-demand capture picker run separately. A few shared pieces keep them consistent:
 
 | Piece | What it does |
 | :--- | :--- |
 | `shell/common/theme.plm` | The colour tokens and the `dark_mode` / `skin` / `accent` facts, included by every scene |
 | `shell/exclusive.luau` | Opening a panel closes the others |
-| `shell/location.luau` | Where you are, for the weather and clocks |
+| `shell/weather.plm` + `.luau` | One location, forecast request and last-good cache for all weather views |
+| `shell/weather_data.luau` / `weather_client.luau` | Bounded forecast data and formatting; read-only widget snapshot bridge |
 | `shell/topbar.plm` + `.luau` | The frame, dock and tray in one scene (one process, drawn on every monitor) |
+
+Shared rendering controls use `.plm` libraries inside the caller's existing surface.
+See [the component library guide](docs/COMPONENT_LIBRARY.md) for ownership, reuse and performance rules.
+The [macOS 26 reference](docs/DESIGN_REFERENCE.md) records the supplied Figma source and access requirements.
+See [rendering notes](docs/RENDERING_NOTES.md) for the desktop buffer configuration and closed-panel ghost fix.
+The [customization plan](docs/CUSTOMIZATION_PLAN.md) compares current controls with the local iNiR reference
+and sets the next steps for searchable settings, wallpaper, bar/dock options and saved desktops.
 
 ```text
 beskar/
@@ -152,3 +210,11 @@ If you want to change something, read [`AGENTS.md`](AGENTS.md) first: it lists t
 - The macOS design language is the inspiration; Beskar is not affiliated with Apple
 
 There is no licence file for this repository yet.
+
+### Notes and to-dos
+
+Open Today from the clock and choose **Notes** or **To-dos**, or search **Notes & To-dos** in Spotlight. The shared editor saves changes automatically on this device. Notes support multiple lines, create/remove and Undo; to-dos have active/completed views, checkboxes, move up/down and remove/Undo. Today shows the latest edited note and two active to-dos with working checkboxes.
+
+Use **Edit Widgets** to add **Notes** and **To-dos** cards (medium or large). Notes shows the most recently edited note; To-dos shows up to four active items with working checkboxes. Click the card to open the same editor. Removing a card only removes its placement; the content remains available in Today and the editor.
+
+Personal content is stored atomically by the `Personal` scene in `~/.local/share/pleamar/personal/content.json` (or `$XDG_DATA_HOME/pleamar/personal/content.json`). The widgets process reads that snapshot and requests a resync when it starts. Limits: 16 notes of up to 4096 bytes, 48 to-dos of up to 240 bytes, and 20 content Undo steps per running session. Typing in a note forms one Undo step until another content operation. Undo history is not retained after restart. Saves are debounced by 300 ms; closing the editor flushes pending changes. Failed writes retain open edits and retry; unreadable/invalid saved content is kept untouched and reported in the editor.

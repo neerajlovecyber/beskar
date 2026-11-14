@@ -1,13 +1,17 @@
 # Beskar roadmap
 
-What is missing compared with iNiR / iRiS 3.0, in the order we want to do it. Tick a box when it is done and tested
+Current customization priorities: [Customization plan](CUSTOMIZATION_PLAN.md) (2026-11-14), with audited gaps, phased scope and acceptance criteria.
+Broader feature priorities and reference review: [Next features and unification](NEXT_FEATURES_PLAN.md). This file remains the inventory; the linked plans define upcoming slices.
+
+Feature inventory compared with the iNiR / iRiS references; the customization plan records the latest local snapshot inspected. Tick a box when it is done and tested
 (on the live shell where possible, otherwise in a nested niri, as `AGENTS.md` describes).
 
 ## Done so far
 - [x] Frame, islands, panels that grow out of the bar and the dock
 - [x] Music, notifications (grouping optional), capture and recording, app switcher, session dialog, Spotlight
 - [x] Settings (8 tabs, real controls), lock screen (PAM, no bypass), idle lock (off by default)
-- [x] Desktop widgets (9 kinds), edit mode with grid / tidy / undo / presets, widget bar grown out of the dock
+- [x] Desktop widgets (12 kinds), edit mode with grid / tidy / undo / presets, widget bar grown out of the dock
+- [x] Shared notes and to-dos in Today and desktop widgets, one editor, autosave and Undo
 - [x] Colour engine from the wallpaper (Tonal / Vibrant / Neutral / Soft), applied to the whole shell
 - [x] Wallpaper painted by pleamar (circle / fade / wipe reveal), `awww` removed
 - [x] Other apps wear the theme: kitty, alacritty, ghostty, foot, GTK 3/4 + libadwaita (Files), Qt
@@ -25,17 +29,27 @@ What is missing compared with iNiR / iRiS 3.0, in the order we want to do it. Ti
 - [x] **Window overview and live previews** (pleamar `thumbnails` service) in the app switcher, an overview and the dock
 - [x] **The Island, second round**: timers, charging, screenshots, camera / mic as live activities in the centre pill
 - [ ] **Widgets, second round**
-  - [ ] Notes and to-do (saved to a file)
-  - [ ] World clock and timers
+  - [x] Notes and to-do (shared Personal owner and saved content)
+  - [x] Shared timer with panel, widget, pause/resume and restart recovery
+  - [ ] World clock
   - [ ] Lyrics, screen time
   - [ ] Stacks (several widgets in one place) and saved desktops
   - [ ] Widgets on the lock screen
 - [ ] **Wallpaper features**
-  - [ ] Transition picker in Settings (circle / fade / wipe + slide, zoom, blinds, random)
+  - [ ] Transition choice in the existing wallpaper picker (circle / fade / wipe; C2a); extra effects later
   - [ ] Favourites, web sources (Wallhaven)
   - [ ] Pause live wallpapers under a maximised window; video wallpapers (skwd-wall or similar)
 
-## 3. Polish and ecosystem
+## 3. Customization
+- [ ] Search individual settings from Settings and Spotlight; safe group defaults and undo (C1)
+- [ ] Validated, versioned, atomic preference saves with backwards-compatible loading (C1)
+- [ ] Saved looks, reduced motion, bounded typography/density and theme targets (C2)
+- [ ] Bar module visibility/order, dock pin ordering/sizing and output policy (C3)
+- [ ] Named saved desktops and per-widget options; then stacks (C4)
+- [ ] Selective data-only import/export with recovery and Beskar-owned shortcut editing (C5)
+- [ ] Quiet policies and independent display Keep/Revert recovery (C6)
+
+## 4. Polish and ecosystem
 - [ ] Emoji picker, hot corners, keyboard cheat-sheet overlay, screenshot region selector with annotation
 - [ ] Languages (dates and texts follow the system language)
 - [ ] Use more of the wallpaper palette (text, cards, status colours)

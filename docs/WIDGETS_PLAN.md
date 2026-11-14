@@ -1,6 +1,8 @@
 # Beskar desktop widgets: architecture and implementation plan
 
-> **Status (built):** Phases 0–3 and most of 4–5 are done, in a simpler form than planned below: one `widgets.plm` scene, cards driven by `model ws` (no fixed slot pool; Phase 0 showed idle cost ≈ 0.2 % CPU), 7 widget kinds, edit mode with drag / grid snap / resize / remove / undo, an add-toolbar and 5 layout presets (no separate shelf scene), a Settings switch and entry points (Apple menu, Spotlight, `Super+Shift+W`). **Not done:** stacks (Phase 6), template custom widgets (Phase 7), lock-screen widgets, magnet guides, per-resolution layouts, to-do / notes / world clock / timers. See `AGENTS.md` rule 27.
+> **Status (built):** Phases 0–3 and most of 4–5 are done, in a simpler form than planned below: one `widgets.plm` scene, cards driven by `model ws` (no fixed slot pool; Phase 0 showed idle cost ≈ 0.2 % CPU), 12 widget kinds, edit mode with drag / grid snap / resize / remove / undo, an add-toolbar and 5 layout presets (no separate shelf scene), a Settings switch and entry points (Apple menu, Spotlight, `Super+Shift+W`). **Not done:** stacks (Phase 6), template custom widgets (Phase 7), lock-screen widgets, magnet guides, per-resolution layouts, world clocks. Notes and to-dos now share the `Personal` owner and editor with Today; see [Personal content](PERSONAL_CONTENT.md). Timer kind 12 shares Activities with Spotlight and the pill; see [Timers](TIMERS.md). See `AGENTS.md` rules 27, 61 and 68.
+
+> **Customization update (2026-11-14):** [Customization plan C4](CUSTOMIZATION_PLAN.md#c4--personal-desktops-and-widget-options) now delivers saved desktops and per-card position locks/clock options; stacks remain the next separate increment against the newer `references/inir` snapshot. It takes precedence over the historical architecture sketches below: keep `model ws`, the max-16 bound, existing surfaces and feature owners; hidden groups still have compile/rule cost.
 
 Goal: widgets on the desktop like iNiR 3.0 (iRiS): a set of small glass cards that sit on the wallpaper, an **edit mode** to arrange them, **sizes**, **stacks**, **saved layouts**, and a way to **add your own**. Built the pleamar way: `.plm` scenes + Luau, no Rust, no QML.
 
@@ -97,7 +99,7 @@ One timer per *data source*, started only when at least one visible widget needs
 | notifications | `notification_history` service | event | newsTicker-like "recent" |
 | calendar | local `.ics` files or `khal list` if installed (§7 risk 3) | 5 min | monthCalendar, upcoming |
 | notes / todo | `~/.config/beskar/widgets/notes.json` | on edit | notes, todo |
-| timers | `after`/`every`, state in widgets.json | 1 s while running | timers |
+| timer (implemented) | Activities owns timer.json; read-only timer_client bridge | local display 1 s while running/visible, transition snapshots | Timer kind 12 |
 | screen time | focus time per app from `niri msg -j event-stream` | event | screenTime (later) |
 
 Facts are written once and all slots of that kind read them (no per-slot polling).

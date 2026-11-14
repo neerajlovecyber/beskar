@@ -1,5 +1,8 @@
 # Aligning Beskar with the pleamar way
 
+Historical migration notes. The current shell already has owner scenes, typed events, split panel scenes and shared media.
+For new work, see [Next features and unification](NEXT_FEATURES_PLAN.md). Later status sections supersede the early proposals below.
+
 Branch `feat/pleamar-way`. Written 2026-11-12, after the unified-surface work (docs/UNIFIED_SURFACE_PLAN.md).
 
 ## What "the pleamar way" is (from pleamar 0.8's own docs and commits)
