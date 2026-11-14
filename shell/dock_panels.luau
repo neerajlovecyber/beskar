@@ -391,6 +391,7 @@ module("clipboard", function(panel, opened, shown, closed)
     local MAX_HISTORY = 100
 
     local history = {}      -- { raw = the line cliphist printed, preview = text }
+    local clip_missing = nil -- cliphist is not installed: the panel says so instead of "Nothing copied yet"
     local pins = {}         -- { text = full text }
     local view = {}         -- what the list can show now: { kind = "pin"|"hist", idx = n, preview = text }
     local off = 0           -- first row on screen (0-based)
@@ -493,7 +494,8 @@ module("clipboard", function(panel, opened, shown, closed)
         model.clips = rows
         local n = #view
         text.clip_count = (q ~= "" and (n .. " found")) or (#history .. " saved" .. (#pins > 0 and (" · " .. #pins .. " pinned") or ""))
-        text.clip_empty = (q ~= "") and "Nothing matches" or "Nothing copied yet"
+        text.clip_empty = clip_missing and "Clipboard history needs cliphist (install the cliphist package)"
+            or ((q ~= "") and "Nothing matches" or "Nothing copied yet")
         if #rows > 0 and (fact.clip_sel >= #rows or fact.clip_sel < 0) then
             fact.clip_sel = 0
         end
@@ -505,6 +507,9 @@ module("clipboard", function(panel, opened, shown, closed)
     end
 
     local function refresh_history()
+        if clip_missing == nil then
+            run("sh", { "-c", "command -v cliphist >/dev/null" }, function(_, code) clip_missing = code ~= 0; rebuild(true) end)
+        end
         run("sh", { "-c", "cliphist list 2>/dev/null | head -n " .. MAX_HISTORY }, function(out)
             local items = {}
             for line in (out or ""):gmatch("[^\n]+") do

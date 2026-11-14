@@ -134,6 +134,7 @@ start_shell() {
 
     mkdir -p "$HOME/.config/beskar" && printf '%s\n' "$DIR" > "$HOME/.config/beskar/shell-dir"
     # Night light: the choice made in Settings comes back at login (0 off, 1 always, 2 sunset to sunrise)
+    python3 "$DIR/shell/displays.py" restore >/dev/null 2>&1 || true         # display scale / mode kept in Settings → Displays
     NIGHT=$(grep -o '"night": *[0-9]*' "$HOME/.config/beskar/prefs.json" 2>/dev/null | awk '{print $2}')
     NIGHT_T=$(grep -o '"night_t": *[0-9]*' "$HOME/.config/beskar/prefs.json" 2>/dev/null | awk '{print $2}')
     case "${NIGHT:-0}" in

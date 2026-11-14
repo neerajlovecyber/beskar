@@ -294,7 +294,7 @@ scene MacSettings {
                 }
                 Card(70) {
                     text "Scale" { at: 18, 22; anchor: left center; size: ts_body; weight: 600; color: ink_c }
-                    text "Applies now. To keep it after a restart, set it in niri's config." { at: 18, 50; anchor: left center; size: ts_micro; color: ink_sub; width: 330 }
+                    text "Applies now; press Keep and it is restored at every login." { at: 18, 50; anchor: left center; size: ts_micro; color: ink_sub; width: 330 }
                     row {
                         at: 290, 14
                         gap: space_6

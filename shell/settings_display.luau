@@ -2,6 +2,11 @@
 -- The timer exists only while a preview is pending. Closing Settings asks to revert immediately.
 return function(refresh)
     local token, busy, generation = nil, false, 0
+    local change = nil          -- { name, kind, requested } of the preview in flight: saved when the user keeps it
+    local function remember(c)
+        if not c then return end
+        run("sh", { "-c", 'd=$(cat "$HOME/.config/beskar/shell-dir" 2>/dev/null) || exit 1; exec python3 "$d/shell/displays.py" save "$1" "$2" "$3"', "displays", c.name, c.kind, c.requested }, nil, { output = false })
+    end
     local function invoke(args, cb)
         run("sh", { "-c", 'd=$(cat "$HOME/.config/beskar/shell-dir" 2>/dev/null) || exit 1; [ -n "$d" ] || exit 1; exec python3 "$d/shell/display-preview.py" "$@"', "display-preview", unpack(args) }, function(out)
             local ok, result = pcall(json.decode, out or "")
@@ -18,7 +23,9 @@ return function(refresh)
         if pending then
             text.display_status = "Keep this display setting? Reverts in " .. math.max(0, math.ceil((result.remaining_ms or 0) / 1000)) .. " seconds"
         else
-            text.display_status = not result.ok and message(result) or (result.state == "kept" and "Display setting kept" or (result.state == "reverted" and "Previous display setting restored" or message(result)))
+            if result.ok and result.state == "kept" then remember(change) end
+            if result.state ~= "pending" then change = nil end
+            text.display_status = not result.ok and message(result) or (result.state == "kept" and "Display setting kept · restored at login" or (result.state == "reverted" and "Previous display setting restored" or message(result)))
             if result.state ~= "restore-failed" then token = nil end
             refresh()
         end
@@ -50,6 +57,7 @@ return function(refresh)
         text.display_status = "Starting protected display preview…"
         generation = generation + 1
         local serial = generation
+        change = { name = tostring(name), kind = tostring(kind), requested = tostring(requested) }
         invoke({ "begin", name, kind, requested, "-" }, function(result)
             if result.ok and result.state == "pending" and type(result.token) == "string" then
                 token = result.token

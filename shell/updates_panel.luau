@@ -55,7 +55,8 @@ return function(panel, opened, shown)
                             .. (aur_n > 0 and (" · " .. aur_n .. " from the AUR") or ""))
                     end
                 elseif not fact.up_running then
-                    text.up_status = "Could not reach the package servers"
+                    -- 127: `timeout` could not find checkupdates (pacman-contrib), not a network problem
+                    text.up_status = code == 127 and "checkupdates is not installed (install pacman-contrib)" or "Could not reach the package servers"
                 end
                 resize()
             end
