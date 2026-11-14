@@ -1379,8 +1379,8 @@ end)
 local function learn_screens(tries)
     -- one process for the whole desktop (desktop.plm): the log lines say which scene each surface is
     -- (`surface 5 on HDMI-A-1 · … · Topbar copy 1`); with one process per scene the topbar's own log has `surface N on NAME`
-    local script = "if grep -q 'surface [0-9]* on .* Topbar' /tmp/pleamar_desktop.log 2>/dev/null; then "
-        .. "grep 'surface [0-9]* on .* Topbar' /tmp/pleamar_desktop.log | head -8; "
+    local script = "if grep -q 'surface [0-9]* on .* Topbar' \"${BESKAR_DESKTOP_LOG:-/tmp/pleamar_desktop.log}\" 2>/dev/null; then "
+        .. "grep 'surface [0-9]* on .* Topbar' \"${BESKAR_DESKTOP_LOG:-/tmp/pleamar_desktop.log}\" | head -8; "
         .. "else grep 'surface [0-9]* on' /tmp/pleamar_topbar.log 2>/dev/null | head -8; fi"
     run("sh", { "-c", script }, function(out)
         local map = {}

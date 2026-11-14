@@ -21,7 +21,10 @@ module("polkit", function(panel, opened, shown, closed)
         Hooks.emit("Topbar.open_panel", 8)
     end
 
-    sys.watch("polkit", function(p)
+    -- the session has ONE authentication agent: a test rig (shell/rig.sh sets BESKAR_RIG=1) must not register a second one
+    local okr, rig = pcall(sys.ask, "env", "BESKAR_RIG")
+    local watch_polkit = (okr and rig == "1") and function() end or sys.watch
+    watch_polkit("polkit", function(p)
         p = p or {}
         local was_wrong = fact.pk_wrong == true
         text.pk_message = p.message or ""

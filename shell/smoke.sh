@@ -6,7 +6,7 @@
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 python3 "$DIR/shell/check-ui.py" || exit 1
 B="$DIR/bin/exp/pleamar"; [ -x "$B" ] || B="$DIR/bin/pleamar"
-L=/tmp/pleamar_desktop.log
+L="${BESKAR_DESKTOP_LOG:-/tmp/pleamar_desktop.log}"     # the rig (shell/rig.sh) sets its own
 fail=0
 selected=("$@")
 wanted() {
