@@ -1,70 +1,11 @@
--- The dialogs: session (shut down / restart / log out), the polkit password dialog and the first-run welcome (dialogs.plm).
-on("set_kind", function(k) fact.ses_kind = tonumber(k) or 0 end)
-local module = require("panelclient")({ session = 11, polkit = 12, welcome = 24 })
+-- The dialogs: session (shut down / restart / log out), the polkit password dialog and the first-run welcome (dialogs.plm → common/*_panels.plm).
+local Hooks = require("topbar_hooks")        -- the frame cannot emit to itself: its own events are called directly
+-- Loaded by topbar.luau with its panel client; the dialogs' content is drawn in the frame's own surface.
+return function(module)
 
 local function close_panel() emit("Panels.close") end
 
-module("session", function(panel, opened, shown, closed)
-    -- Session dialog logic: shut down, restart, log out (with a 60 s countdown). Enter presses the highlighted button
-    -- (the action by default); the dialog grows out of the dock like Spotlight.
-    panel.height(250)
-    local timer_id = nil
-
-    local function clear_timer()
-        if timer_id then
-            cancel(timer_id)
-            timer_id = nil
-        end
-    end
-
-    on("confirm_action", function()
-        clear_timer()
-        close_panel()
-        local k = fact.ses_kind or 0
-        if k == 0 then
-            log("Session: Powering off system...")
-            run("systemctl", { "poweroff" }, function(_, code)
-                if code ~= 0 then log("Session: poweroff failed with code", code) end
-            end)
-        elseif k == 1 then
-            log("Session: Restarting system...")
-            run("systemctl", { "reboot" }, function(_, code)
-                if code ~= 0 then log("Session: reboot failed with code", code) end
-            end)
-        else
-            log("Session: Logging out...")
-            run("niri", { "msg", "action", "quit", "--skip-confirmation" })
-        end
-    end)
-
-    -- Countdown loop: runs while this dialog is the one shown
-    opened(function()
-        fact.ses_sel = 1          -- Enter presses the action by default
-        fact.countdown = 60
-        clear_timer()
-        local function tick()
-            if not shown() then return end
-            if fact.countdown > 1 then
-                fact.countdown = fact.countdown - 1
-                timer_id = after(1000, tick)
-            else
-                emit("confirm_action")
-            end
-        end
-        timer_id = after(1000, tick)
-    end)
-    closed(clear_timer)
-
-    on("ses_enter", function()
-        if not shown() then return end
-        if (tonumber(fact.ses_sel) or 1) == 1 then
-            emit("confirm_action")
-        else
-            close_panel()
-        end
-    end)
-    on("dismiss", function() if shown() then close_panel() end end)
-end)
+module("session", require("session_menu"))
 
 
 module("polkit", function(panel, opened, shown, closed)
@@ -77,7 +18,7 @@ module("polkit", function(panel, opened, shown, closed)
 
     local function open_on_focused_monitor()
         -- the frame knows which monitor has the focus (FOCUS_PANELS in topbar.luau toggles us there)
-        emit("Topbar.open_panel", 8)
+        Hooks.emit("Topbar.open_panel", 8)
     end
 
     sys.watch("polkit", function(p)
@@ -151,7 +92,7 @@ module("welcome", function(panel, opened, shown, closed)
 
     local function show()
         fact.page = 0
-        if not shown() then emit("Topbar.open_panel", 9) end     -- the frame picks the monitor with the focus
+        if not shown() then Hooks.emit("Topbar.open_panel", 9) end     -- the frame picks the monitor with the focus
     end
 
     -- mirror what Settings has now, so the switches on page 2 start right
@@ -194,3 +135,4 @@ module("welcome", function(panel, opened, shown, closed)
     -- `./beskar welcome` and Settings ask for it again
     on("show_again", show)
 end)
+end

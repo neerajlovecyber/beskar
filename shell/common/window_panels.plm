@@ -1,26 +1,9 @@
-// The window panels that grow out of the dock: app switcher (21) and window overview (22).
-// One of the panel scenes (the shared panel state is OWNED by `Panels`; the frame, `topbar`, draws every panel's glass).
-// Logic: windows.luau.
-import "common/palette.plm"
-uses scene "settings.plm" as Settings      // owns the look (dark mode, skin, accent, palette, clock format): read by name
-import "common/icons.plm"
-import "common/ui.plm"
-import "common/panelbody.plm"
-uses scene "panels.plm" as Panels
-uses scene "topbar.plm" as Topbar
+// The app switcher (21) and the window overview (22): their CONTENT is drawn inside the frame's own surface (topbar.plm, in `Shell`), over the
+// glass the dock island grows. Merged from the old Windows scene; the logic is shell/window_panels.luau (loaded by topbar.luau).
+part WindowPanels {
 
-scene MacWindows {
-    include "common/theme_owner.plm"
-    include "common/theme.plm"
-    include "common/morph_core.plm"
-
-    permissions {
-        run: "niri msg"
-        services: "apps", "thumbnails", "thumbnails.*", "say:panels"
-    }
-
-    let stroke_c = card_stroke
-    let stroke_op = card_stroke_op
+    let wn_stroke_c = card_stroke
+    let wn_stroke_op = card_stroke_op
 
     // ── app switcher ────────────────────────────────────────────
     fact sw_sel = 0
@@ -38,7 +21,7 @@ scene MacWindows {
         prop on = 0 ~quick
         follow on = if(sw_sel == w.index, 1, 0)
 
-        SelectCard(140, 112, sw_sel == w.index)
+        SelectCard(140, 112, sw_sel == w.index, ui_accent_c: accent_c, ui_card_stroke: card_stroke, ui_item_solid: item_solid)
         zone box hit { from: 0, 0; size: 140, 112; corner: r_l; cursor: pointer }
 
         // Preview thumbnail area (clipped)
@@ -57,8 +40,8 @@ scene MacWindows {
         // App Icon Badge in corner of preview
         group {
             move: 8, 56
-            box { from: 0, 0; size: 22, 22; corner: 6; color: bg_color; opacity: 90% }
-            box { from: 0, 0; size: 22, 22; corner: 6; stroke: 1; color: stroke_c; opacity: stroke_op }
+            box { from: 0, 0; size: 22, 22; corner: control_r; color: bg_color; opacity: 90% }
+            box { from: 0, 0; size: 22, 22; corner: control_r; stroke: 1; color: wn_stroke_c; opacity: wn_stroke_op }
             image w.icon { at: 2, 2; size: 18, 18 }
         }
 
@@ -66,7 +49,7 @@ scene MacWindows {
         text w.title {
             at: 70, 96
             anchor: center center
-            size: 10.5
+            size: font_micro
             weight: if(sw_sel == w.index, 600, 400)
             color: if(sw_sel == w.index, ink_c, ink_sub)
             width: 126
@@ -76,12 +59,12 @@ scene MacWindows {
 
         on press hit { emit sw_switch_to(w.index) }
     }
-    on key Tab while cur == 21 { emit next_app }
-    on key Left while cur == 21 { emit prev_app }
-    on key Right while cur == 21 { emit next_app }
-    on key Return while cur == 21 { emit sw_switch_to(sw_sel) }
-    on key Escape while cur == 21 { emit Panels.close }
-    on blur while cur == 21 and not fresh { emit Panels.close }
+    on key Tab while Panels.cur == 21 { emit next_app }
+    on key Left while Panels.cur == 21 { emit prev_app }
+    on key Right while Panels.cur == 21 { emit next_app }
+    on key Return while Panels.cur == 21 { emit sw_switch_to(sw_sel) }
+    on key Escape while Panels.cur == 21 { emit Panels.close }
+    on blur while Panels.cur == 21 and not Panels.fresh { emit Panels.close }
 
     // ── window overview ─────────────────────────────────────────
     fact ov_sel = 0
@@ -104,7 +87,7 @@ scene MacWindows {
         prop on = 0 ~quick
         follow on = if(ov_sel == w.index, 1, 0)
 
-        SelectCard(274, 165, ov_sel == w.index)
+        SelectCard(274, 165, ov_sel == w.index, ui_accent_c: accent_c, ui_card_stroke: card_stroke, ui_item_solid: item_solid)
         zone box hit { from: 0, 0; size: 274, 165; corner: r_l; cursor: pointer }
 
         // Preview thumbnail area (clipped)
@@ -123,8 +106,8 @@ scene MacWindows {
         // App Icon Badge in corner of preview
         group {
             move: 10, 10
-            box { from: 0, 0; size: 24, 24; corner: 6; color: bg_color; opacity: 90% }
-            box { from: 0, 0; size: 24, 24; corner: 6; stroke: 1; color: stroke_c; opacity: stroke_op }
+            box { from: 0, 0; size: 24, 24; corner: control_r; color: bg_color; opacity: 90% }
+            box { from: 0, 0; size: 24, 24; corner: control_r; stroke: 1; color: wn_stroke_c; opacity: wn_stroke_op }
             image w.icon { at: 3, 3; size: 18, 18 }
         }
 
@@ -132,16 +115,16 @@ scene MacWindows {
         group {
             move: 206, 10
             show: w.ws > 0
-            box { from: 0, 0; size: 58, 20; corner: 10; color: bg_color; opacity: 90% }
-            box { from: 0, 0; size: 58, 20; corner: 10; stroke: 1; color: stroke_c; opacity: stroke_op }
-            text w.ws_label { at: 29, 10; anchor: center center; size: t_micro; weight: 600; color: ink_sub }
+            box { from: 0, 0; size: 58, 20; corner: radius_small; color: bg_color; opacity: 90% }
+            box { from: 0, 0; size: 58, 20; corner: radius_small; stroke: 1; color: wn_stroke_c; opacity: wn_stroke_op }
+            text w.ws_label { at: 29, 10; anchor: center center; size: ts_micro; weight: 600; color: ink_sub }
         }
 
         // Window Title below preview
         text w.title {
             at: 137, 145
             anchor: center center
-            size: 11
+            size: font_caption
             weight: if(ov_sel == w.index, 600, 400)
             color: if(ov_sel == w.index, ink_c, ink_sub)
             width: 254
@@ -151,84 +134,56 @@ scene MacWindows {
 
         on press hit { emit ov_switch_to(w.index) }
     }
-    on key Tab while cur == 22 { emit next_win }
-    on key Left while cur == 22 { emit prev_win }
-    on key Right while cur == 22 { emit next_win }
-    on key Up while cur == 22 { emit up_win }
-    on key Down while cur == 22 { emit down_win }
-    on key Return while cur == 22 { emit ov_switch_to(ov_sel) }
-    on key Escape while cur == 22 { emit Panels.close }
-    on blur while cur == 22 and not fresh { emit Panels.close }
+    on key Tab while Panels.cur == 22 { emit next_win }
+    on key Left while Panels.cur == 22 { emit prev_win }
+    on key Right while Panels.cur == 22 { emit next_win }
+    on key Up while Panels.cur == 22 { emit up_win }
+    on key Down while Panels.cur == 22 { emit down_win }
+    on key Return while Panels.cur == 22 { emit ov_switch_to(ov_sel) }
+    on key Escape while Panels.cur == 22 { emit Panels.close }
+    on blur while Panels.cur == 22 and not Panels.fresh { emit Panels.close }
 
     //  The app switcher grows out of the dock like Spotlight: the frame draws the glass (width follows the number of windows,
     //  reported by the logic with panel.width), this surface draws the cards. Content is centred on the surface.
-    surface switcher {
-        size: 1120, 200
-        anchor: bottom
-        margin: 0, 0, 0, 0
-        level: overlay
-        keyboard: exclusive while open and cur == 21
-        screens: Panels.panel_mon
-        open: (open or seen > 0.02) and cur == 21
-
-        zone box sw_dismiss { from: 0, 0; size: 1120, 200; active: open and cur == 21 }
-
-        PanelBody(0, 200, 1, 0, Topbar.bp_w, panel_h, ph, seen) {
+    component SwitcherContent() {
             //  Horizontal strip of window cards
             row app_strip {
                 at: 560, 16
-                gap: 12
+                gap: space_12
                 anchor: center top
                 align: center
                 for w in sw_wins { AppTile(w) }
             }
             //  Title of the selected window
-            text sel_title { at: 560, 148; anchor: center center; size: 12; weight: 600; color: ink_c; width: bw - 40; align: center; lines: 1 }
-        }
-        on press sw_dismiss { emit Panels.close }
-        on press right sw_dismiss { }
+            text sel_title { at: 560, 148; anchor: center center; size: font_secondary; weight: 600; color: ink_c; width: bw - 40; align: center; lines: 1 }
     }
 
-    surface overview {
-        size: 1240, 820
-        anchor: bottom
-        margin: 0, 0, 0, 0
-        level: overlay
-        keyboard: exclusive while open and cur == 22
-        screens: Panels.panel_mon
-        open: (open or seen > 0.02) and cur == 22
-
-        zone box ov_dismiss { from: 0, 0; size: 1240, 820; active: open and cur == 22 }
-
-        PanelBody(0, 820, 1, 0, Topbar.bp_w, panel_h, ph, seen) {
+    component OverviewContent() {
             //  Header row
             group {
                 move: 620 - ov_w / 2 + 30, 26
                 ellipse { at: 14, 14; radius: 14; color: accent_c; opacity: 20% }
                 Sym("󰕰", 14, 14, 15, accent_c)
                 text "Window Overview" { at: 38, 14; anchor: left center; size: 16; weight: 700; color: ink_c }
-                text win_count_text { at: 200, 14; anchor: left center; size: t_sub; color: ink_sub }
-                KeyHint(ov_w - 230, 14, "← →  select   ·   Enter  focus   ·   Esc  close")
+                text win_count_text { at: 200, 14; anchor: left center; size: ts_sub; color: ink_sub }
+                KeyHint(ov_w - 230, 14, "← →  select   ·   Enter  focus   ·   Esc  close", ui_ink_sub: ink_sub)
             }
 
             //  Grid of window previews
             grid {
                 at: 620 - ov_w / 2 + 28, 66
                 columns: 4
-                gap: 16
+                gap: space_16
                 width: 1144
                 row: 165
                 for w in ov_wins { OverviewTile(w) }
             }
 
-            //  Empty state if no windows are open
+            //  Empty state if no windows are Panels.open
             group {
                 show: ov_wins.count < 1
                 move: 620, ov_h / 2
-                EmptyState(0, 0, "󰕰", "No open windows")
+                EmptyState(0, 0, "󰕰", "No Panels.open windows", ui_ink_sub: ink_sub)
             }
-        }
-        on press ov_dismiss { emit Panels.close }
-        on press right ov_dismiss { }
     }
 }

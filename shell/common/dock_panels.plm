@@ -1,0 +1,588 @@
+// Spotlight (4), the wallpaper strip (5), the clipboard (6) and the widget bar (10): their CONTENT is drawn inside the frame's own surface
+// (topbar.plm, in `Shell`, over the glass the dock island already draws), so a panel and its glass can neither disagree on the monitor
+// nor on timing. Merged from the old Dockpanels scene; its logic is shell/dock_panels.luau (loaded by topbar.luau). The panels' text
+// fields (`query`, `clip_q`, `wb_name`) are declared loose in topbar.plm.
+part DockPanels {
+
+    let dk_stroke_c = card_stroke
+    let dk_stroke_op = card_stroke_op
+
+    // ── spotlight ─────────────────────────────────────────────────
+    let line_color = card_stroke
+    let line_op = card_stroke_op
+
+    //  the logos of the web searches (Google, YouTube, GitHub, Wikipedia, DuckDuckGo, Maps), picked by `site` 1..6
+    image logo_g = file "../assets/icons/web/google.svg", 26, 26
+    image logo_yt = file "../assets/icons/web/youtube.svg", 26, 26
+    image logo_gh = file "../assets/icons/web/github.svg", 26, 26
+    image logo_w = file "../assets/icons/web/wikipedia.svg", 26, 26
+    image logo_ddg = file "../assets/icons/web/duckduckgo.svg", 26, 26
+    image logo_maps = file "../assets/icons/web/maps.svg", 26, 26
+
+    model hits max 24 { name: text; sub: text; kind: number; site: number; glyph: text; has_icon: bool; actionable: bool; icon: image 26, 26 }
+    fact sp_sel   = 0
+    fact sc_t  = 0                 // where the result list is scrolled to (px)
+    prop sc = 0 ~quick
+    follow sc = sc_t
+    text query = ""
+    event launch ->
+
+    //  The glass is drawn by the frame: the dock island grows UP into it (topbar.plm). This scene only draws the
+    //  content, anchored to the bottom: the results above, the search field at the bottom where the dock was.
+
+
+    component Row(h: record) {
+        size: 576, row_h
+        prop on = 0 ~quick
+        follow on = if(sp_sel == h.index, 1, 0)
+
+        RowFrame(576, row_h, on, ui_accent_c: accent_c)
+        zone box hit { from: 0, 0; size: 576, row_h; corner: radius_row; cursor: pointer; active: h.actionable }
+
+        image h.icon { at: 16, 8; size: 26, 26; show: h.has_icon }
+        group {
+            show: h.kind == 2 and h.site > 0
+            image logo_g { at: 16, 8; size: 26, 26; show: h.site == 1 }
+            image logo_yt { at: 16, 8; size: 26, 26; show: h.site == 2 }
+            image logo_gh { at: 16, 8; size: 26, 26; show: h.site == 3 }
+            image logo_w { at: 16, 8; size: 26, 26; show: h.site == 4 }
+            image logo_ddg { at: 16, 8; size: 26, 26; show: h.site == 5 }
+            image logo_maps { at: 16, 8; size: 26, 26; show: h.site == 6 }
+        }
+        group {
+            show: not h.has_icon and not (h.kind == 2 and h.site > 0)
+            ellipse { at: 29, 21; radius: 13; color: accent_c; opacity: 85% }
+            text h.glyph { family: "JetBrainsMono Nerd Font Mono"; at: 29, 21; anchor: center; size: 14; color: on_accent }
+        }
+        text h.sub { at: 54, 31; anchor: left center; size: ts_cap; color: ink_sub; width: 506; lines: 1; show: h.kind == 6 }
+        text h.sub { at: 560, 21; anchor: right center; size: ts_cap; color: ink_sub; width: 154; lines: 1; align: right; show: h.kind != 6 }
+        text h.name {
+            at: 54, if(h.kind == 6, 13, 21)
+            anchor: left center
+            size: if(h.kind == 1, 19, 15)
+            weight: if(h.kind == 1, 700, 400)
+            width: if(h.kind == 6, 506, 326)
+            lines: 1
+            color: ink_c
+            opacity: 65% + on * 35%
+        }
+
+        on enter hit { sp_sel = h.index }
+        on press hit { emit launch(h.index) }
+    }
+    on key Escape while Panels.cur == 4 { emit Panels.close }
+    on key Tab while Panels.cur == 4 { sp_sel = min(sp_sel + 1, max(hits.count - 1, 0)); sc_t = clamp(sc_t, (min(sp_sel + 1, max(hits.count - 1, 0)) - 6) * 44, min(sp_sel + 1, max(hits.count - 1, 0)) * 44) }
+    on blur while Panels.cur == 4 and not Panels.fresh { emit Panels.close }
+    on key Down while Panels.cur == 4 { sp_sel = min(sp_sel + 1, max(hits.count - 1, 0)); sc_t = clamp(sc_t, (min(sp_sel + 1, max(hits.count - 1, 0)) - 6) * 44, min(sp_sel + 1, max(hits.count - 1, 0)) * 44) }
+    on key Up while Panels.cur == 4 { sp_sel = max(sp_sel - 1, 0); sc_t = clamp(sc_t, (max(sp_sel - 1, 0) - 6) * 44, max(sp_sel - 1, 0) * 44) }
+    on change sp_sel while sp_sel == 0 { sc_t = 0 }
+    on submit query    { emit launch(sp_sel) }
+
+    // ── clipboard ─────────────────────────────────────────────────
+    fact clip_sel = 0
+
+    //  Painted by clipboard.luau. `src` is where it came from in the logic's lists; `pinned` shows the pin.
+    model clips max 8 { src: number; preview: text; pinned: bool; pinnable: bool; is_img: bool; ready: bool; thumb: image 56, 34 }
+    text clip_q = ""
+    text clip_count = ""
+    text clip_empty = "Nothing copied yet"
+
+
+    event copy_clip ->
+    event pin_clip ->
+    event clear_all ->
+    event clip_scroll ->
+
+    component ClipRow(c: record) {
+        size: 520, 42
+        prop on = 0 ~quick
+        follow on = if(clip_sel == c.index, 1, 0)
+        prop pin_hot = 0 ~quick
+
+        // Pill background
+        RowFrame(480, row_h, on, ui_accent_c: accent_c)
+        zone box hit { from: 0, 0; size: 480, row_h; corner: radius_row; cursor: pointer }
+
+        //  An image: its thumbnail (or a faint box until it is made) in place of the text icon
+        group {
+            show: c.is_img
+            box { from: 10, 4; size: 56, 34; corner: control_r; color: item_solid }
+            image c.thumb { at: 10, 4; size: 56, 34; show: c.ready }
+        }
+
+        // Clip text preview
+        row {
+            at: if(c.is_img, 76, 14), 12
+            gap: space_12
+            align: center
+
+            text "󰈙" { family: "JetBrainsMono Nerd Font Mono"; size: 14; color: if(on > 0.5, accent_c, ink_sub); show: not c.is_img }
+            text c.preview {
+                size: font_body
+                weight: if(on > 0.5, 600, 400)
+                color: ink_c
+                width: 420
+                lines: 1
+            }
+        }
+
+        //  The pin: a pushpin, filled and in the accent colour when pinned, a faint outline otherwise (shown on the
+        //  row under the pointer or the cursor, and always when pinned)
+        group {
+            show: c.pinnable
+            opacity: if(c.pinned, 100%, on * 70%)
+            move: 488, 9
+            ellipse { at: 12, 8.5; radius: 5; color: if(c.pinned, accent_c, ink_sub) }
+            ellipse { at: 12, 8.5; radius: 5; stroke: 1.5; color: if(c.pinned, accent_c, ink_sub); opacity: if(c.pinned, 0%, 100%) }
+            line { from: 12, 13.5; to: 12, 22; width: 1.8; color: if(c.pinned, accent_c, ink_sub) }
+            line { from: 7, 14; to: 17, 14; width: 1.8; color: if(c.pinned, accent_c, ink_sub) }
+            zone box pin_hit { at: 12, 12; size: 28, 28; corner: radius_small; cursor: pointer }
+            on press pin_hit { emit pin_clip(c.index) }
+            on press right pin_hit { }
+        }
+
+        on enter hit { clip_sel = c.index }
+        on press hit { emit copy_clip(c.index) }
+        on press right hit { }
+    }
+    on key Down while Panels.cur == 6 { clip_sel = min(clip_sel + 1, max(clips.count - 1, 0)) }
+    on key Up while Panels.cur == 6 { clip_sel = max(clip_sel - 1, 0) }
+    on key Return while Panels.cur == 6 { emit copy_clip(clip_sel) }
+    on key Tab while Panels.cur == 6 { clip_sel = min(clip_sel + 1, max(clips.count - 1, 0)) }
+    on key Escape while Panels.cur == 6 { emit Panels.close }
+    on blur while Panels.cur == 6 and not Panels.fresh { emit Panels.close }
+
+    // ── wallpapers ─────────────────────────────────────────────────
+    //  Painted by wallpapers.luau: the five on screen, in one row.
+    model walls max 6 { name: text; thumb: image 176, 99; current: bool; ready: bool; builtin: bool; sel: bool; favourite: bool; available: bool }
+
+    fact wall_tab = 0            // 0 all · 1 mine · 2 built in
+    fact wall_total = 0          // how many match the tab
+    fact wall_row = 0            // the first picture on screen (0-based)
+    fact wall_rows = 1           // how far it can scroll + 1
+    text wall_hint = ""
+    text wall_status = ""
+    fact wall_busy = false
+    fact wall_favourite = false
+    fact wall_favourites_writable = true
+    event wall_restore ->
+    event wall_favourite_toggle ->
+    event wall_favourite_selected
+
+    event wall_pick ->
+    event wall_scroll ->
+    event wall_tab_set ->
+    event wall_move ->
+    event wall_page ->
+    event wall_enter ->
+    event accent_now ->
+
+    //  One wallpaper: the picture, its name, a ring if it is the one on now, a small lift on hover.
+    component WallCard(w: record, pick: event) {
+        size: 176, 120
+        prop lift = 0 ~lively
+        zone box touch { from: 0, 0; size: 176, 99; corner: r_m; cursor: pointer }
+        group {
+            move: 0, -lift * 2
+            pivot: 88, 50
+            scale: 1 + 0.035 * lift
+            box { from: 0, 0; size: 176, 99; corner: r_m; color: item_solid }
+            group {
+                clip box { from: 0, 0; size: 176, 99; corner: r_m }
+                image w.thumb { at: 0, 0; size: 176, 99; show: w.ready }
+            }
+            box { from: 0, 0; size: 176, 99; corner: r_m; stroke: 3; color: accent_c; opacity: if(w.current, 100%, 0%) }
+            box { from: 0, 0; size: 176, 99; corner: r_m; stroke: 1.2; color: ink_c; opacity: max(lift * 35%, if(w.sel, 60%, 0%)) * if(w.current, 0, 1) }
+            //  a small tick on the one in use
+            group {
+                show: w.current
+                ellipse { at: 156, 80; radius: 10; color: accent_c }
+                path { at: 150.5, 76; color: on_accent; stroke: 2; move 0, 4.5; line 4, 8; line 11, 0 }
+            }
+        }
+        text w.name { at: 88, 111; anchor: center; size: ts_micro; weight: if(w.current, 600, 400); color: if(w.current, ink_c, ink_sub); width: 168; lines: 1 }
+        on enter touch { lift: 1 }
+        on leave touch { lift: 0 }
+        on press touch { emit pick(w.index) }
+        text "Unavailable" { at: 88, 50; anchor: center center; size: font_secondary; color: ink_sub; show: not w.available }
+        group { move: 146, 4; IconButton("󰓎", "Toggle favourite", wall_favourite_toggle, if(w.favourite, accent_c, ink_c), bg_color, value: w.index, enabled: wall_favourites_writable) }
+        on press right touch { }
+    }
+
+    //  An arrow (just the chevron, no circle) at one end of the strip; `dir` -1 left, 1 right. Dim when there is nowhere to go.
+    component ArrowBtn(dir: number) {
+        size: 32, 32
+        prop hot = 0 ~quick
+        let can = if(dir < 0, wall_row > 0, wall_row < wall_rows - 1)
+        path { at: 12 + dir * 0.5, 7; color: if(can and hot > 0.5, accent_c, ink_c); stroke: 2.6; opacity: if(can, 80% + hot * 20%, 25%); move 4 - dir * 4, 0; line 4 + dir * 4, 9; line 4 - dir * 4, 18 }
+        zone box hit { from: 0, 0; size: 32, 32; corner: radius_card; cursor: pointer; active: can }
+        on enter hit { hot: 1 }
+        on leave hit { hot: 0 }
+        on press hit { emit wall_page(dir) }
+        on press right hit { }
+    }
+
+    //  The glass is drawn by the frame: the dock island grows up and out into the strip (topbar.plm).
+    on key Left while Panels.cur == 5 { emit wall_move(-1) }
+    on key Right while Panels.cur == 5 { emit wall_move(1) }
+    on key Return while Panels.cur == 5 { emit wall_enter }
+    on key KP_Enter while Panels.cur == 5 { emit wall_enter }
+    on wall_favourite_selected { emit wall_favourite_toggle(-1) }
+    on key f while Panels.cur == 5 { emit wall_favourite_toggle(-1) }
+    on key Ctrl+z while Panels.cur == 5 { emit wall_restore }
+    on key Ctrl+F1 while Panels.cur == 5 { emit Settings.wallpaper_fx_pick(0) }
+    on key Ctrl+F2 while Panels.cur == 5 { emit Settings.wallpaper_fx_pick(1) }
+    on key Ctrl+F3 while Panels.cur == 5 { emit Settings.wallpaper_fx_pick(2) }
+    on key Escape while Panels.cur == 5 { emit Panels.close }
+    on blur while Panels.cur == 5 and not Panels.fresh { emit Panels.close }
+
+    // ── widget_bar ─────────────────────────────────────────────────
+    model kinds max 12 { id: number; name: text; icon: text }
+    model presets max 8 { id: number; name: text }
+    fact snap_on = true
+    fact can_undo = false
+
+    event wb_add ->
+    event wb_preset ->
+    event wb_undo ->
+    event wb_tidy ->
+    event wb_grid ->
+    event wb_done ->
+
+    //  Saved desktops (C4a): a second page of the bar. Widgets owns the layouts and pushes its snapshot into `wb_layouts`
+    //  (dockpanels.luau parses it with widget_bar_layouts.luau and fills everything below); the page only forwards buttons.
+    text wb_layouts = "{}"
+    text wb_name = ""                // the name field (input)
+    text wb_hint = ""
+    text wb_status = ""
+    text wb_range = ""
+    fact wb_page = 0                 // 0 add widgets + presets · 1 saved desktops
+    fact wb_selected = 0
+    fact wb_total = 0
+    fact wb_top = 0
+    fact wb_arm = 0                  // 1 update · 2 delete · 3 overwrite: waiting for a second press
+    fact wb_exists = false
+    fact wb_ready = false
+    fact wb_status_ok = true
+    fact wb_can_save = false
+    fact wb_can_load = false
+    fact wb_can_rename = false
+    fact wb_can_dup = false
+    fact wb_can_update = false
+    fact wb_can_delete = false
+    model wb_rows max 5 { id: number; name: text; meta: text; tag: text; sel: bool }
+    event wb_tab ->
+    event wb_pick ->
+    event wb_save ->
+    event wb_load ->
+    event wb_rename ->
+    event wb_dup ->
+    event wb_update ->
+    event wb_delete ->
+    event wb_move ->
+    event wb_scroll ->
+    event wb_submit ->
+    event wb_escape ->
+
+    //  Card options (C4b): a third page of the bar. Widgets owns the options and pushes a bounded snapshot into
+    //  `wb_card_options` (widget_bar_options.luau validates it and fills everything below); the page only forwards
+    //  buttons for the SELECTED card (`w_opt`, `w_opt_reset`). wb_page 2 = Card (a local overlay: the layouts page is kept).
+    text wb_card_options = "{}"
+    text wb_opt_title = ""
+    text wb_opt_sub = ""
+    text wb_opt_empty = ""
+    text wb_opt_hint = ""
+    text wb_opt_status = ""
+    fact wb_opt_has = false          // a card is selected
+    fact wb_opt_row = 0              // the selected row, 1-based (0 = none)
+    fact wb_opt_count = 0
+    fact wb_opt_ok = true
+    fact wb_opt_can_reset = false
+    model wb_opts max 4 { id: number; label: text; value: number; n: number; l1: text; l2: text; l3: text; sel: bool }
+    event wb_opt ->                  // option id * 10 + 1-based value index
+    event wb_opt_pick ->
+    event wb_opt_move ->
+    event wb_opt_change ->
+    event wb_opt_cycle ->
+    event wb_opt_reset ->
+    fact wb_stack_join = false
+    fact wb_stacked = false
+    fact wb_stack_unstack = false
+    text wb_stack_label = ""
+    text wb_stack_position = ""
+    event wb_stack_target ->
+    event wb_stack_join ->
+    event wb_stack_prev ->
+    event wb_stack_next ->
+    event wb_stack_unstack ->
+
+    component WbRow(r: record) {
+        size: 380, control_h
+        prop on = 0 ~quick
+        follow on = if(r.sel, 1, 0)
+        RowFrame(380, control_h, on, ui_accent_c: accent_c)
+        zone box hit { from: 0, 0; size: 380, control_h; corner: radius_row; cursor: pointer; label: r.name }
+        on press hit { emit wb_pick(r.id) }
+        on press right hit { }
+        text r.name { at: inset_card, control_h / 2; anchor: left center; size: ts_body; weight: 600; color: ink_c; width: 176; lines: 1 }
+        text r.tag { at: 196, control_h / 2; anchor: left center; size: ts_micro; weight: 600; color: accent_c; width: 56; lines: 1 }
+        text r.meta { at: 380 - inset_compact, control_h / 2; anchor: right center; size: ts_micro; color: ink_sub; width: 124; lines: 1; align: right }
+    }
+
+    //  One option of the selected card: a selectable row (RowFrame) with its values as chips; a key moves / changes the
+    //  selected row, a press on a chip sets that value directly.
+    component WbOptRow(o: record) {
+        size: 752, control_h_large
+        prop on = 0 ~quick
+        follow on = if(o.sel, 1, 0)
+        RowFrame(752, control_h_large, on, ui_accent_c: accent_c)
+        zone box hit { from: 0, 0; size: 752, control_h_large; corner: radius_row; cursor: pointer; label: o.label }
+        on press hit { emit wb_opt_pick(o.id) }
+        on press right hit { }
+        text o.label { at: inset_card, control_h_large / 2; anchor: left center; size: ts_body; weight: 600; color: ink_c; width: 260; lines: 1 }
+        group { move: 752 - inset_compact - 92 * o.n - gap_controls * (o.n - 1), (control_h_large - control_h) / 2; Chip(o.l1, o.value == 1, wb_opt, o.id * 10 + 1, 92, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill) }
+        group { move: 752 - inset_compact - 92 * (o.n - 1) - gap_controls * (o.n - 2), (control_h_large - control_h) / 2; Chip(o.l2, o.value == 2, wb_opt, o.id * 10 + 2, 92, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill) }
+        group { show: o.n >= 3; move: 752 - inset_compact - 92, (control_h_large - control_h) / 2; Chip(o.l3, o.value == 3, wb_opt, o.id * 10 + 3, 92, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill) }
+    }
+
+    component WbKindChip(k: record) {
+        group {
+            move: 24 + mod(k.id - 1, 6) * 126, 52 + floor((k.id - 1) / 6) * 38
+            IconTextButton(k.icon, k.name, wb_add, open_screen * 100 + k.id, ink_c, accent_c, item_bg, 116, control_h, item_bg_op, control_r_large, t_cap, 14, 8%)
+        }
+    }
+    on key Escape while Panels.cur == 10 { emit wb_escape }
+    on key Down while Panels.cur == 10 and wb_page == 1 { emit wb_move(1) }
+    on key Tab while Panels.cur == 10 and wb_page == 1 { emit wb_move(1) }
+    on key Up while Panels.cur == 10 and wb_page == 1 { emit wb_move(-1) }
+    on key Shift+Tab while Panels.cur == 10 and wb_page == 1 { emit wb_move(-1) }
+    on key Next while Panels.cur == 10 and wb_page == 1 { emit wb_move(5) }          // xkb's name for Page Down / Page Up
+    on key Prior while Panels.cur == 10 and wb_page == 1 { emit wb_move(-5) }
+    on key Page_Down while Panels.cur == 10 and wb_page == 1 { emit wb_move(5) }
+    on key Page_Up while Panels.cur == 10 and wb_page == 1 { emit wb_move(-5) }
+    on key Ctrl+KP_Enter while Panels.cur == 10 and wb_page == 1 { emit wb_load }
+    on key Ctrl+Return while Panels.cur == 10 and wb_page == 1 { emit wb_load }
+    on key F2 while Panels.cur == 10 and wb_page == 1 { emit wb_rename }
+    on key F3 while Panels.cur == 10 and wb_page == 1 { emit wb_dup }
+    on key F4 while Panels.cur == 10 and wb_page == 1 { emit wb_update }
+    on key F8 while Panels.cur == 10 and wb_page == 1 { emit wb_delete }
+    on submit wb_name { emit wb_submit }
+    //  Card page: arrows pick and change, Return / keypad Enter cycle (Esc closes through wb_escape above)
+    on key Down while Panels.cur == 10 and wb_page == 2 { emit wb_opt_move(1) }
+    on key Tab while Panels.cur == 10 and wb_page == 2 { emit wb_opt_move(1) }
+    on key Up while Panels.cur == 10 and wb_page == 2 { emit wb_opt_move(-1) }
+    on key Shift+Tab while Panels.cur == 10 and wb_page == 2 { emit wb_opt_move(-1) }
+    on key Left while Panels.cur == 10 and wb_page == 2 { emit wb_opt_change(-1) }
+    on key Right while Panels.cur == 10 and wb_page == 2 { emit wb_opt_change(1) }
+    on key Return while wb_page == 2 and Panels.cur == 10 { emit wb_opt_cycle }      // page 1's Enter is its input's submit
+    on key KP_Enter while wb_page == 2 and Panels.cur == 10 { emit wb_opt_cycle }
+    on key Ctrl+Left while Panels.cur == 10 and wb_page == 2 { emit wb_stack_target(-1) }
+    on key Ctrl+Right while Panels.cur == 10 and wb_page == 2 { emit wb_stack_target(1) }
+    on key Ctrl+Return while Panels.cur == 10 and wb_page == 2 { emit wb_stack_join }
+    on key Ctrl+KP_Enter while Panels.cur == 10 and wb_page == 2 { emit wb_stack_join }
+    on key Prior while Panels.cur == 10 and wb_page == 2 { emit wb_stack_prev }
+    on key Next while Panels.cur == 10 and wb_page == 2 { emit wb_stack_next }
+    on key Ctrl+u while Panels.cur == 10 and wb_page == 2 { emit wb_stack_unstack }
+
+
+
+    //  at each panel's own origin: x 0 = 20 (Spotlight, clipboard) or 10 (wallpapers, widget bar) px in from where its old surface began,
+    //  y 0 = the TOP of the panel's final rect (`Panels.panel_h` above the bottom edge)
+    component SpotlightContent() {
+
+        // Wheel catcher precedes rows so it cannot cover result buttons.
+        zone box list_wheel { from: 20, 10; size: 600, 314; active: hits.count > 7 }
+        on scroll list_wheel { sc_t = clamp(sc_t - wheel * 44, 0, max(0, hits.count * 44 - 308)) }
+
+        // Results List
+        //  seven rows are seen; more results scroll (wheel, or the arrow keys carry the selection)
+        group {
+            clip box { from: 20, 10; size: 600, 314; corner: r_s }     // ends with this group: the search field below is not clipped
+            column list {
+                at: 32, 14 - sc
+                gap: space_2
+                for h in hits { Row(h) }
+            }
+        }
+        group { move: 614, 14; ScrollBar(sc, hits.count * 44 - 2, 306, ui_ink_c: ink_c) }
+
+        PanelSearch(640, Panels.panel_h, ui_ink_c: ink_c, ui_card_stroke: card_stroke)
+        //  (the field `query` is declared in topbar.plm, at scene level)
+    }
+    component ClipboardContent() {
+
+            //  clicks on the panel itself do not close it; the wheel scrolls the list
+            zone box clip_inside { from: 0, 0; size: 560, 520 }
+            on press right clip_inside { }
+            on scroll clip_inside { emit clip_scroll(wheel) }
+
+            // Header: title, count, Clear All
+            PanelHeader("󰅌", "Clipboard History", ui_accent_c: accent_c, ui_ink_c: ink_c)
+            text clip_count { at: 430, 30; anchor: right center; size: ts_cap; color: ink_sub }
+            group { move: 450, 17; Pill("Clear All", 80, clear_all, 0, control_h_compact, false, ui_accent_c: accent_c, ui_danger_c: danger_c, ui_ink_c: ink_c, ui_item_bg: item_bg, ui_on_accent: on_accent) }
+
+            // Search field: at the bottom, like every dock panel
+            PanelSearch(560, Panels.panel_h, ui_ink_c: ink_c, ui_card_stroke: card_stroke)
+            //  (the field `clip_q` is declared in topbar.plm, at scene level)
+
+            // Entries: pinned first, then the most recent
+            column clip_list {
+                at: 20, 58
+                gap: space_4
+                for c in clips { ClipRow(c) }
+            }
+
+            group { show: clips.count < 1; EmptyState(280, 92, "󰅌", "Nothing copied yet", "Copy something and it shows up here", ui_ink_sub: ink_sub) }
+    }
+    component WallpapersContent() {
+
+        //  clicks on the strip itself do not close it
+        zone box wp_inside { from: 0, 0; size: 980, 316 }
+        on press right wp_inside { }
+
+        PanelHeader("󰸉", "Wallpapers", ui_accent_c: accent_c, ui_ink_c: ink_c)
+        text wall_hint { at: 170, 32; anchor: left center; size: ts_cap; color: ink_sub }
+        row {
+            at: 950, 30
+            anchor: right middle
+            gap: space_8
+            Chip("All", wall_tab == 0, wall_tab_set, 0, 60, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+            Chip("Mine", wall_tab == 1, wall_tab_set, 1, 66, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+            Chip("Built-in", wall_tab == 2, wall_tab_set, 2, 84, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+            Chip("Favourites", wall_tab == 3, wall_tab_set, 3, 106, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+        }
+
+        //  The wheel goes BEFORE the cards: the last declared zone is the one on top.
+        zone box wall_wheel { from: 20, 56; size: 940, 140 }
+        on scroll wall_wheel { emit wall_scroll(wheel) }
+
+        row {
+            at: 34, 62
+            gap: space_8
+            for w in walls { WallCard(w, wall_pick) }
+        }
+        //  the arrow buttons, on both sides of the cards
+        group {
+            move: 1, 96
+            ArrowBtn(-1)
+        }
+        group {
+            move: 947, 96
+            ArrowBtn(1)
+        }
+
+        //  Nothing found
+        group { show: wall_total < 1; EmptyState(490, 130, "󰸉", "No pictures found", "Put some in ~/Pictures/wallpapers", ui_ink_sub: ink_sub) }
+
+        //  Where you are in a long list: a thin bar under the cards
+        box { from: 28, 196; size: 924, 3; corner: 1.5; color: ink_c; opacity: if(wall_rows > 1, 10%, 0%) }
+        box { from: 28 + 924 * wall_row / max(1, wall_total), 196; size: max(30, 924 * 5 / max(1, wall_total)), 3; corner: 1.5; color: ink_c; opacity: if(wall_rows > 1, 45%, 0%) }
+
+        text "Transition" { at: 28, 226; anchor: left center; size: font_body; color: ink_c }
+        row { at: 112, 212; gap: space_6
+            Seg("Circle", 0, Settings.wallpaper_fx, Settings.wallpaper_fx_pick, 72, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+            Seg("Fade", 1, Settings.wallpaper_fx, Settings.wallpaper_fx_pick, 72, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+            Seg("Wipe", 2, Settings.wallpaper_fx, Settings.wallpaper_fx_pick, 72, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+        }
+        Btn(if(wall_favourite, "Remove favourite", "Add favourite"), 184, wall_favourite_selected, false, 476, 212, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill, enabled: wall_favourites_writable)
+        Btn("Restore previous", 168, wall_restore, false, 672, 212, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill, enabled: not wall_busy)
+        text wall_status { at: 28, 258; size: font_secondary; color: ink_sub; width: 924; lines: 1 }
+        KeyHint(490, 290, "← → Browse · Enter Apply · F Favourite · Ctrl+Z Previous · Ctrl+F1/F2/F3 Transition · Esc Close", ui_ink_sub: ink_sub)
+    }
+    component WidgetBarContent() {
+
+            //  clicks on the bar itself do nothing
+            zone box wb_inside { from: 0, 0; size: 800, Panels.panel_h }
+            on press right wb_inside { }
+
+            //  the two pages
+            group { move: 24, 16; Chip("Widgets", wb_page == 0, wb_tab, 0, 84, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill) }
+            group { move: 116, 16; Chip("Desktops", wb_page == 1, wb_tab, 1, 92, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill) }
+            group { move: 216, 16; Chip("Card", wb_page == 2, wb_tab, 2, 72, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill) }
+            group { move: 376, 14; Pill("Tidy up", 94, wb_tidy, 0, control_h_large, false, ui_accent_c: accent_c, ui_danger_c: danger_c, ui_ink_c: ink_c, ui_item_bg: item_bg, ui_on_accent: on_accent) }
+            group { move: 480, 14; Pill(if(snap_on, "Grid: on", "Grid: off"), 90, wb_grid, 0, control_h_large, false, ui_accent_c: accent_c, ui_danger_c: danger_c, ui_ink_c: ink_c, ui_item_bg: item_bg, ui_on_accent: on_accent) }
+            group { move: 580, 14; Pill("Undo", 70, wb_undo, 0, control_h_large, false, can_undo, ui_accent_c: accent_c, ui_danger_c: danger_c, ui_ink_c: ink_c, ui_item_bg: item_bg, ui_on_accent: on_accent) }
+            group { move: 660, 14; Pill("Done", 124, wb_done, 1, control_h_large, false, ui_accent_c: accent_c, ui_danger_c: danger_c, ui_ink_c: ink_c, ui_item_bg: item_bg, ui_on_accent: on_accent) }
+
+            //  page 0: add a widget, factory presets
+            group {
+                show: wb_page == 0
+                for k in kinds { WbKindChip(k) }
+                text "Presets" { at: 24, 142; anchor: left center; size: ts_sub; weight: 600; color: ink_sub }
+                for pr in presets { group { move: 92 + (pr.id - 1) * 106, 128; Chip(pr.name, false, wb_preset, pr.id, 98, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill) } }
+            }
+
+            //  page 1: saved desktops
+            group {
+                show: wb_page == 1
+
+                //  name field, then what to do with it and with the selected desktop
+                box { from: 24, 52; size: 340, control_h; corner: control_r_large; color: field_bg }
+                //  (the field `wb_name` is declared in topbar.plm, at scene level)
+                group { move: 24, 88; Pill(pick(if(wb_arm == 3, 2, if(wb_exists, 1, 0)), "Save new", "Overwrite…", "Confirm overwrite"), 164, wb_save, if(wb_arm == 3, 2, 1), control_h, false, wb_can_save, ui_accent_c: accent_c, ui_danger_c: danger_c, ui_ink_c: ink_c, ui_item_bg: item_bg, ui_on_accent: on_accent) }
+                group { move: 200, 88; Pill("Rename", 164, wb_rename, 0, control_h, false, wb_can_rename, ui_accent_c: accent_c, ui_danger_c: danger_c, ui_ink_c: ink_c, ui_item_bg: item_bg, ui_on_accent: on_accent) }
+                group { move: 24, 124; Pill("Load", 164, wb_load, 0, control_h, false, wb_can_load, ui_accent_c: accent_c, ui_danger_c: danger_c, ui_ink_c: ink_c, ui_item_bg: item_bg, ui_on_accent: on_accent) }
+                group { move: 200, 124; Pill("Duplicate", 164, wb_dup, 0, control_h, false, wb_can_dup, ui_accent_c: accent_c, ui_danger_c: danger_c, ui_ink_c: ink_c, ui_item_bg: item_bg, ui_on_accent: on_accent) }
+                group { move: 24, 160; Pill(if(wb_arm == 1, "Confirm update", "Update"), 164, wb_update, if(wb_arm == 1, 2, 0), control_h, false, wb_can_update, ui_accent_c: accent_c, ui_danger_c: danger_c, ui_ink_c: ink_c, ui_item_bg: item_bg, ui_on_accent: on_accent) }
+                group { move: 200, 160; Pill(if(wb_arm == 2, "Confirm delete", "Delete"), 164, wb_delete, 2, control_h, false, wb_can_delete, ui_accent_c: accent_c, ui_danger_c: danger_c, ui_ink_c: ink_c, ui_item_bg: item_bg, ui_on_accent: on_accent) }
+                text wb_hint { at: 24, 214; anchor: left center; size: ts_cap; color: ink_sub; width: 340; lines: 2 }
+
+                //  the list: five rows, the wheel and the keys move through up to 24
+                zone box wb_list_zone { from: 384, 52; size: 380, 156 }
+                on scroll wb_list_zone { emit wb_scroll(wheel) }
+                on press right wb_list_zone { }
+                column wb_list {
+                    at: 384, 52
+                    gap: space_4
+                    for r in wb_rows { WbRow(r) }
+                }
+                group { move: 768, 52; ScrollBar(wb_top * (control_h + space_4), wb_total * (control_h + space_4) - space_4, 156, ui_ink_c: ink_c) }
+                group { show: wb_total == 0 and wb_ready; EmptyState(574, 128, "󰕮", "No saved desktops", "Arrange your widgets, name it, press Enter", ui_ink_sub: ink_sub) }
+                text wb_range { at: 384, 220; anchor: left center; size: ts_cap; color: ink_sub; width: 380; lines: 1 }
+
+                //  what happened (Widgets' own words), and the keys
+                text wb_status { at: 24, 242; anchor: left center; size: ts_cap; weight: 600; color: if(wb_status_ok, ink_c, danger_c); width: 752; lines: 1 }
+                KeyHint(400, 260, "↑ ↓ select  ·  Enter save / load  ·  F2 rename  ·  F3 duplicate  ·  F4 update  ·  F8 delete  ·  Esc", ui_ink_sub: ink_sub)
+            }
+
+            //  page 2: options of the selected card
+            group {
+                show: wb_page == 2
+                group {
+                    show: wb_opt_has
+                    text wb_opt_title { at: 24, 66; anchor: left center; size: ts_title; weight: 700; color: ink_c; width: 380; lines: 1 }
+                    text wb_opt_sub { at: 24, 86; anchor: left center; size: ts_cap; color: ink_sub; width: 380; lines: 1 }
+                    text wb_opt_status { at: 660, 66; anchor: right center; size: ts_cap; weight: 600; color: if(wb_opt_ok, ink_sub, danger_c); width: 240; lines: 1; align: right }
+                    group { move: 676, 52; Pill("Reset", 100, wb_opt_reset, 0, control_h, false, wb_opt_can_reset, ui_accent_c: accent_c, ui_danger_c: danger_c, ui_ink_c: ink_c, ui_item_bg: item_bg, ui_on_accent: on_accent) }
+                    column {
+                        at: 24, 102
+                        gap: space_4
+                        for o in wb_opts { WbOptRow(o) }
+                    }
+                    text wb_stack_label { at: 24, 268; anchor: left center; size: ts_cap; color: ink_c; width: 240; lines: 1 }
+                    group { move: 276, 254; Pill("Next target", 132, wb_stack_target, 0, control_h, false, wb_stack_join, ui_accent_c: accent_c, ui_danger_c: danger_c, ui_ink_c: ink_c, ui_item_bg: item_bg, ui_on_accent: on_accent) }
+                    group { move: 420, 254; Pill("Stack", 92, wb_stack_join, 0, control_h, false, wb_stack_join, ui_accent_c: accent_c, ui_danger_c: danger_c, ui_ink_c: ink_c, ui_item_bg: item_bg, ui_on_accent: on_accent) }
+                    group { move: 524, 254; IconButton("󰅁", "Previous widget", wb_stack_prev, ink_c, item_bg, enabled: wb_stacked) }
+                    group { move: 564, 254; IconButton("󰅂", "Next widget", wb_stack_next, ink_c, item_bg, enabled: wb_stacked) }
+                    group { move: 608, 254; Pill("Unstack", 136, wb_stack_unstack, 0, control_h, false, wb_stack_unstack, ui_accent_c: accent_c, ui_danger_c: danger_c, ui_ink_c: ink_c, ui_item_bg: item_bg, ui_on_accent: on_accent) }
+                    text wb_stack_position { at: 24, 298; anchor: left center; size: ts_cap; color: ink_sub; width: 752; lines: 1 }
+                    KeyHint(400, 322, "Ctrl ← → target · Ctrl Enter stack · PgUp / PgDn page · Ctrl U unstack · Esc close", ui_ink_sub: ink_sub)
+                }
+                group { show: not wb_opt_has; EmptyState(400, 140, "󰕮", wb_opt_empty, wb_opt_hint, ui_ink_sub: ink_sub) }
+            }
+    }
+
+    on change Panels.open while Panels.open and Panels.cur == 4 { focus query }
+    on change Panels.cur while Panels.open and Panels.cur == 4 { focus query }
+    on change Panels.open while Panels.open and Panels.cur == 6 { focus clip_q }
+    on change Panels.cur while Panels.open and Panels.cur == 6 { focus clip_q }
+    on change wb_page while Panels.open and Panels.cur == 10 and wb_page == 1 { focus wb_name }
+    on change wb_page while Panels.open and Panels.cur == 10 and wb_page == 2 { blur }      // the name field must not keep the arrow keys
+    on wb_save { focus wb_name }
+    on wb_load { focus wb_name }
+    on wb_rename { focus wb_name }
+    on wb_dup { focus wb_name }
+    on wb_update { focus wb_name }
+    on wb_delete { focus wb_name }
+    on wb_pick { focus wb_name }
+}

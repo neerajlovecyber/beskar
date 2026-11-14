@@ -1,0 +1,77 @@
+// Shared logical geometry. Constants only: no surfaces, state, drawing or polling.
+// Add a role here before introducing another size in a scene. See docs/UI_STANDARDS.md.
+library Geometry strict {
+    let space_2 = 2
+    let space_4 = 4
+    let space_6 = 6
+    let space_8 = 8
+    let space_12 = 12
+    let space_16 = 16
+    let space_20 = 20
+    let space_24 = 24
+    let space_32 = 32
+
+    let inset_card = space_16
+    let inset_panel = space_20
+    let inset_compact = space_12
+    let gap_controls = space_8
+    let gap_sections = space_16
+    let gap_icon = space_8
+    let hairline = 1
+    let focus_stroke = 2
+
+    let control_h_compact = 24
+    let control_h = 28
+    let control_h_large = 32
+    let control_r = 6
+    let control_r_large = 8
+    let control_pad = space_16
+    let icon_button_compact = 24
+    let icon_button_size = 28
+    let icon_button_large = 36
+    let icon_size = 16
+    let icon_size_small = 14
+    let row_h = 42
+    let row_detail_h = 56
+    let row_slider_h = 64
+    let search_h = 36
+    let search_h_compact = 28
+    let auth_field_h = 46           // intentional spacious lock-screen password field
+    let switch_w = 44
+    let switch_h = 20
+    let switch_knob_w = 26
+    let switch_inset = 2
+    let checkbox_size = 16
+
+    let radius_small = 8
+    let radius_row = 8
+    let radius_medium = 12
+    let radius_card = 16
+    let radius_window = 24
+    let font_title = 15
+    let font_body = 13
+    let font_secondary = 12
+    let font_caption = 11
+    let font_micro = 10.5
+
+    // The bottom search is a deliberate large launcher presentation.
+    let panel_header_y = 32
+    let panel_header_icon_x = 32
+    let panel_header_text_x = 52
+    let panel_search_inset = 24
+    let panel_search_rule_y = 72
+    let panel_search_icon_x = 44
+    let panel_search_text_x = 64
+    let panel_search_text_y = 50
+    let panel_search_icon_y = 38
+    let panel_search_font = 19
+
+    // Notification row heights stay owned by notif.luau; these are drawing metrics.
+    let notice_w = 352
+    let notice_h = 92
+    let notice_icon = 32
+    let notice_pad = 12
+    let notice_gap = 12
+    let scrollbar_w = 4
+    let scrollbar_gutter = 12
+}

@@ -1,0 +1,25 @@
+import "geometry.plm"
+
+// Fixed six-week grid, expanded once per calendar; no per-day wrapper or date polling.
+library CalendarUi strict {
+    component MonthGrid(month: record, w: number, row_h: number, ink: color, muted: color, accent: color, on_accent: color, compact: bool = false, day_size: number = font_secondary, heading_size: number = font_micro) {
+        size: w, 22 + 6 * row_h
+        let cell_w = w / 7
+        repeat c in 0..7 {
+            text pick(c + if(compact, 0, 7), "M", "T", "W", "T", "F", "S", "S", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun") {
+                at: (c + 0.5) * cell_w, 8
+                anchor: center center
+                size: heading_size
+                weight: 600
+                color: if(c >= 5, accent, muted)
+            }
+        }
+        repeat k in 0..42 {
+            let today = month.cells.$k.kind == 2
+            let x = (mod(k, 7) + 0.5) * cell_w
+            let y = 22 + (floor(k / 7) + 0.5) * row_h
+            ellipse { at: x, y; radius: min(15, row_h / 2 - 1); color: accent; show: today }
+            text month.cells.$k.d { at: x, y; anchor: center center; size: day_size; weight: if(today, 700, 500); color: if(today, on_accent, ink); opacity: if(month.cells.$k.kind == 1, 35%, 100%) }
+        }
+    }
+}

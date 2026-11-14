@@ -1,0 +1,20 @@
+// Selected style roles (C2c): the density choice, as lets over the constant-only geometry roles. A PART, included after
+// common/theme.plm (it reads `style_density`, which theme_owner.plm / theme_facts.plm provide). It declares no surface, fact,
+// model or timer: only names. `geometry.plm` stays constants; a scene or shared control that wants to follow the density uses
+// these instead of the constant. Standard (1) IS the geometry. Mirrors Style.DENSITY in shell/style_options.luau (tested).
+//
+//   style_density  0 compact · 1 standard · 2 spacious
+//   st_row_h  st_row_detail_h  st_row_slider_h   form rows (geometry row_h 42 / row_detail_h 56 / row_slider_h 64, ∓6)
+//   st_control_h                                 text-button height (control_h_compact 24 / control_h 28 / control_h_large 32)
+//   st_gap  st_section_gap                       gap_controls 8 (6 / 10) and gap_sections 16 (12 / 20)
+//
+// NOT adopted by ui.plm or any scene yet: changing a row height also means the panel heights and the Luau offsets that add
+// them up (notif.luau, panels_data, Settings tab heights), which must move in the same change.
+part Style {
+    let st_row_h        = pick(style_density, row_h - 6, row_h, row_h + 6)
+    let st_row_detail_h = pick(style_density, row_detail_h - 6, row_detail_h, row_detail_h + 6)
+    let st_row_slider_h = pick(style_density, row_slider_h - 6, row_slider_h, row_slider_h + 6)
+    let st_control_h    = pick(style_density, control_h_compact, control_h, control_h_large)
+    let st_gap          = pick(style_density, space_6, space_8, space_8 + space_2)
+    let st_section_gap  = pick(style_density, space_12, space_16, space_20)
+}

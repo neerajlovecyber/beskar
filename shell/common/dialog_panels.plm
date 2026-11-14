@@ -1,0 +1,297 @@
+// The session dialog / menu (11), the polkit password dialog (12) and the first-run welcome (24): their CONTENT is drawn inside the frame's own
+// surface (topbar.plm, in `Shell`, over the glass the dock island grows), so a dialog and its glass can neither disagree on the monitor nor on
+// timing. Merged from the old Dialogs scene; the logic is shell/dialog_panels.luau (loaded by topbar.luau). The polkit password field is
+// declared loose in topbar.plm. Each content component sits at its panel's own origin: x 0 = 20 px in from where its old surface began.
+part DialogPanels {
+
+    let dp_stroke_c = card_stroke
+    let dp_stroke_op = card_stroke_op
+
+    // ── session dialog (shut down / restart / log out) and the polkit password dialog: they grow out of the dock too ──
+    fact ses_kind = 0            // 0 Shut Down, 1 Restart, 2 Log Out, 3 Sleep
+    fact countdown = 60      // 60-second automatic timer
+    fact ses_sel = 0             // confirmation starts on Cancel
+    fact ses_mode = 0            // 0 action chooser, 1 confirmation
+    fact ses_index = 0
+    text ses_detail = "Lock your screen"
+    model ses_actions max 5 { label: text; glyph: text; detail: text; kind: number; danger: bool }
+    event prepare_menu ->
+    event ses_move ->
+    event ses_choose ->
+    event ses_cancel ->
+    event set_kind(k) ->         // 0 shut down / 1 restart / 2 log out (from Spotlight, the power menu, Settings)
+    event confirm_action ->
+    event ses_enter ->
+    event dismiss ->
+    fact pk_secret = true
+    fact pk_asking = false
+    fact pk_wrong = false
+    text pk_message = ""
+    text pk_prompt = "Password"
+    text pk_info = ""
+    text password = ""
+    prop shake = 0 ~quick
+    event pk_cancel ->
+    event pk_answer ->
+    event pk_shake
+
+    component SessionAction(a: record) {
+        size: 80, 88
+        let selected = ses_index == a.index
+        SelectCard(80, 88, selected, ui_accent_c: if(a.danger, danger_c, accent_c), ui_card_stroke: card_stroke, ui_item_solid: item_solid)
+        text a.glyph { at: 40, 30; anchor: center center; family: "JetBrainsMono Nerd Font Mono"; size: icon_button_size; color: if(a.danger, danger_c, ink_c) }
+        text a.label { at: 40, 66; anchor: center center; size: font_secondary; weight: 600; color: ink_c; width: 72; lines: 1; align: center }
+        zone box ses_action_hit { from: 0, 0; size: 80, 88; corner: radius_card; cursor: pointer; label: a.label }
+        on enter ses_action_hit { ses_index = a.index }
+        on press ses_action_hit { emit ses_choose(a.index) }
+        on press right ses_action_hit { }
+    }
+
+    component SessionContent() {
+            zone box ses_inside { from: 0, 0; size: 480, 250 }
+            on press right ses_inside { }
+
+            group {
+                show: ses_mode == 0
+                text "Session" { at: space_24, panel_header_y; anchor: left center; size: font_title; weight: 700; color: ink_c }
+                text "Lock, sleep or end your session" { at: space_24, 52; anchor: left center; size: font_secondary; color: ink_sub }
+                group { move: 428, space_16; IconButton("󰅖", "Close session menu", Panels.close, ink_sub, item_bg) }
+                row {
+                    at: space_24, 78
+                    gap: gap_controls
+                    for a in ses_actions { SessionAction(a) }
+                }
+                text ses_detail { at: 240, 194; anchor: center center; size: font_body; color: ink_sub; width: 432; lines: 1; align: center }
+                KeyHint(240, 234, "← → ↑ ↓ / Tab  select   ·   Enter  choose   ·   Esc  close", ui_ink_sub: ink_sub)
+            }
+            group {
+                show: ses_mode == 1
+                ellipse { at: 240, 40; radius: 24; color: pick(ses_kind, danger_c, warn_c, focus_c, accent_c) }
+                text pick(ses_kind, "󰐥", "󰜉", "󰍃", "󰤄") { family: "JetBrainsMono Nerd Font Mono"; at: 240, 40; anchor: center center; size: space_24; color: on_accent }
+                text pick(ses_kind, "Shut down this computer?", "Restart this computer?", "Log out of your session?", "Put this computer to sleep?") {
+                    at: 240, 88
+                    anchor: center center
+                    size: font_title
+                    weight: 700
+                    color: ink_c
+                    width: 440
+                    lines: 2
+                    align: center
+                }
+                text pick(ses_kind, "Your computer will shut down automatically in {countdown} seconds.", "Your computer will restart automatically in {countdown} seconds.", "You will be logged out automatically in {countdown} seconds.", "Your applications will stay Panels.open.") {
+                    at: 240, 126
+                    anchor: center center
+                    size: font_secondary
+                    color: ink_sub
+                    width: 440
+                    lines: 2
+                    align: center
+                }
+                row {
+                    at: 240, 190
+                    gap: gap_sections
+                    anchor: center
+                    group {
+                        size: 120, control_h_large
+                        Pill("Cancel", 120, dismiss, 0, control_h_large, ui_accent_c: accent_c, ui_danger_c: danger_c, ui_ink_c: ink_c, ui_item_bg: item_solid, ui_on_accent: on_accent)
+                        box { from: -2, -2; size: 124, 36; corner: control_r_large; stroke: focus_stroke; color: ink_c; opacity: if(ses_sel == 0, 80%, 0%) }
+                    }
+                    group {
+                        size: 130, control_h_large
+                        Pill(pick(ses_kind, "Shut Down", "Restart", "Log Out", "Sleep"), 130, confirm_action, 1, control_h_large, ui_accent_c: pick(ses_kind, danger_c, warn_c, focus_c, accent_c), ui_danger_c: danger_c, ui_ink_c: ink_c, ui_item_bg: item_bg, ui_on_accent: on_accent)
+                        box { from: -2, -2; size: 134, 36; corner: control_r_large; stroke: focus_stroke; color: ink_c; opacity: if(ses_sel == 1, 80%, 0%) }
+                    }
+                }
+                KeyHint(240, 234, "← →  choose   ·   Enter  activate   ·   Esc  cancel", ui_ink_sub: ink_sub)
+            }
+    }
+
+    component PolkitContent() {
+            zone box pk_inside { from: 0, 0; size: 480, 310 }
+            on press right pk_inside { }
+
+            group {
+                move: shake, 0
+                ellipse { at: 240, 38; radius: 24; color: accent_c }
+                Sym("󰌾", 240, 38, 24, on_accent)
+                text "Authentication required" { at: 240, 84; anchor: center center; size: ts_title; weight: 700; color: ink_c; width: 440; lines: 1; align: center }
+                //  what the program wants, as polkit words it
+                text pk_message { at: 240, 110; anchor: center center; size: ts_sub; color: ink_sub; width: 440; lines: 2; align: center }
+
+                //  the password
+                text pk_prompt { at: 30, 158; anchor: left center; size: ts_cap; weight: 600; color: ink_c; width: 340; lines: 1 }
+                box { from: 30, 172; size: 420, 38; corner: r_s; color: item_bg; opacity: item_bg_op }
+                box { from: 30, 172; size: 420, 38; corner: r_s; stroke: 1.5; color: if(pk_wrong, danger_c, accent_c); opacity: if(pk_wrong, 90%, 55%) }
+                //  (the field `password` is declared in topbar.plm, at scene level)
+                text pick(if(pk_wrong, 1, 0), pk_info, "Wrong password, try again") { at: 240, 228; anchor: center center; size: ts_cap; color: if(pk_wrong, danger_c, ink_sub); width: 440; lines: 1 }
+
+                //  Cancel / Authenticate
+                group {
+                    move: 126, 244
+                    Pill("Cancel", 90, pk_cancel, 0, control_h, ui_accent_c: accent_c, ui_danger_c: danger_c, ui_ink_c: ink_c, ui_item_bg: item_solid, ui_on_accent: on_accent)
+                }
+                group {
+                    move: 226, 244
+                    Pill("Authenticate", 128, pk_answer, 1, control_h, false, pk_asking, ui_accent_c: accent_c, ui_danger_c: danger_c, ui_ink_c: ink_c, ui_item_bg: item_solid, ui_on_accent: on_accent)
+                }
+                KeyHint(240, 290, "Enter  authenticate   ·   Esc  cancel", ui_ink_sub: ink_sub)
+            }
+    }
+
+
+    // Activate on release: holding Enter cannot repeat into the confirmation.
+    on keyup Return while Panels.open and Panels.cur == 11 { emit ses_enter }
+    on keyup KP_Enter while Panels.open and Panels.cur == 11 { emit ses_enter }
+    on keyup space while Panels.open and Panels.cur == 11 { emit ses_enter }
+    on key Escape while Panels.open and Panels.cur == 11 { emit ses_cancel }
+    on key Left while Panels.open and Panels.cur == 11 { emit ses_move(-1) }
+    on key Up while Panels.open and Panels.cur == 11 { emit ses_move(-1) }
+    on key Right while Panels.open and Panels.cur == 11 { emit ses_move(1) }
+    on key Down while Panels.open and Panels.cur == 11 { emit ses_move(1) }
+    on key Tab while Panels.open and Panels.cur == 11 { emit ses_move(1) }
+    on key Shift+Tab while Panels.open and Panels.cur == 11 { emit ses_move(-1) }
+    on blur while Panels.cur == 11 and not Panels.fresh { emit Panels.close }
+    on key Escape while Panels.cur == 12 { emit pk_cancel }
+    on submit password { emit pk_answer }
+    on pk_shake { impulse shake 18 }
+    on change Panels.open while Panels.open and Panels.cur == 12 { focus password }
+    on change Panels.cur while Panels.open and Panels.cur == 12 { focus password }
+
+    // ── welcome ─────────────────────────────────────────────────
+    fact page = 0
+    fact wl_mode = 1            // 0 light · 1 dark · 2 auto (mirrors Settings)
+    fact wall_colours = false
+    fact theme_apps = true
+    event show_again ->
+    event wl_next ->
+    event wl_back ->
+    event wl_done ->
+    event choose_dark ->
+    event choose_light ->
+    event choose_auto ->
+    event toggle_colours ->
+    event toggle_apps_pref ->
+
+
+
+    component WelcomeContent() {
+
+            //  ── page 0: hello ──
+            group {
+                show: page == 0
+                ellipse { at: 320, 92; radius: 38; color: accent_c }
+                Sym("󰣇", 320, 92, 38, on_accent)
+                text "Welcome to Beskar" { at: 320, 168; anchor: center center; size: 26; weight: 700; color: ink_c }
+                text "A glass desktop for niri" { at: 320, 200; anchor: center center; size: 14; color: ink_sub }
+                Tip(60, 226, "󰍜", "The bar", "The clock opens the dashboard, the bell your notifications, the switches icon the Control Center.")
+                Tip(60, 288, "󰀻", "The dock", "Your apps. Spotlight (Super + Space) finds apps, does sums and runs commands.")
+                Tip(60, 350, "󰖲", "Widgets", "Clock, weather, system and more on the desktop. Super + Shift + W arranges them.")
+            }
+
+            //  ── page 1: make it yours ──
+            group {
+                show: page == 1
+                text "Make it yours" { at: 320, 62; anchor: center center; size: 22; weight: 700; color: ink_c }
+                text "You can change all of this later in Settings." { at: 320, 90; anchor: center center; size: ts_sub; color: ink_sub }
+                Choice(60, 132, "󰖔", "Dark", wl_mode == 1, choose_dark)
+                Choice(228, 132, "󰖨", "Light", wl_mode == 0, choose_light)
+                Choice(396, 132, "󰔎", "Automatic", wl_mode == 2, choose_auto)
+                group { move: 60, 250; ToggleRow("Colours from the wallpaper", "The accent, highlights and glass tint follow the picture you choose.", wall_colours, toggle_colours, 520, ui_ink_c: ink_c, ui_ink_sub: ink_sub, ui_card_fill: card_fill, ui_card_stroke: card_stroke, ui_accent_c: accent_c, ui_on_accent: on_accent, ui_switch_off: switch_off) }
+                group { move: 60, 318; ToggleRow("Theme other apps", "Terminals, Files and other GTK and Qt apps wear the same colours.", theme_apps, toggle_apps_pref, 520, ui_ink_c: ink_c, ui_ink_sub: ink_sub, ui_card_fill: card_fill, ui_card_stroke: card_stroke, ui_accent_c: accent_c, ui_on_accent: on_accent, ui_switch_off: switch_off) }
+            }
+
+            //  ── page 2: shortcuts ──
+            group {
+                show: page == 2
+                text "Good to know" { at: 320, 62; anchor: center center; size: 22; weight: 700; color: ink_c }
+                Keys(100, 112, "Super + Space", "Spotlight")
+                Keys(100, 148, "Super + V", "Clipboard history")
+                Keys(100, 184, "Super + W", "Wallpapers")
+                Keys(100, 220, "Super + Tab", "Switch apps")
+                Keys(100, 256, "Super + ,", "Settings")
+                Keys(100, 292, "Super + Shift + W", "Arrange the widgets")
+                Keys(100, 328, "Super + /", "All shortcuts")
+                text "Everything else is in the bar and the Control Center." { at: 320, 380; anchor: center center; size: ts_sub; color: ink_sub }
+            }
+
+            //  ── footer: dots, Back, Next / Start, Skip ──
+            repeat d in 0..3 {
+                ellipse { at: 296 + d * 24, 424; radius: 4; color: if(page == d, accent_c, ink_c); opacity: if(page == d, 100%, 25%) }
+            }
+            group {
+                show: page > 0
+                text "Back" { at: 60, 424; anchor: left center; size: ts_body; weight: 500; color: ink_sub }
+                zone box wl_back_hit { from: 40, 408; size: 70, 32; corner: radius_small; cursor: pointer }
+                on press wl_back_hit { emit wl_back }
+                on press right wl_back_hit { }
+            }
+            group {
+                show: page < 2
+                box { from: 500, 408; size: 100, 32; corner: radius_card; color: accent_c }
+                text "Next" { at: 550, 424; anchor: center center; size: ts_body; weight: 600; color: on_accent }
+                zone box wl_next_hit { from: 500, 408; size: 100, 32; corner: radius_card; cursor: pointer }
+                on press wl_next_hit { emit wl_next }
+                on press right wl_next_hit { }
+            }
+            group {
+                show: page == 2
+                box { from: 480, 408; size: 120, 32; corner: radius_card; color: accent_c }
+                text "Start using Beskar" { at: 540, 424; anchor: center center; size: ts_sub; weight: 600; color: on_accent; width: 116; lines: 1; align: center }
+                zone box wl_done_hit { from: 480, 408; size: 120, 32; corner: radius_card; cursor: pointer }
+                on press wl_done_hit { emit wl_done }
+                on press right wl_done_hit { }
+            }
+            group {
+                show: page < 2
+                text "Skip" { at: 440, 424; anchor: right center; size: ts_sub; color: ink_sub }
+                zone box wl_skip_hit { from: 380, 408; size: 70, 32; corner: radius_small; cursor: pointer }
+                on press wl_skip_hit { emit wl_done }
+                on press right wl_skip_hit { }
+            }
+    }
+
+    on key Escape while Panels.cur == 24 { emit wl_done }
+    on key Right  while Panels.cur == 24 { emit wl_next }
+    on key Left   while Panels.cur == 24 { emit wl_back }
+    on key Return while Panels.cur == 24 { emit wl_next }
+
+    //  an icon, a title and a sentence
+    component Tip(x: number, y: number, icon: text, title: text, body: text) {
+        group {
+            move: x, y
+            ellipse { at: 22, 24; radius: 22; color: accent_c; opacity: 18% }
+            Sym(icon, 22, 24, 20, accent_c)
+            text title { at: 58, 8; anchor: left center; size: 14; weight: 600; color: ink_c }
+            text body { at: 58, 34; anchor: left top; size: ts_sub; color: ink_sub; width: 500; lines: 2 }
+        }
+    }
+
+    //  Light / Dark / Automatic
+    component Choice(x: number, y: number, icon: text, label: text, on_: bool, tap: event) {
+        prop hot = 0 ~quick
+        group {
+            move: x, y
+            box { from: 0, 0; size: 160, 96; corner: r_l; color: item_bg; opacity: item_bg_op + hot * 6% }
+            box { from: 0, 0; size: 160, 96; corner: r_l; stroke: 2; color: accent_c; opacity: if(on_, 100%, 0%) }
+            Sym(icon, 80, 38, 26, if(on_, accent_c, ink_c))
+            text label { at: 80, 72; anchor: center center; size: ts_body; weight: 600; color: ink_c }
+            zone box hit { from: 0, 0; size: 160, 96; corner: r_l; cursor: pointer }
+            on enter hit { hot: 1 }
+            on leave hit { hot: 0 }
+            on press hit { emit tap }
+            on press right hit { }
+        }
+    }
+
+    //  a row with a switch
+    //  a shortcut line
+    component Keys(x: number, y: number, keys: text, what: text) {
+        group {
+            move: x, y
+            box { from: 0, 0; size: 180, 26; corner: radius_small; color: item_bg; opacity: item_bg_op }
+            text keys { at: 90, 13; anchor: center center; size: ts_sub; weight: 600; color: ink_c }
+            text what { at: 204, 13; anchor: left center; size: ts_body; color: ink_c }
+        }
+    }
+
+}

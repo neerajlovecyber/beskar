@@ -1,0 +1,25 @@
+import "ui.plm"
+
+// Rendering only: no surfaces, service subscriptions, models or timers.
+library ScrollUi strict {
+    shader scroll_edge = file "scrollfade.wgsl"
+
+    // Place at the viewport's origin, after its content. The caller owns scrolling and clipping.
+    // One small shader rectangle; fully transparent when the viewport reaches its end.
+    component ScrollFade(w: number, viewport_h: number, sc: number, ct: number, fill: color, depth: number = space_32) {
+        let d = min(max(1, depth), max(1, viewport_h))
+        shader scroll_edge {
+            at: 0, viewport_h - d
+            size: w, d
+            values: clamp((ct - sc - viewport_h) / d, 0, 1)
+            colors: fill
+            show: ct - sc - viewport_h > 0.5
+        }
+    }
+
+    // Shared scrollbar/fade treatment. The scene keeps its native view and selection logic.
+    component ScrollChrome(w: number, viewport_h: number, sc: number, ct: number, ink: color, fill: color, depth: number = space_32, gutter: number = scrollbar_gutter) {
+        ScrollFade(w, viewport_h, sc, ct, fill, depth)
+        group { move: w + gutter, 0; ScrollBar(sc, ct, viewport_h, ui_ink_c: ink) }
+    }
+}

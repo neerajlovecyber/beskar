@@ -1,4 +1,5 @@
 -- (the body of the Control Center scene: controlcenter.luau runs it as module("control_center", require("cc")))
+local Hooks = require("topbar_hooks")        -- the frame cannot emit to itself: its own events are called directly
 return function(panel, opened, shown, closed)
 -- Control Center companion logic
 
@@ -206,16 +207,20 @@ end)
 -- ── the four round shortcuts ─────────────────────────────────────
 local function open_later(n)
     -- the panel is closing; give it a moment so the new window does not fight it for focus
-    after(250, function() emit("Topbar.open_panel", n) end)
+    after(250, function() Hooks.emit("Topbar.open_panel", n) end)
 end
 on("sc_search", function() open_later(1) end)
 on("sc_clip", function() open_later(2) end)
 on("sc_shot", function() open_later(11) end)
-on("sc_lock", function() say_later("lock", "fact locked true") end)
+on("sc_session", function()
+    -- the session chooser opens on the monitor this panel is on (niri's focused output may be the other one)
+    local screen = tonumber(fact["Panels.open_screen"])
+    after(250, function() Hooks.emit("Topbar.open_session", screen) end)
+end)
 
 -- ── Settings shortcut ────────────────────────────────────────────
 on("open_settings", function()
-    emit("Topbar.open_panel", 4)          -- through the frame: it lets this panel finish closing first
+    Hooks.emit("Topbar.open_panel", 4)          -- through the frame: it lets this panel finish closing first
 end)
 
 -- (what is playing and the player controls are the System scene's: system.luau)

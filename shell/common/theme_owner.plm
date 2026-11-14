@@ -16,4 +16,13 @@ part ThemeOwner {
     let pal_sr = Settings.pal_sr
     let pal_sg = Settings.pal_sg
     let pal_sb = Settings.pal_sb
+    //  Style: owned by Settings like the rest of the look (declare these facts there; see shell/style_options.luau)
+    let acc_custom = Settings.acc_custom
+    let acc_cr = Settings.acc_cr
+    let acc_cg = Settings.acc_cg
+    let acc_cb = Settings.acc_cb
+    let acc_fg_dark = Settings.acc_fg_dark
+    let style_text = Settings.style_text
+    let style_density = Settings.style_density
+    let style_glass = Settings.style_glass
 }

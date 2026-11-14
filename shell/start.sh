@@ -3,23 +3,14 @@
 set -e
 export PLEAMAR_NO_LENS=1
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-BIN="$DIR/bin/pleamar"
-# The look (dark mode, skin, accent, palette, clock) is OWNED by the settings scene: the scenes in `desktop` read it by name, the
-# others (lock, widgets, capture) are told with `say`, as below.
-# pleamar 0.8 (`bin/exp/pleamar`) can bring scenes into ONE process (`shell/desktop.plm`, docs/UNIFIED_SURFACE_PLAN.md);
-# with the older runtime every scene is its own process, as before.
-DESKTOP=0
-if [ -x "$DIR/bin/exp/pleamar" ]; then BIN="$DIR/bin/exp/pleamar"; DESKTOP=1; fi
+BIN="$DIR/bin/exp/pleamar"
 export PLEAMAR_BIN="$BIN"
 # One pid file per Wayland display, so a second shell (say, one in a nested pleamar-wm) never touches the first.
 PID_FILE="/tmp/pleamar_macos_shell.${WAYLAND_DISPLAY:-wayland-0}.pids"
 CONFIG_FILE="$HOME/.config/pleamar_shell.json"
 
-if [ ! -f "$BIN" ]; then
-    echo "Pleamar binary not found at $BIN. Building..."
-    (cd "$DIR/cloned_repos/pleamar" && cargo build --release)
-    mkdir -p "$DIR/bin"
-    ln -sf "$DIR/cloned_repos/pleamar/target/release/pleamar" "$BIN"
+if [ ! -x "$BIN" ]; then
+    bash "$DIR/shell/runtime.sh"
 fi
 
 kill_all() {
@@ -42,7 +33,7 @@ kill_all() {
 
 check_status() {
     echo "macOS / iNiR Shell Status:"
-    for comp in topbar border settings lock infopanels dockpanels dialogs windows controlcenter notifications; do
+    for comp in topbar border settings lock notifications; do
         if pgrep -f "pleamar.*$comp\.plm" >/dev/null 2>&1; then
             echo "  ✔ $comp is RUNNING"
         else
@@ -65,11 +56,11 @@ apply_saved_theme() {
         [ -z "$DM" ] && DM="true"
         [ -z "$SKIN" ] && SKIN="0"
 
-        for comp in settings lock widgets capture ; do
+        for comp in lock widgets capture ; do
             "$BIN" --say "$comp" "fact dark_mode $DM" >/dev/null 2>&1 || true
             "$BIN" --say "$comp" "fact skin $SKIN" >/dev/null 2>&1 || true
         done
-        for comp in settings lock widgets capture ; do
+        for comp in lock widgets capture ; do
             "$BIN" --say "$comp" "fact accent $ACCENT" >/dev/null 2>&1 || true
             "$BIN" --say "$comp" "fact accent_auto $AUTO" >/dev/null 2>&1 || true
             "$BIN" --say "$comp" "fact hour12 $H12" >/dev/null 2>&1 || true
@@ -79,15 +70,28 @@ apply_saved_theme() {
 
 # The capture picker is its own scene, started on demand (it ends itself when idle): its full-screen buffers on two
 # monitors would otherwise sit in GPU memory all day. Waits until it answers, then asks Settings for the look it missed.
+#
+# ONE picker only. Spotlight, the Control Center and the frame's `open_panel 11` can all ask at the same moment, and a socket that refuses
+# for an instant used to look like "not running": a second (third) picker process started, the commands reached only one of them, and the
+# other kept its dimmed full-screen picker on screen until something else repainted. So: a lock around the whole check, and the check is
+# the PROCESS (its exact --scene argument), not only whether the socket answers. Any extra copies found are stopped.
 ensure_capture() {
-    if ! "$BIN" --say capture "get open" >/dev/null 2>&1; then
-        PLEAMAR_NO_LENS=1 setsid "$BIN" --no-hud --scene "$DIR/shell/capture.plm" </dev/null >/tmp/pleamar_capture.log 2>&1 &
-        for _ in $(seq 1 40); do
-            sleep 0.15
-            "$BIN" --say capture "get open" >/dev/null 2>&1 && break
-        done
-        "$BIN" --say settings "emit theme_sync" >/dev/null 2>&1 || true
-    fi
+    (
+        flock 9
+        pids=$(pgrep -f -- "--scene $DIR/shell/capture.plm" || true)
+        n=$(printf '%s\n' "$pids" | grep -c . || true)
+        if [ "$n" -gt 1 ]; then                                   # leftovers from before this fix: keep the newest
+            printf '%s\n' "$pids" | sort -n | head -n $((n - 1)) | xargs -r kill 2>/dev/null
+            sleep 0.2
+        elif [ "$n" -eq 0 ]; then
+            PLEAMAR_NO_LENS=1 PLEAMAR_SWAPCHAIN=1 setsid "$BIN" --no-hud --scene "$DIR/shell/capture.plm" </dev/null >/tmp/pleamar_capture.log 2>&1 9>&- &      # 9>&-: the picker must not hold the lock
+            for _ in $(seq 1 40); do
+                sleep 0.15
+                "$BIN" --say capture "get open" >/dev/null 2>&1 && break
+            done
+            "$BIN" --say settings "emit theme_sync" >/dev/null 2>&1 || true
+        fi
+    ) 9>"${XDG_RUNTIME_DIR:-/tmp}/beskar-capture.lock"
 }
 
 start_shell() {
@@ -115,26 +119,14 @@ start_shell() {
     pkill -x awww-daemon 2>/dev/null || true
 
 
-    # ONE supervisor for every scene (rule 39): wallpaper first so the desktop is never bare. Merged scenes (rules 50-53):
-    # panels = weather, music, today, updates · dock = spotlight, clipboard, wallpapers, widget bar, session and polkit
-    # dialogs · modals = app switcher, overview, capture · dialogs = the first-run welcome
+    # One supervisor; the desktop imports all panel scenes into one process.
     S="$DIR/shell"
-    if [ "$DESKTOP" = 1 ]; then
-        setsid "$S/supervise.sh" \
-            "$S/wallpaper.plm:/tmp/pleamar_wallpaper.log" \
-            "$S/desktop.plm:/tmp/pleamar_desktop.log" \
-            "$S/lock.plm:/tmp/pleamar_lock.log" \
-            "$S/widgets.plm:/tmp/pleamar_widgets.log" \
-            </dev/null >/dev/null 2>&1 &
-    else
     setsid "$S/supervise.sh" \
         "$S/wallpaper.plm:/tmp/pleamar_wallpaper.log" \
-        "$S/topbar.plm:/tmp/pleamar_topbar.log" \
-        "$S/settings.plm:/tmp/pleamar_settings.log" \
+        "$S/desktop.plm:/tmp/pleamar_desktop.log" \
         "$S/lock.plm:/tmp/pleamar_lock.log" \
         "$S/widgets.plm:/tmp/pleamar_widgets.log" \
         </dev/null >/dev/null 2>&1 &
-    fi
     echo "$!" > "$PID_FILE"
     sleep 0.6
 
@@ -173,12 +165,13 @@ start_shell() {
     echo "  - $0 settings        (Toggle System Settings)"
     echo "  - $0 shortcuts       (Settings on the keyboard shortcuts list)"
     echo "  - $0 lock            (Lock Screen with ext-session-lock)"
-    echo "  - $0 session [0|1|2] (0=Shutdown, 1=Restart, 2=Logout modal)"
+    echo "  - $0 session [0|1|2|3] (chooser; optional Shutdown/Restart/Logout/Sleep confirmation)"
     echo "  - $0 capture         (Toggle Screen Capture & Record HUD)"
     echo "  - $0 spotlight       (Toggle Spotlight search)"
     echo "  - $0 control-center  (Toggle Control Center)"
-    echo "  - $0 power-menu      (Open the power menu; the gem button in the bar does the same)"
+    echo "  - $0 power-menu      (Session chooser, Super+Shift+Q or Super+X)"
     echo "  - $0 notifications   (Toggle Notification Center)"
+    echo "  - $0 timer           (Timer presets and controls)"
     echo "  - $0 dashboard       (Toggle the dashboard under the clock)"
     echo "  - $0 wallpapers      (Toggle the wallpaper picker, Super+W)"
     echo "  - $0 vol-up          (Increase Volume (shown in the centre pill))"
@@ -216,7 +209,7 @@ case "$1" in
         "$BIN" --say topbar "emit open_panel 4"
         ;;
     welcome)
-        "$BIN" --say dialogs "emit show_again"
+        "$BIN" --say topbar "emit show_again"
         ;;
     shortcuts)
         "$BIN" --say settings "fact tab 5" >/dev/null 2>&1 || true
@@ -229,9 +222,17 @@ case "$1" in
         "$BIN" --say lock "fact locked true"
         ;;
     session)
-        K_VAL="${2:-0}"
-        "$BIN" --say dialogs "fact ses_kind $K_VAL"
-        "$BIN" --say topbar "emit open_panel 5"
+        if [ "$#" -lt 2 ]; then
+            "$BIN" --say topbar "emit open_session"
+        else
+            case "$2" in
+                0|1|2|3)
+                    "$BIN" --say topbar "emit set_kind $2"
+                    "$BIN" --say topbar "emit open_panel 5"
+                    ;;
+                *) echo "usage: $0 session [0|1|2|3]" >&2; exit 2 ;;
+            esac
+        fi
         ;;
     shot)
         ensure_capture
@@ -251,13 +252,14 @@ case "$1" in
         # through the frame, which knows which monitor has the focus
         "$BIN" --say topbar "emit open_control_center"
         ;;
-    power-menu)
-        # the first copy of the frame (the monitor the compositor lists first)
-        "$BIN" --say topbar "fact open_screen 0"
-        "$BIN" --say topbar "fact open true"
+    power-menu|session-menu)
+        "$BIN" --say topbar "emit open_session"
         ;;
     notifications|widgets)
         "$BIN" --say topbar "emit open_notifications"
+        ;;
+    timer)
+        "$BIN" --say topbar "emit open_timer"
         ;;
     dashboard)
         "$BIN" --say topbar "emit open_dashboard"

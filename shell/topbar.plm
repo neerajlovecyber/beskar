@@ -11,30 +11,43 @@
 // The surface is the whole monitor, but only the zones catch the mouse: everywhere else the
 // click goes through to the windows.
 import "common/palette.plm"
-uses scene "dialogs.plm" as Dialogs
+uses scene "activities.plm" as Activities
+uses scene "weather.plm" as Weather
 uses scene "notifications.plm" as Notifications
-uses scene "controlcenter.plm" as Controlcenter
-uses scene "infopanels.plm" as Infopanels
 uses scene "system.plm" as System        // battery, network, audio, brightness: declared ONCE there
 uses scene "settings.plm" as Settings      // owns the look (dark mode, skin, accent, palette, clock format): read by name
 import "common/icons.plm"
+import "common/ui.plm"
+import "common/buttons.plm"
+import "common/scroll.plm"
+import "common/calendar.plm"
 uses scene "panels.plm" as Panels      // the owner of which panel is open: read here to order a hand-over to Settings
 
 scene MacTopBar {
     include "common/theme_owner.plm"
     include "common/theme.plm"
+    include "common/updates_panel.plm"          // the Updates panel: its facts, its content component (drawn in `Shell` below)
+    include "common/cc_panel.plm"               // the Control Center: the same
+    include "common/notice_view.plm"            // the notification centre and the banner card (the Notifications scene owns their data)
+    include "common/info_panels.plm"            // weather, music, today
+    include "common/personal_editor.plm"        // the notes / to-do editor
+    include "common/timer_panel.plm"            // the timer
+    include "common/dock_panels.plm"            // Spotlight, the wallpaper strip, the clipboard, the widget bar
+    include "common/dialog_panels.plm"          // the session dialog, polkit, welcome
+    include "common/window_panels.plm"          // the app switcher and the overview
     surface {
         size: full, full
         anchor: top
         reserve: 42          // windows leave the top strip; the ring only overlaps their edges
         screens: each
+        level: top, overlay while Panels.open and Panels.open_screen == screen.index         // a panel over a full-screen window, like the overlay surfaces it replaces
+        keyboard: exclusive while Panels.open_screen == screen.index and ((asking and Panels.cur == 1) or (Panels.open and (Panels.cur == 25 or Panels.cur == 26 or Panels.cur == 4 or Panels.cur == 5 or Panels.cur == 6 or Panels.cur == 10 or Panels.cur == 11 or Panels.cur == 12 or Panels.cur == 24 or Panels.cur == 21 or Panels.cur == 22)) or (Panels.open and Panels.cur == 15 and wx_view == 1))     // text fields: the Wi-Fi password, the timer and the Personal editor, the weather place search
     }
 
-    //  What topbar.luau may touch. `run` is only what it needs: niri for the workspace, curl for
-    //  the weather, and the dock's apps. Undeclared is nothing.
+    //  What topbar.luau may touch: compositor commands, session actions and the dock's apps.
     permissions {
-        services: "clock", "network", "battery", "window", "tray", "tray.*", "apps", "apps.launch", "audio", "audio.*", "brightness", "brightness.*", "media", "media.*", "thumbnails", "thumbnails.*", "say:music", "say:weather", "say:updates", "say:capture", "say:control_center", "say:spotlight", "say:notifications", "say:dashboard", "say:settings", "say:session", "say:appswitcher", "say:lock", "say:clipboard", "say:wallpapers", "say:widget_bar", "say:polkit", "say:welcome", "say:widgets", "say:overview", "say:panels", "say:infopanels", "say:dockpanels", "say:dialogs", "say:windows", "say:controlcenter"
-        run: "niri msg", "curl", "sh", "systemctl", "xdg-open", "notify-send"
+        services: "clock", "network", "battery", "window", "tray", "tray.*", "apps", "apps.launch", "audio", "audio.*", "brightness", "brightness.*", "bluetooth", "bluetooth.*", "env", "files", "files.write", "polkit", "polkit.*", "media", "media.*", "thumbnails", "thumbnails.*", "say:music", "say:weather", "say:updates", "say:capture", "say:control_center", "say:spotlight", "say:notifications", "say:dashboard", "say:settings", "say:session", "say:appswitcher", "say:lock", "say:clipboard", "say:wallpapers", "say:widget_bar", "say:polkit", "say:welcome", "say:widgets", "say:overview", "say:panels", "say:infopanels", "say:dockpanels", "say:dialogs", "say:windows", "say:controlcenter"
+        run: "niri msg", "sh", "curl", "systemctl", "xdg-open", "notify-send", "cliphist", "wl-copy", "timeout --signal=TERM --kill-after=0.2s 2s fd", "systemctl suspend"
     }
 
     service clock as now { time: text = "--:--"; date: text }
@@ -48,9 +61,8 @@ scene MacTopBar {
     fact priv_mic = false       // a program is recording from a microphone
     //  other scenes' state, read by name (each scene writes only its own): updates waiting, a Bluetooth device connected,
     //  Do Not Disturb, notifications waiting
-    let upd_n        = Infopanels.upd_n
-    let bt_connected = Controlcenter.bt_connected
-    let dnd          = Notifications.dnd
+    let upd_n        = up_n          // updates waiting (the Updates panel part owns it)
+    let dnd          = Notifications.quiet
     let notif_count  = Notifications.notif_count
 
     //  Reported by topbar.luau
@@ -59,8 +71,8 @@ scene MacTopBar {
     //  many windows it has. Filled by topbar.luau from niri.
     model ws_list max 12 { out: number; idx: number; active: bool; wins: number }
     //  The apps open in the workspace each monitor shows (left to right), the focused one with its name.
-    model cur_apps max 20 { out: number; icon: image 20, 20; name: text; wid: number; focused: bool }
-    model dock_items max 12 { icon: image 38, 38; name: text; running: bool; pinned: bool; canpin: bool; sep: bool; preview_thumb: image 160, 96; preview_title: text; preview_has: bool }
+    model cur_apps max 20 { out: number; icon: image 20, 20; name: text; wid: number; focused: bool; rank: number }
+    model dock_items max 12 { icon: image 46, 46; name: text; running: bool; pinned: bool; canpin: bool; mvl: bool; mvr: bool; sep: bool; preview_thumb: image 160, 96; preview_title: text; preview_has: bool }
     //  The power menu (the gem button): `open` is what shell/exclusive.luau closes, `open_screen` which monitor shows it.
     fact open = false
     event close_menu            // another window opened: the power menu closes (a rule, so `exclusive` hears it too)
@@ -80,6 +92,11 @@ scene MacTopBar {
     let pref_tray      = Settings.pref_tray
     let pref_dock_auto = Settings.pref_dock_auto
     let bar_style      = Settings.bar_style     // 0 Notch · 1 Strip
+    let pref_workspaces = Settings.pref_workspaces    // optional indicators of the left / right islands (drawing AND zones hide together)
+    let pref_bar_apps  = Settings.pref_bar_apps
+    let pref_updates   = Settings.pref_updates
+    let dock_size_i    = Settings.dock_size_i         // 0 small · 1 standard (the old size) · 2 large
+    let dock_delay     = Settings.dock_delay_i        // 0 quick · 1 standard (the old 2.5 s) · 2 relaxed
     fact m_ph = 0             // phase (degrees) of the little bars and the recording dot: moves only while they show
     fact rec_on = false       // a screen recording runs (capture.luau): a red dot and the time show in the pill
     text rec_time = "0:00"
@@ -114,9 +131,7 @@ scene MacTopBar {
     fact last_screen = -1     // the monitor of the last click on one of the bar's buttons
     fact menu_i = -1          // which dock item has its right-click menu open (-1 none)
     //  One record per monitor, in niri's output order: the workspace each one shows.
-    model mon max 4 { active: number = 1; busy: number = 0; nws: number = 1 }
-    text weather_temp = "--°"
-    text weather_icon = "󰅟"
+    model mon max 4 { active: number = 1; busy: number = 0; nws: number = 1; modules: bool = true; dock: bool = true }
 
     //  Centre pill live activities: 0 ambient · 1 charging · 2 screenshot · 3 timer done · 4 privacy
     fact act_kind = 0
@@ -126,13 +141,15 @@ scene MacTopBar {
     fact bat_percent = 0
     text shot_path = ""
     image shot_thumb = from shot_path, 20, 20
-    fact timer_on = false
-    text timer_text = "0:00"
+    let timer_on = Activities.timer_state > 0
     fact priv_act_cam = false
     text priv_act_text = ""
 
     event timer_start ->
     event timer_cancel ->
+    event timer_finished ->
+    event open_timer ->
+    event open_timer_output ->
     event dismiss_timer_done ->
     event screenshot_taken ->
     event open_screenshot ->
@@ -150,8 +167,12 @@ scene MacTopBar {
     event panel_close ->
     event open_control_center ->
     event open_panel ->      // a number: which separate panel to toggle on the focused monitor (see topbar.luau)
+    event open_session ->    // shared session chooser, on the focused monitor
     event open_notifications ->
     event open_updates ->
+    event open_personal_output ->
+    event open_personal_on ->
+    event open_personal ->
     event open_dashboard ->
     event open_music ->
     event open_weather ->
@@ -167,14 +188,26 @@ scene MacTopBar {
     event dock_click ->
     event outside_click ->   // a click on nothing while a panel is open closes it
     event dock_pin ->
+    event dock_move_pin(id, direction) ->   // reorder a pin one step among the pinned apps: id = the dock's item index (0-based) or the pin string, direction -1 left / +1 right
     event dock_quit ->
     event dock_hover ->
     event dock_unhover ->
     event reveal ->        // pointer reached the bottom edge
+    event reveal_edge ->
+    event leave_edge ->
     event keep_dock ->     // pointer is on the dock
+    event setup_pins_snapshot ->
+    event setup_pins_apply ->
+    event request_dock_pins ->   // Settings asks for the pinned apps in dock order: answered with `Settings.set_dock_pins` (a list of { index, pin, name, mvl, mvr })
+    event peek_quick       // a reveal / keep_dock while Settings' dock delay is Quick (the layer below holds the dock up for its own time)
+    event peek_slow        // the same for Relaxed
+    on reveal while dock_delay == 0 { emit peek_quick }
+    on keep_dock while dock_delay == 0 { emit peek_quick }
+    on reveal while dock_delay == 2 { emit peek_slow }
+    on keep_dock while dock_delay == 2 { emit peek_slow }
 
     // ── look ─────────────────────────────────────────────────────
-    let bar_glass = if(skin == 2, 0%, if(skin == 1, 45%, 55%))
+    let bar_glass = if(skin == 2, 0%, if(skin == 1, 45%, 55%)) * glass_k
     let bar_tint  = if(skin == 2, 100%, if(dark_mode, 60%, 45%))
     let bar_rim   = if(skin == 2, 0%, 16%)
     //  Smoke (dark) / milk (light) keep words readable over any wallpaper.
@@ -189,12 +222,17 @@ scene MacTopBar {
     let ring        = 6       // thickness of the border that goes all the way round
     let curve       = 18      // how round the ring's inner corners are (how much its sides melt)
     let ext         = 28      // how far the glass reaches past the screen edge (never seen)
-    let pad         = 16      // room between a top island's edge and its content
+    let pad         = inset_card      // room between a top island's edge and its content
     let cy          = 19      // vertical centre of the top islands' content
     let notch_h     = 54      // top islands start 14 px above the screen and end 40 px down
     let fillet      = 14      // how much a top island melts into the ring
-    let dock_h      = 64      // how tall the dock stands above the bottom edge
-    let dock_pad    = 18      // room between the dock's sides and its icons
+    //  The dock's icon size is a Settings choice (small / standard / large); standard is the original 38 px. Items, their hit zones,
+    //  the dock's height and (through dock_row.width) the glass width all follow it.
+    let dock_icon   = pick(clamp(dock_size_i, 0, 2), 32, 38, 46)
+    let dock_cell_w = dock_icon + 2           // an item's hit box: 40 x 44 at standard
+    let dock_cell_h = dock_icon + 6
+    let dock_h      = 64 + (dock_icon - 38)   // how tall the dock stands above the bottom edge
+    let dock_pad    = inset_panel      // room between the dock's sides and its icons
     let dock_fillet = 26      // how far the dock flares into the ring
 
 
@@ -202,7 +240,7 @@ scene MacTopBar {
     component Glyph(g: text, tap: event, tone: color = ink_c, sz: number = 12.5) {
         size: 24, 24
         prop hot = 0 ~quick
-        box halo { from: 0, 0; size: 24, 24; corner: 8; color: ink_c; opacity: hot * 14% }
+        box halo { from: 0, 0; size: 24, 24; corner: radius_small; color: ink_c; opacity: hot * 14% }
         text "{g}" { at: 12, 12; anchor: center; size: sz + hot * 1; color: tone; opacity: 85% + hot * 15% }
         zone box hit { from: 0, 0; size: 24, 24; cursor: pointer }
         on enter hit { hot: 1 }
@@ -216,14 +254,14 @@ scene MacTopBar {
     component WifiIcon(tap: event) {
         size: 24, 24
         prop hot = 0 ~quick
-        box { from: 0, 0; size: 24, 24; corner: 8; color: ink_c; opacity: hot * 14% }
+        box { from: 0, 0; size: 24, 24; corner: radius_small; color: ink_c; opacity: hot * 14% }
         //  three arcs that fill with the signal; dim and slashed when there is no connection
         arc { at: 12, 17; radius: 4.2; span: 90deg; width: 1.9; color: ink_c; opacity: if(System.net.online, 100%, 30%) }
         arc { at: 12, 17; radius: 8; span: 90deg; width: 1.9; color: ink_c; opacity: if(System.net.online and System.net.strength > 0.33, 100%, 30%) }
         arc { at: 12, 17; radius: 11.8; span: 90deg; width: 1.9; color: ink_c; opacity: if(System.net.online and System.net.strength > 0.66, 100%, 30%) }
         ellipse { at: 12, 17.4; radius: 1.5; color: ink_c; opacity: if(System.net.online, 100%, 30%) }
         line { from: 5, 5; to: 19, 19; width: 1.8; color: ink_c; opacity: if(System.net.online, 0%, 100%) }
-        zone box hit { from: 0, 0; size: 24, 24; corner: 8; cursor: pointer }
+        zone box hit { from: 0, 0; size: 24, 24; corner: radius_small; cursor: pointer }
         on enter hit { hot: 1 }
         on leave hit { hot: 0 }
         on press hit { last_screen = screen.index; emit tap }
@@ -233,9 +271,9 @@ scene MacTopBar {
     component BluetoothIcon(tap: event) {
         size: 24, 24
         prop hot = 0 ~quick
-        box { from: 0, 0; size: 24, 24; corner: 8; color: ink_c; opacity: hot * 14% }
+        box { from: 0, 0; size: 24, 24; corner: radius_small; color: ink_c; opacity: hot * 14% }
         path { at: 7.5, 5; color: ink_c; stroke: 1.7; move 0, 5.5; line 9, 13.5; line 4.5, 17.5; line 4.5, 0; line 9, 4; line 0, 12 }
-        zone box hit { from: 0, 0; size: 24, 24; corner: 8; cursor: pointer }
+        zone box hit { from: 0, 0; size: 24, 24; corner: radius_small; cursor: pointer }
         on enter hit { hot: 1 }
         on leave hit { hot: 0 }
         on press hit { last_screen = screen.index; emit tap }
@@ -246,13 +284,13 @@ scene MacTopBar {
     component BatteryIcon(tap: event) {
         size: 54, 24
         prop hot = 0 ~quick
-        box { from: 0, 0; size: 54, 24; corner: 8; color: ink_c; opacity: hot * 14% }
+        box { from: 0, 0; size: 54, 24; corner: radius_small; color: ink_c; opacity: hot * 14% }
         box { from: 6, 6.5; size: 24, 11; corner: 3.2; stroke: 1.3; color: ink_c; opacity: 80% }
         box { from: 31, 10; size: 2, 4; corner: 1; color: ink_c; opacity: 80% }
         box { from: 8, 8.5; size: max(2, 20 * clamp(System.bat.percent / 100, 0, 1)), 7; corner: 1.6; color: if(System.bat.charging or bat_ac, ok_c, if(System.bat.percent <= 20, danger_c, ink_c)); opacity: if(System.bat.charging, 100%, if(bat_ac, 60%, 100%)) }
         path { at: 16.5, 7; color: if(System.bat.charging, #0c1410, ink_c); opacity: if(System.bat.charging or bat_ac, 100%, 0%); move 2.5, 0; line 0, 5.5; line 2.4, 5.5; line 1.5, 10; line 5, 4; line 2.6, 4; close }
         text "{System.bat.percent}" { at: 36, 12; anchor: left center; size: t_body; weight: 700; color: hint_c }
-        zone box hit { from: 0, 0; size: 54, 24; corner: 8; cursor: pointer }
+        zone box hit { from: 0, 0; size: 54, 24; corner: radius_small; cursor: pointer }
         on enter hit { hot: 1 }
         on leave hit { hot: 0 }
         on press hit { last_screen = screen.index; emit tap }
@@ -263,12 +301,12 @@ scene MacTopBar {
     component SwitchesIcon(tap: event) {
         size: 24, 24
         prop hot = 0 ~quick
-        box { from: 0, 0; size: 24, 24; corner: 8; color: ink_c; opacity: hot * 14% }
+        box { from: 0, 0; size: 24, 24; corner: radius_small; color: ink_c; opacity: hot * 14% }
         box { from: 4, 5.5; size: 16, 6; corner: 3; stroke: 1.4; color: ink_c }
         ellipse { at: 16.5, 8.5; radius: 1.9; color: ink_c }
         box { from: 4, 12.5; size: 16, 6; corner: 3; stroke: 1.4; color: ink_c }
         ellipse { at: 7.5, 15.5; radius: 1.9; color: ink_c }
-        zone box hit { from: 0, 0; size: 24, 24; corner: 8; cursor: pointer }
+        zone box hit { from: 0, 0; size: 24, 24; corner: radius_small; cursor: pointer }
         on enter hit { hot: 1 }
         on leave hit { hot: 0 }
         on press hit { last_screen = screen.index; emit tap }
@@ -279,13 +317,13 @@ scene MacTopBar {
     component BellIcon(tap: event) {
         size: 24, 24
         prop hot = 0 ~quick
-        box { from: 0, 0; size: 24, 24; corner: 8; color: ink_c; opacity: hot * 14% }
+        box { from: 0, 0; size: 24, 24; corner: radius_small; color: ink_c; opacity: hot * 14% }
         path { at: 5, 4; color: ink_c; move 0, 13; line 2, 13; line 2.5, 6.5; line 4.5, 2.5; line 9.5, 2.5; line 11.5, 6.5; line 12, 13; line 14, 13; line 14, 15; line 0, 15; close }
         ellipse { at: 12, 19.2; radius: 1.7; color: ink_c }
         line { from: 5, 5; to: 19, 19; width: 1.8; color: ink_c; opacity: if(dnd, 100%, 0%) }
         ellipse { at: 19, 5; radius: 5.5; color: danger_c; opacity: if(notif_count > 0, 100%, 0%) }
         text "{notif_count}" { at: 19, 5; anchor: center; size: 7.5; weight: 700; color: on_accent; opacity: if(notif_count > 0, 100%, 0%) }
-        zone box hit { from: 0, 0; size: 24, 24; corner: 8; cursor: pointer }
+        zone box hit { from: 0, 0; size: 24, 24; corner: radius_small; cursor: pointer }
         on enter hit { hot: 1 }
         on leave hit { hot: 0 }
         on press hit { emit tap }
@@ -296,11 +334,11 @@ scene MacTopBar {
     component UpdateIcon(tap: event) {
         size: 24, 24
         prop hot = 0 ~quick
-        box { from: 0, 0; size: 24, 24; corner: 8; color: ink_c; opacity: hot * 14% }
+        box { from: 0, 0; size: 24, 24; corner: radius_small; color: ink_c; opacity: hot * 14% }
         Sym("󰇚", 11, 13, 17, ink_c)
         ellipse { at: 19, 5; radius: 5.5; color: ink_c }
         text "{min(upd_n, 99)}" { at: 19, 5; anchor: center; size: 7.5; weight: 700; color: bar_color }
-        zone box hit { from: 0, 0; size: 24, 24; corner: 8; cursor: pointer }
+        zone box hit { from: 0, 0; size: 24, 24; corner: radius_small; cursor: pointer }
         on enter hit { hot: 1 }
         on leave hit { hot: 0 }
         on press hit { last_screen = screen.index; emit tap }
@@ -316,7 +354,7 @@ scene MacTopBar {
         follow wd = if(w.active, 22, 8)
         prop hot = 0 ~quick
         box { from: 12 - wd / 2, 8; size: wd, 8; corner: 4; color: if(w.active, accent_c, ink_c); opacity: if(w.active, 100%, if(w.wins > 0, 62%, 26%) + hot * 38%) }
-        zone box hit { from: 0, 0; size: 24, 24; corner: 8; cursor: pointer }
+        zone box hit { from: 0, 0; size: 24, 24; corner: radius_small; cursor: pointer }
         on enter hit { hot: 1 }
         on leave hit { hot: 0 }
         on press hit { emit ws_go(w.out * 100 + w.idx) }
@@ -330,10 +368,10 @@ scene MacTopBar {
         row {
             show: it.focused
             padding: 3
-            gap: 6
+            gap: space_6
             align: center
             fill: item_solid
-            corner: 9
+            corner: control_r
             image it.icon { size: 20, 20 }
         }
         //  the others: just the icon, a little dimmer until the pointer is on it
@@ -343,7 +381,7 @@ scene MacTopBar {
             align: center
             image it.icon { size: 20, 20; opacity: 65% + hot * 35% }
         }
-        zone box hit { from: 0, 0; size: 26, 26; corner: 8; cursor: pointer }
+        zone box hit { from: 0, 0; size: 26, 26; corner: radius_small; cursor: pointer }
         on enter hit { hot: 1 }
         on leave hit { hot: 0 }
         on press hit { emit ws_focus(it.wid) }
@@ -354,9 +392,9 @@ scene MacTopBar {
     component PowerItem(label: text, n: number, danger: bool = false) {
         size: pm_w - 28, 36
         prop hot = 0 ~quick
-        box { from: 0, 0; size: pm_w - 28, 36; corner: 10; color: if(danger, danger_c, accent_c); opacity: hot * if(danger, 90%, 85%) }
-        text label { at: 14, 18; anchor: left center; size: t_body; weight: 500; color: if(hot > 0.5, on_accent, if(danger, danger_c, ink_c)) }
-        zone box hit { from: 0, 0; size: pm_w - 28, 36; corner: 10; cursor: pointer }
+        box { from: 0, 0; size: pm_w - 28, 36; corner: radius_small; color: if(danger, danger_c, accent_c); opacity: hot * if(danger, 90%, 85%) }
+        text label { at: inset_card, search_h / 2; anchor: left center; size: ts_body; weight: 500; color: if(hot > 0.5, on_accent, if(danger, danger_c, ink_c)) }
+        zone box hit { from: 0, 0; size: pm_w - 28, 36; corner: radius_small; cursor: pointer }
         on enter hit { hot: 1 }
         on leave hit { hot: 0 }
         on press hit { open = false; emit pm_item(n) }
@@ -366,34 +404,41 @@ scene MacTopBar {
     // ── one dock app: the icon lifts and grows under the pointer ─
     // ── one dock app: the icon lifts under the pointer, a dot says it is running, right-click opens a menu ─
     component DockItem(it: record) {
-        size: 40, 44
+        size: dock_cell_w, dock_cell_h
         prop hot = 0 ~quick
         prop pin_hot = 0 ~quick
+        prop left_hot = 0 ~quick
+        prop right_hot = 0 ~quick
         prop quit_hot = 0 ~quick
         prop preview_on = 0 ~quick
-        let rows = if(it.canpin, 1, 0) + if(it.running, 1, 0)
+        //  menu rows: Keep / Remove, Move Left, Move Right (pinned apps only, and only where there is room to move), Quit
+        let r_pin = if(it.canpin, 1, 0)
+        let r_left = if(it.mvl, 1, 0)
+        let r_right = if(it.mvr, 1, 0)
+        let rows = r_pin + r_left + r_right + if(it.running, 1, 0)
+        let mx = dock_cell_w / 2 - 75           // the 150 px menu is centred on the item
         // a thin line between the pinned apps and the ones that are only running
-        box { from: -6, 6; size: 1.5, 28; corner: 1; color: ink_sub; opacity: if(it.sep, 0.6, 0) }
+        box { from: -6, 6; size: 1.5, dock_icon - 10; corner: 1; color: ink_sub; opacity: if(it.sep, 0.6, 0) }
         group {
-            pivot: 20, 38
+            pivot: dock_cell_w / 2, dock_icon
             scale: 1 + hot * 0.22
             move: 0, hot * -6
-            image it.icon { at: 1, 0; size: 38, 38 }
+            image it.icon { at: 1, 0; size: dock_icon, dock_icon }
         }
-        ellipse { at: 20, 42; radius: 1.8; color: dot_color; opacity: if(it.running, 85%, 0%) }
+        ellipse { at: dock_cell_w / 2, dock_icon + 4; radius: 1.8; color: dot_color; opacity: if(it.running, 85%, 0%) }
 
         //  its name, while the pointer rests on it
         row {
-            at: 20, -12
+            at: dock_cell_w / 2, -12
             anchor: center bottom
-            padding: 6
+            padding: space_6
             fill: item_solid
-            corner: 9
+            corner: control_r
             opacity: if(menu_i == it.index or (it.running and preview_on > 0.05), 0, hot)
-            text it.name { size: t_cap; weight: 600; color: ink_c; tight: true }
+            text it.name { size: ts_cap; weight: 600; color: ink_c; tight: true }
         }
 
-        zone box hit { from: 0, 0; size: 40, 44; cursor: pointer }
+        zone box hit { from: 0, 0; size: dock_cell_w, dock_cell_h; cursor: pointer }
         on enter hit { hot: 1; emit keep_dock }
         on hover hit for 400ms { preview_on: if(it.running and menu_i == -1, 1, 0); emit dock_hover(it.index) }
         on leave hit { hot: 0; preview_on: 0; emit dock_unhover }
@@ -403,7 +448,7 @@ scene MacTopBar {
         //  floating preview card above the dock (thumbnail + title) for its first window
         group {
             show: preview_on > 0.05 and it.running and menu_i != it.index
-            move: 20, -18
+            move: dock_cell_w / 2, -18
             opacity: preview_on
             box { from: -84, -132; size: 168, 128; corner: r_m; color: bg_color }
             box { from: -84, -132; size: 168, 128; corner: r_m; stroke: 1; color: stroke_c; opacity: card_stroke_op }
@@ -435,31 +480,54 @@ scene MacTopBar {
         //  the menu: Keep in Dock / Remove from Dock, and Quit while it has windows
         group {
             show: menu_i == it.index and rows > 0
-            box { from: -55, -16 - rows * 34; size: 150, rows * 34 + 8; corner: 13; color: item_solid }
-            box { from: -55, -16 - rows * 34; size: 150, rows * 34 + 8; corner: 13; stroke: 1; color: ink_c; opacity: 14% }
+            box { from: mx, -16 - rows * 34; size: 150, rows * 34 + 8; corner: radius_medium; color: item_solid }
+            box { from: mx, -16 - rows * 34; size: 150, rows * 34 + 8; corner: radius_medium; stroke: 1; color: ink_c; opacity: 14% }
             group {
                 show: it.canpin
-                move: -49, -12 - rows * 34
-                box { from: 0, 0; size: 138, 30; corner: 9; color: ink_c; opacity: pin_hot * 12% }
-                text if(it.pinned, "Remove from Dock", "Keep in Dock") { at: 69, 15; anchor: center; size: t_sub; weight: 500; color: ink_c }
-                zone box pin_hit { from: 0, 0; size: 138, 30; corner: 9; cursor: pointer }
+                move: mx + 6, -12 - rows * 34
+                box { from: 0, 0; size: 138, 30; corner: control_r; color: ink_c; opacity: pin_hot * 12% }
+                text if(it.pinned, "Remove from Dock", "Keep in Dock") { at: 69, 15; anchor: center; size: ts_sub; weight: 500; color: ink_c }
+                zone box pin_hit { from: 0, 0; size: 138, 30; corner: control_r; cursor: pointer }
                 on enter pin_hit { pin_hot: 1; emit keep_dock }
                 on leave pin_hit { pin_hot: 0 }
                 on press pin_hit { menu_i = -1; emit dock_pin(it.index) }
                 on press right pin_hit { }
             }
+            //  reorder the pinned apps (the saved order; the running-only apps after the separator are not part of it)
+            group {
+                show: it.mvl
+                move: mx + 6, -12 - rows * 34 + r_pin * 34
+                box { from: 0, 0; size: 138, 30; corner: control_r; color: ink_c; opacity: left_hot * 12% }
+                text "Move Left" { at: 69, 15; anchor: center; size: ts_sub; weight: 500; color: ink_c }
+                zone box left_hit { from: 0, 0; size: 138, 30; corner: control_r; cursor: pointer }
+                on enter left_hit { left_hot: 1; emit keep_dock }
+                on leave left_hit { left_hot: 0 }
+                on press left_hit { menu_i = -1; emit dock_move_pin(id: it.index, direction: -1) }
+                on press right left_hit { }
+            }
+            group {
+                show: it.mvr
+                move: mx + 6, -12 - rows * 34 + (r_pin + r_left) * 34
+                box { from: 0, 0; size: 138, 30; corner: control_r; color: ink_c; opacity: right_hot * 12% }
+                text "Move Right" { at: 69, 15; anchor: center; size: ts_sub; weight: 500; color: ink_c }
+                zone box right_hit { from: 0, 0; size: 138, 30; corner: control_r; cursor: pointer }
+                on enter right_hit { right_hot: 1; emit keep_dock }
+                on leave right_hit { right_hot: 0 }
+                on press right_hit { menu_i = -1; emit dock_move_pin(id: it.index, direction: 1) }
+                on press right right_hit { }
+            }
             group {
                 show: it.running
-                move: -49, -12 - rows * 34 + if(it.canpin, 34, 0)
-                box { from: 0, 0; size: 138, 30; corner: 9; color: danger_c; opacity: quit_hot * 22% }
-                text "Quit" { at: 69, 15; anchor: center; size: t_sub; weight: 500; color: danger_c }
-                zone box quit_hit { from: 0, 0; size: 138, 30; corner: 9; cursor: pointer }
+                move: mx + 6, -12 - rows * 34 + (r_pin + r_left + r_right) * 34
+                box { from: 0, 0; size: 138, 30; corner: control_r; color: danger_c; opacity: quit_hot * 22% }
+                text "Quit" { at: 69, 15; anchor: center; size: ts_sub; weight: 500; color: danger_c }
+                zone box quit_hit { from: 0, 0; size: 138, 30; corner: control_r; cursor: pointer }
                 on enter quit_hit { quit_hot: 1; emit keep_dock }
                 on leave quit_hit { quit_hot: 0 }
                 on press quit_hit { menu_i = -1; emit dock_quit(it.index) }
                 on press right quit_hit { }
             }
-            on away hit, pin_hit, quit_hit for 900ms { menu_i = -1 }
+            on away hit, pin_hit, left_hit, right_hit, quit_hit for 900ms { menu_i = -1 }
         }
     }
 
@@ -478,6 +546,22 @@ scene MacTopBar {
         follow rw = right_row.width + pad * 2
         follow dw = dock_row.width + dock_pad * 2
 
+        let side_budget = max(0, screen.width / 2 - max(cw, if(cp_on and cp_screen == screen.index, cp_w, 0)) / 2 - 48)
+        let optional_budget = max(0, side_budget - 36)
+        let ws_cap = max(0, floor(optional_budget * if(pref_bar_apps, 0.5, 1) / 24))
+        let app_cap = max(0, floor((optional_budget - if(pref_workspaces, ws_cap * 24 + space_12, 0)) / 28))
+        prop tray_start = 0
+        let tray_cap = max(0, min(8, floor((side_budget - 240) / 26)))
+
+        on change icons.count { tray_start: 0 }
+        on change tray_cap { tray_start: clamp(tray_start, 0, max(0, icons.count - tray_cap)) }
+        let ws_w = if(pref_workspaces and mon.$screen.modules, workspace_row.width, 0)
+        let apps_w = if(pref_bar_apps and mon.$screen.modules, app_row.width, 0)
+        let left_gap = if(ws_w > 0 and apps_w > 0, space_12, 0)
+        let update_w = if(upd_n > 0 and pref_updates and mon.$screen.modules and side_budget >= 276, 24, 0)
+        let tray_w = if(pref_tray and mon.$screen.modules, tray_row.width, 0)
+        let right_gap = if(update_w > 0 and tray_w > 0, space_12, 0)
+
         //  the little bars beside the cover: three sines at different speeds, flat while paused
         //  (driven by `m_ph`, which topbar.luau advances ONLY while music plays or a recording runs: a `wave` keeps
         //  the whole scene painting at the monitor's rate for ever, even when nothing is shown: ~100 frames a second)
@@ -493,9 +577,15 @@ scene MacTopBar {
         //  again 2.5 s after the pointer stops asking for it. With an empty workspace it stays up.
         prop vis = 1 ~calm
         layer dockshow ~calm {
+            disabled while not mon.$screen.dock and not (bp_on and bp_screen == screen.index) { vis: 0 }
             always while not pref_dock_auto { vis: 1 }
             empty  while mon.$screen.busy == 0 { vis: 1 }
             panel  while bp_on and bp_screen == screen.index { vis: 1 }
+            //  Hide delay (Settings → dock_delay_i): Quick and Relaxed have their own peek claims, fed by the `peek_*` events above. While
+            //  either is chosen `away_custom` wins as soon as its claim ends, so the Standard claim below (the original 2.5 s) never applies.
+            quick_peek for 1200ms after peek_quick { vis: 1 }
+            slow_peek  for 4500ms after peek_slow { vis: 1 }
+            away_custom while dock_delay != 1 { vis: 0 }
             peek   for 2500ms after reveal, keep_dock { vis: 1 }
             away   { vis: 0 }
         }
@@ -503,7 +593,7 @@ scene MacTopBar {
         //  Panels that grow out of the islands. Per island: `v` how open it is on THIS monitor, and its size, all
         //  springs, so the glass morphs when a panel opens, closes or changes height (or another takes the island).
         let pm_w = 236
-        let pm_h = 346
+        let pm_h = 184
         prop pv = 0 ~calm                                   // left: the power menu
         follow pv = if(open and open_screen == screen.index, 1, 0)
         prop cv = 0 ~calm                                   // centre
@@ -571,19 +661,19 @@ scene MacTopBar {
             box power_m {
                 from: -ext, -14
                 size: lw + max(0, pm_w - lw) * pv + ext, (notch_h - s_strip * 2) + pm_h * pv
-                corner: 18 * (1 - s_strip + s_strip * clamp(pv * 12, 0, 1))
+                corner: radius_card * (1 - s_strip + s_strip * clamp(pv * 12, 0, 1))
                 blend: fillet * (1 - s_strip + s_strip * clamp(pv * 12, 0, 1))
             }
             box right_m {
                 from: screen.width - (rw + max(0, rpw - rw) * rv), -14
                 size: rw + max(0, rpw - rw) * rv + ext, (notch_h - s_strip * 2) + rph * rv
-                corner: 18 * (1 - s_strip + s_strip * clamp(rv * 12, 0, 1))
+                corner: radius_card * (1 - s_strip + s_strip * clamp(rv * 12, 0, 1))
                 blend: fillet * (1 - s_strip + s_strip * clamp(rv * 12, 0, 1))
             }
             box center_m {
                 from: screen.width / 2 - (cw + max(0, cpw - cw) * cv) / 2, -14
                 size: cw + max(0, cpw - cw) * cv, (notch_h - s_strip * 2) + cph * cv
-                corner: 18 * (1 - s_strip + s_strip * clamp(cv * 12, 0, 1))
+                corner: radius_card * (1 - s_strip + s_strip * clamp(cv * 12, 0, 1))
                 blend: fillet * (1 - s_strip + s_strip * clamp(cv * 12, 0, 1))
             }
 
@@ -592,7 +682,77 @@ scene MacTopBar {
             //  its width is the dock's width THAT SHOWS (a panel that starts to open brings the dock's width in at once: `bv * 6`, so a hidden dock does not start as a small box and grow) plus what the panel adds (subtracting the full dock width while the dock was
             //  still hidden made a narrow tower for the first moments, then a jump when the dock appeared);
             //  with a bottom panel open (Spotlight, wallpapers) it grows up and out into the panel's glass.
-            box dock_island { from: screen.width / 2 - (dw * clamp(max((vis - 0.3) * 1.8, bv * 6), 0, 1) + max(0, bpw - dw * clamp(max((vis - 0.3) * 1.8, bv * 6), 0, 1)) * bv) / 2, screen.height - dock_h * vis - max(0, bph - dock_h) * bv; size: dw * clamp(max((vis - 0.3) * 1.8, bv * 6), 0, 1) + max(0, bpw - dw * clamp(max((vis - 0.3) * 1.8, bv * 6), 0, 1)) * bv, dock_h + ext + max(0, bph - dock_h) * bv; corner: 24; blend: dock_fillet }
+            box dock_island { from: screen.width / 2 - (dw * clamp(max((vis - 0.3) * 1.8, bv * 6), 0, 1) + max(0, bpw - dw * clamp(max((vis - 0.3) * 1.8, bv * 6), 0, 1)) * bv) / 2, screen.height - dock_h * vis - max(0, bph - dock_h) * bv; size: dw * clamp(max((vis - 0.3) * 1.8, bv * 6), 0, 1) + max(0, bpw - dw * clamp(max((vis - 0.3) * 1.8, bv * 6), 0, 1)) * bv, dock_h + ext + max(0, bph - dock_h) * bv; corner: radius_window; blend: dock_fillet }
+        }
+
+        //  The floor of a bottom panel. Behind the lowest pixels of the screen is the wallpaper strip niri keeps clear of windows (the 6 px strut), and
+        //  the translucent glass blurs its colour (gold on this wallpaper) up into the panel as a coloured fringe. Six clipped copies of the
+        //  dock island's own shape (solid, in the glass's colour) stack from the bottom up to a soft fade, so the cover follows the side flares exactly.
+        group {
+            show: bv > 0.01 and bp_screen == screen.index
+            opacity: clamp(bv * 2.4 - 1.3, 0, 1) * 10%
+            clip box { from: 0, screen.height - 40; size: screen.width, 40 + 40 }
+            body {
+                color: bar_color
+                glass: 0%
+                box floor_f { from: -ext, screen.height - ring; size: screen.width + ext * 2, ext + ring; blend: curve }
+                box dock_f { from: screen.width / 2 - (dw * clamp(max((vis - 0.3) * 1.8, bv * 6), 0, 1) + max(0, bpw - dw * clamp(max((vis - 0.3) * 1.8, bv * 6), 0, 1)) * bv) / 2, screen.height - dock_h * vis - max(0, bph - dock_h) * bv; size: dw * clamp(max((vis - 0.3) * 1.8, bv * 6), 0, 1) + max(0, bpw - dw * clamp(max((vis - 0.3) * 1.8, bv * 6), 0, 1)) * bv, dock_h + ext + max(0, bph - dock_h) * bv; corner: radius_window; blend: dock_fillet }
+            }
+        }
+        group {
+            show: bv > 0.01 and bp_screen == screen.index
+            opacity: clamp(bv * 2.4 - 1.3, 0, 1) * 14%
+            clip box { from: 0, screen.height - 32; size: screen.width, 32 + 40 }
+            body {
+                color: bar_color
+                glass: 0%
+                box floor_f { from: -ext, screen.height - ring; size: screen.width + ext * 2, ext + ring; blend: curve }
+                box dock_f { from: screen.width / 2 - (dw * clamp(max((vis - 0.3) * 1.8, bv * 6), 0, 1) + max(0, bpw - dw * clamp(max((vis - 0.3) * 1.8, bv * 6), 0, 1)) * bv) / 2, screen.height - dock_h * vis - max(0, bph - dock_h) * bv; size: dw * clamp(max((vis - 0.3) * 1.8, bv * 6), 0, 1) + max(0, bpw - dw * clamp(max((vis - 0.3) * 1.8, bv * 6), 0, 1)) * bv, dock_h + ext + max(0, bph - dock_h) * bv; corner: radius_window; blend: dock_fillet }
+            }
+        }
+        group {
+            show: bv > 0.01 and bp_screen == screen.index
+            opacity: clamp(bv * 2.4 - 1.3, 0, 1) * 18%
+            clip box { from: 0, screen.height - 24; size: screen.width, 24 + 40 }
+            body {
+                color: bar_color
+                glass: 0%
+                box floor_f { from: -ext, screen.height - ring; size: screen.width + ext * 2, ext + ring; blend: curve }
+                box dock_f { from: screen.width / 2 - (dw * clamp(max((vis - 0.3) * 1.8, bv * 6), 0, 1) + max(0, bpw - dw * clamp(max((vis - 0.3) * 1.8, bv * 6), 0, 1)) * bv) / 2, screen.height - dock_h * vis - max(0, bph - dock_h) * bv; size: dw * clamp(max((vis - 0.3) * 1.8, bv * 6), 0, 1) + max(0, bpw - dw * clamp(max((vis - 0.3) * 1.8, bv * 6), 0, 1)) * bv, dock_h + ext + max(0, bph - dock_h) * bv; corner: radius_window; blend: dock_fillet }
+            }
+        }
+        group {
+            show: bv > 0.01 and bp_screen == screen.index
+            opacity: clamp(bv * 2.4 - 1.3, 0, 1) * 24%
+            clip box { from: 0, screen.height - 16; size: screen.width, 16 + 40 }
+            body {
+                color: bar_color
+                glass: 0%
+                box floor_f { from: -ext, screen.height - ring; size: screen.width + ext * 2, ext + ring; blend: curve }
+                box dock_f { from: screen.width / 2 - (dw * clamp(max((vis - 0.3) * 1.8, bv * 6), 0, 1) + max(0, bpw - dw * clamp(max((vis - 0.3) * 1.8, bv * 6), 0, 1)) * bv) / 2, screen.height - dock_h * vis - max(0, bph - dock_h) * bv; size: dw * clamp(max((vis - 0.3) * 1.8, bv * 6), 0, 1) + max(0, bpw - dw * clamp(max((vis - 0.3) * 1.8, bv * 6), 0, 1)) * bv, dock_h + ext + max(0, bph - dock_h) * bv; corner: radius_window; blend: dock_fillet }
+            }
+        }
+        group {
+            show: bv > 0.01 and bp_screen == screen.index
+            opacity: clamp(bv * 2.4 - 1.3, 0, 1) * 32%
+            clip box { from: 0, screen.height - 9; size: screen.width, 9 + 40 }
+            body {
+                color: bar_color
+                glass: 0%
+                box floor_f { from: -ext, screen.height - ring; size: screen.width + ext * 2, ext + ring; blend: curve }
+                box dock_f { from: screen.width / 2 - (dw * clamp(max((vis - 0.3) * 1.8, bv * 6), 0, 1) + max(0, bpw - dw * clamp(max((vis - 0.3) * 1.8, bv * 6), 0, 1)) * bv) / 2, screen.height - dock_h * vis - max(0, bph - dock_h) * bv; size: dw * clamp(max((vis - 0.3) * 1.8, bv * 6), 0, 1) + max(0, bpw - dw * clamp(max((vis - 0.3) * 1.8, bv * 6), 0, 1)) * bv, dock_h + ext + max(0, bph - dock_h) * bv; corner: radius_window; blend: dock_fillet }
+            }
+        }
+        group {
+            show: bv > 0.01 and bp_screen == screen.index
+            opacity: clamp(bv * 2.4 - 1.3, 0, 1) * 40%
+            clip box { from: 0, screen.height - 4; size: screen.width, 4 + 40 }
+            body {
+                color: bar_color
+                glass: 0%
+                box floor_f { from: -ext, screen.height - ring; size: screen.width + ext * 2, ext + ring; blend: curve }
+                box dock_f { from: screen.width / 2 - (dw * clamp(max((vis - 0.3) * 1.8, bv * 6), 0, 1) + max(0, bpw - dw * clamp(max((vis - 0.3) * 1.8, bv * 6), 0, 1)) * bv) / 2, screen.height - dock_h * vis - max(0, bph - dock_h) * bv; size: dw * clamp(max((vis - 0.3) * 1.8, bv * 6), 0, 1) + max(0, bpw - dw * clamp(max((vis - 0.3) * 1.8, bv * 6), 0, 1)) * bv, dock_h + ext + max(0, bph - dock_h) * bv; corner: radius_window; blend: dock_fillet }
+            }
         }
 
         //  A click anywhere that is neither the panel nor a bar / dock button closes the open panel (as macOS does). It is
@@ -601,11 +761,143 @@ scene MacTopBar {
         on press outside_zone { emit outside_click }
         on press right outside_zone { emit outside_click }
 
+        //  ── the Updates panel: its content is drawn HERE, over the glass this surface already draws for the right island, so it
+        //  cannot disagree with it on the monitor or on timing. Origin = 44 px in from the panel's old surface (400 wide, flush right),
+        //  just under the bar (y 40); it shows once the glass has arrived and is clipped to the glass as it grows.
+        //  ── the bottom panels: Spotlight, the wallpaper strip, the clipboard, the widget bar (the dock island's glass grows up behind them) ──
+        group {
+            show: Panels.cur == 4 and bv > 0.01 and bp_screen == screen.index
+            move: screen.width / 2 - 320, screen.height - Panels.panel_h
+            opacity: clamp(bv * 2.4 - 1.3, 0, 1) * clamp(1 - max(abs(bp_w - bpw), abs(bp_h - bph)) / 24, 0, 1)
+            clip box { from: -60, Panels.panel_h - (dock_h + max(0, bph - dock_h) * bv) - 4; size: 1300, dock_h + max(0, bph - dock_h) * bv + 90 }
+            SpotlightContent()
+        }
+        group {
+            show: Panels.cur == 6 and bv > 0.01 and bp_screen == screen.index
+            move: screen.width / 2 - 280, screen.height - Panels.panel_h
+            opacity: clamp(bv * 2.4 - 1.3, 0, 1) * clamp(1 - max(abs(bp_w - bpw), abs(bp_h - bph)) / 24, 0, 1)
+            clip box { from: -60, Panels.panel_h - (dock_h + max(0, bph - dock_h) * bv) - 4; size: 1300, dock_h + max(0, bph - dock_h) * bv + 90 }
+            ClipboardContent()
+        }
+        group {
+            show: Panels.cur == 5 and bv > 0.01 and bp_screen == screen.index
+            move: screen.width / 2 - 490, screen.height - Panels.panel_h
+            opacity: clamp(bv * 2.4 - 1.3, 0, 1) * clamp(1 - max(abs(bp_w - bpw), abs(bp_h - bph)) / 24, 0, 1)
+            clip box { from: -60, Panels.panel_h - (dock_h + max(0, bph - dock_h) * bv) - 4; size: 1300, dock_h + max(0, bph - dock_h) * bv + 90 }
+            WallpapersContent()
+        }
+        group {
+            show: Panels.cur == 10 and bv > 0.01 and bp_screen == screen.index
+            move: screen.width / 2 - 400, screen.height - Panels.panel_h
+            opacity: clamp(bv * 2.4 - 1.3, 0, 1) * clamp(1 - max(abs(bp_w - bpw), abs(bp_h - bph)) / 24, 0, 1)
+            clip box { from: -60, Panels.panel_h - (dock_h + max(0, bph - dock_h) * bv) - 4; size: 1300, dock_h + max(0, bph - dock_h) * bv + 90 }
+            WidgetBarContent()
+        }
+        group {
+            show: Panels.cur == 11 and bv > 0.01 and bp_screen == screen.index
+            move: screen.width / 2 - 240, screen.height - Panels.panel_h
+            opacity: clamp(bv * 2.4 - 1.3, 0, 1) * clamp(1 - max(abs(bp_w - bpw), abs(bp_h - bph)) / 24, 0, 1)
+            clip box { from: -60, Panels.panel_h - (dock_h + max(0, bph - dock_h) * bv) - 4; size: 1300, dock_h + max(0, bph - dock_h) * bv + 90 }
+            SessionContent()
+        }
+        group {
+            show: Panels.cur == 12 and bv > 0.01 and bp_screen == screen.index
+            move: screen.width / 2 - 240, screen.height - Panels.panel_h
+            opacity: clamp(bv * 2.4 - 1.3, 0, 1) * clamp(1 - max(abs(bp_w - bpw), abs(bp_h - bph)) / 24, 0, 1)
+            clip box { from: -60, Panels.panel_h - (dock_h + max(0, bph - dock_h) * bv) - 4; size: 1300, dock_h + max(0, bph - dock_h) * bv + 90 }
+            PolkitContent()
+        }
+        group {
+            show: Panels.cur == 24 and bv > 0.01 and bp_screen == screen.index
+            move: screen.width / 2 - 320, screen.height - Panels.panel_h
+            opacity: clamp(bv * 2.4 - 1.3, 0, 1) * clamp(1 - max(abs(bp_w - bpw), abs(bp_h - bph)) / 24, 0, 1)
+            clip box { from: -60, Panels.panel_h - (dock_h + max(0, bph - dock_h) * bv) - 4; size: 1300, dock_h + max(0, bph - dock_h) * bv + 90 }
+            WelcomeContent()
+        }
+        group {
+            show: Panels.cur == 21 and bv > 0.01 and bp_screen == screen.index
+            move: screen.width / 2 - 560, screen.height - Panels.panel_h
+            opacity: clamp(bv * 2.4 - 1.3, 0, 1) * clamp(1 - max(abs(bp_w - bpw), abs(bp_h - bph)) / 24, 0, 1)
+            clip box { from: -60, Panels.panel_h - (dock_h + max(0, bph - dock_h) * bv) - 4; size: 1300, dock_h + max(0, bph - dock_h) * bv + 90 }
+            SwitcherContent()
+        }
+        group {
+            show: Panels.cur == 22 and bv > 0.01 and bp_screen == screen.index
+            move: screen.width / 2 - 620, screen.height - Panels.panel_h
+            opacity: clamp(bv * 2.4 - 1.3, 0, 1) * clamp(1 - max(abs(bp_w - bpw), abs(bp_h - bph)) / 24, 0, 1)
+            clip box { from: -60, Panels.panel_h - (dock_h + max(0, bph - dock_h) * bv) - 4; size: 1300, dock_h + max(0, bph - dock_h) * bv + 90 }
+            OverviewContent()
+        }
+        //  ── the centre island's panels: weather, music, today, the timer, the Personal editor ──
+        group {
+            show: Panels.cur == 15 and cv > 0.01 and cp_screen == screen.index
+            move: screen.width / 2 - 194, 40
+            opacity: clamp(cv * 2.4 - 1.3, 0, 1) * clamp(1 - max(abs(cp_w - cpw), abs(cp_h - cph)) / 24, 0, 1)
+            clip box { from: -60, -20; size: 540, cph * cv + 24 }
+            WeatherContent()
+        }
+        group {
+            show: Panels.cur == 9 and cv > 0.01 and cp_screen == screen.index
+            move: screen.width / 2 - 174, 40
+            opacity: clamp(cv * 2.4 - 1.3, 0, 1) * clamp(1 - max(abs(cp_w - cpw), abs(cp_h - cph)) / 24, 0, 1)
+            clip box { from: -60, -20; size: 500, cph * cv + 24 }
+            MusicContent()
+        }
+        group {
+            show: Panels.cur == 3 and cv > 0.01 and cp_screen == screen.index
+            move: screen.width / 2 - 174, 40
+            opacity: clamp(cv * 2.4 - 1.3, 0, 1) * clamp(1 - max(abs(cp_w - cpw), abs(cp_h - cph)) / 24, 0, 1)
+            clip box { from: -60, -20; size: 500, cph * cv + 24 }
+            TodayContent()
+        }
+        group {
+            show: Panels.cur == 26 and cv > 0.01 and cp_screen == screen.index
+            move: screen.width / 2 - 194, 40
+            opacity: clamp(cv * 2.4 - 1.3, 0, 1) * clamp(1 - max(abs(cp_w - cpw), abs(cp_h - cph)) / 24, 0, 1)
+            clip box { from: -60, -20; size: 540, cph * cv + 24 }
+            TimerContent()
+        }
+        group {
+            show: Panels.cur == 25 and cv > 0.01 and cp_screen == screen.index
+            move: screen.width / 2 - 300, 40
+            opacity: clamp(cv * 2.4 - 1.3, 0, 1) * clamp(1 - max(abs(cp_w - cpw), abs(cp_h - cph)) / 24, 0, 1)
+            clip box { from: -60, -20; size: 740, cph * cv + 24 }
+            PersonalContent()
+        }
+        group {
+            show: Panels.cur == 2 and rv > 0.01 and rp_screen == screen.index
+            move: screen.width - 386, 40
+            opacity: clamp(rv * 2.4 - 1.3, 0, 1) * clamp(1 - max(abs(rp_w - rpw), abs(rp_h - rph)) / 24, 0, 1)
+            clip box { from: -60, -20; size: 520, rph * rv + 24 }
+            NoticeCentre()
+        }
+        //  the banner card, in the centre pill (the glass is the pill's own growth: cp_kind 1)
+        group {
+            show: bnv > 0.01 and cp_screen == screen.index
+            move: screen.width / 2 - 206, 0
+            opacity: clamp(bnv * 1.6 - 0.5, 0, 1)
+            NoticeBanner()
+        }
+        group {
+            show: Panels.cur == 1 and rv > 0.01 and rp_screen == screen.index
+            move: screen.width - 366, 40
+            opacity: clamp(rv * 2.4 - 1.3, 0, 1) * clamp(1 - max(abs(rp_w - rpw), abs(rp_h - rph)) / 24, 0, 1)
+            clip box { from: -80, -20; size: 560, rph * rv + 24 }
+            ControlCenterContent()
+        }
+        group {
+            show: Panels.cur == 16 and rv > 0.01 and rp_screen == screen.index
+            move: screen.width - 356, 40
+            opacity: clamp(rv * 2.4 - 1.3, 0, 1) * clamp(1 - max(abs(rp_w - rpw), abs(rp_h - rph)) / 24, 0, 1)
+            clip box { from: -60, -20; size: 520, rph * rv + 24 }
+            UpdatesContent()
+        }
+
         // ── left island: menu orb · workspace · window ───────────
         row left_row {
             at: pad, cy
             anchor: left middle
-            gap: 10
+            gap: space_12
             align: center
 
             //  The menu button: a small gem in the accent colours (the mark of the shell)
@@ -617,12 +909,12 @@ scene MacTopBar {
                     scale: 1 + hot * 0.08
                     body {
                         gradient: 0, 0 to 24, 24, accent_c, focus_c
-                        box { from: 1, 1; size: 22, 22; corner: 7 }
+                        box { from: 1, 1; size: 22, 22; corner: control_r }
                     }
                     path { at: 5.5, 5.5; color: on_accent; stroke: 1.7; move 6.5, 0; line 13, 6.5; line 6.5, 13; line 0, 6.5; close }
                     path { at: 9, 9; color: on_accent; move 3, 0; line 6, 3; line 3, 6; line 0, 3; close }
                 }
-                zone box logo_hit { from: 0, 0; size: 24, 24; corner: 7; cursor: pointer }
+                zone box logo_hit { from: 0, 0; size: 24, 24; corner: control_r; cursor: pointer }
                 on enter logo_hit { hot: 1 }
                 on leave logo_hit { hot: 0 }
                 on press logo_hit while open and open_screen == screen.index { open = false }
@@ -630,18 +922,25 @@ scene MacTopBar {
                 on press right logo_hit { }
             }
 
-            //  the workspaces of THIS monitor
-            row {
-                gap: 0
-                align: center
-                for w in ws_list { WsDot(w) { show: w.out == screen.index } }
-            }
-
-            //  the apps open here, the focused one named
-            row {
-                gap: 2
-                align: center
-                for it in cur_apps { CurApp(it) { show: it.out == screen.index } }
+            // Each optional group is instantiated once. Swapping changes positions, not model expansion.
+            group {
+                size: ws_w + apps_w + left_gap, 26
+                row workspace_row {
+                    at: if(Settings.bar_left_order == 1, apps_w + left_gap, 0), 13
+                    anchor: left middle
+                    show: pref_workspaces and mon.$screen.modules
+                    gap: 0
+                    align: center
+                    for w in ws_list { WsDot(w) { show: w.out == screen.index and ws_cap > 0 and (w.active or w.idx < ws_cap) } }
+                }
+                row app_row {
+                    at: if(Settings.bar_left_order == 0, ws_w + left_gap, 0), 13
+                    anchor: left middle
+                    show: pref_bar_apps and mon.$screen.modules
+                    gap: space_2
+                    align: center
+                    for it in cur_apps { CurApp(it) { show: it.out == screen.index and app_cap > 0 and (it.focused or it.rank < app_cap) } }
+                }
             }
         }
 
@@ -658,20 +957,20 @@ scene MacTopBar {
             group {
                 show: osd_kind == 0
                 text if(osd_muted or osd_level < 0.02, "󰝟", "󰕾") { family: "JetBrainsMono Nerd Font Mono"; at: 38, 69; anchor: center center; size: 20; color: if(osd_muted, danger_c, ink_c) }
-                text "Volume" { at: 70, 60; anchor: left center; size: t_body; weight: 700; color: ink_c }
+                text "Volume" { at: 70, 60; anchor: left center; size: ts_body; weight: 700; color: ink_c }
                 text if(osd_muted, "Muted", "{osd_level * 100, 0} %") { at: 362, 60; anchor: right center; size: t_sub; weight: 600; color: if(osd_muted, danger_c, ink_sub) }
             }
             group {
                 show: osd_kind == 1
                 Sym("󰃟", 38, 69, 20, ink_c)
-                text "Brightness" { at: 70, 60; anchor: left center; size: t_body; weight: 700; color: ink_c }
+                text "Brightness" { at: 70, 60; anchor: left center; size: ts_body; weight: 700; color: ink_c }
                 text "{osd_level * 100, 0} %" { at: 362, 60; anchor: right center; size: t_sub; weight: 600; color: ink_sub }
             }
             group {
                 show: osd_kind == 2
                 text if(osd_muted, "󰍭", "󰍬") { family: "JetBrainsMono Nerd Font Mono"; at: 38, 69; anchor: center center; size: 20; color: if(osd_muted, danger_c, ink_c) }
-                text "Microphone" { at: 70, 60; anchor: left center; size: t_body; weight: 700; color: ink_c }
-                text if(osd_muted, "Muted", "On") { at: 362, 60; anchor: right center; size: t_sub; weight: 600; color: if(osd_muted, danger_c, ink_sub) }
+                text "Microphone" { at: 70, 60; anchor: left center; size: ts_body; weight: 700; color: ink_c }
+                text if(osd_muted, "Muted", "On") { at: 362, 60; anchor: right center; size: ts_sub; weight: 600; color: if(osd_muted, danger_c, ink_sub) }
             }
             //  a live activity (charging, screenshot saved, timer done, camera / microphone in use): same card, its own words
             group {
@@ -688,11 +987,11 @@ scene MacTopBar {
                     box { from: 18, 49; size: 40, 40; corner: r_m; color: pick(card_tone, ink_c, ok_c, warn_c, danger_c); opacity: if(card_tone == 0, 12%, 22%) }
                     text card_glyph { family: "JetBrainsMono Nerd Font Mono"; at: 38, 69; anchor: center center; size: 20; color: pick(card_tone, ink_c, ok_c, warn_c, danger_c) }
                 }
-                text card_title { at: 70, 60; anchor: left center; size: t_body; weight: 700; color: ink_c; width: 230; lines: 1 }
-                text card_value { at: 362, 60; anchor: right center; size: t_sub; weight: 600; color: ink_sub }
-                text card_sub { at: 70, 79; anchor: left center; size: t_sub; color: ink_sub; width: 290; lines: 1 }
+                text card_title { at: 70, 60; anchor: left center; size: ts_body; weight: 700; color: ink_c; width: 230; lines: 1 }
+                text card_value { at: 362, 60; anchor: right center; size: ts_sub; weight: 600; color: ink_sub }
+                text card_sub { at: 70, 79; anchor: left center; size: ts_sub; color: ink_sub; width: 290; lines: 1 }
                 zone box card_hit { from: 10, 42; size: 360, 52; corner: r_m; cursor: pointer; active: osd_kind == 3 and ov > 0.8; label: "Dismiss or open" }
-                on press card_hit { emit card_click }
+                on press card_hit { last_screen = screen.index; emit card_click }
                 on press right card_hit { }
             }
             //  the level (not for the microphone: it is on or off)
@@ -703,7 +1002,7 @@ scene MacTopBar {
             }
             group {
                 show: osd_kind == 2
-                text if(osd_muted, "Your microphone is off", "Your microphone is on") { at: 70, 79; anchor: left center; size: t_sub; color: ink_sub }
+                text if(osd_muted, "Your microphone is off", "Your microphone is on") { at: 70, 79; anchor: left center; size: ts_sub; color: ink_sub }
             }
         }
 
@@ -712,13 +1011,13 @@ scene MacTopBar {
             at: screen.width / 2, cy
             anchor: center middle
             opacity: 1 - max(bnv, ov)
-            gap: 10
+            gap: space_12
             align: center
 
             // ── Ambient activities (visible when no takeover activity is active) ──
             row rec_chip {
                 show: act_kind == 0 and rec_on
-                gap: 6
+                gap: space_6
                 align: center
                 cursor: pointer
                 ellipse { at: 4.5, 4.5; radius: 4.5; color: danger_c; opacity: 0.55 + 0.45 * (0.5 + 0.5 * rdot) }
@@ -726,22 +1025,26 @@ scene MacTopBar {
             }
             row timer_chip {
                 show: act_kind == 0 and timer_on
-                gap: 6
+                gap: space_6
                 align: center
                 cursor: pointer
-                ellipse { at: 6, 6; radius: 4.5; stroke: 1.5; color: warn_c }
-                text timer_text { size: 14; weight: 700; color: ink_c }
+                group {
+                    size: 12, 12
+                    ellipse { at: 6, 6; radius: 4.5; stroke: 1.5; color: if(Activities.timer_state == 3, ok_c, warn_c); show: Activities.timer_state != 2 }
+                    group { show: Activities.timer_state == 2; Sym("󰏤", 6, 6, 12, warn_c) }
+                }
+                text Activities.timer_text { size: 14; weight: 700; color: ink_c }
             }
             row music_chip {
                 show: act_kind == 0 and m_on
-                gap: 7
+                gap: space_8
                 align: center
                 cursor: pointer
                 group {
                     size: 22, 22
                     ellipse { at: 11, 11; radius: 11; color: accent_c }
                     group {
-                        clip box { from: 0, 0; size: 22, 22; corner: 11 }
+                        clip box { from: 0, 0; size: 22, 22; corner: radius_medium }
                         image m_cover { at: -10, -1; size: 42, 24; show: m_has_art }
                     }
                 }
@@ -754,26 +1057,26 @@ scene MacTopBar {
             }
             row clock {
                 show: act_kind == 0
-                gap: 6
+                gap: space_6
                 align: center
                 cursor: pointer
                 text clock_text { size: 14; weight: 700; color: ink_c }
             }
 
             row weather_chip {
-                show: act_kind == 0 and pref_weather
+                show: act_kind == 0 and pref_weather and mon.$screen.modules and screen.width >= 900
                 cursor: pointer
-                gap: 4
+                gap: space_4
                 align: center
-                group { size: 18, 18; Sym(weather_icon, 9, 9, 16, hint_c) }
-                text weather_temp { size: 14; weight: 700; color: ink_c }
+                group { size: 18, 18; Sym(Weather.icon, 9, 9, 16, hint_c) }
+                text Weather.bar_temp { size: 14; weight: 700; color: ink_c }
             }
 
         }
         on press clock { last_screen = screen.index; emit open_dashboard }
         on press rec_chip { emit rec_stop }
         on press right rec_chip { }
-        on press timer_chip { emit timer_cancel }
+        on press timer_chip { last_screen = screen.index; emit open_timer }
         on press right timer_chip { }
         on press weather_chip { last_screen = screen.index; emit open_weather }
         on press right weather_chip { }
@@ -785,15 +1088,23 @@ scene MacTopBar {
         row right_row {
             at: screen.width - pad, cy
             anchor: right middle
-            gap: 10
+            gap: space_12
             align: center
 
-            row {
-                show: pref_tray
-                gap: 6
+            group {
+                size: update_w + tray_w + right_gap, 26
+                zone box tray_wheel { from: if(Settings.bar_right_order == 1, update_w + right_gap, 0), 0; size: tray_w, 26; active: tray_cap > 0 and icons.count > tray_cap }
+                on scroll tray_wheel { tray_start: clamp(tray_start - if(wheel > 0, 1, if(wheel < 0, -1, 0)), 0, max(0, icons.count - tray_cap)) }
+                on press right tray_wheel { }
+            row tray_row {
+                at: if(Settings.bar_right_order == 1, update_w + right_gap, 0), 13
+                anchor: left middle
+                show: pref_tray and mon.$screen.modules
+                gap: space_6
                 align: center
                 for i in icons {
                     group {
+                        show: i.index >= tray_start and i.index < tray_start + tray_cap
                         size: 20, 20
                         image i.icon { at: 1, 1; size: 18, 18 }
                         zone box tray_hit { from: 0, 0; size: 20, 20; cursor: pointer }
@@ -807,10 +1118,17 @@ scene MacTopBar {
                 }
             }
 
+                group {
+                    move: if(Settings.bar_right_order == 0, tray_w + right_gap, 0), 1
+                    show: update_w > 0
+                    UpdateIcon(open_updates)
+                }
+            }
+
             //  Privacy: a green dot while the camera is in use, an orange one while something records the microphone.
             row {
                 show: priv_cam or priv_mic
-                gap: 5
+                gap: space_4
                 align: center
                 group {
                     show: priv_cam
@@ -826,18 +1144,14 @@ scene MacTopBar {
                 }
             }
 
-            group {
-                show: upd_n > 0
-                UpdateIcon(open_updates)
-            }
-            WifiIcon(open_cc_wifi)
+            group { show: side_budget >= 150; WifiIcon(open_cc_wifi) }
             //  Bluetooth only while something is connected.
             group {
-                show: bt_connected
+                show: bt_connected and side_budget >= 240
                 BluetoothIcon(open_cc_bt)
             }
             group {
-                show: System.bat.present
+                show: System.bat.present and side_budget >= 210
                 BatteryIcon(open_dashboard)
             }
             SwitchesIcon(open_control_center)
@@ -845,8 +1159,9 @@ scene MacTopBar {
         }
 
         //  A thin strip along the bottom edge brings a hidden dock back.
-        zone box dock_edge { from: screen.width / 2 - 300, screen.height - 4; size: 600, 4; active: vis < 0.5 }
-        on enter dock_edge { emit reveal }
+        zone box dock_edge { from: screen.width / 2 - 300, screen.height - 4; size: 600, 4; active: vis < 0.5 and mon.$screen.dock }
+        on enter dock_edge { emit reveal_edge }
+        on leave dock_edge { emit leave_edge }
         on press right dock_edge { }
 
         // ── the power menu's items ───────────────────────────────
@@ -854,22 +1169,17 @@ scene MacTopBar {
             show: pv > 0.02
             opacity: clamp(pv * 1.6 - 0.45, 0, 1)
             move: 14, 48 + (1 - pv) * -10
-            zone box pm_panel { from: -14, -4; size: pm_w, pm_h; corner: 18 }
+            zone box pm_panel { from: -14, -4; size: pm_w, pm_h; corner: radius_card }
             on press right pm_panel { }
             on away pm_panel for 1300ms { open = false }
             column {
                 at: 0, 0
-                gap: 2
+                gap: space_2
                 PowerItem("About This PC", 1)
                 PowerItem("System Settings…", 2)
                 PowerItem("Edit Widgets…", 8)
                 box { from: 6, 0; size: pm_w - 40, 1; color: ink_c; opacity: 14% }
-                PowerItem("Lock Screen", 3)
-                PowerItem("Sleep", 4)
-                box { from: 6, 0; size: pm_w - 40, 1; color: ink_c; opacity: 14% }
-                PowerItem("Log Out…", 5)
-                PowerItem("Restart…", 6)
-                PowerItem("Shut Down…", 7, true)
+                PowerItem("Session…", 9)
             }
         }
 
@@ -878,12 +1188,60 @@ scene MacTopBar {
             at: screen.width / 2, screen.height - dock_h / 2 - 1 + (1 - vis) * (dock_h + 20)
             anchor: center middle
             opacity: vis * (1 - bv)
-            gap: 10
+            gap: space_12
             align: center
 
-            for it in dock_items { DockItem(it) }
+            for it in dock_items { DockItem(it) { show: it.index < max(1, floor((screen.width - 2 * dock_pad + space_12) / (dock_cell_w + space_12))) } }
         }
     }
 
     Shell()
+
+    //  The panels' text fields. They are declared HERE, loose in the surface (not in Shell): a field inside a component is scoped to it and
+    //  the logic reads these texts by name (`wq`, `pe_draft`, `pe_new_task`, `tm_duration`). Positions are the panels' own content
+    //  coordinates, as in the groups above; a field shows only on the monitor its panel is on.
+    group {
+        show: Panels.cur == 12 and Panels.open and Panels.open_screen == screen.index
+        move: screen.width / 2 - 240 + shake, screen.height - Panels.panel_h
+        input password { at: 42, 181; width: 396; size: 14; color: ink_c; placeholder: "Password"; secret: true; agent: no }
+    }
+    prop fld_b = 0 ~calm
+    follow fld_b = if(Panels.open and (Panels.cur == 4 or Panels.cur == 6 or (Panels.cur == 10 and wb_page == 1)), 1, 0)
+    group {
+        show: Panels.cur == 4 and fld_b > 0.5 and Panels.open_screen == screen.index
+        move: screen.width / 2 - 320, screen.height - Panels.panel_h
+        input query { at: panel_search_text_x, Panels.panel_h - panel_search_text_y; width: 530; size: panel_search_font; color: ink_c; placeholder: "Search · / files · @ windows · ? settings"; selection: accent_c }
+    }
+    group {
+        show: Panels.cur == 6 and fld_b > 0.5 and Panels.open_screen == screen.index
+        move: screen.width / 2 - 280, screen.height - Panels.panel_h
+        input clip_q { at: panel_search_text_x, Panels.panel_h - panel_search_text_y; width: 450; size: panel_search_font; color: ink_c; placeholder: "Search clipboard history"; selection: accent_c }
+    }
+    group {
+        show: Panels.cur == 10 and wb_page == 1 and fld_b > 0.5 and Panels.open_screen == screen.index
+        move: screen.width / 2 - 400, screen.height - Panels.panel_h
+        input wb_name { at: 36, 58; width: 316; size: font_secondary; color: ink_c; placeholder: "Name this desktop"; selection: accent_c }
+    }
+    prop fld_v = 0 ~calm
+    follow fld_v = if(Panels.open and ((Panels.cur == 15 and wx_view == 1) or Panels.cur == 25 or Panels.cur == 26), 1, 0)
+    group {
+        show: Panels.cur == 15 and wx_view == 1 and fld_v > 0.5 and Panels.open_screen == screen.index
+        move: screen.width / 2 - 194, 40
+        input wq { at: 44, 104; width: 330; size: font_title; color: ink_c; placeholder: "Search a city"; selection: accent_c }
+    }
+    group {
+        show: Panels.cur == 25 and pe_tab == 0 and pe_selected > 0 and Personal.ready and fld_v > 0.5 and Panels.open_screen == screen.index
+        move: screen.width / 2 - 300, 40
+        input pe_draft { at: 216, 80; width: 346; height: 324; size: t_body; color: ink_c; selection: accent_c; placeholder: "Write a note…" }
+    }
+    group {
+        show: Panels.cur == 25 and pe_tab == 1 and Personal.ready and fld_v > 0.5 and Panels.open_screen == screen.index
+        move: screen.width / 2 - 300, 40
+        input pe_new_task { at: 36, 119; width: 418; size: t_body; color: ink_c; selection: accent_c; placeholder: "Add a to-do…" }
+    }
+    group {
+        show: Panels.cur == 26 and (Activities.timer_state == 0 or Activities.timer_state == 3) and fld_v > 0.5 and Panels.open_screen == screen.index
+        move: screen.width / 2 - 194, 40
+        input tm_duration { at: 32, 226; width: 324; size: t_body; color: ink_c; selection: accent_c; placeholder: "Minutes or 1h30m"; label: "Timer duration" }
+    }
 }

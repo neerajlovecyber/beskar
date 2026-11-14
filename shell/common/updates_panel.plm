@@ -1,0 +1,54 @@
+// The Updates panel (panel 16). Its CONTENT is drawn inside the frame's own surface (topbar.plm, in `Shell`, over the glass it
+// already draws for the right island): there is no surface of its own, so its glass and its content can neither disagree on the
+// monitor nor outlive one another. Included by the frame's scene; its logic is shell/updates_panel.luau (loaded by topbar.luau).
+part UpdatesPanel {
+    fact up_n = 0                  // updates waiting (the bar's arrow reads it too)
+    fact up_checking = false
+    fact up_running = false        // pacman -Syu is running
+    fact up_failed = false
+    fact up_known = false          // a check has finished (before that, an empty list means "not looked yet")
+    text up_status = ""            // the line under the title
+    model up_pkgs max 60 { name: text; ver: text; aur: bool }
+
+    event do_update ->
+    event do_check ->
+
+    //  Laid out at the panel's own origin (content x 0 = 44 px in from its surface's left edge, y 0 = just under the bar).
+    component UpdatesContent() {
+        zone box up_inside { from: 0, 0; size: 340, 470 }
+        on press right up_inside { }
+
+        PanelHeader("󰇚", "Updates", 10, 22, ui_accent_c: accent_c, ui_ink_c: ink_c)
+        text up_status { at: 0, 52; anchor: left center; size: ts_cap; color: ink_sub; width: 340; lines: 1 }
+        group { move: 240, 9; Pill(if(up_checking, "Checking…", "Check"), 100, do_check, 0, control_h_compact, false, ui_accent_c: accent_c, ui_danger_c: danger_c, ui_ink_c: ink_c, ui_item_bg: item_bg, ui_on_accent: on_accent) }
+
+        //  the packages
+        group {
+            move: 0, 70
+            show: up_n > 0
+            CardBg(340, min(up_n, 8) * 34 + 8, r_m, ui_card_fill: card_fill, ui_card_stroke: card_stroke)
+            column up_list {
+                at: 0, 4
+                view: 322, 272
+                step: 34
+                for p in up_pkgs {
+                    group {
+                        size: 322, 34
+                        Sym(if(p.aur, "󰣇", "󰏗"), 22, 17, 14, if(p.aur, warn_c, accent_c))
+                        text p.name { at: 40, 17; anchor: left center; size: ts_sub; weight: 600; color: ink_c; width: 130; lines: 1 }
+                        text p.ver { at: 322, 17; anchor: right center; size: ts_micro; color: ink_sub; width: 150; lines: 1; align: right }
+                    }
+                }
+            }
+            group { move: 331, 4; ScrollBar(up_list.scroll, up_list.content, 272, ui_ink_c: ink_c) }       // no edge fade: it sits on a CARD, whose fill is not the glass colour (a fade to bg_color showed as a grey band)
+        }
+        group { move: 0, 70; show: up_n < 1; EmptyState(170, 60, if(up_known, "󰄬", "󰑐"), if(up_known, "Everything is up to date", "Checking…"), ui_ink_sub: ink_sub) }
+
+        //  the button
+        group {
+            move: 0, 70 + min(max(up_n, 1), 8) * 34 + 24 + if(up_n < 1, 70, 0)
+            show: up_n > 0
+            Pill(if(up_running, "Updating…", "Update all"), 340, do_update, 1, control_h_large, false, ui_accent_c: accent_c, ui_danger_c: danger_c, ui_ink_c: ink_c, ui_item_bg: item_bg, ui_on_accent: on_accent)
+        }
+    }
+}

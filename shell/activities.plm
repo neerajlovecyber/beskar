@@ -1,0 +1,31 @@
+// One timer owner and the explicit temporary quiet modes; no surface or independent process.
+uses scene "topbar.plm" as Topbar
+scene Activities {
+    permissions { services: "files", "files.write", "say:widgets" }
+    fact ready = false
+    fact timer_state = 0       // idle 0, running 1, paused 2, done 3
+    fact timer_duration = 1500
+    fact timer_remaining = 1500
+    fact timer_progress = 0
+    text timer_text = "25:00"
+    text timer_status = "Ready"
+    text storage_status = ""
+    //  Explicit temporary quiet modes. Activities owns them; Notifications derives the effective quiet state from them plus
+    //  its manual Do Not Disturb and Settings' quiet hours. Never detected automatically; not saved across restarts.
+    fact quiet_focus = false
+    fact quiet_presentation = false
+    fact quiet_game = false
+    fact quiet_n = 0
+    text quiet_text = ""       // "Focus · Game"
+    text quiet_error = ""
+    event quiet_start ->       // "focus" | "presentation" | "game"
+    event quiet_stop ->
+    event quiet_toggle ->
+    event quiet_stop_all ->
+    event start ->
+    event pause ->
+    event resume ->
+    event cancel ->
+    event dismiss ->
+    event resync ->
+}

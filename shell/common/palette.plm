@@ -1,4 +1,5 @@
 // macOS Apple HIG Palette for Pleamar
+import "geometry.plm"
 library Palette {
     // Ink / Typography
     let ink         = #f5f7f5      // Primary text in dark mode

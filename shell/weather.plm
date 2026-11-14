@@ -1,0 +1,22 @@
+// One forecast owner for all desktop readers and the separate widgets process.
+scene Weather {
+    permissions { services: "files", "files.write", "say:widgets"; run: "curl", "sh" }
+    text snapshot = ""
+    text city = "Choose a location"
+    text temp = "--°C"
+    text bar_temp = "--°C"
+    text icon = "󰅟"
+    text condition = "Loading weather…"
+    text feels = ""
+    text range = ""
+    text status = "Loading weather…"
+    fact loaded = false
+    fact loading = false
+    fact stale = false
+    event refresh ->
+    event ensure ->
+    event choose_location ->
+    event use_ip ->
+    event reload_location ->
+    event resync ->
+}

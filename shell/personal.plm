@@ -1,0 +1,23 @@
+// Single writer for notes and to-dos. Headless, imported by desktop.
+scene Personal {
+    permissions { services: "files", "files.write", "say:widgets" }
+    text snapshot = ""
+    text status = "Loading personal content…"
+    fact ready = false
+    fact can_undo = false
+    fact note_count = 0
+    fact task_count = 0
+    fact completed_count = 0
+    text note_preview = "Keep a note here"
+    text task_preview = "Add a to-do"
+    event add_note ->
+    event edit_note ->
+    event remove_note ->
+    event add_task ->
+    event toggle_task ->
+    event remove_task ->
+    event move_task ->
+    event undo ->
+    event resync ->
+    event flush ->
+}

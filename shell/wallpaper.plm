@@ -1,7 +1,9 @@
 // The wallpaper, painted by pleamar itself (no awww): one background-level surface per monitor under every window.
 // wallpaper.luau keeps ~/.config/beskar/wallpaper in step; the picker (wallpapers.luau) only says
 // `text wp_new <path>`. A new picture is revealed over the old one (fx 0 grows a circle from the top right, 1 fades,
-// 2 wipes from the left), then it becomes the old one.
+// 2 wipes from the left), then it becomes the old one. Anything else in wp_fx is the circle.
+// wallpaper.luau proves every picture (wallpaper_store.luau) before it reaches wp_b: pleamar gives no "image failed"
+// signal, so the shown picture (wp_a) only changes for a file already known to be good.
 scene Wallpaper {
     permissions {
         run: "sh"
@@ -21,6 +23,8 @@ scene Wallpaper {
     text wp_new = ""           // the picker says what to show next
     fact wp_fx = 0
     fact wp_go = false
+    fact reduce_motion = false     // Settings says it (`--say wallpaper "fact reduce_motion 1"`); wallpaper.luau turns it into pleamar's motion.reduced
+    event restore_previous ->      // `--say wallpaper "emit restore_previous"`: back to the previous wallpaper
     image wp_a = from wp_a_path, 0, 0
     image wp_b = from wp_b_path, 0, 0
 
@@ -33,7 +37,7 @@ scene Wallpaper {
     group {
         show: rv > 0.001
         group {
-            show: wp_fx == 0
+            show: not (wp_fx == 1 or wp_fx == 2)
             clip ellipse { at: screen.width * 0.85, screen.height * 0.1; radius: rv * (screen.width + screen.height) }
             image wp_b { at: 0, 0; size: screen.width, screen.height; fit: cover }
         }

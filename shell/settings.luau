@@ -14,32 +14,45 @@ local function sh(script, cb, ...)
     run("sh", { "-c", script, "x", ... }, cb, cb == nil and { output = false } or nil)
 end
 
+local preferences = require("preferences")
+local Style = require("style_options")
+local PAL = nil
+local finish_preferences
+local refresh_style
+local palette_generation = 0
+local preference_store = require("settings_store")(preferences, {
+    run = function(script, args, cb) run("sh", { "-c", script, "settings-store", unpack(args) }, cb) end,
+    decode = json.decode,
+    notify = function(message) text.preference_status = message; fact.preference_problem = message ~= "" and message ~= "Saving preferences…" end,
+    value = function(kind, base)
+        local document = preferences.from_facts(kind, fact, base)
+        if kind == "prefs" then document.frame_output_name = text.frame_output_name or "" end
+        if kind == "palette" and PAL then
+            document.src, document.dark, document.light = PAL.src, PAL.dark, PAL.light
+        end
+        return document
+    end,
+})
+on("preference_retry", preference_store.retry)
+
 -- ── the sidebar ──────────────────────────────────────────────────
-local CATS = {
-    { 0, "󰏘", 0, "Appearance" }, { 1, "󰍹", 1, "Displays" }, { 2, "󰕾", 2, "Sound" },
-    { 3, "󰒎", 3, "Notifications" }, { 4, "󰍜", 4, "Menu Bar & Dock" },
-    { 5, "󰌌", 5, "Shortcuts" }, { 6, "󰋚", 6, "General" },
-    { 8, "󰌵", 8, "Night Light & Power" },
-}
+local actions = require("actions")
+local CATS = actions.settings
 -- Nerd-font glyphs are not drawn symmetrically in their box: how far each one sits right of the middle (measured)
 local GLYPH_DX = {}   -- no nudging any more: icons use the Mono Nerd Font (common/icons.plm), centred by design
 local TITLES = {}
 for _, c in ipairs(CATS) do
-    TITLES[c[1]] = c[4]
+    TITLES[c.tab] = c.name
 end
 
 local function paint_cats()
-    local q = (text.side_q or ""):lower()
     local rows = {}
     for _, c in ipairs(CATS) do
-        if q == "" or c[4]:lower():find(q, 1, true) then
-            rows[#rows + 1] = { idx = c[1], icon = c[2], tint = c[3], name = c[4], dx = GLYPH_DX[c[1]] or 0 }
-        end
+        rows[#rows + 1] = { idx = c.tab, icon = c.icon, tint = c.tint, name = c.name, dx = GLYPH_DX[c.tab] or 0 }
     end
     model.cats = rows
 end
 paint_cats()
-on("text:side_q", paint_cats)
 
 
 -- ── the palette engine ───────────────────────────────────────────
@@ -47,7 +60,6 @@ on("text:side_q", paint_cats)
 -- light and for dark; we keep an accent (primary tone 60 dark / 50 light), a second colour (tertiary) and the
 -- surface, and send the ones for the current mode to every scene as pal_* facts (theme.plm turns them into
 -- accent_c, focus_c and bg_color). Saved in ~/.config/beskar/palette.json so a restart needs no extraction.
-local PAL = nil
 local apply_apps          -- defined below (other apps' colours)
 -- 0 Tonal · 1 Vibrant · 2 Neutral are matugen's own schemes; 3 Soft (pastel) is Tonal with lighter tones, a little
 -- of the colour taken out and the surface kept quiet. (matugen has no chroma setting of its own: the schemes and
@@ -86,7 +98,7 @@ end
 
 local function push_palette()
     local words = palette_words()
-    if not words then return end
+    if not words then if refresh_style then refresh_style() end; return end
     for _, s in ipairs(THEMED) do
         for _, w in ipairs(words) do
             if s == "settings" then
@@ -97,12 +109,11 @@ local function push_palette()
             end
         end
     end
+    if refresh_style then refresh_style() end
 end
 
 local function save_palette()
-    if not PAL then return end
-    local j = json.encode({ style = tonumber(fact.pal_style) or 0, src = PAL.src, dark = PAL.dark, light = PAL.light })
-    sh('mkdir -p "$HOME/.config/beskar" && printf "%s\\n" "$1" > "$HOME/.config/beskar/palette.json"', nil, j)
+    preference_store.save("palette")
 end
 
 -- Which colour of the picture the palette is built from. matugen's own pick ("--prefer saturation") takes the most
@@ -127,12 +138,14 @@ end
 
 local function extract_palette(path)
     if not path or path == "" then return end
+    palette_generation = palette_generation + 1
+    local generation = palette_generation
     local style = PAL_STYLES[tonumber(fact.pal_style) or 0] or PAL_STYLES[0]
     run("magick", { path, "-resize", "120x120", "-colors", "12", "-format", "%c", "histogram:info:-" }, function(hist, hcode)
         local source = hcode == 0 and pick_source(hist) or nil
         if not source then return end
         run("matugen", { "color", "hex", source, "--json", "hex", "--dry-run", "-m", "dark", "-t", style }, function(out, code)
-            if code ~= 0 or not out then return end
+            if code ~= 0 or not out or generation ~= palette_generation then return end
             local at = out:find("{", 1, true)
             local ok, d = pcall(json.decode, at and out:sub(at) or "")
             if not ok or type(d) ~= "table" or type(d.palettes) ~= "table" or type(d.colors) ~= "table" then return end
@@ -172,7 +185,6 @@ local function extract_current()
 end
 
 on("set_screen", function(i) fact.open_screen = tonumber(i) or 0 end)
-on("set_tab", function(n) fact.tab = tonumber(n) or 0 end)
 on("set_pal_src", function(path)
     text.pal_src = path or ""
     if fact.accent_auto == true then extract_palette(path) end
@@ -184,22 +196,22 @@ on("text:pal_src", function(path)
 end)
 
 on("pal_style_pick", function(n)
-    fact.pal_style = tonumber(n) or 0
+    fact.pal_style = math.max(0, math.min(3, math.floor(tonumber(n) or 0)))
+    save_palette()
     extract_current()
 end)
 
 local function load_palette()
-    sh('cat "$HOME/.config/beskar/palette.json" 2>/dev/null', function(out)
-        local ok, d = pcall(json.decode, out or "")
-        if ok and type(d) == "table" and type(d.dark) == "table" and type(d.light) == "table" then
+    preference_store.load("palette", function(result)
+        local d = result.value
+        fact.pal_style = d.style
+        if preferences.palette_usable(d) then
             PAL = { dark = d.dark, light = d.light, src = d.src }
-            fact.pal_style = tonumber(d.style) or 0
-            -- the other scenes may still be starting: send now and again a little later
             push_palette()
             after(3000, push_palette)
             after(8000, push_palette)
         end
-        -- a palette left from another wallpaper must not outlive a restart: look at the one on now
+        finish_preferences()
         after(2500, function() if fact.accent_auto == true then extract_current() end end)
     end)
 end
@@ -211,6 +223,20 @@ end
 local ACCENT_HEX = { [0] = "#007aff", "#af52de", "#ff2d55", "#ff3b30", "#ff9500", "#34c759", "#8e8e93" }
 local apps_timer = nil
 
+refresh_style = function()
+    local values, report = Style.facts({ dark = fact.dark_mode == true, custom = fact.custom_accent,
+        accent = fact.accent, accent_auto = fact.accent_auto == true,
+        pal = { tonumber(fact.pal_ar) or -1, tonumber(fact.pal_ag) or 0, tonumber(fact.pal_ab) or 0 },
+        text = fact.style_text, glass = fact.style_glass, presets_contrast = true })
+    for name, value in pairs(values) do
+        fact[name] = value
+        for _, scene in ipairs(THEMED) do if scene ~= "settings" then say(scene, "fact " .. name .. " " .. tostring(value)) end end
+    end
+    local hex = Style.hex_from_int(fact.custom_accent)
+    text.custom_accent_current = hex or "Preset colour"
+    text.custom_accent_status = report.ok and ((report.adjusted and "Adjusted for contrast: " or "Applied colour: ") .. report.hex) or "Use #RRGGBB or #RGB"
+end
+
 function apply_apps()
     if apps_timer then cancel(apps_timer) end
     apps_timer = after(900, function()
@@ -218,6 +244,7 @@ function apply_apps()
         if fact.pref_apps ~= true then return end
         local dm = (fact.dark_mode == true or fact.dark_mode == 1)
         local src = ACCENT_HEX[tonumber(fact.accent) or 0] or ACCENT_HEX[0]
+        if fact.acc_custom == true then src = string.format("#%02x%02x%02x", math.floor(fact.acc_cr * 255 + .5), math.floor(fact.acc_cg * 255 + .5), math.floor(fact.acc_cb * 255 + .5)) end
         if fact.accent_auto == true and PAL and PAL.src then src = PAL.src end
         local scheme = (PAL_STYLES[tonumber(fact.pal_style) or 0]) or "scheme-tonal-spot"
         if fact.accent_auto ~= true then scheme = "scheme-tonal-spot" end
@@ -227,13 +254,11 @@ function apply_apps()
 end
 
 -- ── theme: mode, glass, accent, clock format ─────────────────────
-local function save_theme(dm_str, skin_str, accent_str, auto_str, h12_str)
-    -- ~/.config/pleamar_shell.json is read by start.sh to restore the look after a restart.
-    local json_text = string.format('{"dark_mode": %s, "skin": %s, "accent": %s, "accent_auto": %s, "hour12": %s}', dm_str, skin_str, accent_str, auto_str, h12_str)
-    sh("mkdir -p \"$HOME/.config\" && printf '%s\\n' '" .. json_text .. "' > \"$HOME/.config/pleamar_shell.json\"")
+local function save_theme()
+    preference_store.save("theme")
 end
 
-local function broadcast_theme()
+local function broadcast_theme(persist)
     local dm = (fact.dark_mode == true or fact.dark_mode == 1)
     local dm_str = tostring(dm)
     local skin_str = tostring(fact.skin or 0)
@@ -249,7 +274,7 @@ local function broadcast_theme()
             say(s, "fact hour12 " .. h12_str)
         end
     end
-    save_theme(dm_str, skin_str, accent_str, auto_str, h12_str)
+    if persist ~= false then save_theme() end
     push_palette()
     apply_apps()
     -- GTK / libadwaita apps follow too
@@ -267,17 +292,18 @@ end
 local LOCK_MINUTES = { [0] = 0, 3, 5, 10, 15 }
 
 local function save_prefs()
-    local j = string.format(
-        '{"appearance": %d, "bar_style": %d, "seconds": %s, "weather": %s, "tray": %s, "dock_auto": %s, "widgets": %s, "apps": %s, "night": %d, "night_t": %d, "banners": %s, "banner_i": %d, "group": %s, "lock_min": %d}',
-        tonumber(fact.appearance) or 1, tonumber(fact.bar_style) or 0, tostring(b(fact.pref_seconds)), tostring(b(fact.pref_weather)), tostring(b(fact.pref_tray)),
-        tostring(b(fact.pref_dock_auto)), tostring(b(fact.pref_widgets)), tostring(b(fact.pref_apps)), tonumber(fact.nl_mode_i) or 0, tonumber(fact.nl_temp_i) or 1, tostring(b(fact.banners)), tonumber(fact.banner_i) or 1, tostring(b(fact.group_apps)), LOCK_MINUTES[tonumber(fact.lock_i) or 0] or 0)
-    sh('mkdir -p "$HOME/.config/beskar" && printf "%s\\n" "$1" > "$HOME/.config/beskar/prefs.json"', nil, j)
+    preference_store.save("prefs")
 end
 
 local function push_prefs()
     -- the bar's and the notifications' preferences are Settings' own facts, read by name by the scenes in `desktop`;
     -- only what is NOT: the widgets (own process) and values computed here
     say("widgets", "fact widgets_on " .. tostring(b(fact.pref_widgets)))
+    say("widgets", "fact clock_seconds " .. tostring(b(fact.pref_seconds)))
+    say("wallpaper", "fact wp_fx " .. tostring(fact.wallpaper_fx))
+    for _, scene in ipairs({ "widgets", "lock", "capture", "wallpaper" }) do
+        say(scene, "fact reduce_motion " .. tostring(fact.reduce_motion == true))
+    end
     emit("Notifications.set_banner_ms", BANNER_MS[tonumber(fact.banner_i) or 1] or 5500)
 end
 
@@ -285,41 +311,27 @@ local function changed_pref()
     save_prefs()
     push_prefs()
 end
+on("toggle_reduce_motion", function()
+    if not preference_store.ready() then return end
+    fact.reduce_motion = not (fact.reduce_motion == true)
+    changed_pref()
+end)
+
+require("settings_quiet")(changed_pref, preference_store.ready)
 
 local function load_prefs()
-    sh('cat "$HOME/.config/beskar/prefs.json" 2>/dev/null', function(out)
-        local ok, p = pcall(json.decode, out or "")
-        if ok and type(p) == "table" then
-            if p.appearance ~= nil then fact.appearance = tonumber(p.appearance) or 1 end
-            if p.bar_style ~= nil then fact.bar_style = tonumber(p.bar_style) or 0 end
-            if p.seconds ~= nil then fact.pref_seconds = p.seconds == true end
-            if p.weather ~= nil then fact.pref_weather = p.weather == true end
-            if p.tray ~= nil then fact.pref_tray = p.tray == true end
-            if p.dock_auto ~= nil then fact.pref_dock_auto = p.dock_auto == true end
-            if p.widgets ~= nil then fact.pref_widgets = p.widgets == true end
-            if p.apps ~= nil then fact.pref_apps = p.apps == true end
-            if p.night ~= nil then fact.nl_mode_i = tonumber(p.night) or 0 end
-            if p.night_t ~= nil then fact.nl_temp_i = tonumber(p.night_t) or 1 end
-            if p.banners ~= nil then fact.banners = p.banners == true end
-            if p.group ~= nil then fact.group_apps = p.group == true end
-            if p.lock_min ~= nil then
-                for i = 0, 4 do if LOCK_MINUTES[i] == tonumber(p.lock_min) then fact.lock_i = i end end
-            end
-            if p.banner_i ~= nil then fact.banner_i = tonumber(p.banner_i) or 1 end
-        end
-        -- the other scenes may still be starting: push now and once more a little later
+    preference_store.load("prefs", function(result)
+        for name, v in pairs(preferences.to_facts("prefs", result.value)) do if name == "frame_output_name" then text.frame_output_name = v; text.frame_output_edit = v else fact[name] = v end end
         push_prefs()
+        finish_preferences()
         after(3000, push_prefs)
         after(8000, push_prefs)
     end)
 end
--- the theme file start.sh restores: pick the clock format up from it too
-sh('cat "$HOME/.config/pleamar_shell.json" 2>/dev/null', function(out)
-    local ok, t = pcall(json.decode, out or "")
-    if ok and type(t) == "table" and t.hour12 ~= nil then
-        fact.hour12 = t.hour12 == true
-    end
+preference_store.load("theme", function(result)
+    for name, v in pairs(preferences.to_facts("theme", result.value)) do fact[name] = v end
     load_prefs()
+    finish_preferences()
 end)
 
 -- ── Appearance ───────────────────────────────────────────────────
@@ -339,7 +351,7 @@ local function apply_mode(announce)
 end
 
 on("set_mode", function(n)
-    fact.appearance = tonumber(n) or 1
+    fact.appearance = math.max(0, math.min(2, math.floor(tonumber(n) or 1)))
     apply_mode(true)
     save_prefs()
 end)
@@ -358,21 +370,43 @@ every(60000, function()
 end)
 
 on("choose_skin", function(val)
-    fact.skin = tonumber(val) or 0
+    fact.skin = math.max(0, math.min(2, math.floor(tonumber(val) or 0)))
     broadcast_theme()
 end)
 
 -- Picked by hand: that ends "match the wallpaper".
 on("choose_accent", function(val)
-    fact.accent = tonumber(val) or 0
+    fact.accent = math.max(0, math.min(6, math.floor(tonumber(val) or 0)))
+    fact.custom_accent = -1
     fact.accent_auto = false
     broadcast_theme()
 end)
 
+on("custom_accent_apply", function()
+    if not preference_store.ready() then return end
+    local r, g, b = Style.parse_hex(text.custom_accent_edit or "")
+    if not r then text.custom_accent_status = "Enter a solid colour as #RRGGBB or #RGB"; return end
+    fact.custom_accent, fact.accent_auto = r * 65536 + g * 256 + b, false
+    broadcast_theme()
+end)
+on("custom_accent_clear", function()
+    if not preference_store.ready() then return end
+    fact.custom_accent = -1
+    broadcast_theme()
+end)
+for _, option in ipairs({ { "style_text_pick", "style_text" }, { "style_glass_pick", "style_glass" } }) do
+    on(option[1], function(value)
+        value = tonumber(value)
+        if not preference_store.ready() or not value or value ~= math.floor(value) or value < 0 or value > 2 then return end
+        fact[option[2]] = value
+        broadcast_theme()
+    end)
+end
+
 -- Picked by wallpapers.luau from the wallpaper (only while "match the wallpaper" is on).
 on("auto_accent", function(val)
     if fact.accent_auto == true then
-        fact.accent = tonumber(val) or 0
+        fact.accent = math.max(0, math.min(6, math.floor(tonumber(val) or 0)))
         broadcast_theme()
     end
 end)
@@ -381,6 +415,158 @@ on("toggle_accent_auto", function()
     fact.accent_auto = not (fact.accent_auto == true)
     broadcast_theme()
     if fact.accent_auto == true then extract_current() end        -- always from the wallpaper that is on now
+end)
+
+local appearance_undo = nil
+local function apply_appearance(target)
+    palette_generation = palette_generation + 1
+    local plan = preferences.appearance_plan(preferences.appearance_snapshot(fact, PAL), target)
+    for _, entry in ipairs(preferences.APPEARANCE) do fact[entry.fact] = plan.values[entry.fact] end
+    if plan.restore_palette then PAL = plan.restore_palette end
+    local mode = tonumber(fact.appearance) or 1
+    fact.dark_mode = mode == 1 or (mode == 2 and auto_dark())
+    broadcast_theme()
+    save_prefs()
+    save_palette()
+    if fact.accent_auto == true and not plan.restore_palette then extract_current() end
+end
+on("reset_appearance_review", function()
+    if not preference_store.ready() then
+        text.preference_status = "Preferences are unavailable; restore is disabled"
+        return
+    end
+    fact.reset_review, fact.reset_sel = true, 0
+end)
+on("reset_appearance_cancel", function() fact.reset_review = false end)
+local function reset_appearance()
+    if not fact.reset_review or not preference_store.ready() then return end
+    appearance_undo = preferences.appearance_snapshot(fact, PAL)
+    fact.reset_review, fact.reset_undo = false, true
+    apply_appearance(preferences.appearance_defaults())
+end
+on("reset_appearance_apply", reset_appearance)
+on("reset_appearance_activate", function()
+    if fact.reset_sel == 1 then reset_appearance() else fact.reset_review = false end
+end)
+on("reset_appearance_undo", function()
+    if not appearance_undo or not preference_store.ready() then return end
+    apply_appearance(appearance_undo)
+    appearance_undo, fact.reset_undo = nil, false
+end)
+
+require("settings_looks")(preferences, {
+    current = function() return preferences.appearance_snapshot(fact, PAL) end,
+    facts = function() return fact end,
+    palette = function() return PAL end,
+    ready = preference_store.ready,
+    apply = function(previous, target)
+        appearance_undo, fact.reset_undo = previous, true
+        apply_appearance(target)
+    end,
+})
+
+-- ── Portable setup (C5): Settings coordinates; it owns the appearance and frame sections itself ────────
+-- Topbar answers for the dock pins through typed events, Widgets (own process) through its request / response files.
+local SetupProfiles = require("setup_profiles")
+local function setup_live_settings()
+    if not preference_store.ready() then return {} end
+    local frame = {}
+    for _, f in ipairs(SetupProfiles.FRAME_FIELDS) do frame[f.fact] = fact[f.fact] end
+    frame.frame_output_name = text.frame_output_name or ""
+    return { appearance = { values = fact, palette = PAL }, frame = { facts = frame } }
+end
+local function setup_section_now(section)
+    local st = setup_live_settings()
+    if not st[section] then return nil end
+    return SetupProfiles.snapshot(section, st[section], { preferences = preferences })
+end
+local function setup_apply_settings(act, cb)
+    if not preference_store.ready() then cb({ ok = false, untouched = true, code = "not_ready" }); return end
+    local section = act.section
+    if section ~= "appearance" and section ~= "frame" then cb({ ok = false, untouched = true, code = "invalid" }); return end
+    local now = setup_section_now(section)
+    if not now then cb({ ok = false, untouched = true, code = "unavailable" }); return end
+    if act.force ~= true and SetupProfiles.fingerprint(section, now) ~= act.expect then
+        cb({ ok = false, untouched = true, code = "stale", fp = SetupProfiles.fingerprint(section, now) }); return
+    end
+    local data = SetupProfiles.validate_section(section, act.data, { preferences = preferences })
+    if not data then cb({ ok = false, untouched = true, code = "invalid" }); return end
+    if section == "appearance" then
+        if act.op == "apply" then appearance_undo, fact.reset_undo = preferences.appearance_snapshot(fact, PAL), true end
+        apply_appearance({ values = SetupProfiles.to_facts("appearance", data, { preferences = preferences }), palette = data.palette })
+    else
+        for name, value in pairs(SetupProfiles.to_facts("frame", data)) do
+            if name == "frame_output_name" then text.frame_output_name, text.frame_output_edit = value, value
+            else fact[name] = value end
+        end
+        changed_pref()
+    end
+    -- the acknowledgement means the files are on disk (the store's queue is serialised)
+    preference_store.flush(function(ok)
+        if not ok then cb({ ok = false, untouched = false, code = "write_failed" }); return end
+        cb({ ok = true, fp = SetupProfiles.fingerprint(section, setup_section_now(section)) })
+    end)
+end
+
+local pin_waits, pin_serial = {}, 0
+local function pin_wait(key, fn)
+    pin_waits[key] = fn
+    after(15000, function() pin_waits[key] = nil end)
+end
+on("setup_owner_snapshot", function(info)
+    local key = type(info) == "table" and info.owner == "topbar" and info.request
+    local fn = key and pin_waits[tostring(key)]
+    if not fn then return end
+    pin_waits[tostring(key)] = nil
+    if info.ready ~= true or type(info.data) ~= "table" then fn(nil, "not ready"); return end
+    fn({ list = info.data.default and nil or info.data.list })
+end)
+on("setup_owner_ack", function(info)
+    local key = type(info) == "table" and info.owner == "topbar" and info.request
+    local fn = key and pin_waits[tostring(key)]
+    if not fn then return end
+    pin_waits[tostring(key)] = nil
+    fn(info)
+end)
+
+local setup = require("settings_setup")(preferences, {
+    live_settings = setup_live_settings,
+    apply_settings = setup_apply_settings,
+    read_pins = function(cb)
+        pin_serial = pin_serial + 1
+        local request = "snap" .. pin_serial
+        pin_wait(request, cb)
+        emit("Topbar.setup_pins_snapshot", request)
+    end,
+    apply_pins = function(act, cb)
+        local request = tostring(act.request)
+        pin_wait(request, cb)
+        emit("Topbar.setup_pins_apply", { request = request, expect = act.expect, force = act.force == true, data = act.data })
+    end,
+    ready = preference_store.ready,
+    run = function(script, args, cb, opts) run("sh", { "-c", script, "setup", unpack(args) }, cb, opts) end,
+    say = say,
+    clipboard = function(body, cb) run("sh", { "-c", 'printf "%s" "$1" | wl-copy >/dev/null 2>&1', "setup-export", body }, function(_, code) cb(code == 0) end) end,
+    now = function() return os.time() end,
+    decode = json.decode,
+})
+
+for _, setting in ipairs({ {"bar_left_order_pick", "bar_left_order", 1}, {"bar_right_order_pick", "bar_right_order", 1}, {"module_output_pick", "module_output_policy", 2}, {"dock_output_pick", "dock_output_policy", 2}, {"dock_show_delay_pick", "dock_show_delay", 2} }) do
+    on(setting[1], function(n)
+        n = tonumber(n)
+        if not preference_store.ready() or not n or n ~= math.floor(n) or n < 0 or n > setting[3] then return end
+        fact[setting[2]] = n; changed_pref()
+    end)
+end
+on("frame_output_save", function()
+    if not preference_store.ready() then return end
+    local name = tostring(text.frame_output_edit or ""):match("^%s*(.-)%s*$")
+    if #name > 64 or (name ~= "" and not name:match("^[%w_.:+%-]+$")) then
+        text.frame_output_status = "Use an output name, for example HDMI-A-1"; return
+    end
+    text.frame_output_name = name
+    save_prefs()
+    text.frame_output_status = name == "" and "Named policy will follow the focused output" or "Saved · a disconnected output falls back to the focused output"
 end)
 
 -- ── Menu bar & dock ──────────────────────────────────────────────
@@ -404,7 +590,58 @@ on("widgets_edit", function() fact.open = false; say("widgets", "emit edit_toggl
 on("widgets_reset", function() say("widgets", "emit w_reset") end)
 on("toggle_tray", function() fact.pref_tray = not b(fact.pref_tray); changed_pref() end)
 on("toggle_dock_auto", function() fact.pref_dock_auto = not b(fact.pref_dock_auto); changed_pref() end)
+local function enum_option(value, maximum)
+    local n = tonumber(value)
+    if not n or n ~= n or n < 0 or n > maximum or n ~= math.floor(n) then return nil end
+    return n
+end
+for _, option in ipairs({ {"toggle_workspaces", "pref_workspaces"}, {"toggle_bar_apps", "pref_bar_apps"}, {"toggle_updates", "pref_updates"} }) do
+    local event, key = option[1], option[2]
+    on(event, function() fact[key] = not b(fact[key]); changed_pref() end)
+end
+for _, option in ipairs({ {"dock_size_pick", "dock_size_i"}, {"dock_delay_pick", "dock_delay_i"}, {"wallpaper_fx_pick", "wallpaper_fx"} }) do
+    local event, key = option[1], option[2]
+    on(event, function(value)
+        local n = enum_option(value, 2)
+        if n then fact[key] = n; changed_pref() end
+    end)
+end
 on("bar_style_pick", function(n) fact.bar_style = tonumber(n) or 0; changed_pref() end)
+
+-- Topbar owns pin IDs/order and writes the file; Settings only presents its snapshot.
+local dock_pins, selected_pin = {}, nil
+on("set_dock_pins", function(rows)
+    if type(rows) ~= "table" then return end
+    local view, next_rows = {}, {}
+    local selection = math.max(0, tonumber(fact.pin_sel) or 0)
+    for _, row in ipairs(rows) do
+        if #next_rows >= 12 then break end
+        if type(row) == "table" and type(row.pin) == "string" and type(row.index) == "number" then
+            local idx = #next_rows
+            next_rows[#next_rows + 1] = row
+            view[#view + 1] = { name = tostring(row.name or row.pin), idx = idx, mvl = row.mvl == true, mvr = row.mvr == true }
+            if row.pin == selected_pin then selection = idx end
+        end
+    end
+    dock_pins, model.dock_pins = next_rows, view
+    fact.pin_sel = math.max(0, math.min(selection, #next_rows - 1))
+end)
+on("pin_open", function() fact.pin_edit = true; emit("Topbar.request_dock_pins") end)
+on("pin_close", function() fact.pin_edit = false end)
+on("pin_step", function(delta)
+    if #dock_pins > 0 then fact.pin_sel = ((tonumber(fact.pin_sel) or 0) + (tonumber(delta) == -1 and -1 or 1)) % #dock_pins end
+end)
+local function move_pin(index, direction)
+    index = tonumber(index)
+    if not index or index < 0 then index = tonumber(fact.pin_sel) or 0 end
+    local row = dock_pins[index + 1]
+    if not row or (direction < 0 and not row.mvl) or (direction > 0 and not row.mvr) then return end
+    selected_pin = row.pin
+    fact.pin_sel = index
+    emit("Topbar.dock_move_pin", { id = row.index, direction = direction })
+end
+on("pin_left", function(index) move_pin(index, -1) end)
+on("pin_right", function(index) move_pin(index, 1) end)
 
 -- ── Notifications ────────────────────────────────────────────────
 on("toggle_dnd", function() emit("Notifications.set_dnd", not (fact["Notifications.dnd"] == true)) end)
@@ -521,12 +758,10 @@ local function refresh_displays()
     end)
 end
 
+local preview_display = require("settings_display")(refresh_displays)
 local function niri_output(args)
     local name = disp_names[disp_sel + 1]
-    if not name then return end
-    local full = { "msg", "output", name }
-    for _, a in ipairs(args) do full[#full + 1] = a end
-    run("niri", full, function() after(1500, refresh_displays) end)
+    if name then preview_display(name, args[1], args[2]) end
 end
 
 on("disp_pick", function(i) disp_sel = tonumber(i) or 0; paint_displays() end)
@@ -550,104 +785,8 @@ end)
 local all_binds, bind_view, boff = {}, {}, 0
 local MAX_BINDS = 9
 
-local KEY_NAMES = {
-    XF86AudioRaiseVolume = "Volume +", XF86AudioLowerVolume = "Volume −", XF86AudioMute = "Mute", XF86AudioMicMute = "Mic mute",
-    XF86MonBrightnessUp = "Brightness +", XF86MonBrightnessDown = "Brightness −",
-    XF86AudioPlay = "Play / Pause", XF86AudioNext = "Next track", XF86AudioPrev = "Previous track", XF86AudioStop = "Stop",
-}
-
-local function pretty_keys(k)
-    local parts = {}
-    for part in k:gmatch("[^%+]+") do
-        part = KEY_NAMES[part] or part
-        part = part:gsub("^Mod$", "Super"):gsub("^Comma$", ","):gsub("^Period$", "."):gsub("^Slash$", "/")
-        part = part:gsub("^Return$", "Enter"):gsub("^BracketLeft$", "["):gsub("^BracketRight$", "]"):gsub("^Print$", "PrtSc")
-        part = part:gsub("^Minus$", "−"):gsub("^Equal$", "="):gsub("^Next$", "Page Down"):gsub("^Prior$", "Page Up")
-        parts[#parts + 1] = part
-    end
-    return table.concat(parts, " + ")
-end
-
--- friendly words for niri actions and for the shell's own `start.sh <command>` binds
-local ACTIONS = {
-    ["consume-or-expel-window-left"] = "Move window into the left column",
-    ["consume-or-expel-window-right"] = "Move window into the right column",
-    ["consume-window-into-column"] = "Stack window into the column",
-    ["expel-window-from-column"] = "Pull window out of the column",
-    ["toggle-window-floating"] = "Float / tile window",
-    ["fullscreen-window"] = "Fullscreen window",
-    ["maximize-column"] = "Maximize column",
-    ["center-column"] = "Centre column",
-    ["center-visible-columns"] = "Centre visible columns",
-    ["switch-preset-column-width"] = "Cycle column width",
-    ["screenshot"] = "Screenshot (choose area)",
-    ["screenshot-screen"] = "Screenshot the screen",
-    ["screenshot-window"] = "Screenshot the window",
-    ["close-window"] = "Close window",
-    ["quit"] = "Quit niri",
-    ["power-off-monitors"] = "Turn monitors off",
-}
-local SHELL_CMDS = {
-    spotlight = "Spotlight", clipboard = "Clipboard history", notifications = "Notification centre", wallpapers = "Wallpapers",
-    settings = "Settings", shortcuts = "Keyboard shortcuts", appswitcher = "App switcher", ["control-center"] = "Control Center",
-    dashboard = "Dashboard", capture = "Screen capture", lock = "Lock screen",
-    ["vol-up"] = "Volume up", ["vol-down"] = "Volume down", mute = "Mute", ["bright-up"] = "Brightness up", ["bright-down"] = "Brightness down",
-}
-
-local function humanize(action)
-    local w = action:match("^([%w%-]+)") or action
-    if ACTIONS[w] then return ACTIONS[w] end
-    return (w:gsub("%-", " "):gsub("^%l", string.upper))
-end
-
-local function parse_binds(src)
-    local map, order = {}, {}
-    local inside = false
-    for line in (src or ""):gmatch("[^\n]+") do
-        local t = line:gsub("^%s+", "")
-        if t:match("^binds%s*{") then
-            inside = true
-        elseif inside and t:match("^}%s*$") then
-            inside = false
-        elseif inside and not t:match("^//") then
-            local key, attrs, body = t:match("^([%w_%+]+)%s*(.-)%s*{%s*(.-)%s*}%s*$")
-            -- dms is not part of this shell: its binds ("dms ipc …") do nothing here
-            if key and not body:match('^spawn%s+"dms"') then
-                local title = attrs:match('hotkey%-overlay%-title="([^"]*)"')
-                local what = title
-                if not what then
-                    local act = body:gsub(";%s*$", "")
-                    local cmd, arg = act:match('^spawn%s+"([^"]*)"%s+"([^"]*)"')
-                    if cmd and cmd:find("start%.sh$") and SHELL_CMDS[arg] then
-                        what = SHELL_CMDS[arg]
-                    elseif cmd then
-                        what = humanize(arg or cmd:match("([^/]+)$") or cmd)
-                    else
-                        local one = act:match('^spawn%s+"([^"]*)"')
-                        what = one and ("Open " .. (one:match("([^/]+)$") or one)) or humanize(act)
-                    end
-                end
-                if not map[key] then order[#order + 1] = key end
-                map[key] = what
-            end
-        end
-    end
-    local list = {}
-    for _, k in ipairs(order) do
-        list[#list + 1] = { keys = pretty_keys(k), what = map[k] }
-    end
-    table.sort(list, function(a, c) return a.what:lower() < c.what:lower() end)
-    return list
-end
-
 local function paint_binds(reset)
-    local q = (text.bind_q or ""):lower()
-    bind_view = {}
-    for _, e in ipairs(all_binds) do
-        if q == "" or e.what:lower():find(q, 1, true) or e.keys:lower():find(q, 1, true) then
-            bind_view[#bind_view + 1] = e
-        end
-    end
+    bind_view = require("shortcuts").search(all_binds, text.bind_q or "")
     if reset then boff = 0 end
     boff = math.max(0, math.min(boff, math.max(0, #bind_view - MAX_BINDS)))
     local rows = {}
@@ -658,12 +797,15 @@ local function paint_binds(reset)
     text.bind_count = (#bind_view) .. " shortcuts"
 end
 
-local function load_binds()
-    sh('cat "$HOME/.config/niri/dms/binds.kdl" "$HOME/.config/niri/config.kdl" 2>/dev/null', function(out)
-        all_binds = parse_binds(out)
-        paint_binds(true)
-    end)
-end
+local shortcut_controller = require("settings_shortcuts")(actions, function(rows)
+    for _, row in ipairs(rows) do
+        row.origin = (row.path or ""):match("([^/]+)$") or "niri"
+        row.origin = row.origin .. ":" .. tostring(row.line or 0) .. (row.editable and " · Beskar-owned" or " · Read-only")
+    end
+    all_binds = rows
+    paint_binds(true)
+end)
+local function load_binds() shortcut_controller.load() end
 on("text:bind_q", function() paint_binds(true) end)
 on("bind_scroll", function(wheel)
     boff = boff + ((tonumber(wheel) or 0) > 0 and -1 or 1)
@@ -671,14 +813,27 @@ on("bind_scroll", function(wheel)
 end)
 
 -- ── navigation ───────────────────────────────────────────────────
-on("pick_cat", function(i) fact.tab = tonumber(i) or 0 end)
-on("fact:tab", function(v)
+local function tab_changed(v)
     local t = tonumber(v) or 0
     text.pane_title = TITLES[t] or "Settings"
     if t == 1 then refresh_displays()
     elseif t == 5 then load_binds()
     end
-end)
+end
+local function choose_tab(v)
+    fact.shortcut_open = false
+    fact.quiet_edit = false
+    fact.look_open = false
+    fact.pin_edit = false
+    fact.reset_review = false
+    fact.tab = tonumber(v) or 0
+    -- A logic's own fact writes do not call its fact-change listener.
+    tab_changed(fact.tab)
+end
+on("set_tab", choose_tab)
+on("pick_cat", function(v) fact.setting_target = 0; fact.reset_review = false; choose_tab(v) end)
+local settings_search = require("settings_search")(actions, choose_tab)
+on("fact:tab", tab_changed)
 on("fact:open", function(v)
     if v == true or v == 1 then
         local t = tonumber(fact.tab) or 0
@@ -729,7 +884,7 @@ end)
 local function session(kind)
     fact.open = false
     after(250, function()
-        emit("Dialogs.set_kind", tonumber(kind) or 0)
+        emit("Topbar.set_kind", tonumber(kind) or 0)
         emit("Topbar.open_panel", 5)
     end)
 end
@@ -743,8 +898,8 @@ end)
 -- one panel at a time
 -- a scene that starts later (the capture picker, on demand) asks for the look it missed
 on("theme_sync", function()
-    broadcast_theme()
-    push_palette()
+    broadcast_theme(false)
+    push_prefs()
 end)
 
 require("exclusive")("settings")
@@ -767,21 +922,19 @@ local function load_user_name()
         end
     end)
 end
+finish_preferences = function()
+    for _, kind in ipairs(preferences.KINDS) do if not preference_store.state(kind) then return end end
+    if fact.preferences_loaded then return end
+    fact.preferences_loaded = true
+    fact.preference_can_restore = preference_store.ready()
+    setup.poke()
+    local m = tonumber(fact.appearance) or 1
+    fact.dark_mode = m == 1 or (m == 2 and auto_dark())
+    broadcast_theme(false)
+end
 load_user_name()
 load_palette()
 
--- A Settings that was restarted on its own starts with the defaults; it must take the saved look first, or the next
--- change would save (and broadcast) those defaults over the user's theme.
-sh('cat "$HOME/.config/pleamar_shell.json" 2>/dev/null', function(out)
-    local ok, t = pcall(json.decode, out or "")
-    if ok and type(t) == "table" then
-        if t.dark_mode ~= nil then fact.dark_mode = t.dark_mode == true end
-        if t.skin ~= nil then fact.skin = tonumber(t.skin) or 0 end
-        if t.accent ~= nil then fact.accent = tonumber(t.accent) or 0 end
-        if t.accent_auto ~= nil then fact.accent_auto = t.accent_auto == true end
-        if t.hour12 ~= nil then fact.hour12 = t.hour12 ~= false end
-    end
-end)
 after(5000, apply_apps)
 
 -- ── Night light and power profile ────────────────────────────────

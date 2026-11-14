@@ -1,0 +1,174 @@
+// The notification centre (panel 2) and the BANNER card, DRAWN inside the frame's own surface (topbar.plm, in `Shell`, over the glass the
+// frame already draws for the right island and the centre pill). The `Notifications` scene stays the owner and the server (its models,
+// facts, history and quiet rules): this part only reads them by name and sends it typed events, so a card and its glass can neither
+// disagree on the monitor nor on timing. Included by the frame's scene.
+part NotificationsView {
+    let nc_view_h = Notifications.nc_height - 78
+
+    //  One notification, after the macOS design: a large rounded card, the app's icon in a squircle on
+    //  the left, a bold title, up to two lines of body and the time on the right. The round × shows on
+    //  hover. `flat` leaves out the card itself (the banner already is a glass).
+    component NoticeCard(n: record, flat: bool = false, stack: number = -1, h: number = notice_h) {
+        size: notice_w, h
+        prop hot = 0 ~quick
+        let close_x = notice_w - notice_pad - control_h_compact / 2
+        measure nb                             // the body's measured height: title + body are centred as ONE block, whatever its lines
+        let block_h = 22 + nb.height
+        let title_y = (h - block_h) / 2 + 9
+        let close_y = title_y - 2
+        let icon_y = (h - notice_icon) / 2
+        group {
+            show: not flat
+            CardBg(notice_w, h, radius_card, true, ui_card_fill: card_fill, ui_card_stroke: card_stroke)
+        }
+
+        //  The icon: the application's own, alone and always the same size; only a notification WITHOUT one gets the
+        //  accent squircle with a bell (an icon over the squircle tinted every transparent icon).
+        group {
+            show: not n.has_icon
+            body {
+                gradient: 0, 0 to notice_icon, notice_icon, accent_c, focus_c
+                box { from: notice_pad, icon_y; size: notice_icon, notice_icon; corner: control_r_large }
+            }
+            text "󰂚" { family: "JetBrainsMono Nerd Font Mono"; at: notice_pad + notice_icon / 2, icon_y + notice_icon / 2; anchor: center; size: icon_size; color: on_accent }
+        }
+        image n.icon { at: notice_pad, icon_y; size: notice_icon, notice_icon }
+
+        text n.title { at: notice_pad + notice_icon + notice_gap, title_y; anchor: left center; size: font_body; weight: 700; color: ink_c; width: 210; lines: 1 }
+        text n.body { at: notice_pad + notice_icon + notice_gap, title_y + 13; size: ts_body; measure: nb; color: ink_c; opacity: 85%; width: notice_w - notice_pad * 2 - notice_icon - notice_gap; lines: 2 }
+        text n.age { at: notice_w - notice_pad, title_y; anchor: right center; size: ts_cap; color: ink_sub; opacity: 1 - hot }
+
+        //  Close: a small round button at the corner, only on hover.
+        group {
+            opacity: hot
+            ellipse { at: close_x, close_y; radius: control_h_compact / 2; color: item_solid }
+            line { from: close_x - space_4, close_y - space_4; to: close_x + space_4, close_y + space_4; width: 1.6; color: ink_c }
+            line { from: close_x + space_4, close_y - space_4; to: close_x - space_4, close_y + space_4; width: 1.6; color: ink_c }
+        }
+        zone box card_hit { from: 0, 0; size: notice_w, h; corner: radius_card; active: stack < 0 }
+        zone box x_hit { at: close_x, close_y; size: control_h_compact, control_h_compact; corner: control_h_compact / 2; cursor: pointer; active: hot > 0.5 and stack < 0 }
+        zone box stack_hit { from: 0, 0; size: notice_w, h; corner: radius_card; cursor: pointer; active: stack >= 0 }
+        zone box stack_x { at: close_x, close_y; size: control_h_compact, control_h_compact; corner: control_h_compact / 2; cursor: pointer; active: hot > 0.5 and stack >= 0 }
+        on enter card_hit { hot: 1; emit Notifications.set_banner_hover(1) }
+        on leave card_hit { hot: 0; emit Notifications.set_banner_hover(0) }
+        on enter stack_hit { hot: 1 }
+        on leave stack_hit { hot: 0 }
+        on press card_hit { emit Notifications.card_click }
+        on press x_hit { emit Notifications.dismiss_notice(n.id) }
+        on press stack_hit { emit Notifications.group_toggle(stack) }
+        on press stack_x { emit Notifications.dismiss_group(stack) }
+        on press right card_hit { }
+        on press right x_hit { }
+        on press right stack_hit { }
+        on press right stack_x { }
+    }
+
+    //  A row of the centre: a card, a stack (the newest with two edges peeking out behind it) or the header of an open group.
+    component NoticeRow(r: record) {
+        size: 352, r.h
+        group {
+            show: r.kind == 1
+            box { from: 28, 84; size: 296, 10; corner: radius_small; color: card_fill; opacity: card_fill_op * 70% }
+            box { from: 28, 84; size: 296, 10; corner: radius_small; stroke: 1; color: card_stroke; opacity: card_stroke_op * 70% }
+            box { from: 16, 78; size: 320, 10; corner: radius_small; color: card_fill; opacity: card_fill_op }
+            box { from: 16, 78; size: 320, 10; corner: radius_small; stroke: 1; color: card_stroke; opacity: card_stroke_op }
+        }
+        group {
+            show: r.kind < 2
+            NoticeCard(r, false, if(r.kind == 1, r.key, -1), 80)
+        }
+        group {
+            show: r.kind == 2
+            text r.app { at: 10, 16; anchor: left center; size: ts_sub; weight: 700; color: ink_sub }
+            text "Show less" { at: 342, 16; anchor: right center; size: ts_cap; weight: 600; color: ink_sub }
+            zone box less_hit { from: 270, 2; size: 82, 28; corner: radius_card; cursor: pointer }
+            on press less_hit { emit Notifications.group_toggle(r.key) }
+            on press right less_hit { }
+        }
+    }
+
+    //  One that was dealt with: smaller, quieter.
+    component PastRow(h: record) {
+        size: 352, 52
+        box { from: 0, 0; size: 352, 52; corner: r_l; color: card_fill; opacity: card_fill_op * 55% }
+        body {
+            gradient: 0, 0 to 28, 28, accent_c, focus_c
+            box { from: 14, 12; size: 28, 28; corner: radius_small; opacity: 70% }
+        }
+        text "󰂚" { family: "JetBrainsMono Nerd Font Mono"; at: 28, 26; anchor: center; size: font_body; color: on_accent; opacity: 80% }
+        image h.icon { at: 14, 12; size: 28, 28; opacity: 80% }
+        text h.title { at: 54, 20; anchor: left center; size: ts_sub; weight: 600; color: ink_c; opacity: 85%; width: 230; lines: 1 }
+        text h.body { at: 54, 36; anchor: left center; size: ts_cap; color: ink_sub; width: 230; lines: 1 }
+        text h.age { at: 338, 20; anchor: right center; size: ts_micro; color: ink_sub }
+    }
+
+    //  The centre's content, at the panel's own origin (x 0 = 26 px in from where its old surface, 412 wide and flush right, began; y 0 = under the bar)
+    component NoticeCentre() {
+
+        PanelHeader("󰂚", "Notifications", 30, 32, ui_accent_c: accent_c, ui_ink_c: ink_c)
+        //  Quiet state, right-aligned before Clear All
+        text Notifications.quiet_short { at: if(Notifications.notices.count > 0, 256, 352), 32; anchor: right center; size: ts_cap; weight: 600; color: ink_sub; show: Notifications.quiet }
+        //  Clear all
+        group {
+            show: Notifications.notices.count > 0
+            group { move: 264, 18; Pill("Clear All", 88, Notifications.clear_notices, 0, control_h, false, ui_accent_c: accent_c, ui_danger_c: danger_c, ui_ink_c: ink_c, ui_item_bg: item_solid, ui_on_accent: on_accent) }
+        }
+
+        zone box nc_inside { from: 14, 62; size: 368, nc_view_h }
+        on press right nc_inside { }
+        // Keep the scroll viewport separate from its edge scrim.
+        group {
+            move: 14, 62
+            size: 368, nc_view_h
+            column nc_list {
+                at: 0, 0
+                view: 368, nc_view_h
+                step: 60
+                group {
+                    size: 352, Notifications.live_h
+                    for r in Notifications.rows {
+                        group { move: 0, r.y; NoticeRow(r) }
+                    }
+                }
+                group {
+                    show: Notifications.past.count > 0
+                    size: 352, 40 + Notifications.past.count * 58
+                    SectionLabel(10, 18, "EARLIER", ui_ink_sub: ink_sub)
+                    text "Clear" { at: 342, 18; anchor: right center; size: ts_cap; weight: 600; color: ink_sub }
+                    zone box clear_past_hit { from: 286, 8; size: 56, 22; corner: radius_medium; cursor: pointer }
+                    on press clear_past_hit { emit Notifications.clear_past }
+                    on press right clear_past_hit { }
+                    column {
+                        at: 0, 36
+                        gap: space_6
+                        for h in Notifications.past { PastRow(h) }
+                    }
+                }
+            }
+        }
+        group { move: 14, 62; ScrollChrome(352, nc_view_h, nc_list.scroll, nc_list.content, ink_c, bg_color) }
+        on change floor(nc_list.scroll / 32) { emit Notifications.list_scrolled(nc_list.scroll) }
+
+        //  Nothing new
+        group {
+            show: Notifications.notices.count < 1 and Notifications.past.count < 1
+            ellipse { at: 190, 100; radius: 28; color: item_solid }
+            path { at: 181, 90; color: ink_sub; move 0, 15; line 2.5, 15; line 3, 7; line 5, 2; line 9, 2; line 11, 7; line 11.5, 15; line 14, 15; line 14, 17; line 0, 17; close }
+            ellipse { at: 188, 108; radius: 2.2; color: ink_sub }
+            text "No Notifications" { at: 190, 148; anchor: center; size: ts_body; weight: 600; color: ink_c }
+            text Notifications.quiet_status { at: 190, 166; anchor: center; size: ts_cap; color: ink_sub; show: Notifications.quiet }
+        }
+    }
+
+    //  The banner card, at the origin of its old surface (412 wide, centred on the pill, starting at the top of the screen)
+    component NoticeBanner() {
+        zone box banner_pad { from: 16, 0; size: 380, 96 }
+        on press right banner_pad { }
+        group {
+            move: 30, 2
+            for n in Notifications.toast {
+                NoticeCard(n, true)
+            }
+        }
+    }
+}

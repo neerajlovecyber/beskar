@@ -1,6 +1,6 @@
 // The shell's ONE colour system. Every panel imports this instead of defining its own colours.
 //
-//   facts   dark_mode · skin · accent · accent_auto · hour12 · pal_*    (owned by Settings: a scene in `desktop` includes
+//   facts   dark_mode · skin · accent · accent_auto · hour12 · pal_* · acc_* · style_*    (owned by Settings: a scene in `desktop` includes
 //           theme_owner.plm and reads Settings.<name>; a scene of its own process includes theme_facts.plm and is told by `say`)
 //   accent  accent_c                        (blue by default; Settings → Appearance picks it)
 //   status  ok_c · warn_c · danger_c · focus_c
@@ -16,7 +16,7 @@ part Theme {
     let pal_on = accent_auto and pal_ar >= 0
 
     // ── the accent, and what colours mean ────────────────────────
-    let accent_c = if(pal_on, rgb(pal_ar, pal_ag, pal_ab), pick(accent, #007aff, #af52de, #ff2d55, #ff3b30, #ff9500, #34c759, #8e8e93))
+    let accent_c = if(pal_on, rgb(pal_ar, pal_ag, pal_ab), if(acc_custom, rgb(acc_cr, acc_cg, acc_cb), pick(accent, #007aff, #af52de, #ff2d55, #ff3b30, #ff9500, #34c759, #8e8e93)))
     let ok_c     = #30d158     // connected, charging, healthy
     let warn_c   = #ff9f0a     // attention, light mode sun
     let danger_c = #ff453a     // errors, low battery, unread badge, disconnect
@@ -29,7 +29,10 @@ part Theme {
     // ── glass panels ─────────────────────────────────────────────
     let surf_c    = rgb(pal_sr, pal_sg, pal_sb)       // the wallpaper-tinted surface (only meaningful when pal_on)
     let bg_color  = if(pal_on, surf_c, if(dark_mode, if(skin == 2, #1e2026, if(skin == 1, #181a20, #14161d)), if(skin == 2, #f2f3f7, if(skin == 1, #f0f2f6, #f8f9fc))))
-    let glass_amt = if(skin == 2, 0%, if(skin == 1, 45%, 70%))
+    //  glass strength (style_glass 0 minimal · 1 soft · 2 full = standard; Style.GLASS in shell/style_options.luau): a multiplier
+    //  on the see-through amount only, never above 1 (measured: more glass only lowers the text's contrast). `tint:` has no effect.
+    let glass_k   = pick(style_glass, 0.5, 0.75, 1)
+    let glass_amt = if(skin == 2, 0%, if(skin == 1, 45%, 70%)) * glass_k
     let tint_amt  = if(skin == 2, 0%, if(dark_mode, 35%, 20%))
     let rim_amt   = if(skin == 2, 0%, 12%)
 
@@ -50,23 +53,32 @@ part Theme {
     let slider_icon   = if(dark_mode, #16181d, #ffffff)
 
     // ── fixed-purpose colours (use these, never a hex value in a scene) ──
-    let on_accent  = #ffffff                                   // text and glyphs on an accent / danger fill, knobs, handles
+    let tile_fg    = #ffffff                                   // glyphs on a FIXED-colour tile (Settings sidebar, app tiles): never follows the accent
+    let on_accent  = #ffffff                                   // text and glyphs on an accent / danger fill, knobs, handles: always white (the accents are mostly dark)
     let scrim_c    = #000000                                   // dimming layers and shadows
     let btn_fill   = if(dark_mode, #2a2e38, #e5e7eb)           // a neutral button, segment or chip
     let switch_off = if(dark_mode, #3a3d46, #d1d5db)           // the track of a switch that is off
 
     // ── radii: small (chips, buttons) · medium (rows, cards) · large (panels, tiles) · xl (windows) ──
-    let r_s  = 8
-    let r_m  = 12
-    let r_l  = 16
-    let r_xl = 24
+    let r_s  = radius_small
+    let r_m  = radius_medium
+    let r_l  = radius_card
+    let r_xl = radius_window
 
     // ── type scale: title · body · caption · micro ──
-    let t_title = 15
-    let t_body  = 13
-    let t_sub   = 12
-    let t_cap   = 11.5
-    let t_micro = 10.5
+    //  t_*  the constant roles (an `input`'s `size:` is read once, at load: it can only take these, never ts_*).
+    //  ts_* the same roles moved by the user's text step (style_text 0 / 1 / 2 = -1 pt / standard / +1 pt: Style.TEXT_DELTA in
+    //       shell/style_options.luau). For `text` elements only: pleamar 0.8.0-exp.16 rejects a fact-driven `input size:`.
+    let t_title = font_title
+    let t_body  = font_body
+    let t_sub   = font_secondary
+    let t_cap   = font_caption
+    let t_micro = font_micro
+    let ts_title = pick(style_text, font_title - 1, font_title, font_title + 1)
+    let ts_body  = pick(style_text, font_body - 1, font_body, font_body + 1)
+    let ts_sub   = pick(style_text, font_secondary - 1, font_secondary, font_secondary + 1)
+    let ts_cap   = pick(style_text, font_caption - 1, font_caption, font_caption + 1)
+    let ts_micro = pick(style_text, font_micro - 1, font_micro, font_micro + 1)
 
     // ── the frame's glass colour (bar, ring, dock, widget cards) and form fields / selected rows ──
     let bar_color = if(pal_on, surf_c, if(dark_mode, if(skin == 2, #181a20, if(skin == 1, #161820, #14161d)), if(skin == 2, #f2f3f7, if(skin == 1, #eaecf2, #f6f7fb))))

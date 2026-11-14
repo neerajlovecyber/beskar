@@ -1,8 +1,11 @@
-// Shared UI parts: ONE look for the controls every scene uses. `include "common/ui.plm"` after theme.plm and use these
-// instead of drawing a toggle, button, chip or glass plate by hand (and never a hard-coded colour: they read the theme).
+import "geometry.plm"
+
+// Shared UI controls: import this library, then pass the scene's theme colours as named ui_* arguments.
+// Explicit colour inputs also work inside PanelBody children on pleamar 0.8.0-exp.8; implicit scene colour
+// lookup there loses the imported scene boundary. Defaults remain for direct use in a standalone scene.
 //
 //   Plate(w, h, r)                 a glass plate (the shell's own: glass / acrylic / solid, light or dark) with its edge
-//   Switch(state, tap)             on / off switch, 44 x 24, emits `tap`
+//   Switch(state, tap)             on / off switch, 44 x 20, emits `tap`
 //   Btn(label, w, tap, primary)    a 28 px button; `primary` = accent
 //   Seg(label, n, cur, pick, w)    one segment of a row of choices (`pick(n)` when pressed); highlighted when cur == n
 //   Chip(label, on, pick, n, w)    a chip chosen from a list; highlighted when `on`
@@ -19,9 +22,9 @@
 //   ScrollBar(sc, ct, h)           a thin scroll bar for a `view:` layout (list.scroll, list.content, the seen height)
 library Ui {
     //  The shell's own glass plate.
-    component Plate(w: number, h: number, r: number) {
+    component Plate(w: number, h: number, r: number, ui_bg_color: color = bg_color, ui_card_stroke: color = card_stroke) {
         body {
-            color: bg_color
+            color: ui_bg_color
             glass: glass_amt
             lens: false
             frost: 100%
@@ -31,32 +34,32 @@ library Ui {
             rim: rim_amt
             box { from: 0, 0; size: w, h; corner: r }
         }
-        box { from: 0, 0; size: w, h; corner: r; stroke: 1; color: card_stroke; opacity: card_stroke_op }
+        box { from: 0, 0; size: w, h; corner: r; stroke: 1; color: ui_card_stroke; opacity: card_stroke_op }
     }
 
-    component Divider(len: number) {
-        box { from: 0, 0; size: len, 1; color: card_stroke; opacity: card_stroke_op }
+    component Divider(len: number, ui_card_stroke: color = card_stroke) {
+        box { from: 0, 0; size: len, 1; color: ui_card_stroke; opacity: card_stroke_op }
     }
 
     //  The switch (it carries its own click).
-    component Switch(state: bool, tap: event) {
-        size: 44, 24
-        box { from: 0, 0; size: 44, 24; corner: 12; color: if(state, accent_c, switch_off) }
-        ellipse { at: if(state, 32, 12), 12; radius: 9.5; color: on_accent }
-        zone box hit { from: 0, 0; size: 44, 24; corner: 12; cursor: pointer }
+    component Switch(state: bool, tap: event, ui_accent_c: color = accent_c, ui_on_accent: color = on_accent, ui_switch_off: color = switch_off, enabled: bool = true) {
+        size: switch_w, switch_h
+        box { from: 0, 0; size: switch_w, switch_h; corner: switch_h / 2; color: if(state, ui_accent_c, ui_switch_off); opacity: if(enabled, 1, 0.4) }
+        box { from: if(state, switch_w - switch_knob_w - switch_inset, switch_inset), switch_inset; size: switch_knob_w, switch_h - switch_inset * 2; corner: switch_h / 2 - switch_inset; color: ui_on_accent; opacity: if(enabled, 1, 0.4) }
+        zone box hit { from: 0, 0; size: switch_w, switch_h; corner: switch_h / 2; cursor: pointer; label: "Toggle"; active: enabled }
         on press hit { emit tap }
         on press right hit { }
     }
 
     //  A button; `x, y` places it when it sits inside a Card.
-    component Btn(label: text, w: number, tap: event, primary: bool = false, x: number = 0, y: number = 0) {
-        size: w, 28
+    component Btn(label: text, w: number, tap: event, primary: bool = false, x: number = 0, y: number = 0, ui_accent_c: color = accent_c, ui_ink_c: color = ink_c, ui_on_accent: color = on_accent, ui_btn_fill: color = btn_fill, h: number = control_h, enabled: bool = true) {
+        size: w, h
         prop hot = 0 ~quick
         group {
             move: x, y
-            box { from: 0, 0; size: w, 28; corner: 8; color: if(primary, accent_c, btn_fill); opacity: 0.85 + hot * 0.15 }
-            text label { at: w / 2, 14; anchor: center center; size: 12; weight: 600; color: if(primary, on_accent, ink_c) }
-            zone box hit { from: 0, 0; size: w, 28; corner: 8; cursor: pointer }
+            box { from: 0, 0; size: w, h; corner: if(h > control_h, control_r_large, control_r); color: if(primary, ui_accent_c, ui_btn_fill); opacity: 0.85 + hot * 0.15 }
+            text label { at: w / 2, h / 2; anchor: center center; size: font_body; weight: 600; color: if(primary, ui_on_accent, ui_ink_c); width: w - control_pad * 2; lines: 1; align: center; opacity: if(enabled, 1, 0.4) }
+            zone box hit { from: 0, 0; size: w, h; corner: if(h > control_h, control_r_large, control_r); cursor: pointer; label: label; active: enabled }
             on enter hit { hot: 1 }
             on leave hit { hot: 0 }
             on press hit { emit tap }
@@ -65,21 +68,21 @@ library Ui {
     }
 
     //  A segment of a row of choices.
-    component Seg(label: text, n: number, cur: number, pick: event, w: number = 52) {
-        size: w, 28
-        box { from: 0, 0; size: w, 28; corner: 8; color: if(cur == n, accent_c, btn_fill) }
-        text label { at: w / 2, 14; anchor: center center; size: 11.5; weight: 600; color: if(cur == n, on_accent, ink_c) }
-        zone box hit { from: 0, 0; size: w, 28; corner: 8; cursor: pointer }
+    component Seg(label: text, n: number, cur: number, pick: event, w: number = 52, ui_accent_c: color = accent_c, ui_ink_c: color = ink_c, ui_on_accent: color = on_accent, ui_btn_fill: color = btn_fill) {
+        size: w, control_h
+        box { from: 0, 0; size: w, control_h; corner: control_r; color: if(cur == n, ui_accent_c, ui_btn_fill) }
+        text label { at: w / 2, control_h / 2; anchor: center center; size: font_secondary; weight: 600; color: if(cur == n, ui_on_accent, ui_ink_c) }
+        zone box hit { from: 0, 0; size: w, control_h; corner: control_r; cursor: pointer; label: label }
         on press hit { emit pick(n) }
         on press right hit { }
     }
 
     //  A chip chosen from a list (resolution, refresh rate).
-    component Chip(label: text, on: bool, pick: event, n: number, w: number = 80) {
-        size: w, 28
-        box { from: 0, 0; size: w, 28; corner: 8; color: if(on, accent_c, btn_fill) }
-        text label { at: w / 2, 14; anchor: center center; size: 11.5; weight: 600; color: if(on, on_accent, ink_c) }
-        zone box hit { from: 0, 0; size: w, 28; corner: 8; cursor: pointer }
+    component Chip(label: text, on: bool, pick: event, n: number, w: number = 80, ui_accent_c: color = accent_c, ui_ink_c: color = ink_c, ui_on_accent: color = on_accent, ui_btn_fill: color = btn_fill) {
+        size: w, control_h
+        box { from: 0, 0; size: w, control_h; corner: control_r; color: if(on, ui_accent_c, ui_btn_fill) }
+        text label { at: w / 2, control_h / 2; anchor: center center; size: font_secondary; weight: 600; color: if(on, ui_on_accent, ui_ink_c) }
+        zone box hit { from: 0, 0; size: w, control_h; corner: control_r; cursor: pointer; label: label }
         on press hit { emit pick(n) }
         on press right hit { }
     }
@@ -87,35 +90,36 @@ library Ui {
 
     //  A thin scroll bar for a layout with `view:` (draw it beside the list; `sc` = list.scroll, `ct` = list.content,
     //  `h` = the height that is seen). It only shows when there is more than fits.
-    component ScrollBar(sc: number, ct: number, h: number) {
+    component ScrollBar(sc: number, ct: number, h: number, ui_ink_c: color = ink_c) {
         group {
             show: ct > h + 1
-            box { from: 0, 0; size: 4, h; corner: 2; color: ink_c; opacity: 7% }
-            box { from: 0, clamp(sc / max(ct, 1), 0, 1) * h; size: 4, max(24, h * h / max(ct, h)); corner: 2; color: ink_c; opacity: 32% }
+            box { from: 0, 0; size: scrollbar_w, h; corner: 2; color: ui_ink_c; opacity: 7% }
+            let thumb_h = min(h, max(control_h_compact, h * h / max(ct, h)))
+            box { from: 0, clamp(sc / max(1, ct - h), 0, 1) * (h - thumb_h); size: scrollbar_w, thumb_h; corner: 2; color: ui_ink_c; opacity: 32% }
         }
     }
 
-    component ToggleRow(title: text, sub: text, state: bool, tap: event, w: number = 556) {
-        size: w, 56
-        box { from: 0, 0; size: w, 56; corner: 14; color: card_fill; opacity: card_fill_op }
-        box { from: 0, 0; size: w, 56; corner: 14; stroke: 1; color: card_stroke; opacity: card_stroke_op }
-        text title { at: 18, 20; anchor: left center; size: 13; weight: 600; color: ink_c; width: w - 110; lines: 1 }
-        text sub { at: 18, 38; anchor: left center; size: 10.5; color: ink_sub; width: w - 110; lines: 1 }
+    component ToggleRow(title: text, sub: text, state: bool, tap: event, w: number = 556, ui_ink_c: color = ink_c, ui_ink_sub: color = ink_sub, ui_card_fill: color = card_fill, ui_card_stroke: color = card_stroke, ui_accent_c: color = accent_c, ui_on_accent: color = on_accent, ui_switch_off: color = switch_off) {
+        size: w, row_detail_h
+        box { from: 0, 0; size: w, row_detail_h; corner: radius_card; color: ui_card_fill; opacity: card_fill_op }
+        box { from: 0, 0; size: w, row_detail_h; corner: radius_card; stroke: 1; color: ui_card_stroke; opacity: card_stroke_op }
+        text title { at: inset_card, space_20; anchor: left center; size: font_body; weight: 600; color: ui_ink_c; width: w - 110; lines: 1 }
+        text sub { at: inset_card, row_detail_h - space_16; anchor: left center; size: font_caption; color: ui_ink_sub; width: w - 110; lines: 1 }
         group {
-            move: w - 62, 16
-            Switch(state, tap)
+            move: w - inset_card - switch_w, (row_detail_h - switch_h) / 2
+            Switch(state, tap, ui_accent_c: ui_accent_c, ui_on_accent: ui_on_accent, ui_switch_off: ui_switch_off)
         }
     }
 
 
     //  A button with a tone: 0 neutral · 1 accent · 2 danger · 3 on a coloured fill (translucent white). `h` 34 and
     //  `round` make the pill of a toolbar; `on_` false greys it out and makes it inert.
-    component Pill(label: text, w: number, tap: event, tone: number = 0, h: number = 28, round: bool = false, on_: bool = true) {
+    component Pill(label: text, w: number, tap: event, tone: number = 0, h: number = control_h, round: bool = false, on_: bool = true, ui_accent_c: color = accent_c, ui_danger_c: color = danger_c, ui_ink_c: color = ink_c, ui_item_bg: color = item_bg, ui_on_accent: color = on_accent) {
         size: w, h
         prop glow = 0 ~quick
-        box { from: 0, 0; size: w, h; corner: if(round, h / 2, 9); color: pick(tone, item_bg, accent_c, danger_c, on_accent); opacity: pick(tone, item_bg_op, 100%, 20%, 24%) + glow * 8% }
-        text label { at: w / 2, h / 2; anchor: center center; size: if(h > 30, 13, 11.5); weight: 600; color: pick(tone, ink_c, on_accent, danger_c, on_accent); opacity: if(on_, 100%, 40%) }
-        zone box hit { from: 0, 0; size: w, h; corner: if(round, h / 2, 9); cursor: pointer; active: on_ }
+        box { from: 0, 0; size: w, h; corner: if(round, h / 2, if(h > control_h, control_r_large, control_r)); color: pick(tone, ui_item_bg, ui_accent_c, ui_danger_c, ui_on_accent); opacity: pick(tone, item_bg_op, 100%, 20%, 24%) + glow * 8% }
+        text label { at: w / 2, h / 2; anchor: center center; size: if(h < control_h, font_secondary, font_body); weight: 600; color: pick(tone, ui_ink_c, ui_on_accent, ui_danger_c, ui_on_accent); width: w - control_pad * 2; lines: 1; align: center; opacity: if(on_, 100%, 40%) }
+        zone box hit { from: 0, 0; size: w, h; corner: if(round, h / 2, if(h > control_h, control_r_large, control_r)); cursor: pointer; label: label; active: on_ }
         on enter hit { glow: 1 }
         on leave hit { glow: 0 }
         on press hit { emit tap }
@@ -127,52 +131,52 @@ library Ui {
     //  Bottom: a divider and the search field, ALWAYS at the bottom (nearest the dock, where the panel grows from).
     //  The scene declares the `input` itself (its text is the scene's) at the standard place:
     //      input q { at: 68, ph - 50; width: <panel width> - 110; size: 19; color: ink_c; placeholder: "…"; selection: accent_c }
-    component PanelHeader(g: text, title: text, x: number = 36, y: number = 30) {
-        text g { at: x, y; anchor: center center; size: 16; family: "JetBrainsMono Nerd Font Mono"; color: accent_c }
-        text title { at: x + 20, y; anchor: left center; size: t_title; weight: 700; color: ink_c }
+    component PanelHeader(g: text, title: text, x: number = panel_header_icon_x, y: number = panel_header_y, ui_accent_c: color = accent_c, ui_ink_c: color = ink_c) {
+        text g { at: x, y; anchor: center center; size: icon_size; family: "JetBrainsMono Nerd Font Mono"; color: ui_accent_c }
+        text title { at: x + panel_header_text_x - panel_header_icon_x, y; anchor: left center; size: t_title; weight: 700; color: ui_ink_c }
     }
 
     //  A small all-caps label above a group of rows ("NEARBY", "OUTPUT", "EARLIER").
-    component SectionLabel(x: number, y: number, label: text) {
-        text label { at: x, y; anchor: left center; size: t_micro; weight: 700; color: ink_sub }
+    component SectionLabel(x: number, y: number, label: text, ui_ink_sub: color = ink_sub) {
+        text label { at: x, y; anchor: left center; size: t_micro; weight: 700; color: ui_ink_sub }
     }
 
     //  The line of keys a modal panel shows ("← →  browse  ·  ⏎  apply  ·  Esc  close"): one look everywhere.
-    component KeyHint(x: number, y: number, label: text) {
-        text label { at: x, y; anchor: center center; size: t_micro; color: ink_sub; opacity: 80% }
+    component KeyHint(x: number, y: number, label: text, ui_ink_sub: color = ink_sub) {
+        text label { at: x, y; anchor: center center; size: t_micro; color: ui_ink_sub; opacity: 80% }
     }
 
     //  The footer's decoration: the divider and the magnifier. `w` is the glass width, `ph` its height.
-    component PanelSearch(w: number, ph: number) {
-        box { from: 28, ph - 74; size: w - 56, 1; color: card_stroke; opacity: card_stroke_op }
-        text "󰍉" { at: 46, ph - 38; anchor: center center; size: 19; family: "JetBrainsMono Nerd Font Mono"; color: ink_c; opacity: 60% }
+    component PanelSearch(w: number, ph: number, ui_ink_c: color = ink_c, ui_card_stroke: color = card_stroke) {
+        box { from: panel_search_inset, ph - panel_search_rule_y; size: w - panel_search_inset * 2, hairline; color: ui_card_stroke; opacity: card_stroke_op }
+        text "󰍉" { at: panel_search_icon_x, ph - panel_search_icon_y; anchor: center center; size: panel_search_font; family: "JetBrainsMono Nerd Font Mono"; color: ui_ink_c; opacity: 60% }
     }
 
     //  Nothing to show: a quiet glyph, what is missing and (optionally) what to do about it. Centred on x, y; the caller
     //  hides it (`group { show: …; EmptyState(…) }`).
-    component EmptyState(x: number, y: number, g: text, title: text, hint: text = "") {
+    component EmptyState(x: number, y: number, g: text, title: text, hint: text = "", ui_ink_sub: color = ink_sub) {
         group {
             move: x, y
-            text g { at: 0, -20; anchor: center center; size: 26; family: "JetBrainsMono Nerd Font Mono"; color: ink_sub; opacity: 45% }
-            text title { at: 0, 8; anchor: center center; size: t_body; weight: 600; color: ink_sub }
-            text hint { at: 0, 28; anchor: center center; size: t_cap; color: ink_sub; opacity: 75% }
+            text g { at: 0, -20; anchor: center center; size: 26; family: "JetBrainsMono Nerd Font Mono"; color: ui_ink_sub; opacity: 45% }
+            text title { at: 0, 8; anchor: center center; size: t_body; weight: 600; color: ui_ink_sub }
+            text hint { at: 0, 28; anchor: center center; size: t_cap; color: ui_ink_sub; opacity: 75% }
         }
     }
 
     //  The look of a selectable list row: an accent pill that fades in with `on` (0..1) and a bar on its left edge. The
     //  scene adds its own zone over it (`zone box hit { from: 0, 0; size: w, h; corner: r_m; cursor: pointer }`) and its content.
-    component RowFrame(w: number, h: number, on: number) {
-        box { from: 0, 0; size: w, h; corner: r_m; color: accent_c; opacity: on * 22% }
-        box { from: 0, h / 2 - 10; size: 3, 20; corner: 1.5; color: accent_c; opacity: on }
+    component RowFrame(w: number, h: number, on: number, ui_accent_c: color = accent_c) {
+        box { from: 0, 0; size: w, h; corner: radius_row; color: ui_accent_c; opacity: on * 22% }
+        box { from: 0, h / 2 - 10; size: 3, 20; corner: 1.5; color: ui_accent_c; opacity: on }
     }
 
     //  A slider you can press and drag: the track and its fill (`thick` px high, never narrower than its own height, or
     //  than `floor` of the width), emitting `set(0..1)`. Draw glyphs over it if you want; Settings and the Control Center use it.
-    component Slider(w: number, level: number, set: event, tone: color = accent_c, thick: number = 10, floor: number = 0) {
+    component Slider(w: number, level: number, set: event, tone: color = accent_c, thick: number = 10, floor: number = 0, ui_slider_bg: color = slider_bg, enabled: bool = true, ui_track_op: number = slider_bg_op) {
         size: w, thick
-        box { from: 0, 0; size: w, thick; corner: thick / 2; color: slider_bg; opacity: slider_bg_op }
+        box { from: 0, 0; size: w, thick; corner: thick / 2; color: ui_slider_bg; opacity: ui_track_op }
         box { from: 0, 0; size: max(thick, w * clamp(level, 0, 1)), thick; corner: thick / 2; color: tone; opacity: 92% }
-        zone box hit { from: 0, -6; size: w, thick + 12; cursor: pointer; label: "Slider" }
+        zone box hit { from: 0, -space_6; size: w, thick + space_12; cursor: pointer; label: "Adjust level"; active: enabled }
         on press hit { emit set(clamp(local.x / w, floor, 1)) }
         on drag hit { emit set(clamp(local.x / w, floor, 1)) }
         on press right hit { }
@@ -180,14 +184,14 @@ library Ui {
 
     //  A selectable card (app switcher, overview): a soft fill, a 1 px edge, and when selected the accent fill and a 2 px
     //  accent edge. Visual only: the scene adds its `zone box hit { … cursor: pointer }` over it.
-    component SelectCard(w: number, h: number, selected: bool) {
-        box { from: 0, 0; size: w, h; corner: r_l; color: if(selected, accent_c, item_solid); opacity: if(selected, 24%, 40%) }
-        box { from: 0, 0; size: w, h; corner: r_l; stroke: if(selected, 2, 1); color: if(selected, accent_c, card_stroke); opacity: if(selected, 90%, card_stroke_op) }
+    component SelectCard(w: number, h: number, selected: bool, ui_accent_c: color = accent_c, ui_card_stroke: color = card_stroke, ui_item_solid: color = item_solid) {
+        box { from: 0, 0; size: w, h; corner: r_l; color: if(selected, ui_accent_c, ui_item_solid); opacity: if(selected, 24%, 40%) }
+        box { from: 0, 0; size: w, h; corner: r_l; stroke: if(selected, 2, 1); color: if(selected, ui_accent_c, ui_card_stroke); opacity: if(selected, 90%, card_stroke_op) }
     }
 
     //  The fill of a card (and its 1 px edge when `edge`): ONE place for the look of every card in every panel.
-    component CardBg(w: number, h: number, r: number, edge: bool = false) {
-        box { from: 0, 0; size: w, h; corner: r; color: card_fill; opacity: card_fill_op }
-        box { from: 0, 0; size: w, h; corner: r; stroke: 1; color: card_stroke; opacity: if(edge, card_stroke_op, 0%) }
+    component CardBg(w: number, h: number, r: number, edge: bool = false, ui_card_fill: color = card_fill, ui_card_stroke: color = card_stroke) {
+        box { from: 0, 0; size: w, h; corner: r; color: ui_card_fill; opacity: card_fill_op }
+        box { from: 0, 0; size: w, h; corner: r; stroke: 1; color: ui_card_stroke; opacity: if(edge, card_stroke_op, 0%) }
     }
 }

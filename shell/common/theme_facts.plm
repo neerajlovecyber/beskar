@@ -5,6 +5,7 @@ part ThemeFacts {
     fact skin = 0            // 0 liquid glass · 1 light acrylic · 2 classic solid
     fact accent = 0          // 0 blue · 1 purple · 2 pink · 3 red · 4 orange · 5 green · 6 graphite
     fact hour12 = true       // clock format: true 2:05 PM · false 14:05 (Settings → Appearance)
+    fact reduce_motion = false // standalone root logic binds this to the runtime's motion.reduced
     fact accent_auto = false // true: the colours come from the wallpaper (palette engine in settings.luau)
     //  The wallpaper palette (settings.luau runs matugen on the wallpaper and sends the colours for the current
     //  light / dark mode as 0..1 numbers; -1 until there is one): accent, a second colour, and the surface tint.
@@ -17,4 +18,15 @@ part ThemeFacts {
     fact pal_sr = 0
     fact pal_sg = 0
     fact pal_sb = 0
+    //  Style (C2b/c, contract in shell/style_options.luau): a validated custom accent (already contrast-adjusted for the current
+    //  mode), whether the ACTIVE accent needs the dark foreground, and the three bounded tuning steps. Defaults = the old look.
+    fact acc_custom = false
+    fact acc_cr = 0
+    fact acc_cg = 0
+    fact acc_cb = 0
+    fact acc_fg_dark = false
+    fact style_text = 1      // 0 compact (-1 pt) · 1 standard · 2 large (+1 pt)
+    fact style_density = 1   // 0 compact · 1 standard · 2 spacious (common/style.plm)
+    fact reduce_motion = false  // the preference; the process's ROOT logic turns it into pleamar's motion.reduced (Style.bind_motion)
+    fact style_glass = 2     // 0 minimal · 1 soft · 2 full (standard): the glass amount x 0.5 / 0.75 / 1
 }

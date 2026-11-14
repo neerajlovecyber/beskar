@@ -5,9 +5,8 @@ import "common/palette.plm"
 uses scene "settings.plm" as Settings      // owns the look (dark mode, skin, accent, palette, clock format): read by name
 import "common/icons.plm"
 import "common/ui.plm"
-import "common/panelbody.plm"
 uses scene "panels.plm" as Panels
-uses scene "topbar.plm" as Topbar
+uses scene "activities.plm" as Activities   // explicit temporary quiet modes (focus / presentation / game) are read from it
 
 scene Notifications {
     include "common/theme_owner.plm"
@@ -22,213 +21,56 @@ scene Notifications {
 
     //  Both are painted by notifications.luau. `icon` is the application's own icon (a name or a path).
     //  `notices` are the ones waiting; `past` the ones already dealt with, newest first.
-    model notices max 6 { id: number; app: text; title: text; body: text; icon: image 40, 40; age: text }
+    model notices max 6 { id: number; app: text; title: text; body: text; icon: image 40, 40; has_icon: bool; age: text }
     //  `rows` is what the centre lists: notifications grouped by app. kind 0 a card · 1 a stack (the newest of an app
     //  with several, `extra` more behind it) · 2 the header of an app that is open. `key` names the group, `h` is the row's height.
-    model rows max 14 { kind: number; key: number; id: number; app: text; title: text; body: text; icon: image 40, 40; age: text; h: number }
+    model rows max 16 { kind: number; key: number; id: number; app: text; title: text; body: text; icon: image 40, 40; has_icon: bool; age: text; h: number; y: number }
+    //  The newest notification whose app may show a banner (a per-app rule can keep one out): the banner card draws this.
+    model toast max 1 { id: number; app: text; title: text; body: text; icon: image 40, 40; has_icon: bool; age: text }
+    //  For Settings: the apps with a quiet rule (mode 1 no banner · 2 muted; `rule` true) then recent senders without one (mode 0).
+    model quiet_apps max 32 { app: text; mode: number; rule: bool }
     model past max 5 { title: text; body: text; icon: image 28, 28; age: text }
 
     fact banner_on = false      // a notification is shown inside the centre pill (the frame draws the glass)
     fact banner_hover = false   // the pointer is on it: it stays
     fact toast_screen = 0       // the monitor with the focus (kept up to date by topbar.luau): the banner drops there
+    fact nc_height = 190        // bounded glass height; only the list below the header scrolls
+    let nc_view_h = nc_height - 78
     fact live_h = 0             // how tall the waiting rows are together
     let group_apps = Settings.group_apps    // Settings → Notifications: stack several from one app (default: a plain list)
     let banners = Settings.banners          // Settings → Notifications: show banners at all
     fact banner_ms = 5500       // …and for how long
-    fact dnd = false            // Do Not Disturb: no banners (they still land in the centre)
+    fact dnd = false            // the MANUAL Do Not Disturb choice: only the user's own controls change it (never a policy)
+    //  EFFECTIVE quiet = manual `dnd` OR an Activities mode OR quiet hours: no banners (everything still lands in the centre).
+    fact quiet = false
+    fact held_count = 0         // banners kept back by quiet state or an app rule since the centre was last opened
+    fact rules_n = 0            // how many per-app rules are saved
+    text quiet_label = ""       // "Do Not Disturb · Focus" (empty when not quiet)
+    text quiet_short = ""       // "Focus +1": short enough for the centre header
+    text quiet_status = ""      // the label plus "3 held"
+    text rules_status = ""      // why a rule could not be read, saved or changed
     fact notif_count = 0        // how many are waiting (the bell in the frame reads it as Notifications.notif_count)
     //  asked by the other scenes (a scene writes only its own facts): Settings, the Control Center, the frame
     event set_dnd(on) ->
     event set_banner_ms(ms) ->
     event set_toast_screen(i) ->
     event hide_banner ->
+    //  Per-app delivery rules (saved in quiet.json by this scene). `set_app_rule({ app, mode })` with mode "normal" | "no_banner" |
+    //  "muted" (or 0 | 1 | 2); the others take the app name. `app` is the notification's app_name, exactly.
+    event set_app_rule ->
+    event clear_app_rule ->
+    event cycle_app_rule ->
+    event clear_app_rules ->
 
+    event list_scrolled ->      // scalar offset; named event fields arrive as a table
     event clear_notices ->
     event card_click ->
     event clear_past ->
     event dismiss_notice ->
     event group_toggle ->       // a stack opens, an open group closes: the group's key
     event dismiss_group ->      // × on a stack: all of that app's notifications
+    event set_banner_hover ->   // 1 / 0: the pointer is on a card the frame draws (the banner stays while it is)
 
     // ── look ─────────────────────────────────────────────────────
 
-    //  One notification, after the macOS design: a large rounded card, the app's icon in a squircle on
-    //  the left, a bold title, up to two lines of body and the time on the right. The round × shows on
-    //  hover. `flat` leaves out the card itself (the banner already is a glass).
-    component NoticeCard(n: record, flat: bool = false, stack: number = -1) {
-        size: 352, 92
-        prop hot = 0 ~quick
-        group {
-            show: not flat
-            CardBg(352, 92, 26)
-            box { from: 0, 0; size: 352, 92; corner: 26; stroke: 1; color: card_stroke; opacity: card_stroke_op }
-        }
-
-        //  The icon: a blue squircle with a bell, and the application's own icon over it when it has one.
-        body {
-            gradient: 0, 0 to 44, 44, accent_c, focus_c
-            box { from: 16, 24; size: 44, 44; corner: r_m }
-        }
-        text "󰂚" { family: "JetBrainsMono Nerd Font Mono"; at: 38, 46; anchor: center; size: 20; color: on_accent }
-        image n.icon { at: 16, 24; size: 44, 44 }
-
-        text n.title { at: 74, 30; anchor: left center; size: 14; weight: 700; color: ink_c; width: 210; lines: 1 }
-        text n.body { at: 74, 50; size: t_body; color: ink_c; opacity: 85%; width: 252; lines: 2 }
-        text n.age { at: 332, 30; anchor: right center; size: t_sub; color: ink_sub; opacity: 1 - hot }
-
-        //  Close: a small round button at the corner, only on hover.
-        group {
-            opacity: hot
-            ellipse { at: 322, 28; radius: 11; color: item_solid }
-            line { from: 318, 24; to: 326, 32; width: 1.6; color: ink_c }
-            line { from: 326, 24; to: 318, 32; width: 1.6; color: ink_c }
-        }
-        zone box card_hit { from: 0, 0; size: 352, 92; corner: 26; active: stack < 0 }
-        zone box x_hit { at: 322, 28; size: 26, 26; corner: 13; cursor: pointer; active: hot > 0.5 and stack < 0 }
-        zone box stack_hit { from: 0, 0; size: 352, 92; corner: 26; cursor: pointer; active: stack >= 0 }
-        zone box stack_x { at: 322, 28; size: 26, 26; corner: 13; cursor: pointer; active: hot > 0.5 and stack >= 0 }
-        on enter card_hit { hot: 1; banner_hover = true }
-        on leave card_hit { hot: 0; banner_hover = false }
-        on enter stack_hit { hot: 1 }
-        on leave stack_hit { hot: 0 }
-        on press card_hit { emit card_click }
-        on press x_hit { emit dismiss_notice(n.id) }
-        on press stack_hit { emit group_toggle(stack) }
-        on press stack_x { emit dismiss_group(stack) }
-        on press right card_hit { }
-        on press right x_hit { }
-        on press right stack_hit { }
-        on press right stack_x { }
-    }
-
-    //  A row of the centre: a card, a stack (the newest with two edges peeking out behind it) or the header of an open group.
-    component NoticeRow(r: record) {
-        size: 352, r.h
-        group {
-            show: r.kind == 1
-            box { from: 28, 96; size: 296, 10; corner: 8; color: card_fill; opacity: card_fill_op * 70% }
-            box { from: 28, 96; size: 296, 10; corner: 8; stroke: 1; color: card_stroke; opacity: card_stroke_op * 70% }
-            box { from: 16, 90; size: 320, 10; corner: 8; color: card_fill; opacity: card_fill_op }
-            box { from: 16, 90; size: 320, 10; corner: 8; stroke: 1; color: card_stroke; opacity: card_stroke_op }
-        }
-        group {
-            show: r.kind < 2
-            NoticeCard(r, false, if(r.kind == 1, r.key, -1))
-        }
-        group {
-            show: r.kind == 2
-            text r.app { at: 10, 16; anchor: left center; size: t_sub; weight: 700; color: ink_sub }
-            text "Show less" { at: 342, 16; anchor: right center; size: t_cap; weight: 600; color: ink_sub }
-            zone box less_hit { from: 270, 2; size: 82, 28; corner: 14; cursor: pointer }
-            on press less_hit { emit group_toggle(r.key) }
-            on press right less_hit { }
-        }
-    }
-
-    //  One that was dealt with: smaller, quieter.
-    component PastRow(h: record) {
-        size: 352, 52
-        box { from: 0, 0; size: 352, 52; corner: r_l; color: card_fill; opacity: card_fill_op * 55% }
-        body {
-            gradient: 0, 0 to 28, 28, accent_c, focus_c
-            box { from: 14, 12; size: 28, 28; corner: 8; opacity: 70% }
-        }
-        text "󰂚" { family: "JetBrainsMono Nerd Font Mono"; at: 28, 26; anchor: center; size: 13; color: on_accent; opacity: 80% }
-        image h.icon { at: 14, 12; size: 28, 28; opacity: 80% }
-        text h.title { at: 54, 20; anchor: left center; size: t_sub; weight: 600; color: ink_c; opacity: 85%; width: 230; lines: 1 }
-        text h.body { at: 54, 36; anchor: left center; size: t_cap; color: ink_sub; width: 230; lines: 1 }
-        text h.age { at: 338, 20; anchor: right center; size: t_micro; color: ink_sub }
-    }
-
-    // ── the centre: content only; the frame draws the glass, melting it out of the right island ──
-    surface centre {
-        size: 412, 800
-        anchor: top_right
-        margin: 0, 0, 0, 0
-        level: overlay
-        screens: Panels.panel_mon
-        open: (open or seen > 0.02) and cur == 2
-
-        zone box nc_dismiss { from: 0, 0; size: 412, 800; active: open and cur == 2 }
-        on press nc_dismiss { emit Panels.close }
-        on press right nc_dismiss { }
-
-    PanelBody(26, -2, 0, 412, Topbar.rp_w, panel_h, ph, seen) {
-
-        PanelHeader("󰂚", "Notifications", 30, 32)
-        //  Clear all
-        group {
-            show: notices.count > 0
-            box { from: 280, 18; size: 76, 28; corner: 14; color: item_solid }
-            text "Clear All" { at: 318, 32; anchor: center; size: t_micro; weight: 600; color: ink_c }
-            zone box clear_hit { from: 280, 18; size: 76, 28; corner: 14; cursor: pointer }
-            on press clear_hit { emit clear_notices }
-            on press right clear_hit { }
-        }
-
-        column {
-            at: 14, 62
-            gap: 0
-            for r in rows { NoticeRow(r) }
-        }
-
-        //  What was dealt with, kept across restarts
-        group {
-            show: past.count > 0
-            move: 0, 62 + live_h + 4
-            SectionLabel(24, 14, "EARLIER")
-            text "Clear" { at: 356, 14; anchor: right center; size: t_cap; weight: 600; color: ink_sub }
-            zone box clear_past_hit { from: 300, 4; size: 56, 22; corner: 11; cursor: pointer }
-            on press clear_past_hit { emit clear_past }
-            on press right clear_past_hit { }
-            column {
-                at: 14, 32
-                gap: 6
-                for h in past { PastRow(h) }
-            }
-        }
-
-        //  Nothing new
-        group {
-            show: notices.count < 1 and past.count < 1
-            ellipse { at: 190, 100; radius: 28; color: item_solid }
-            path { at: 181, 90; color: ink_sub; move 0, 15; line 2.5, 15; line 3, 7; line 5, 2; line 9, 2; line 11, 7; line 11.5, 15; line 14, 15; line 14, 17; line 0, 17; close }
-            ellipse { at: 188, 108; radius: 2.2; color: ink_sub }
-            text "No Notifications" { at: 190, 148; anchor: center; size: t_body; weight: 600; color: ink_c }
-        }
-    }
-    }
-
-    // ── the banner: a new notification appears INSIDE the centre pill ─────────────────────────────
-    //  The frame (topbar.plm) draws the glass: the centre island grows to hold it and the clock fades. This surface
-    //  starts at the very top of the screen (a negative margin, over the bar) and draws only the card. notifications.luau
-    //  shows it for a few seconds; hover keeps it, a click opens the centre.
-    prop bn = 0 ~calm
-    follow bn = if(banner_on, 1, 0)
-
-    surface banner {
-        size: 412, 100
-        anchor: top
-        margin: -42, 0, 0, 0
-        level: overlay
-        screens: Panels.toast_mon
-        open: banner_on
-
-        zone box banner_pad { from: 16, 0; size: 380, 96 }
-        on press right banner_pad { }
-
-        group {
-            move: 30, 2
-            opacity: clamp(bn * 1.6 - 0.5, 0, 1)
-            for n in notices {
-                group {
-                    show: n.index == 0
-                    NoticeCard(n, true)
-                }
-            }
-        }
-    }
-
-    on key Escape while cur == 2 { emit Panels.close }
-    on blur while cur == 2 and not fresh { emit Panels.close }
 }

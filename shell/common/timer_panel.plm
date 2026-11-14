@@ -1,0 +1,58 @@
+// One timer panel, drawn in the frame. Activities owns the countdown and storage.
+part TimerPanel {
+    text tm_duration = "25"
+    text tm_preview = "25:00"
+    text tm_hint = "25:00 · maximum 24 hours"
+    fact tm_seconds = 1500
+    fact tm_valid = true
+    fact tm_focus = -1
+    event tm_primary ->
+    event tm_secondary ->
+    event tm_submit ->
+    event tm_activate ->
+    event tm_move ->
+    event tm_preset ->
+
+    //  CONTENT, drawn inside the frame's surface (topbar.plm, `Shell`): x 0 = 16 px in from where its old surface (420 wide, centred) began, y 0 = under the bar
+    component TimerContent() {
+            zone box tm_inside { from: 0, 0; size: 388, 350 }
+            on press right tm_inside { }
+            Sym("󰔛", inset_panel + 8, 26, 18, accent_c)
+            text "Timer" { at: 54, 26; anchor: left center; size: ts_title; weight: 700; color: ink_c }
+            group { move: 340, 12; IconButton("󰅖", "Close timer", Panels.close, ink_sub, item_bg) }
+            // Large readout is intentional timer feature geometry.
+            text Activities.timer_text { at: 194, 82; anchor: center center; size: 44; weight: 300; color: ink_c; show: Activities.timer_state > 0 }
+            text tm_preview { at: 194, 82; anchor: center center; size: 44; weight: 300; color: ink_c; show: Activities.timer_state == 0 }
+            text Activities.timer_status { at: 194, 126; anchor: center center; size: ts_cap; color: ink_sub; width: 348; align: center; lines: 1 }
+            box { from: inset_panel, 148; size: 348, 4; corner: 2; color: item_solid }
+            box { from: inset_panel, 148; size: 348 * Activities.timer_progress, 4; corner: 2; color: accent_c }
+            group {
+                show: Activities.timer_state == 0 or Activities.timer_state == 3
+                group { move: inset_panel, 174; Chip("5 min", tm_seconds == 300, tm_preset, 300, 110, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill) }
+                group { move: 138, 174; Chip("10 min", tm_seconds == 600, tm_preset, 600, 110, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill) }
+                group { move: 256, 174; Chip("25 min", tm_seconds == 1500, tm_preset, 1500, 110, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill) }
+                box { from: inset_panel, 216; size: 348, search_h; corner: control_r_large; color: item_solid }
+                box { from: inset_panel, 216; size: 348, search_h; corner: control_r_large; stroke: 1; color: if(tm_valid, focus_c, danger_c); show: tm_focus == -1 }
+                //  (the duration field is declared in topbar.plm, at scene level)
+                text tm_hint { at: inset_panel, 266; anchor: left center; size: ts_cap; color: if(tm_valid, ink_sub, danger_c); width: 348; lines: 1 }
+            }
+            group {
+                show: Activities.timer_state == 1 or Activities.timer_state == 2
+                text "One timer, wherever you control it." { at: 194, 202; anchor: center center; size: ts_body; color: ink_c; width: 348; align: center }
+                text "Closing this panel keeps the timer." { at: 194, 230; anchor: center center; size: ts_cap; color: ink_sub; width: 348; align: center }
+            }
+            group { move: inset_panel, 292; Pill(pick(Activities.timer_state, "Start", "Pause", "Resume", "Start again"), 164, tm_primary, 1, control_h_large, false, Activities.ready and (Activities.timer_state == 1 or Activities.timer_state == 2 or tm_valid), ui_accent_c: accent_c, ui_danger_c: danger_c, ui_ink_c: ink_c, ui_item_bg: item_bg, ui_on_accent: on_accent) }
+            group { move: 204, 292; Pill(pick(Activities.timer_state, "Close", "Cancel timer", "Cancel timer", "Dismiss"), 164, tm_secondary, 0, control_h_large, false, ui_accent_c: accent_c, ui_danger_c: danger_c, ui_ink_c: ink_c, ui_item_bg: item_bg, ui_on_accent: on_accent) }
+            box { from: if(tm_focus == 0, inset_panel - 2, 202), 290; size: 168, control_h_large + 4; corner: control_r_large; stroke: 2; color: focus_c; show: tm_focus >= 0 }
+            text Activities.storage_status { at: inset_panel, 338; anchor: left center; size: ts_cap; color: danger_c; width: 348; lines: 1 }
+    }
+    on submit tm_duration { emit tm_submit }
+    on key Tab while Panels.open and Panels.cur == 26 { emit tm_move(1) }
+    on key Shift+Tab while Panels.open and Panels.cur == 26 { emit tm_move(-1) }
+    on key Left while Panels.open and Panels.cur == 26 and tm_focus >= 0 { emit tm_move(-1) }
+    on key Right while Panels.open and Panels.cur == 26 and tm_focus >= 0 { emit tm_move(1) }
+    on keyup Return while Panels.open and Panels.cur == 26 and tm_focus >= 0 { emit tm_activate }
+    on keyup KP_Enter while Panels.open and Panels.cur == 26 and tm_focus >= 0 { emit tm_activate }
+    on keyup space while Panels.open and Panels.cur == 26 and tm_focus >= 0 { emit tm_activate }
+    on blur while Panels.cur == 26 and not Panels.fresh { emit Panels.close }
+}

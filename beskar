@@ -3,12 +3,11 @@
 #
 #   ./beskar doctor      check everything the shell needs and say what is missing (changes nothing)
 #   ./beskar install     build pleamar if needed, wire the shell into niri (an include file, with a backup), first run
-#   ./beskar update      pull the newest Beskar (and pleamar), rebuild if it changed, restart the shell
+#   ./beskar update      pull the newest Beskar, build its pinned pleamar release, restart the shell
 #   ./beskar start | stop | restart | status | lock | settings | ...   (everything else goes to shell/start.sh)
 set -u
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 START="$DIR/shell/start.sh"
-PLEAMAR_URL="https://github.com/k4ditano/pleamar"
 NIRI_DIR="$HOME/.config/niri"
 NIRI_CFG="$NIRI_DIR/config.kdl"
 
@@ -21,7 +20,7 @@ head_() { printf '\n%s%s%s\n' "$B" "$1" "$N"; }
 # command → package (Arch names; the command names are the same everywhere)
 pkg_for() {
     case "$1" in
-        magick) echo imagemagick ;; wl-copy) echo wl-clipboard ;; checkupdates) echo pacman-contrib ;;
+        magick) echo imagemagick ;; timeout) echo coreutils ;; wl-copy) echo wl-clipboard ;; checkupdates) echo pacman-contrib ;;
         *) echo "$1" ;;
     esac
 }
@@ -38,14 +37,15 @@ doctor() {
     MISSING=0; NEED_PKGS=""
     head_ "Compositor and runtime"
     need niri "the compositor (26.04 or newer for config includes)"
-    if [ -x "$DIR/bin/pleamar" ]; then ok "pleamar  ($("$DIR/bin/pleamar" --version 2>/dev/null | head -1))"
+    if [ -x "$DIR/bin/exp/pleamar" ]; then ok "pleamar  ($("$DIR/bin/exp/pleamar" --version 2>/dev/null | head -1))"
     else bad "pleamar is not built: run ./beskar install"; fi
     need cargo "builds pleamar (only needed once)" optional
 
     head_ "Colours and apps"
     need matugen "colours from the wallpaper and the apps' themes"
     need magick "picks the wallpaper's colour, makes wallpaper thumbnails"
-    need fd "finds wallpapers"
+    need fd "finds wallpapers and Spotlight files"
+    need timeout "bounds Spotlight file searches (coreutils)"
     need curl "weather, wallpaper location"
     if fc-list 2>/dev/null | grep -qi "nerd font\| NF"; then ok "a Nerd Font  (status glyphs)"; else bad "no Nerd Font found: install a Nerd Font (Arch: ttf-jetbrains-mono-nerd)"; fi
 
@@ -84,19 +84,8 @@ doctor() {
 
 install_() {
     head_ "Beskar install"
-    # 1. the runtime
-    if [ ! -x "$DIR/bin/pleamar" ]; then
-        if [ ! -d "$DIR/cloned_repos/pleamar" ]; then
-            command -v git >/dev/null 2>&1 || { echo "git is needed"; exit 1; }
-            mkdir -p "$DIR/cloned_repos"
-            git clone --depth 1 "$PLEAMAR_URL" "$DIR/cloned_repos/pleamar" || exit 1
-        fi
-        command -v cargo >/dev/null 2>&1 || { echo "cargo (the Rust toolchain) is needed to build pleamar once: install rustup or your distro's rust"; exit 1; }
-        (cd "$DIR/cloned_repos/pleamar" && cargo build --release) || exit 1
-        mkdir -p "$DIR/bin"
-        ln -sf "$DIR/cloned_repos/pleamar/target/release/pleamar" "$DIR/bin/pleamar"
-        ok "pleamar built"
-    else ok "pleamar is there"; fi
+    # 1. the pinned runtime
+    bash "$DIR/shell/runtime.sh" || exit 1
 
     # 2. niri: one include file of ours, one line in the user's config (backup first)
     mkdir -p "$NIRI_DIR"
@@ -130,6 +119,9 @@ binds {
     Mod+Comma hotkey-overlay-title="Settings" { spawn "$DIR/shell/start.sh" "settings"; }
     Mod+Shift+W hotkey-overlay-title="Edit Widgets" { spawn "$DIR/shell/start.sh" "widgets"; }
     Mod+Slash hotkey-overlay-title="Keyboard Shortcuts" { spawn "$DIR/shell/start.sh" "shortcuts"; }
+    Mod+Shift+Q repeat=false hotkey-overlay-title="Session Menu" { spawn "$DIR/shell/start.sh" "power-menu"; }
+    Mod+X repeat=false hotkey-overlay-title="Session Menu" { spawn "$DIR/shell/start.sh" "power-menu"; }
+    Mod+Alt+L repeat=false hotkey-overlay-title="Lock Screen" { spawn "$DIR/shell/start.sh" "lock"; }
     XF86AudioRaiseVolume allow-when-locked=true { spawn "$DIR/shell/start.sh" "vol-up"; }
     XF86AudioLowerVolume allow-when-locked=true { spawn "$DIR/shell/start.sh" "vol-down"; }
     XF86AudioMute allow-when-locked=true { spawn "$DIR/shell/start.sh" "mute"; }
@@ -162,15 +154,7 @@ update_() {
     git -C "$DIR" pull --ff-only || { echo "could not fast-forward (you have local changes?)"; exit 1; }
     after=$(git -C "$DIR" rev-parse HEAD)
     [ "$before" = "$after" ] && ok "already the newest Beskar" || { ok "updated:"; git -C "$DIR" --no-pager log --oneline "$before..$after" | sed 's/^/      /'; }
-    if [ -d "$DIR/cloned_repos/pleamar/.git" ]; then
-        local pb pa
-        pb=$(git -C "$DIR/cloned_repos/pleamar" rev-parse HEAD)
-        git -C "$DIR/cloned_repos/pleamar" pull --ff-only >/dev/null 2>&1 || warn "pleamar could not be updated"
-        pa=$(git -C "$DIR/cloned_repos/pleamar" rev-parse HEAD)
-        if [ "$pb" != "$pa" ]; then
-            (cd "$DIR/cloned_repos/pleamar" && cargo build --release) && ok "pleamar rebuilt" || warn "pleamar build failed (the old one stays)"
-        fi
-    fi
+    bash "$DIR/shell/runtime.sh" || exit 1
     "$START" restart
 }
 

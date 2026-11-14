@@ -1,0 +1,26 @@
+import "geometry.plm"
+
+// Pure controls: the caller supplies appearance, action and optional numeric payload.
+library Buttons strict {
+    component IconButton(glyph: text, label: text, tap: event, ink: color, fill: color, w: number = icon_button_size, h: number = icon_button_size, glyph_size: number = icon_size, radius: number = control_r, fill_op: number = 0.12, value: number = 0, enabled: bool = true) {
+        size: w, h
+        box { from: 0, 0; size: w, h; corner: radius; color: fill; opacity: fill_op }
+        text glyph { at: w / 2, h / 2; anchor: center center; family: "JetBrainsMono Nerd Font Mono"; size: glyph_size; color: ink; opacity: if(enabled, 1, 0.4) }
+        zone box hit { from: 0, 0; size: w, h; corner: radius; cursor: pointer; label: label; active: enabled }
+        on press hit { emit tap(value) }
+        on press right hit { }
+    }
+
+    component IconTextButton(glyph: text, label: text, tap: event, value: number, ink: color, icon_ink: color, fill: color, w: number, h: number = control_h_large, fill_op: number = 0.12, radius: number = control_r_large, font_size: number = font_body, icon_size: number = icon_size_small, hover_op: number = 0) {
+        size: w, h
+        prop hot = 0 ~quick
+        box { from: 0, 0; size: w, h; corner: radius; color: fill; opacity: fill_op + hot * hover_op }
+        text glyph { at: inset_card, h / 2; anchor: center center; family: "JetBrainsMono Nerd Font Mono"; size: icon_size; color: icon_ink }
+        text label { at: inset_card + icon_size / 2 + gap_icon, h / 2; anchor: left center; width: w - inset_card * 2 - icon_size / 2 - gap_icon; lines: 1; size: font_size; weight: 600; color: ink }
+        zone box hit { from: 0, 0; size: w, h; corner: radius; cursor: pointer; label: label }
+        on enter hit while hover_op > 0 { hot: 1 }
+        on leave hit while hover_op > 0 { hot: 0 }
+        on press hit { emit tap(value) }
+        on press right hit { }
+    }
+}

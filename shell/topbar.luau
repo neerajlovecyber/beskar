@@ -2,12 +2,14 @@
 -- what the weather is. It only reports facts; every command goes through `run`/`spawn`
 -- (declared in topbar.plm's `permissions`), so nothing here blocks the logic thread.
 
-local locate = require("location")      -- where you are (see location.luau)
-local WEATHER_EVERY_MS = 15 * 60 * 1000
 
 -- (the bar style and the other preferences are Settings' facts, read by name: `fact["Settings.bar_style"]`)
 
 -- ── panels ───────────────────────────────────────────────────────
+local hooks = require("topbar_hooks")               -- every handler registered below is recorded for the panels that run in this plugin (they cannot emit to us)
+local base_on = on
+local function on(name, fn) hooks.handlers[name] = fn; return base_on(name, fn) end
+
 local ALIAS = { settings = "Settings", panels = "Panels" }       -- scenes of `desktop` an event can be sent to by name
 local function send_toggle(panel)
     if ALIAS[panel] then emit(ALIAS[panel] .. ".toggle") else pcall(sys.call, "say", panel, "emit toggle") end
@@ -24,34 +26,15 @@ end
 -- panel scenes draw only content and report to us (shell/panel.luau → panel_open / panel_height / panel_close).
 -- Two panels can share an island (the Control Center and the notifications use the right one): the one that
 -- opened last owns it, and a panel closing only turns the glass off if it still owns it.
-local PANELS = {
-    control_center = { id = 1, island = "rp", w = 372 },
-    notifications = { id = 2, island = "rp", w = 386 },
-    dashboard = { id = 3, island = "cp", w = 360 },
-    music = { id = 9, island = "cp", w = 380 },
-    weather = { id = 15, island = "cp", w = 420 },
-    updates = { id = 16, island = "rp", w = 372 },
-    banner = { id = 7, island = "cp", w = 380, kind = 1 },     -- a notification, shown inside the centre pill
-    spotlight = { id = 4, island = "bp", w = 640 },      -- bottom: grow out of the dock
-    wallpapers = { id = 5, island = "bp", w = 980 },
-    clipboard = { id = 6, island = "bp", w = 560 },
-    widget_bar = { id = 10, island = "bp", w = 800 },
-    session = { id = 11, island = "bp", w = 520 },      -- the session dialog and the polkit password dialog: from the dock
-    polkit = { id = 12, island = "bp", w = 520 },
-    appswitcher = { id = 21, island = "bp", w = 520 },   -- the window switcher, overview and welcome grow out of the dock too
-    overview = { id = 22, island = "bp", w = 1000 },
-    welcome = { id = 24, island = "bp", w = 640 },
-}
-local BY_ID = {}
-for name, p in pairs(PANELS) do
-    p.name = name
-    BY_ID[p.id] = p
-end
+local panel_data = require("panels_data")
+local PANELS, BY_ID = panel_data.panels, panel_data.by_id
 local owner = {}        -- island → id of the panel that owns its glass
 local heights = {}      -- id → last height it reported
 local widths = {}       -- id → last width it reported (panels whose width follows their content)
 
 local PRIORITIES = {
+    [26] = 100, -- timer panel
+    [25] = 100, -- personal editor
     [3] = 100,  -- dashboard panel
     [9] = 100,  -- music panel
     [15] = 100, -- weather panel
@@ -65,7 +48,6 @@ local PRIORITIES = {
 
 local charging_timer = nil
 local shot_timer = nil
-local timer_done_timer = nil
 local priv_timer = nil
 local last_shot_file = ""
 
@@ -153,11 +135,8 @@ on("panel_open", function(id)
     end
 end)
 
--- Weather, music, today and updates live in ONE scene, `panels` (panels.plm): one shared open / open_screen / cur
--- (the panel id) / panel_h. `panel_say(name, words)` talks to whichever scene a panel is in.
-local MERGED = { dashboard = true, music = true, weather = true, updates = true, control_center = true, notifications = true }   -- (`cur` is set before opening)
--- Spotlight, wallpapers, clipboard and the widget bar live in ONE scene, `dock` (panel id = its `cur`)
-local DOCK = { spotlight = 4, wallpapers = 5, clipboard = 6, widget_bar = 10, session = 11, polkit = 12, appswitcher = 21, overview = 22, welcome = 24 }
+-- The owner, frame and action catalogue use the same static IDs and opening routes.
+local MERGED, DOCK = panel_data.merged, panel_data.dock
 -- Every panel is ONE surface that follows the monitor named in `Panels.panel_mon`: the `Panels` scene owns it (panels.plm),
 -- so we tell IT the monitor's index (`open_screen`) and its output NAME. Settings' sheet has its own `open_screen`.
 -- Ours (OUTPUTS) is filled in below.
@@ -291,7 +270,7 @@ local function open_island_panel(name, page)
             fact[p.island .. "_screen"] = s
             overlay_screen(s, name)
             if name == "control_center" then
-                emit("Controlcenter.set_page", page or 0)
+                fact.cc_page = page or 0                -- the frame owns the Control Center now
             end
             emit("Panels.show", p.id)
         end)
@@ -300,6 +279,42 @@ end
 on("open_control_center", open_island_panel("control_center"))
 on("open_cc_wifi", open_island_panel("control_center", 1))
 on("open_cc_bt", open_island_panel("control_center", 2))
+on("open_personal", open_island_panel("personal"))
+local open_timer = open_island_panel("timer")
+on("open_timer", open_timer)
+local function show_personal_on(s)
+    s = tonumber(s)
+    if not s or s ~= math.floor(s) or not OUTPUTS[s + 1] then return end
+    fact.cp_screen = s
+    overlay_screen(s, "personal")
+    emit("Panels.show", PANELS.personal.id)
+end
+on("open_personal_on", show_personal_on)
+on("open_personal_output", function(ordinal)
+    ordinal = tonumber(ordinal)
+    if not ordinal or ordinal ~= math.floor(ordinal) then return end
+    local names = {}
+    for _, name in ipairs(OUTPUTS) do names[#names + 1] = name end
+    table.sort(names)
+    for i, name in ipairs(OUTPUTS) do
+        if name == names[ordinal + 1] then show_personal_on(i - 1); return end
+    end
+end)
+on("open_timer_output", function(ordinal)
+    ordinal = tonumber(ordinal)
+    if not ordinal or ordinal ~= math.floor(ordinal) then return end
+    local names = {}
+    for _, name in ipairs(OUTPUTS) do names[#names + 1] = name end
+    table.sort(names)
+    for i, name in ipairs(OUTPUTS) do
+        if name == names[ordinal + 1] then
+            fact.cp_screen = i - 1
+            overlay_screen(i - 1, "timer")
+            emit("Panels.show", PANELS.timer.id)
+            return
+        end
+    end
+end)
 on("open_dashboard", open_island_panel("dashboard"))
 on("open_notifications", open_island_panel("notifications"))
 on("open_music", open_island_panel("music"))
@@ -325,22 +340,32 @@ on("fact:Settings.pref_seconds", paint_clock)
 -- (a plm `wave` paints the whole scene at the monitor's rate for ever; this phase ticks at 10 fps, and only
 -- while something plays or records and is visible: cuts render frames in half)
 local ph_timer = nil
+local function waves_visible()
+    return fact["Settings.reduce_motion"] ~= true
+        and ((fact["System.is_playing"] == true and fact["System.media_on"] == true) or fact.rec_on == true)
+        and (tonumber(fact.act_kind) or 0) == 0
+end
 local function wave_tick()
     ph_timer = nil
-    local should_tick = ((fact["System.is_playing"] == true and fact["System.media_on"] == true) or fact.rec_on == true) and (tonumber(fact.act_kind) or 0) == 0
+    local should_tick = waves_visible()
     if should_tick then
         fact.m_ph = (tonumber(fact.m_ph) or 0) + 0.125 * 57.2958
         ph_timer = after(125, wave_tick)
     end
 end
 local function wave_kick()
+    if not waves_visible() then
+        if ph_timer then cancel(ph_timer); ph_timer = nil end
+        return
+    end
     if not ph_timer then
-        local should_tick = ((fact["System.is_playing"] == true and fact["System.media_on"] == true) or fact.rec_on == true) and (tonumber(fact.act_kind) or 0) == 0
+        local should_tick = waves_visible()
         if should_tick then
             ph_timer = after(125, wave_tick)
         end
     end
 end
+on("fact:Settings.reduce_motion", wave_kick)
 on("fact:rec_on", wave_kick)
 on("fact:act_kind", function(k)
     if (tonumber(k) or 0) == 0 then
@@ -528,55 +553,22 @@ on("open_screenshot", function()
     end
 end)
 
--- ── live activity: timer countdown and done alert ────────────────
-local timer_remaining = 0
-local timer_timer = nil
-
-local function fmt_timer(s)
-    if s >= 3600 then
-        return string.format("%d:%02d:%02d", s // 3600, (s % 3600) // 60, s % 60)
-    else
-        return string.format("%d:%02d", s // 60, s % 60)
+-- Timer state belongs to Activities. Keep legacy event routes for scripts.
+on("timer_start", function(seconds) emit("Activities.start", seconds) end)
+on("timer_cancel", function() emit("Activities.cancel") end)
+on("timer_finished", function()
+    -- Notifications retains timer history and already suppresses a duplicate Timer banner.
+    run("notify-send", { "-a", "Timer", "-i", "alarm", "-u", "critical", "-h", "string:sound-name:none", "Timer done", "Time’s up!" }, nil, { output = false })
+    if not (owner.cp and (PRIORITIES[owner.cp] or 0) > 50) then
+        card_open(11, 5000, { glyph = "󰔛", title = "Timer done", sub = "Click to open timer", value = "Time’s up", tone = 2 })
     end
-end
-
-local function timer_tick()
-    if timer_remaining <= 0 then
-        timer_remaining = 0
-        fact.timer_on = false
-        timer_timer = nil
-        -- Alert with sound-free notification
-        run("notify-send", { "-a", "Timer", "-i", "alarm", "-u", "critical", "-h", "string:sound-name:none", "Timer done", "Time's up!" }, nil, { output = false })
-        -- Timer done: a card for 5 s (priority 50)
-        if not (owner.cp and (PRIORITIES[owner.cp] or 0) > 50) then
-            card_open(11, 5000, { glyph = "󰔛", title = "Timer done", sub = "Click to dismiss", value = "Time's up", tone = 2 })
-        end
-        return
-    end
-    text.timer_text = fmt_timer(timer_remaining)
-    timer_remaining = timer_remaining - 1
-    timer_timer = after(1000, timer_tick)
-end
-
-on("timer_start", function(sec)
-    sec = tonumber(sec) or 0
-    if sec <= 0 then return end
-    if timer_timer then cancel(timer_timer); timer_timer = nil end
-    if timer_done_timer then cancel(timer_done_timer); timer_done_timer = nil end
-    if owner.cp == 11 then cancel_activity(11) end
-    timer_remaining = sec
-    fact.timer_on = true
-    timer_tick()
-end)
-
-on("timer_cancel", function()
-    if timer_timer then cancel(timer_timer); timer_timer = nil end
-    fact.timer_on = false
-    timer_remaining = 0
 end)
 
 on("card_click", function()
-    if owner.cp == 13 then
+    if owner.cp == 11 then
+        cancel_activity(11)
+        open_timer()
+    elseif owner.cp == 13 then
         if last_shot_file and last_shot_file ~= "" then
             run("xdg-open", { last_shot_file }, nil, { output = false })
         end
@@ -599,9 +591,8 @@ end)
 -- only where `open_screen` says (common/here.plm). Everything that wants one asks us (`open_panel N`): a niri key
 -- through start.sh, a button in another panel. The toggle is the panel's own.
 -- EVERYTHING that opens over the desktop is a panel of the `Panels` owner (its `cur` is the panel id), drawn by one of the panel scenes
-local OVERLAY = { spotlight = 4, wallpapers = 5, clipboard = 6, widget_bar = 10, session = 11, polkit = 12, appswitcher = 21, overview = 22, welcome = 24 }
-local FOCUS_PANELS = { [1] = "spotlight", [2] = "clipboard", [3] = "wallpapers", [4] = "settings", [5] = "session", [6] = "appswitcher", [7] = "widget_bar", [8] = "polkit", [9] = "welcome", [10] = "overview", [11] = "capture" }
-on("open_panel", function(n)
+local OVERLAY, FOCUS_PANELS = panel_data.dock, panel_data.focus
+local function open_panel(n)
     local name = FOCUS_PANELS[tonumber(n) or 0]
     if not name then
         return
@@ -637,6 +628,15 @@ on("open_panel", function(n)
             open_it(s)
         end
     end)
+end
+on("open_panel", open_panel)
+
+-- Shortcuts and Spotlight use the frame's existing focused-monitor route.
+on("open_session", function(screen)
+    screen = tonumber(screen)
+    if screen and screen >= 0 then fact.last_screen = screen end       -- asked from a panel: that panel's monitor
+    hooks.call("prepare_menu")
+    open_panel(panel_data.slots.session)
 end)
 
 -- ── the power menu (the gem button) ──────────────────────────────
@@ -646,7 +646,10 @@ end
 -- The monitor the power menu is on (`open_screen`), for the windows its items open.
 -- the session / polkit / welcome dialogs live in ONE scene, `dialogs`; `cur` says which (rule 51)
 local function show_dock_on_menu_monitor(id)        -- (the session dialog grows out of the dock: panel 11)
-    overlay_screen(tonumber(fact.open_screen) or 0)
+    local s = tonumber(fact.open_screen) or 0
+    local p = BY_ID[id]
+    if p then fact[p.island .. "_screen"] = s end          -- the frame draws the glass on the SAME monitor as the dialog
+    overlay_screen(s)
     emit("Panels.show", id)
 end
 local function show_on_menu_monitor(name)
@@ -657,11 +660,11 @@ local PM = {
     [1] = function() emit("Settings.set_tab", 6); show_on_menu_monitor("settings") end,         -- About This PC
     [2] = function() emit("Settings.set_tab", 0); show_on_menu_monitor("settings") end,         -- System Settings
     [8] = function() say("widgets", "emit edit_toggle") end,                                     -- Edit Widgets…
-    [3] = function() say("lock", "fact locked true") end,                                           -- Lock Screen
-    [4] = function() run("systemctl", { "suspend" }, nil, { output = false }) end,                 -- Sleep
-    [5] = function() emit("Dialogs.set_kind", 2); show_dock_on_menu_monitor(11) end,          -- Log Out…
-    [6] = function() emit("Dialogs.set_kind", 1); show_dock_on_menu_monitor(11) end,          -- Restart…
-    [7] = function() emit("Dialogs.set_kind", 0); show_dock_on_menu_monitor(11) end,          -- Shut Down…
+    [9] = function()
+        hooks.call("prepare_menu")
+        show_dock_on_menu_monitor(11)
+    end,                                                                                 -- Session menu
+
 }
 on("pm_item", function(n)
     local f = PM[tonumber(n) or 0]
@@ -810,14 +813,42 @@ local function default_pins()
     return out
 end
 
-local function save_pins(list)
-    pinned = list
-    local script = 'mkdir -p "$HOME/.config/beskar" && : > "$HOME/.config/beskar/dock" && for a in "$@"; do printf "%s\\n" "$a" >> "$HOME/.config/beskar/dock"; done'
-    local args = { "-c", script, "x" }
-    for _, id in ipairs(list) do
-        args[#args + 1] = id
+-- The pin file is written whole and atomically (temp file + mv), one write at a time: a move that follows another
+-- while the first is still running waits for it, and `read_pins` ignores any answer that raced a local edit
+-- (`pins_gen` changes with every edit and every finished write).
+local frame_options = require("frame_options")
+local pins_ready = false
+local pins_profile_busy = false
+local pins_gen = 0
+local pin_save_timer = nil          -- a move's debounced write is waiting
+local pin_save_busy = false         -- a write is running
+local pin_save_again = false        -- the list changed while it ran
+
+local function flush_pins()
+    pin_save_timer = nil
+    if pin_save_busy then
+        pin_save_again = true
+        return
     end
-    run("sh", args, nil, { output = false })
+    pin_save_busy = true
+    require("pins_store").write(run, {list=pinned or default_pins()}, function(ok)
+        pin_save_busy = false
+        pins_gen = pins_gen + 1
+        if pin_save_again then
+            pin_save_again = false
+            flush_pins()
+        end
+    end)
+end
+
+local function save_pins(list)
+    if pins_profile_busy then return false end
+    pinned = list
+    pins_gen = pins_gen + 1
+    if pin_save_timer then
+        cancel(pin_save_timer)
+    end
+    flush_pins()
 end
 
 -- "com.t3tools.T3Code" → "T3Code", "google-chrome" → "Google chrome": a readable name for an app with no desktop entry
@@ -846,7 +877,7 @@ build_dock = function()
         g.wins[#g.wins + 1] = w.id
     end
     local list, used = {}, {}
-    for _, id in ipairs(pins) do
+    for pin_pos, id in ipairs(pins) do
         local e = by_key[lower(id)]
         local aid, cmd = id:match("^app:([^|]+)|(.*)$")
         if aid then
@@ -854,13 +885,13 @@ build_dock = function()
             local key = "app:" .. lower(aid)
             if not used[key] and #list < 12 then
                 used[key] = true
-                list[#list + 1] = { name = pretty_app(aid), icon = lower(aid), pinned = true, cmd = cmd, pinstr = id,
+                list[#list + 1] = { name = pretty_app(aid), icon = lower(aid), pinned = true, cmd = cmd, pinstr = id, pin_pos = pin_pos,
                                     wins = groups[key] and groups[key].wins or {} }
             end
         elseif e and not used[lower(e.id)] and #list < 12 then
             local key = lower(e.id)
             used[key] = true
-            list[#list + 1] = { entry = e, name = name_of(e), icon = e.icon or "", pinned = true,
+            list[#list + 1] = { entry = e, name = name_of(e), icon = e.icon or "", pinned = true, pinstr = id, pin_pos = pin_pos,
                                 wins = groups[key] and groups[key].wins or {} }
         end
     end
@@ -873,6 +904,7 @@ build_dock = function()
         end
     end
     items = list
+    local move_flags = frame_options.move_flags(list)       -- Move Left / Right in the item's menu, among the visible pins
     local rows = {}
     for i, it in ipairs(list) do
         local win_title = ""
@@ -908,6 +940,8 @@ build_dock = function()
             pinned = it.pinned,
             sep = (not it.pinned) and i > 1 and list[i - 1].pinned,
             canpin = it.entry ~= nil or it.cmd ~= nil or it.pid ~= nil,
+            mvl = move_flags[i].left,
+            mvr = move_flags[i].right,
             preview_thumb = win_thumb,
             preview_title = (win_title ~= "") and win_title or it.name,
             preview_has = has_thumb,
@@ -954,6 +988,7 @@ on("dock_click", function(i)
 end)
 
 on("dock_pin", function(i)
+    if pins_profile_busy then return end
     local it = items[(i or 0) + 1]
     if not it then
         return
@@ -999,6 +1034,83 @@ on("dock_pin", function(i)
     build_dock()
 end)
 
+-- Reorder the pinned apps one step. `dock_move_pin(id, direction)`: id is the dock's item index (0-based, like
+-- `dock_click`) or a pin string already in the list; direction < 0 left, > 0 right. Only two existing entries swap places
+-- (see frame_options.plan_move): nothing in the event is ever written to the file or run. The order is saved shortly after
+-- the LAST move of a burst; the running-only apps are not part of it.
+local PIN_SAVE_MS = 600
+
+-- The answer to `request_dock_pins`, and the one that follows every move: the pinned apps the dock shows, in dock order
+-- (frame_options.snapshot: index = the id `dock_move_pin` takes, a command-free pin label, a bounded name, can it move).
+-- Settings declares `set_dock_pins`; until it does the emit is a harmless miss.
+local function send_dock_pins()
+    pcall(emit, "Settings.set_dock_pins", frame_options.snapshot(items))
+end
+on("request_dock_pins", send_dock_pins)
+
+-- These typed callbacks are declared by Settings when the setup coordinator is wired.
+-- Until then requests are unused and the optional callbacks are harmless misses.
+local pin_profiles = require("pins_profile").new({
+    current = function() return pinned end,
+    ready = function() return pins_ready end,
+    busy = function() return pin_save_busy or pin_save_timer ~= nil end,
+    commit = function(data, cb)
+        pins_profile_busy = true
+        local SP, Store = require("setup_profiles"), require("pins_store")
+        local before = SP.snapshot("pins", {list=pinned}, {local_pins=true})
+        Store.read(run, function(read_ok, raw, error_code)
+            if not read_ok then pins_profile_busy = false; cb(false, error_code); return end
+            local disk = nil
+            if raw then
+                disk = {}
+                for line in raw:gmatch("[^\n]+") do
+                    local id = line:match("^%s*(.-)%s*$")
+                    if id ~= "" then disk[#disk+1] = id end
+                end
+            end
+            local disk_data = SP.snapshot("pins", {list=disk}, {local_pins=true})
+            if not disk_data or SP.fingerprint("pins", disk_data) ~= SP.fingerprint("pins", before) then
+                pins_profile_busy = false; cb(false, "stale", "The dock file changed; review the setup again"); return
+            end
+            Store.write(run, data, function(ok, code, message)
+                pins_profile_busy = false
+                cb(ok, code, message)
+            end, raw == nil and {missing=true} or {body=raw})
+        end)
+    end,
+    set = function(list)
+        pinned = list
+        pins_gen = pins_gen + 1
+        build_dock()
+        send_dock_pins()
+    end,
+    reply = function(info) pcall(emit, "Settings.setup_owner_ack", info) end,
+    snapshot = function(info) pcall(emit, "Settings.setup_owner_snapshot", info) end,
+})
+on("setup_pins_snapshot", pin_profiles.snapshot)
+on("setup_pins_apply", pin_profiles.apply)
+
+on("dock_move_pin", function(p)
+    if pins_profile_busy then return end
+    local id, dir = frame_options.parse_move(p)
+    if id == nil then
+        return
+    end
+    local pins = pinned or default_pins()
+    local out = frame_options.plan_move(items, pins, id, dir)
+    if not out then
+        return
+    end
+    pinned = out
+    pins_gen = pins_gen + 1
+    build_dock()
+    if pin_save_timer then
+        cancel(pin_save_timer)
+    end
+    pin_save_timer = after(PIN_SAVE_MS, flush_pins)
+    send_dock_pins()
+end)
+
 on("dock_quit", function(i)
     local it = items[(i or 0) + 1]
     if not it then
@@ -1016,10 +1128,15 @@ end)
 
 -- ~/.config/beskar/dock, read now and every few seconds so a hand edit shows up
 local function read_pins()
-    run("sh", { "-c", 'if [ -f "$HOME/.config/beskar/dock" ]; then cat "$HOME/.config/beskar/dock"; else echo "__none__"; fi' }, function(out)
-        if not out then
+    if pin_save_timer or pin_save_busy or pins_profile_busy then
+        return                  -- our own edit is not on disk yet: the file is older than what the dock shows
+    end
+    local gen = pins_gen
+    run("sh", { "-c", 'if [ -f "$HOME/.config/beskar/dock" ]; then cat "$HOME/.config/beskar/dock"; else echo "__none__"; fi' }, function(out, code)
+        if code ~= 0 or not out or gen ~= pins_gen or pin_save_timer or pin_save_busy or pins_profile_busy then
             return
         end
+        pins_ready = true
         local list, none = {}, false
         for line in out:gmatch("[^\n]+") do
             if line == "__none__" then
@@ -1143,6 +1260,7 @@ local function build_cur()
                         name = e and name_of(e) or pretty_app(w.app_id),
                         wid = w.id,
                         focused = w.id == focus,
+                        rank = k,
                     }
                 end
             end
@@ -1185,12 +1303,24 @@ push_mon = function()
         end
         local recs = {}
         for i, name in ipairs(OUTPUTS) do
-            recs[i] = { active = shown[name] or 1, busy = count[busy[name] or -1] or 0, nws = per_out[name] or 1 }
+            recs[i] = { active = shown[name] or 1, busy = count[busy[name] or -1] or 0, nws = per_out[name] or 1,
+                modules = require("frame_options").output_visible(fact["Settings.module_output_policy"], text["Settings.frame_output_name"], name, OUTPUTS, focused_output),
+                dock = require("frame_options").output_visible(fact["Settings.dock_output_policy"], text["Settings.frame_output_name"], name, OUTPUTS, focused_output) }
         end
         model.mon = recs
         build_ws()
         build_cur()
     end
+
+for _, name in ipairs({ "module_output_policy", "dock_output_policy" }) do on("fact:Settings." .. name, push_mon) end
+on("text:Settings.frame_output_name", push_mon)
+local edge = require("frame_options").edge_controller({
+    delay = function() return fact["Settings.dock_show_delay"] end,
+    after = after,
+    reveal = function() emit("reveal") end,
+})
+on("reveal_edge", edge.enter)
+on("leave_edge", edge.leave)
 
 local function refresh_running()
     run("niri", { "msg", "-j", "windows" }, function(out, code)
@@ -1308,50 +1438,7 @@ follow_niri()
 every(5000, follow_niri)
 
 -- ── weather ──────────────────────────────────────────────────────
-local function icon_for(code)
-    if code == 0 then
-        return "󰖙"
-    elseif code <= 3 then
-        return "󰅟"
-    elseif code == 45 or code == 48 then
-        return "󰖑"
-    elseif (code >= 51 and code <= 67) or (code >= 80 and code <= 82) then
-        return "󰖗"
-    elseif (code >= 71 and code <= 77) or code == 85 or code == 86 then
-        return "󰖘"
-    elseif code >= 95 then
-        return "󰙾"
-    end
-    return "󰅟"
-end
-
-local function refresh_weather()
-    locate(function(place)
-        if not place then
-            return          -- no place yet: keep the last reading
-        end
-        local url = string.format(
-            "https://api.open-meteo.com/v1/forecast?latitude=%s&longitude=%s&current=temperature_2m,weather_code",
-            place.lat, place.lon
-        )
-        run("curl", { "-fsS", "--max-time", "5", url }, function(out, code)
-            if code ~= 0 or not out then
-                return
-            end
-            local ok, data = pcall(json.decode, out)
-            local cur = ok and type(data) == "table" and data.current
-            if type(cur) ~= "table" or cur.temperature_2m == nil then
-                return
-            end
-            text.weather_temp = string.format("%d°", math.floor(cur.temperature_2m + 0.5))
-            text.weather_icon = icon_for(cur.weather_code or 0)
-        end)
-    end)
-end
-
-refresh_weather()
-every(WEATHER_EVERY_MS, refresh_weather)
-on("weather_reload", refresh_weather)
+on("weather_reload", function() emit("Weather.reload_location") end)
 
 -- ── privacy: camera and microphone in use ───────────────────────
 -- The camera is "in use" while some process has a /dev/video* node open (fuser); the microphone while some program
@@ -1400,6 +1487,19 @@ every(6000, poll_privacy)
 
 -- ── updates: updates.luau checks pacman and tells us the count (`upd_n`); the arrow opens its panel ──
 on("open_updates", open_island_panel("updates"))
+
+-- the Updates panel's logic (its content is drawn in this scene's own surface: common/updates_panel.plm)
+local panel_module = require("panelclient")({ updates = 16, control_center = 1, dashboard = 3, music = 9, weather = 15, personal = 25, timer = 26, spotlight = 4, wallpapers = 5, clipboard = 6, widget_bar = 10, session = 11, polkit = 12, welcome = 24, switcher = 21, overview = 22 })
+panel_module("updates", require("updates_panel"))
+-- the Control Center's logic (its content is drawn in this scene's own surface: common/cc_panel.plm)
+panel_module("control_center", require("cc"))
+-- weather, music, today, the timer and the Personal editor
+require("info_panels")(panel_module)
+-- Spotlight, the wallpaper strip, the clipboard and the widget bar
+require("dock_panels")(panel_module)
+-- the session dialog, polkit, welcome, the app switcher and the overview
+require("dialog_panels")(panel_module)
+require("window_panels")(panel_module)
 
 -- one panel at a time
 require("exclusive")("topbar")

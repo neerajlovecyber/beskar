@@ -1,5 +1,7 @@
--- The window panels: app switcher and window overview (windows.plm).
-local module = require("panelclient")({ switcher = 21, overview = 22 })
+-- The window panels: app switcher and window overview (windows.plm → common/*_panels.plm).
+local Hooks = require("topbar_hooks")        -- the frame cannot emit to itself: its own events are called directly
+-- Loaded by topbar.luau with its panel client; the panels' content is drawn in the frame's own surface.
+return function(module)
 
 local function close_panel() emit("Panels.close") end
 
@@ -458,3 +460,4 @@ module("overview", function(panel, opened, shown, closed)
         end
     end)
 end)
+end

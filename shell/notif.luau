@@ -45,6 +45,43 @@ local function save_history()
     end)
 end
 
+-- ── quiet policy: per-app rules (saved here) and the effective quiet state ───────────────────
+-- Pure rules live in quiet_policy.luau. Manual Do Not Disturb stays `fact.dnd` and is never written by a policy: the
+-- effective state is `fact.quiet`, derived from manual DND, Activities' explicit modes and Settings' quiet hours.
+local Quiet = require("quiet_policy")
+local rules, rules_locked = nil, false
+local rule_map = {}
+do
+    local ok, saved = pcall(sys.ask, "files.read", "quiet.json", "json")
+    local problem
+    if ok then rules, problem = Quiet.rules_new(saved) end
+    if not rules then
+        rules, rules_locked = Quiet.rules_new(nil), true     -- unreadable: keep the file, accept no changes
+        text.rules_status = problem or "Could not read the saved quiet rules. The file has been kept."
+    end
+    rule_map = Quiet.rule_map(rules)
+end
+
+local rules_dirty, rules_timer = false, nil
+local function save_rules()
+    rules_timer = nil
+    if not rules_dirty or rules_locked then return end
+    if pcall(sys.call, "files.write", "quiet.json", Quiet.snapshot(rules)) then
+        rules_dirty = false
+        text.rules_status = ""
+    else
+        text.rules_status = "Could not save quiet rules. Retrying…"
+        rules_timer = after(2000, save_rules)
+    end
+end
+local function queue_save()
+    rules_dirty = true
+    if rules_timer then cancel(rules_timer) end
+    rules_timer = after(400, save_rules)
+end
+
+local held = 0               -- banners kept back by quiet state or an app rule since the centre was last opened
+
 -- A body may hold line breaks and blank lines ("www.instagram.com\n\nYou have unseen notifications"): the card
 -- has room for two lines, so it is flattened to one run of text.
 local function flat(s)
@@ -57,13 +94,29 @@ local expanded = {}         -- app -> true while its stack is open
 local group_apps = {}       -- key -> app, as of the last paint (the buttons send a key)
 local group_ids = {}        -- key -> the ids of that app's notifications
 
-local ROW_CARD, ROW_STACK, ROW_HEAD = 100, 112, 32
-local MAX_ROWS = 14
+local ROW_CARD, ROW_STACK, ROW_HEAD = 88, 100, 32
+local MAX_ROWS = 16          -- rendered window, not a limit on reachable notifications
+local MAX_HEIGHT = 720
+local all_rows, scroll, view_h, content_h = {}, 0, 112, 112
+local function paint_window()
+    local rows = {}
+    local top = math.max(0, math.min(scroll, math.max(0, content_h - view_h)))
+    for _, r in ipairs(all_rows) do
+        if r.y + r.h >= top - 64 and r.y <= top + view_h + 64 and #rows < MAX_ROWS then
+            rows[#rows + 1] = r
+        end
+    end
+    model.rows = rows
+end
+on("list_scrolled", function(offset)
+    scroll = math.max(0, tonumber(offset) or 0)
+    paint_window()
+end)
 
 local function row_of(n, kind, key, h, age)
     return {
         kind = kind, key = key, id = n.id, app = n.app or "", title = n.title or "", body = flat(n.body),
-        icon = n.icon or "", age = age or age_of(n.time), h = h,
+        icon = n.icon or "", has_icon = (n.icon or "") ~= "", age = age or age_of(n.time), h = h,
     }
 end
 
@@ -75,11 +128,27 @@ local function paint()
         if n and #top < MAX_LIVE then
             top[#top + 1] = {
                 id = n.id, app = n.app or "", title = n.title or "", body = flat(n.body),
-                icon = n.icon or "", age = age_of(n.time),
+                icon = n.icon or "", has_icon = (n.icon or "") ~= "", age = age_of(n.time),
             }
         end
     end
     model.notices = top
+
+    -- the banner shows the newest notification whose app may show one (a rule can keep an app out of it)
+    rule_map = Quiet.rule_map(rules)
+    local toast, counted, recent = {}, 0, {}
+    for _, id in ipairs(order) do
+        local n = live[id]
+        if n then
+            local mode = Quiet.rule_mode(rule_map, n.app or "")
+            if mode == "normal" and #toast < 1 then
+                toast[1] = { id = n.id, app = n.app or "", title = n.title or "", body = flat(n.body), icon = n.icon or "", has_icon = (n.icon or "") ~= "", age = age_of(n.time) }
+            end
+            if mode ~= "muted" then counted = counted + 1 end
+            recent[#recent + 1] = n.app
+        end
+    end
+    model.toast = toast
 
     -- waiting, for the centre: grouped by app, in the order of each app's newest notification
     local groups, by_app = {}, {}
@@ -99,10 +168,9 @@ local function paint()
     group_apps, group_ids = {}, {}
     local rows, live_h = {}, 0
     local function add(r)
-        if #rows < MAX_ROWS then
-            rows[#rows + 1] = r
-            live_h = live_h + r.h
-        end
+        r.y = live_h
+        rows[#rows + 1] = r
+        live_h = live_h + r.h
     end
     for key, g in ipairs(groups) do
         group_apps[key] = g.app
@@ -119,7 +187,7 @@ local function paint()
         elseif false then
             add(row_of(g.items[1], 0, k, ROW_CARD))
         elseif expanded[g.app] then
-            add({ kind = 2, key = k, id = 0, app = g.app ~= "" and g.app or "Notifications", title = "", body = "", icon = "", age = "", h = ROW_HEAD })
+            add({ kind = 2, key = k, id = 0, app = g.app ~= "" and g.app or "Notifications", title = "", body = "", icon = "", has_icon = false, age = "", h = ROW_HEAD })
             for _, n in ipairs(g.items) do
                 add(row_of(n, 0, k, ROW_CARD))
             end
@@ -128,12 +196,11 @@ local function paint()
             add(row_of(n, 1, k, ROW_STACK, age_of(n.time) .. "  +" .. (#g.items - 1)))
         end
     end
-    model.rows = rows
+    all_rows = rows
     fact.live_h = live_h
 
-    -- earlier: as many as fit under the waiting ones
-    local room = math.floor((800 - 70 - live_h - 60) / 58)
-    local count = math.max(0, math.min(MAX_PAST, room, #history))
+    -- History scrolls after the waiting cards instead of disappearing when they fill the panel.
+    local count = math.min(MAX_PAST, #history)
     local past = {}
     for k = 1, count do
         local h = history[k]
@@ -141,18 +208,21 @@ local function paint()
     end
     model.past = past
 
-    -- how tall the card is: header, the waiting rows (or the empty message), the Earlier rows
-    local height
-    if #rows < 1 and #past < 1 then
-        height = 190
-    else
-        height = 70 + (#rows > 0 and live_h or (#past > 0 and 0 or 100)) + (#past > 0 and (44 + #past * 58) or 0) + 8
-    end
+    content_h = live_h + (#past > 0 and (40 + #past * 58) or 0)
+    local height = (#rows == 0 and #past == 0) and 190 or math.min(MAX_HEIGHT, 78 + content_h)
+    view_h = height - 78
+    fact.nc_height = height
     panel.height(height)
+    paint_window()
 
-    -- the bell
-    fact.notif_count = #order
-    pcall(sys.call, "say", "lock", "fact notif_count " .. tostring(#order))        -- the lock screen shows how many, never what
+    -- Senders Settings can offer a rule for: waiting first, then the history.
+    for _, h in ipairs(history) do recent[#recent + 1] = h.app end
+    model.quiet_apps = Quiet.app_list(rules, recent, Quiet.MAX_APPS)
+    fact.rules_n = #rules.apps
+
+    -- the bell: muted apps are held quietly and not counted
+    fact.notif_count = counted
+    pcall(sys.call, "say", "lock", "fact notif_count " .. tostring(counted))        -- the lock screen shows how many, never what
 end
 
 local function remember(n)
@@ -201,7 +271,7 @@ local function arm_banner()
 end
 
 local function banner_show()
-    if fact.dnd == true or shown() or fact["Settings.banners"] == false then
+    if fact.quiet == true or shown() or fact["Settings.banners"] == false then
         return
     end
     if not banner_visible then
@@ -213,8 +283,78 @@ local function banner_show()
     arm_banner()
 end
 
+-- ── effective quiet state ─────────────────────────────────────────
+local function read_fact(name)
+    local ok, v = pcall(function() return fact[name] end)
+    if ok then return v end
+end
+
+local function paint_quiet_text(eff)
+    text.quiet_label = eff.label
+    text.quiet_status = eff.quiet and (eff.label .. (held > 0 and ("  ·  " .. held .. " held") or "")) or ""
+    text.quiet_short = eff.short
+end
+
+local last_eff = Quiet.effective({})
+local function refresh_quiet()
+    local eff = Quiet.effective({
+        manual = fact.dnd == true,
+        policies = {
+            focus = read_fact("Activities.quiet_focus") == true,
+            presentation = read_fact("Activities.quiet_presentation") == true,
+            game = read_fact("Activities.quiet_game") == true,
+        },
+        hours = Quiet.hours_from(read_fact("Settings.quiet_enabled"), read_fact("Settings.quiet_start"), read_fact("Settings.quiet_end")),
+        minute = Quiet.minute_of(os.date("*t")),
+    })
+    local was = fact.quiet == true
+    fact.quiet = eff.quiet
+    last_eff = eff
+    paint_quiet_text(eff)
+    if eff.quiet and not was then banner_hide() end
+end
+
+local function set_held(n)
+    held = n
+    fact.held_count = n
+    paint_quiet_text(last_eff)
+end
+
 -- asked by the other scenes (the owner sets its own facts)
-on("set_dnd", function(v) fact.dnd = (v == true or v == 1) end)
+on("set_dnd", function(v) fact.dnd = (v == true or v == 1); refresh_quiet() end)
+on("fact:dnd", refresh_quiet)
+on("set_banner_hover", function(v) fact.banner_hover = (tonumber(v) == 1) end)       -- the frame draws the cards and tells us
+for _, name in ipairs({ "Activities.quiet_focus", "Activities.quiet_presentation", "Activities.quiet_game" }) do
+    on("fact:" .. name, refresh_quiet)
+end
+-- Settings' quiet-hours facts may not exist yet: a missing one means "no window", and the 30 s tick re-reads them.
+for _, name in ipairs({ "Settings.quiet_enabled", "Settings.quiet_start", "Settings.quiet_end" }) do
+    pcall(on, "fact:" .. name, refresh_quiet)
+end
+
+-- ── per-app rules: the owner API Settings (or a card menu) calls ──
+local function apply_rule(app, mode, cycle)
+    if rules_locked then
+        text.rules_status = "Saved quiet rules could not be read, so they cannot be changed. The file has been kept."
+        return
+    end
+    local changed, err
+    if cycle then changed, err = Quiet.rule_cycle(rules, app) else changed, err = Quiet.rule_set(rules, app, mode) end
+    if err then text.rules_status = err; return end
+    text.rules_status = ""
+    if changed then queue_save(); paint() end
+end
+-- { app = "Mail", mode = "muted" | "no_banner" | "normal" | 2 | 1 | 0 }
+on("set_app_rule", function(v)
+    if type(v) == "table" then apply_rule(v.app, v.mode) else text.rules_status = "set_app_rule needs { app, mode }." end
+end)
+on("clear_app_rule", function(app) apply_rule(app, "normal") end)
+on("cycle_app_rule", function(app) apply_rule(app, nil, true) end)
+on("clear_app_rules", function()
+    if rules_locked then apply_rule("", "normal"); return end
+    if Quiet.rules_clear(rules) then text.rules_status = ""; queue_save(); paint() end
+end)
+
 on("set_banner_ms", function(v) fact.banner_ms = tonumber(v) or 5500 end)
 on("set_toast_screen", function(i) fact.toast_screen = tonumber(i) or 0 end)
 on("hide_banner", function() banner_hide() end)
@@ -231,7 +371,7 @@ on("fact:banner_on", function(v)
 end)
 
 -- opening the centre hides the banner; a click on the banner opens the centre
-opened(banner_hide)
+opened(function() banner_hide(); if held > 0 then set_held(0) end end)
 on("card_click", function()
     if shown() then
         return
@@ -268,13 +408,15 @@ sys.watch("notifications", function(list)
     if first_list then
         first_list = false               -- what was already waiting when we started is not news
     elseif #fresh > 0 then
-        local show_b = false
+        refresh_quiet()                  -- a window may have opened or closed since the last tick
+        local show_b, kept = false, 0
         for _, n in ipairs(fresh) do
             if n.app ~= "Timer" then
-                show_b = true
-                break
+                local t = Quiet.treatment(fact.quiet == true, Quiet.rule_mode(rule_map, n.app or ""))
+                if t.banner then show_b = true else kept = kept + 1 end
             end
         end
+        if kept > 0 and not shown() then set_held(held + kept) end
         if show_b then
             banner_show()
         end
@@ -320,7 +462,8 @@ on("clear_past", function()
 end)
 
 -- Ages move on; and the bell has to hear again if the top bar was restarted.
-every(30000, paint)
+every(30000, function() refresh_quiet(); paint() end)
+refresh_quiet()
 
 
 end

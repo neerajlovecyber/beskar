@@ -3,6 +3,9 @@
 --     XDG_RUNTIME_DIR=/run/user/$UID WAYLAND_DISPLAY=wayland-1 bin/pleamar --say lock "fact locked false"
 -- from a text console gets you back.
 
+require("style_options").follow_motion({ fact = fact, on = on })
+after(250, function() pcall(sys.call, "say", "settings", "emit theme_sync") end)
+
 local function say(scene, words)
     pcall(sys.call, "say", scene, words)
 end

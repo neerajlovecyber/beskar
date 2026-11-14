@@ -9,16 +9,20 @@
 //     resized (small / medium / large), removed, and new ones added from the toolbar. Nothing here is done
 //     with the desktop's own right-click (the desktop is click-through): use the Apple menu, Spotlight or Super+Shift+W
 //
+// Stacks (C4c): cards that share one footprint; the shown member is the only one in `ws` (see widget_stacks.luau)
 // Kinds: 1 clock · 2 date · 3 weather · 4 battery · 5 system · 6 media · 7 month calendar
 import "common/palette.plm"
 import "common/icons.plm"
+import "common/buttons.plm"
+import "common/ui.plm"
+import "common/calendar.plm"
 
 scene Widgets {
     include "common/theme_facts.plm"
     include "common/theme.plm"
     permissions {
-        services: "clock", "battery", "media", "media.*", "audio", "audio.*", "brightness", "brightness.*", "say:topbar", "say:settings", "say:panels", "say:infopanels", "say:dockpanels", "say:dialogs", "say:windows", "say:controlcenter", "say:notifications"
-        run: "sh", "curl", "cat", "niri msg"
+        services: "say:activities", "say:weather", "env", "say:personal", "clock", "battery", "media", "media.*", "audio", "audio.*", "brightness", "brightness.*", "say:topbar", "say:settings", "say:panels", "say:infopanels", "say:dockpanels", "say:dialogs", "say:windows", "say:controlcenter", "say:notifications"
+        run: "sh", "cat", "niri msg"
     }
 
     surface {
@@ -34,7 +38,11 @@ scene Widgets {
     service brightness as display { present: bool; level: number }
 
     // ── what the logic reports ──
-    model ws max 16 { id: number; scr: number; kind: number; sz: number; x: number; y: number }
+    // `sn` / `si` are the stack (C4c) the card is the shown face of: its member count and this face's page (0 / 0 = not
+    // stacked); the logic puts only the shown member of a stack in this model, so hidden members cost nothing here.
+    // `locked` is the card's position lock (1/0). tm / ap / dl / dd / sec are only filled for clock cards: its own time,
+    // am/pm mark, date line, "date line shown" and "seconds shown" (card options, see widget_options.luau).
+    model ws max 16 { id: number; scr: number; kind: number; sz: number; x: number; y: number; locked: number; sn: number; si: number; tm: text; ap: text; dl: text; dd: number; sec: number }
     fact editing = false
     fact widgets_on = true
     fact nscreens = 1
@@ -43,6 +51,12 @@ scene Widgets {
     fact drag_dx = 0
     fact drag_dy = 0
     fact snap_on = true
+    // Card options (C4b). `sel_id` is the card selected while arranging (0 = none); the widget bar reads the compact snapshot
+    // in `card_options` (also pushed to the bar's `wb_card_options`). `clock_seconds` is the shell's default for seconds
+    // on widget clocks (cards set to Automatic follow it); nothing pushes it yet, so the default is off.
+    fact sel_id = 0
+    fact clock_seconds = false
+    text card_options = "{}"
 
     text w_time = ""
     text w_ampm = ""
@@ -50,11 +64,14 @@ scene Widgets {
     text w_month = ""
     text w_day = ""
     text w_datelong = ""
-    text weather_temp = "--°"
+    text weather_temp = "--°C"
     text weather_cond = ""
     text weather_icon = "󰅟"
     text weather_city = ""
     text weather_range = ""
+    text weather_status = "Loading weather…"
+    fact weather_cached = false
+    event weather_changed ->
     fact day_pct = 0
     text day_left = ""
     fact cpu_pct = 0
@@ -68,8 +85,21 @@ scene Widgets {
     text cover_art = ""
     image cover = from cover_art, 171, 96
     text cal_title = ""
-    repeat k in 0..42 { text cd.$k = "" }
-    repeat k in 0..42 { fact cm.$k = 0 }      // 0 this month · 1 other month · 2 today
+    model cal_month max 1 { list cells max 42 { d: text; kind: number } }
+
+    text personal_note = "Loading notes…"
+    text personal_count = "Loading to-dos…"
+    model personal_tasks max 4 { id: number; title: text }
+    event personal_changed ->
+    event personal_toggle ->
+    fact tw_ready = false
+    fact tw_state = 0
+    fact tw_progress = 0
+    text tw_time = "25:00"
+    text tw_status = "Loading timer…"
+    event timer_changed ->
+    event tw_primary ->
+    event tw_cancel ->
 
     event w_drop ->
     event w_add ->
@@ -90,9 +120,38 @@ scene Widgets {
     event w_bri ->
     event w_reset ->
     event w_preset ->
+    event w_configure ->
+    event w_opt ->
+    event w_opt_next ->
+    event w_opt_reset ->
+    event w_stack ->
+    event w_page_next ->
+    event w_page_prev ->
+    event w_unstack ->
+    event w_eject ->
+    event setup_request ->      // portable setup bridge (widget_setup.luau): `emit setup_request <id>`
+
+    // Saved desktops (C4a): the owner is widgets.luau / widget_layouts.luau. Name in `wl_name` (consumed per call), ids as the
+    // event's number; the snapshot (compact JSON, bounded) and the last status are read with `--say widgets "get wl_snapshot"`.
+    text wl_name = ""
+    text wl_snapshot = "{}"
+    text wl_status = ""
+    text wl_detail = "{}"
+    fact wl_rev = 0
+    fact wl_count = 0
+    fact wl_ready = false
+    fact wl_error = false
+    event wl_save ->
+    event wl_update ->
+    event wl_load ->
+    event wl_rename ->
+    event wl_duplicate ->
+    event wl_delete ->
+    event wl_list ->
+    event wl_get ->
 
     // ── the glass, as in the frame ──
-    let bar_glass = if(skin == 2, 0%, if(skin == 1, 45%, 55%))
+    let bar_glass = if(skin == 2, 0%, if(skin == 1, 45%, 55%)) * glass_k
     let bar_tint  = if(skin == 2, 0%, if(dark_mode, 60%, 45%))
     let bar_rim   = if(skin == 2, 0%, 16%)
     let bar_smoke = if(dark_mode, 75%, 0%)
@@ -118,6 +177,7 @@ scene Widgets {
             show: editing
             zone box veil { from: 0, 0; size: screen.width, screen.height }
             on press right veil { }
+            on press veil { emit w_configure(0) }
         }
 
         //  the grid cells, while arranging with the grid on: cards snap into these. They are drawn in three clipped
@@ -127,15 +187,15 @@ scene Widgets {
             show: editing and snap_on
             opacity: dim
             group {
-                clip box { from: 0, 0; size: screen.width, screen.height - 132 }
+                clip box { from: 0, 0; size: screen.width, screen.height - 180 }
                 GridCells()
             }
             group {
-                clip box { from: 0, screen.height - 132; size: screen.width / 2 - 400, 132 }
+                clip box { from: 0, screen.height - 180; size: screen.width / 2 - 400, 180 }
                 GridCells()
             }
             group {
-                clip box { from: screen.width / 2 + 400, screen.height - 132; size: screen.width / 2 - 400, 132 }
+                clip box { from: screen.width / 2 + 400, screen.height - 180; size: screen.width / 2 - 400, 180 }
                 GridCells()
             }
         }
@@ -170,12 +230,12 @@ scene Widgets {
                 milk: bar_milk
                 rim: bar_rim
                 refraction: 50%
-                box { from: 0, 0; size: cw, ch; corner: 24 }
+                box { from: 0, 0; size: cw, ch; corner: radius_window }
             }
-            box { from: 0, 0; size: cw, ch; corner: 24; stroke: 1; color: card_stroke; opacity: 14% }
+            box { from: 0, 0; size: cw, ch; corner: radius_window; stroke: 1; color: card_stroke; opacity: 14% }
 
             //  ── faces ──
-            group { show: w.kind == 1; ClockFace(cw, ch, w.sz) }
+            group { show: w.kind == 1; ClockFace(cw, ch, w.sz, w) }
             group { show: w.kind == 2; DateFace(cw, ch, w.sz) }
             group { show: w.kind == 3; WeatherFace(cw, ch, w.sz) }
             group { show: w.kind == 4; BatteryFace(cw, ch, w.sz) }
@@ -184,58 +244,129 @@ scene Widgets {
             group { show: w.kind == 7; CalFace(cw, ch, w.sz) }
             group { show: w.kind == 8; DayFace(cw, ch, w.sz) }
             group { show: w.kind == 9; ControlsFace(cw, ch, w.sz) }
+            group { show: w.kind == 10; NoteFace(cw, ch) }
+            group { show: w.kind == 11; TasksFace(cw, ch) }
+            group { show: w.kind == 12; TimerFace(cw, ch) }
 
             //  ── what a click does when not arranging ──
-            zone box body_hit { from: 0, 0; size: cw, ch; corner: 24; cursor: pointer; label: "widget" }
-            on press body_hit while not editing { emit w_open(w.kind) }
+            zone box body_hit { from: 0, 0; size: cw, ch; corner: radius_window; cursor: pointer; label: "widget" }
+            on press body_hit while not editing { emit w_open(screen.index * 100 + w.kind) }
             on press right body_hit { }
-            on drag body_hit while editing { drag_id = w.id; drag_dx = drag.dx; drag_dy = drag.dy }
+            on press body_hit while editing { emit w_configure(w.id) }
+            on drag body_hit while editing and w.locked == 0 { drag_id = w.id; drag_dx = drag.dx; drag_dy = drag.dy }
             on release body_hit while editing { emit w_drop(w.id) }
+
+            // Stack pager (C4c): previous / next member of the stack this card is the face of. It straddles the bottom
+            // edge, works while arranging too, and exists only while the card is a stack face. ONE zone (left half =
+            // previous, right half = next): a stack costs two zones per card in the compiled scene, not four.
+            group {
+                show: w.sn > 1
+                move: cw / 2 - 44, ch - 10
+                box { from: 0, 0; size: 88, 20; corner: control_r_large; color: item_solid }
+                box { from: 0, 0; size: 88, 20; corner: control_r_large; stroke: 1; color: card_stroke; opacity: 14% }
+                text "󰅁" { family: "JetBrainsMono Nerd Font Mono"; at: 13, 10; anchor: center center; size: 14; color: ink_c }
+                text "󰅂" { family: "JetBrainsMono Nerd Font Mono"; at: 75, 10; anchor: center center; size: 14; color: ink_c }
+                text "{w.si} / {w.sn}" { at: 44, 10; anchor: center center; size: t_cap; weight: 600; color: ink_c }
+                zone box pg_hit { from: 0, 0; size: 88, 20; corner: control_r_large; cursor: pointer; label: "Page through the stack" }
+                on press pg_hit while local.x < 44 { emit w_page_prev(w.id) }
+                on press pg_hit while local.x >= 44 { emit w_page_next(w.id) }
+            }
+
+            // Personal controls sit above the card's general open target.
+            group {
+                show: w.kind == 11 and not editing
+                for t in personal_tasks {
+                    zone box personal_check { from: 12, 48 + t.index * 24; size: 28, 24; cursor: pointer; label: t.title }
+                    on press personal_check { emit personal_toggle(t.id) }
+                    on press right personal_check { }
+                }
+            }
+
+            // Timer controls are above the general open target, as are task checkboxes.
+            group {
+                show: w.kind == 12
+                group { move: inset_panel, 112; Pill(pick(tw_state, "Start", "Pause", "Resume", "Start again"), 154, tw_primary, 1, control_h, false, not editing and tw_ready, ui_accent_c: accent_c, ui_danger_c: danger_c, ui_ink_c: ink_c, ui_item_bg: item_bg, ui_on_accent: on_accent) }
+                group { move: 190, 112; Pill(if(tw_state == 3, "Dismiss", "Cancel"), 126, tw_cancel, 0, control_h, false, not editing and tw_ready and tw_state > 0, ui_accent_c: accent_c, ui_danger_c: danger_c, ui_ink_c: ink_c, ui_item_bg: item_bg, ui_on_accent: on_accent) }
+            }
 
             //  ── edit chrome ──
             group {
                 show: editing
-                box { from: 0, 0; size: cw, ch; corner: 24; stroke: 2; color: accent_c; opacity: 85% }
+                box { from: 0, 0; size: cw, ch; corner: radius_window; stroke: 2; color: accent_c; opacity: 85% }
+                //  selected: the card whose options the widget bar shows
+                box { from: -3, -3; size: cw + 6, ch + 6; corner: radius_window + 3; stroke: 3; color: accent_c; show: sel_id == w.id }
+                //  position lock
+                group {
+                    show: w.locked == 1
+                    ellipse { at: cw - 4, 4; radius: 12; color: warn_c }
+                    Sym("󰌾", cw - 4, 4, 13, on_accent)
+                }
                 //  remove
                 ellipse { at: 4, 4; radius: 12; color: danger_c }
                 Sym("󰅖", 4, 4, 13, on_accent)
-                zone box rm_hit { from: -10, -10; size: 28, 28; corner: 14; cursor: pointer }
+                zone box rm_hit { from: -10, -10; size: 28, 28; corner: radius_card; cursor: pointer }
                 on press rm_hit { emit w_remove(w.id) }
                 on press right rm_hit { }
+                //  unstack (stack faces only): breaks the whole stack apart
+                group {
+                    show: w.sn > 1 and w.locked == 0
+                    ellipse { at: 4, ch - 4; radius: 12; color: accent_c }
+                    Sym("󰌨", 4, ch - 4, 13, on_accent)
+                    zone box un_hit { from: -10, ch - 18; size: 28, 28; corner: radius_card; cursor: pointer; label: "Unstack" }
+                    on press un_hit { emit w_unstack(w.id) }
+                }
                 //  size
                 ellipse { at: cw - 4, ch - 4; radius: 13; color: accent_c }
                 Sym("󰩨", cw - 4, ch - 4, 14, on_accent)
-                zone box rs_hit { from: cw - 20, ch - 20; size: 32, 32; corner: 16; cursor: pointer }
+                zone box rs_hit { from: cw - 20, ch - 20; size: 32, 32; corner: radius_card; cursor: pointer }
                 on press rs_hit { emit w_resize(w.id) }
                 on press right rs_hit { }
             }
         }
     }
 
+    component NoteFace(cw: number, ch: number) {
+        Sym("󰎞", 24, 26, 20, accent_c)
+        text "Notes" { at: 44, 26; anchor: left center; size: ts_body; weight: 600; color: ink_c }
+        text personal_note { at: inset_panel, 50; width: cw - inset_panel * 2; lines: if(ch > 160, 12, 4); size: ts_body; color: ink_c }
+    }
+    component TasksFace(cw: number, ch: number) {
+        Sym("󰄱", 24, 26, 20, accent_c)
+        text "To-dos" { at: 44, 26; anchor: left center; size: ts_body; weight: 600; color: ink_c }
+        text personal_count { at: cw - 20, 26; anchor: right center; size: ts_cap; color: ink_sub }
+        for t in personal_tasks {
+            Sym("󰄱", 26, 60 + t.index * 24, 17, ink_sub)
+            text t.title { at: 44, 60 + t.index * 24; anchor: left center; width: cw - 64; lines: 1; size: ts_sub; color: ink_c }
+        }
+        text "Click to open your checklist" { at: inset_panel, 64; width: cw - inset_panel * 2; size: ts_sub; color: ink_sub; show: personal_tasks.count == 0 }
+    }
+
     // ── faces: each draws inside a cw × ch card ──
-    component ClockFace(cw: number, ch: number, sz: number) {
-        text w_time { at: cw / 2, ch / 2 - pick(sz, 6, 10, 34); anchor: center center; size: pick(sz, 31, 58, 76); weight: 300; color: ink_c }
-        text w_ampm { at: cw / 2, ch / 2 + pick(sz, 22, 30, 38); anchor: center center; size: pick(sz, 12, 15, 18); weight: 600; color: accent_c }
+    component ClockFace(cw: number, ch: number, sz: number, c: record) {
+        //  c.tm / c.ap / c.dl / c.dd / c.sec: THIS card's time, mark, date line and options (seconds shrink the digits to fit)
+        text c.tm { at: cw / 2, ch / 2 - pick(sz, 6, 10, 34); anchor: center center; size: pick(sz, 31, 58, 76) - c.sec * pick(sz, 5, 8, 14); weight: 300; color: ink_c }
+        text c.ap { at: cw / 2, ch / 2 + pick(sz, 22, 30, 38); anchor: center center; size: pick(sz, 12, 15, 18); weight: 600; color: accent_c }
         group {
-            show: sz > 0
-            text w_datelong { at: cw / 2, ch / 2 + pick(sz, 40, 52, 78); anchor: center center; size: pick(sz, 11, 14, 16); color: ink_sub }
+            show: c.dd == 1
+            text c.dl { at: cw / 2, ch / 2 + pick(sz, 40, 52, 78); anchor: center center; size: pick(sz, 11, 14, 16); color: ink_sub }
         }
     }
 
     component DateFace(cw: number, ch: number, sz: number) {
-        text w_month { at: 20, 22; anchor: left center; size: t_body; weight: 700; color: danger_c }
-        text w_day { at: 20, ch / 2 + 10; anchor: left center; size: 74; weight: 300; color: ink_c }
+        text w_month { at: inset_panel, 22; anchor: left center; size: ts_body; weight: 700; color: danger_c }
+        text w_day { at: inset_panel, ch / 2 + 10; anchor: left center; size: 74; weight: 300; color: ink_c }
         text w_dow { at: 22, ch - 20; anchor: left center; size: 14; weight: 500; color: ink_sub }
     }
 
     component WeatherFace(cw: number, ch: number, sz: number) {
         text weather_icon { family: "JetBrainsMono Nerd Font Mono"; at: 22, 40; anchor: left center; size: pick(sz, 30, 36, 44); color: warn_c }
         text weather_temp { at: 22, ch - 52; anchor: left center; size: pick(sz, 34, 38, 52); weight: 300; color: ink_c }
-        text weather_cond { at: 22, ch - 24; anchor: left center; size: t_body; weight: 500; color: ink_c }
+        text weather_cond { at: 22, ch - 24; width: cw - 44; lines: 1; anchor: left center; size: ts_body; weight: 500; color: ink_c }
+        text "Cached" { at: cw - 22, if(sz > 0, 76, 26); anchor: right center; size: ts_cap; color: ink_sub; show: weather_cached }
         group {
             show: sz > 0
-            text weather_city { at: cw - 22, 26; anchor: right center; size: t_sub; weight: 600; color: ink_sub }
-            text weather_range { at: cw - 22, ch - 24; anchor: right center; size: t_sub; color: ink_sub }
+            text weather_city { at: cw - 22, 26; anchor: right center; size: ts_sub; weight: 600; color: ink_sub }
+            text weather_range { at: cw - 22, 52; anchor: right center; size: ts_sub; color: ink_sub }
         }
     }
 
@@ -253,39 +384,39 @@ scene Widgets {
         group {
             show: not bat.present
             Sym("󰂄", cw / 2, ch / 2 - 10, 38, ink_sub)
-            text "AC power" { at: cw / 2, ch / 2 + 26; anchor: center center; size: t_body; color: ink_sub }
+            text "AC power" { at: cw / 2, ch / 2 + 26; anchor: center center; size: ts_body; color: ink_sub }
         }
         group {
             show: sz > 0 and bat.present
             text "Battery" { at: 160, cy - 14; anchor: left center; size: 16; weight: 600; color: ink_c }
-            text if(bat.charging, "Charging", "On battery") { at: 160, cy + 10; anchor: left center; size: t_body; color: ink_sub }
+            text if(bat.charging, "Charging", "On battery") { at: 160, cy + 10; anchor: left center; size: ts_body; color: ink_sub }
         }
     }
 
     component SystemFace(cw: number, ch: number, sz: number) {
-        text "󰍹  System" { family: "JetBrainsMono Nerd Font Mono"; at: 20, 24; anchor: left center; size: 13; weight: 600; color: ink_sub }
+        text "󰍹  System" { family: "JetBrainsMono Nerd Font Mono"; at: inset_panel, 24; anchor: left center; size: font_body; weight: 600; color: ink_sub }
         group {
             move: 0, 0
-            text "CPU" { at: 20, 54; anchor: left center; size: t_cap; weight: 600; color: ink_c }
+            text "CPU" { at: inset_panel, 54; anchor: left center; size: ts_cap; weight: 600; color: ink_c }
             text "{cpu_pct}%" { at: cw - 20, 54; anchor: right center; size: t_cap; weight: 600; color: accent_c }
-            box { from: 20, 66; size: cw - 40, 6; corner: 3; color: item_solid }
-            box { from: 20, 66; size: max((cw - 40) * cpu_pct / 100, 6), 6; corner: 3; color: accent_c }
-            text "Memory" { at: 20, 90; anchor: left center; size: t_cap; weight: 600; color: ink_c }
+            box { from: inset_panel, 66; size: cw - inset_panel * 2, 6; corner: 3; color: item_solid }
+            box { from: inset_panel, 66; size: max((cw - inset_panel * 2) * cpu_pct / 100, 6), 6; corner: 3; color: accent_c }
+            text "Memory" { at: inset_panel, 90; anchor: left center; size: ts_cap; weight: 600; color: ink_c }
             text "{mem_pct}%" { at: cw - 20, 90; anchor: right center; size: t_cap; weight: 600; color: ok_c }
-            box { from: 20, 102; size: cw - 40, 6; corner: 3; color: item_solid }
-            box { from: 20, 102; size: max((cw - 40) * mem_pct / 100, 6), 6; corner: 3; color: ok_c }
+            box { from: inset_panel, 102; size: cw - inset_panel * 2, 6; corner: 3; color: item_solid }
+            box { from: inset_panel, 102; size: max((cw - inset_panel * 2) * mem_pct / 100, 6), 6; corner: 3; color: ok_c }
         }
         group {
             show: sz > 0 or ch > 150
-            text "Disk" { at: 20, 126; anchor: left center; size: t_cap; weight: 600; color: ink_c }
+            text "Disk" { at: inset_panel, 126; anchor: left center; size: ts_cap; weight: 600; color: ink_c }
             text "{disk_pct}%" { at: cw - 20, 126; anchor: right center; size: t_cap; weight: 600; color: focus_c }
-            box { from: 20, 138; size: cw - 40, 6; corner: 3; color: item_solid }
-            box { from: 20, 138; size: max((cw - 40) * disk_pct / 100, 6), 6; corner: 3; color: focus_c }
+            box { from: inset_panel, 138; size: cw - inset_panel * 2, 6; corner: 3; color: item_solid }
+            box { from: inset_panel, 138; size: max((cw - inset_panel * 2) * disk_pct / 100, 6), 6; corner: 3; color: focus_c }
         }
         group {
             show: sz == 2
-            text "Uptime" { at: 20, 190; anchor: left center; size: t_sub; color: ink_sub }
-            text up_text { at: cw - 20, 190; anchor: right center; size: t_sub; weight: 600; color: ink_c }
+            text "Uptime" { at: inset_panel, 190; anchor: left center; size: ts_sub; color: ink_sub }
+            text up_text { at: cw - 20, 190; anchor: right center; size: ts_sub; weight: 600; color: ink_c }
         }
     }
 
@@ -294,61 +425,54 @@ scene Widgets {
             show: has_player
             clip box { from: 18, 18; size: 96, 96; corner: r_l }
             image cover { at: -20.5, 17; size: 173, 98 }
-            text track_title { at: 130, 44; anchor: left center; size: t_title; weight: 600; color: ink_c; width: cw - 150 }
-            text track_artist { at: 130, 66; anchor: left center; size: t_sub; color: ink_sub; width: cw - 150 }
-            Sym("󰒮", 150, 112, 20, ink_c)
-            text if(is_playing, "󰏤", "󰐊") { family: "JetBrainsMono Nerd Font Mono"; at: 200, 112; anchor: center center; size: 26; color: ink_c }
-            Sym("󰒭", 250, 112, 20, ink_c)
-            zone box pv_hit { from: 134, 96; size: 32, 32; corner: 16; cursor: pointer }
-            zone box pp_hit { from: 182, 94; size: 36, 36; corner: r_l; cursor: pointer }
-            zone box nx_hit { from: 234, 96; size: 32, 32; corner: 16; cursor: pointer }
-            on press pv_hit while not editing { emit w_prev }
-            on press pp_hit while not editing { emit w_play }
-            on press nx_hit while not editing { emit w_next }
-            on press right pv_hit { }
-            on press right pp_hit { }
-            on press right nx_hit { }
+            text track_title { at: 130, 44; anchor: left center; size: ts_title; weight: 600; color: ink_c; width: cw - 150 }
+            text track_artist { at: 130, 66; anchor: left center; size: ts_sub; color: ink_sub; width: cw - 150 }
+            group { move: 134, 96; IconButton("󰒮", "Previous track", w_prev, ink_c, item_solid, icon_button_large, icon_button_large, 20, control_r_large, 0, enabled: not editing) }
+            group { move: 182, 94; IconButton(if(is_playing, "󰏤", "󰐊"), "Play or pause", w_play, ink_c, item_solid, icon_button_large, icon_button_large, 26, control_r_large, 0, enabled: not editing) }
+            group { move: 234, 96; IconButton("󰒭", "Next track", w_next, ink_c, item_solid, icon_button_large, icon_button_large, 20, control_r_large, 0, enabled: not editing) }
         }
         group {
             show: not has_player
             Sym("󰎆", cw / 2, ch / 2 - 10, 38, ink_sub)
-            text "Nothing playing" { at: cw / 2, ch / 2 + 26; anchor: center center; size: t_body; color: ink_sub }
+            text "Nothing playing" { at: cw / 2, ch / 2 + 26; anchor: center center; size: ts_body; color: ink_sub }
         }
     }
 
     component DayFace(cw: number, ch: number, sz: number) {
-        text "󰔟  Today" { family: "JetBrainsMono Nerd Font Mono"; at: 20, 24; anchor: left center; size: 13; weight: 600; color: ink_sub }
-        text "{day_pct}%" { at: 20, ch / 2 + 2; anchor: left center; size: pick(sz, 40, 54, 54); weight: 300; color: ink_c }
-        text day_left { at: 20, ch - 46; anchor: left center; size: t_sub; color: ink_sub }
-        box { from: 20, ch - 26; size: cw - 40, 8; corner: 4; color: item_solid }
-        box { from: 20, ch - 26; size: max((cw - 40) * day_pct / 100, 8), 8; corner: 4; color: warn_c }
+        text "󰔟  Today" { family: "JetBrainsMono Nerd Font Mono"; at: inset_panel, 24; anchor: left center; size: font_body; weight: 600; color: ink_sub }
+        text "{day_pct}%" { at: inset_panel, ch / 2 + 2; anchor: left center; size: pick(sz, 40, 54, 54); weight: 300; color: ink_c }
+        text day_left { at: inset_panel, ch - 46; anchor: left center; size: ts_sub; color: ink_sub }
+        box { from: inset_panel, ch - 26; size: cw - inset_panel * 2, 8; corner: 4; color: item_solid }
+        box { from: inset_panel, ch - 26; size: max((cw - inset_panel * 2) * day_pct / 100, 8), 8; corner: 4; color: warn_c }
     }
 
     component ControlsFace(cw: number, ch: number, sz: number) {
-        Sym("󰕾", 28, 54, 17, ink_c)
-        box { from: 52, 49; size: cw - 76, 10; corner: 5; color: item_solid }
-        box { from: 52, 49; size: max((cw - 76) * if(sound.muted, 0, sound.volume), 10), 10; corner: 5; color: accent_c }
-        zone box vol_hit { from: 44, 36; size: cw - 60, 36; cursor: pointer }
-        on press vol_hit while not editing { emit w_vol(clamp(local.x / (cw - 76), 0, 1)) }
-        on drag vol_hit while not editing { emit w_vol(clamp(local.x / (cw - 76), 0, 1)) }
-        on press right vol_hit { }
-        Sym("󰃟", 28, 108, 17, ink_c)
-        box { from: 52, 103; size: cw - 76, 10; corner: 5; color: item_solid }
-        box { from: 52, 103; size: max((cw - 76) * display.level, 10), 10; corner: 5; color: warn_c }
-        zone box bri_hit { from: 44, 90; size: cw - 60, 36; cursor: pointer }
-        on press bri_hit while not editing { emit w_bri(clamp(local.x / (cw - 76), 0.05, 1)) }
-        on drag bri_hit while not editing { emit w_bri(clamp(local.x / (cw - 76), 0.05, 1)) }
-        on press right bri_hit { }
+        Sym("󰕾", control_h, 54, icon_size, ink_c)
+        group {
+            move: 52, 49
+            Slider(cw - 76, if(sound.muted, 0, sound.volume), w_vol, accent_c, 10, 0, ui_slider_bg: item_solid, enabled: not editing, ui_track_op: 1)
+        }
+        Sym("󰃟", control_h, 108, icon_size, ink_c)
+        group {
+            move: 52, 103
+            Slider(cw - 76, display.level, w_bri, warn_c, 10, 0.05, ui_slider_bg: item_solid, enabled: not editing, ui_track_op: 1)
+        }
+    }
+
+    component TimerFace(cw: number, ch: number) {
+        text "󰔛  Timer" { family: "JetBrainsMono Nerd Font Mono"; at: inset_panel, 24; anchor: left center; size: font_body; weight: 600; color: ink_sub }
+        // Large countdown is intentional widget feature geometry.
+        text tw_time { at: inset_panel, 66; anchor: left center; size: 36; weight: 300; color: ink_c }
+        text tw_status { at: cw - inset_panel, 64; anchor: right center; size: ts_cap; color: ink_sub; width: 112; align: right; lines: 2 }
+        box { from: inset_panel, 96; size: cw - inset_panel * 2, 4; corner: 2; color: item_solid }
+        box { from: inset_panel, 96; size: (cw - inset_panel * 2) * tw_progress, 4; corner: 2; color: accent_c }
     }
 
     component CalFace(cw: number, ch: number, sz: number) {
         text cal_title { at: 24, 30; anchor: left center; size: 17; weight: 700; color: ink_c }
-        repeat c in 0..7 {
-            text pick(c, "M", "T", "W", "T", "F", "S", "S") { at: 28 + c * 43.4, 66; anchor: center center; size: t_cap; weight: 600; color: ink_sub }
-        }
-        repeat k in 0..42 {
-            ellipse { at: 28 + mod(k, 7) * 43.4, 98 + (k - mod(k, 7)) / 7 * 38; radius: 15; color: accent_c; show: cm.$k == 2 }
-            text cd.$k { at: 28 + mod(k, 7) * 43.4, 98 + (k - mod(k, 7)) / 7 * 38; anchor: center center; size: t_body; weight: if(cm.$k == 2, 700, 500); color: if(cm.$k == 2, on_accent, ink_c); opacity: if(cm.$k == 1, 35%, 100%) }
+        group {
+            move: 6.3, 58
+            for month in cal_month { MonthGrid(month, 303.8, 38, ink_c, ink_sub, accent_c, on_accent, true, t_body, t_cap) }
         }
     }
 

@@ -1,5 +1,7 @@
--- The dock panels: Spotlight, clipboard, wallpaper strip, widget bar (dockpanels.plm).
-local module = require("panelclient")({ spotlight = 4, wallpapers = 5, clipboard = 6, widget_bar = 10 })
+-- The dock panels: Spotlight, clipboard, wallpaper strip, widget bar (common/dock_panels.plm).
+local Hooks = require("topbar_hooks")        -- the frame cannot emit to itself: its own events are called directly
+-- Loaded by topbar.luau with its panel client; the panels' content is drawn in the frame's own surface.
+return function(module)
 
 local function close_panel() emit("Panels.close") end
 
@@ -8,7 +10,7 @@ local function capture_start(mode, kind)
     run("sh", { "-c", '"$(cat "$HOME/.config/beskar/shell-dir")/shell/start.sh" capture-ensure' }, function()
         pcall(sys.call, "say", "capture", "fact mode " .. mode)
         pcall(sys.call, "say", "capture", "fact kind " .. kind)
-        emit("Topbar.open_panel", 11)
+        Hooks.emit("Topbar.open_panel", 11)
     end)
 end
 
@@ -18,12 +20,19 @@ module("spotlight", function(panel, opened, shown, closed)
     --   · a sum            `12*(3+4)`, `sqrt(2)`, `2^10`        → the result; Enter copies it
     --   · a web prefix     `g cats`, `yt lofi`, `gh pleamar`, `w niri`, `ddg x`   → search there (xdg-open)
     --   · `>` commands     `> lock`, `> shut down`, `> record`  → run it
+    --   · `/` files         `/ report`, `/ project/readme` → files and folders under your search roots
     --   · applications     by name
     --   · nothing found    → "Search the web for …"
     -- Every row is an entry { name, sub, kind, icon, run }; `model.hits` shows them, `launch(i)` runs the i-th.
 
-    local apps = {}
-    local entries = {}
+    local actions = require("actions")
+    local search = require("spotlight_search")
+    local slots = require("panels_data").slots
+    local apps, windows, entries = {}, {}, {}
+    local ok, saved = pcall(sys.ask, "files.read", "spotlight-history.json", "json")
+    local history = search.history(ok and saved or nil)
+    local window_epoch, window_pending = 0, false
+    local file_rows, file_search = {}, nil
 
     local MAX_ROWS = 24       -- results kept (the list shows 7 and scrolls)
     local SEEN_ROWS = 7
@@ -169,82 +178,69 @@ module("spotlight", function(panel, opened, shown, closed)
         pcall(sys.call, "say", scene, words)
     end
 
-    local function parse_timer_spec(s)
-        local raw = s:lower():gsub("%s+", "")
-        if raw == "" then return nil end
-        if raw:match("^%d+$") then
-            local m = tonumber(raw)
-            if m and m > 0 then
-                return m * 60, string.format("%d min", m)
-            end
-        end
-        local h, m = raw:match("^(%d+)h(%d+)m?$")
-        if h and m then
-            local nh, nm = tonumber(h), tonumber(m)
-            if nh and nm then
-                return nh * 3600 + nm * 60, string.format("%dh %dm", nh, nm)
-            end
-        end
-        local only_h = raw:match("^(%d+)h$")
-        if only_h then
-            local nh = tonumber(only_h)
-            if nh and nh > 0 then return nh * 3600, string.format("%d hour", nh) end
-        end
-        local only_m = raw:match("^(%d+)m$")
-        if only_m then
-            local nm = tonumber(only_m)
-            if nm and nm > 0 then return nm * 60, string.format("%d min", nm) end
-        end
-        local only_s = raw:match("^(%d+)s$")
-        if only_s then
-            local ns = tonumber(only_s)
-            if ns and ns > 0 then return ns, string.format("%d sec", ns) end
-        end
-        local hours = tonumber(raw:match("(%d+)h")) or 0
-        local mins = tonumber(raw:match("(%d+)m")) or 0
-        local secs = tonumber(raw:match("(%d+)s")) or 0
-        if hours > 0 or mins > 0 or secs > 0 then
-            local total = hours * 3600 + mins * 60 + secs
-            local parts = {}
-            if hours > 0 then parts[#parts + 1] = hours .. "h" end
-            if mins > 0 then parts[#parts + 1] = mins .. "m" end
-            if secs > 0 then parts[#parts + 1] = secs .. "s" end
-            return total, table.concat(parts, " ")
-        end
-        return nil
+    local parse_timer_spec = require("timer_state").parse
+
+    local function unavailable(message)
+        run("notify-send", { "Spotlight", message }, nil, { output = false })
     end
 
-    local COMMANDS = {
-        { "Timer 5 min", "timer 5", function() emit("Topbar.timer_start", 300) end },
-        { "Timer 10 min", "timer 10", function() emit("Topbar.timer_start", 600) end },
-        { "Timer 25 min", "timer 25", function() emit("Topbar.timer_start", 1500) end },
-        { "Lock Screen", "lock", function() say("lock", "fact locked true") end },
-        { "Sleep", "suspend", function() run("systemctl", { "suspend" }, nil, { output = false }) end },
-        { "Log Out…", "logout", function() emit("Dialogs.set_kind", 2); emit("Topbar.open_panel", 5) end },
-        { "Restart…", "reboot", function() emit("Dialogs.set_kind", 1); emit("Topbar.open_panel", 5) end },
-        { "Shut Down…", "poweroff", function() emit("Dialogs.set_kind", 0); emit("Topbar.open_panel", 5) end },
-        { "Take Screenshot", "screenshot", function() capture_start(2, 0) end },
-        { "Select Area Screenshot", "area", function() capture_start(0, 0) end },
-        { "Record Screen", "record", function() capture_start(0, 1) end },
-        { "Clipboard History", "clipboard", function() emit("Topbar.open_panel", 2) end },
-        { "Wallpapers", "wallpapers", function() emit("Topbar.open_panel", 3) end },
-        { "Edit Widgets", "widgets", function() say("widgets", "emit edit_toggle") end },
-        { "Settings", "settings", function() emit("Topbar.open_panel", 4) end },
-        { "Notifications", "notifications", function() emit("Topbar.open_notifications") end },
-        { "Control Center", "control", function() emit("Topbar.open_control_center") end },
-        { "Music", "music", function() emit("Topbar.open_music") end },
-        { "Window Overview", "overview", function() emit("Topbar.open_panel", 10) end },
-    }
+    local function dispatch(action)
+        if action.event then
+            Hooks.emit(action.event, action.value)
+        elseif action.route == "lock" then say("lock", "fact locked true")
+        elseif action.route == "sleep" then run("systemctl", { "suspend" }, nil, { output = false })
+        elseif action.route == "session" then
+            Hooks.emit("Topbar.set_kind", action.value)
+            Hooks.emit("Topbar.open_panel", slots.session)
+        elseif action.route == "capture" then capture_start(action.mode, action.kind)
+        elseif action.route == "widgets" then say("widgets", "emit edit_toggle") end
+    end
+
+    local function execute(entry)
+        if entry.run then entry.run()
+        elseif entry.path then
+            run("xdg-open", { entry.path }, function(_, code)
+                if code == 2 then unavailable("That file or folder no longer exists")
+                elseif code ~= 0 then unavailable("Could not open that file or folder") end
+            end)
+        elseif entry.app then
+            -- The app database can change between displaying a row and pressing Enter.
+            local app
+            for _, candidate in ipairs(apps) do
+                if search.app_key(candidate) == entry.app_key then app = candidate; break end
+            end
+            if not app then unavailable("That application is no longer installed"); return end
+            local launched, result = pcall(sys.call, "apps.launch", app.exec)
+            if not launched or result == false then unavailable("Could not launch " .. app.name); return end
+            search.record(history, entry.app_key)
+            local written, err = pcall(sys.call, "files.write", "spotlight-history.json", history)
+            if not written then log("Spotlight: could not save app history", err) end
+        elseif entry.window_id then
+            run("niri", { "msg", "action", "focus-window", "--id", tostring(entry.window_id) }, function(_, code)
+                if code ~= 0 then unavailable("That window is no longer available") end
+            end)
+        elseif entry.tab ~= nil then
+            if entry.setting_id then emit("Settings.reveal_setting", entry.setting_id)
+            else emit("Settings.set_tab", entry.tab) end
+            Hooks.emit("Topbar.open_panel", slots.settings)
+        elseif entry.action then dispatch(entry.action) end
+    end
 
     -- ── the list ─────────────────────────────────────────────────────
-    local function paint()
-        local rows = {}
+    local function paint(selected_key)
+        local rows, selected = {}, 0
         for i, e in ipairs(entries) do
             if i > MAX_ROWS then break end
-            rows[i] = { name = e.name, sub = e.sub or "", kind = e.kind, site = e.site or 0, glyph = e.kind ~= 0 and e.icon or "", icon = e.kind == 0 and e.icon or "" }
+            local has_icon = (e.kind == 0 or e.kind == 4) and (e.icon or "") ~= ""
+            local actionable = e.run ~= nil or e.app ~= nil or e.window_id ~= nil or e.tab ~= nil or e.action ~= nil or e.path ~= nil
+            rows[i] = { name = e.name, sub = e.sub or "", kind = e.kind, site = e.site or 0,
+                glyph = e.glyph or (e.kind ~= 0 and e.icon) or "󰀻", icon = has_icon and e.icon or "",
+                has_icon = has_icon, actionable = actionable }
+            if e.key and e.key == selected_key then selected = i - 1 end
         end
         model.hits = rows
-        fact.sp_sel = 0
+        if not selected_key or selected ~= tonumber(fact.sp_sel) then fact.sc_t = math.max(0, selected - 6) * 44 end
+        fact.sp_sel = selected
         panel.height(94 + math.min(math.max(#rows, 1), SEEN_ROWS) * 44)
     end
 
@@ -254,13 +250,14 @@ module("spotlight", function(panel, opened, shown, closed)
         local low = q:lower()
         entries = {}
 
-        -- `>` commands
-        if q:sub(1, 1) == ">" then
-            local want = low:sub(2):gsub("^%s+", "")
-            for _, c in ipairs(COMMANDS) do
-                if want == "" or c[1]:lower():find(want, 1, true) or c[2]:find(want, 1, true) then
-                    entries[#entries + 1] = { name = c[1], sub = "Command", kind = 3, icon = "󰆍", run = c[3] }
-                end
+        -- Explicit modes never fall back to a web search.
+        local mode = low:sub(1, 1)
+        if mode == "/" then entries = file_rows; return end
+        if mode == ">" or mode == "@" or mode == "?" then
+            entries = search.results(q, { apps = apps, windows = windows, settings = actions.settings_results, commands = actions.commands }, history, MAX_ROWS)
+            if #entries == 0 then
+                local label = mode == "@" and "windows" or (mode == "?" and "settings" or "commands")
+                entries[1] = { name = "No matching " .. label, sub = "Try another search", kind = 3, glyph = "󰍉" }
             end
             return
         end
@@ -276,7 +273,7 @@ module("spotlight", function(panel, opened, shown, closed)
                     kind = 3,
                     icon = "󰔛",
                     run = function()
-                        emit("Topbar.timer_start", sec)
+                        emit("Activities.start", sec)
                     end,
                 }
             end
@@ -308,29 +305,9 @@ module("spotlight", function(panel, opened, shown, closed)
             }
         end
 
-        -- applications
-        local n_apps = 0
-        for _, a in ipairs(apps) do
-            if #entries < MAX_ROWS and (low == "" or a.name:lower():find(low, 1, true)) then
-                entries[#entries + 1] = {
-                    name = a.name, kind = 0, icon = a.icon,
-                    run = function()
-                        log("Spotlight: launching", a.name, "→", a.exec)
-                        sys.call("apps.launch", a.exec)
-                    end,
-                }
-                n_apps = n_apps + 1
-            end
-        end
-
-        -- commands, if the text names one ("lock", "record"), without the `>`
-        if low ~= "" and #low >= 3 then
-            for _, c in ipairs(COMMANDS) do
-                if #entries < MAX_ROWS and (c[1]:lower():find(low, 1, true) or c[2]:find(low, 1, true)) then
-                    entries[#entries + 1] = { name = c[1], sub = "Command", kind = 3, icon = "󰆍", run = c[3] }
-                end
-            end
-        end
+        -- Apps, windows, Settings and commands share matching and stable ranking.
+        local results = search.results(q, { apps = apps, windows = windows, settings = actions.settings_results, commands = actions.commands }, history, MAX_ROWS - #entries)
+        for _, entry in ipairs(results) do entries[#entries + 1] = entry end
 
         -- nothing at all: the web
         if #entries == 0 and low ~= "" then
@@ -338,32 +315,65 @@ module("spotlight", function(panel, opened, shown, closed)
         end
     end
 
-    local function filter()
+    local function filter(keep_selection)
+        local selected = keep_selection and entries[(tonumber(fact.sp_sel) or 0) + 1]
         build()
-        paint()
+        paint(selected and selected.key)
     end
 
-    -- Watch the system apps database (.desktop files on Linux)
-    if not sys.watch("apps", function(list) apps = list or {}; filter() end) then
-        entries = { { name = "Loading applications...", kind = 0, icon = "", run = function() end } }
-        paint()
-    end
-
-    on("text:query", filter)
-
-    on("launch", function(i)
-        local e = entries[(tonumber(i) or 0) + 1]
-        close_panel()
-        if e and e.run then
-            after(150, e.run)
-        end
+    file_search = require("spotlight_files").new(function(rows)
+        file_rows = rows
+        filter(true)
     end)
 
-    -- Reset query when closed
+    local function refresh_windows()
+        if not shown() or window_pending then return end
+        local epoch = window_epoch
+        window_pending = true
+        run("niri", { "msg", "-j", "windows" }, function(out, code)
+            if epoch ~= window_epoch or not shown() then return end
+            window_pending = false
+            local decoded, list = pcall(json.decode, out or "")
+            windows = code == 0 and decoded and type(list) == "table" and list or {}
+            filter(true)
+        end)
+    end
+
+    -- Keep only app IDs/counts in history, never search queries or window titles.
+    if not sys.watch("apps", function(list) apps = list or {}; filter(true) end) then
+        apps = {}
+        filter()
+    end
+    on("text:query", function()
+        file_search.update(text.query or "", shown())
+        filter()
+    end)
+    opened(function()
+        window_epoch = window_epoch + 1
+        window_pending = false
+        file_search.update(text.query or "", true)
+        filter()
+        refresh_windows()
+    end)
+    every(2000, refresh_windows)
+
+    on("launch", function(i)
+        local entry = entries[(tonumber(i) or -1) + 1]
+        if not entry or not (entry.run or entry.app or entry.window_id or entry.tab ~= nil or entry.action or entry.path) then return end
+        close_panel()
+        after(150, function() execute(entry) end)
+    end)
+
     closed(function()
+        window_epoch = window_epoch + 1
+        window_pending = false
+        windows = {}
+        file_search.update("", false)
+        file_rows = {}
         text.query = ""
         filter()
     end)
+
 end)
 
 
@@ -602,7 +612,19 @@ module("wallpapers", function(panel, opened, shown, closed)
     -- The choice is remembered in ~/.config/beskar/wallpaper, which start.sh puts back at login.
 
     local PAGE = 5                  -- pictures on screen, in one row
-    panel.height(250)               -- the strip's height, for the frame's glass
+    panel.height(316)               -- thumbnails plus transition/favourite controls
+
+    local WS = require("wallpaper_store")
+    local favourites, favourite_status, favourites_writable = {}, {}, true
+    local applying = false
+    local ok_fav, raw_fav = pcall(sys.ask, "files.read", "wallpaper-favourites.json")
+    if not ok_fav then favourites_writable = false
+    elseif raw_fav then
+        local ok, saved = pcall(json.decode, raw_fav)
+        if ok and type(saved) == "table" and (saved.version == nil or saved.version == 1) then favourites = WS.fav_decode(saved)
+        else favourites_writable = false end
+    end
+    if not favourites_writable then text.wall_status = "Favourites file cannot be read; it has been preserved" end
 
     local all = {}              -- { path, name, builtin }, in the order shown by "All"
     local view = {}             -- what the current tab shows
@@ -658,7 +680,7 @@ module("wallpapers", function(panel, opened, shown, closed)
         for i = first, math.min(#view, first + PAGE - 1) do
             local w = view[i]
             thumb_of[w.path] = thumb_of[w.path] or (CACHE .. "/" .. hash(w.path) .. ".jpg")
-            make_thumb(w.path)
+            if w.available ~= false then make_thumb(w.path) end
             rows[#rows + 1] = {
                 name = w.name,
                 thumb = thumb_of[w.path],
@@ -666,8 +688,12 @@ module("wallpapers", function(panel, opened, shown, closed)
                 current = w.path == current,
                 builtin = w.builtin,
                 sel = (first + #rows) == cur + 1,
+                favourite = WS.fav_has(favourites, w.path),
+                available = w.available ~= false,
             }
         end
+        fact.wall_favourite = view[cur + 1] and WS.fav_has(favourites, view[cur + 1].path) or false
+        fact.wall_favourites_writable = favourites_writable
         model.walls = rows
         fact.wall_total = #view
         fact.wall_row = row
@@ -677,9 +703,11 @@ module("wallpapers", function(panel, opened, shown, closed)
 
     local function rebuild(tab)
         view = {}
-        for _, w in ipairs(all) do
-            if tab == 0 or (tab == 1 and not w.builtin) or (tab == 2 and w.builtin) then
-                view[#view + 1] = w
+        if tab == 3 then
+            for _, w in ipairs(WS.fav_rows(favourites, favourite_status)) do view[#view + 1] = w end
+        else
+            for _, w in ipairs(all) do
+                if tab == 0 or (tab == 1 and not w.builtin) or (tab == 2 and w.builtin) then view[#view + 1] = w end
             end
         end
         row = 0
@@ -806,8 +834,11 @@ module("wallpapers", function(panel, opened, shown, closed)
 
     -- ── buttons ──────────────────────────────────────────────────────
     on("wall_tab_set", function(n)
-        fact.wall_tab = tonumber(n) or 0
-        rebuild(fact.wall_tab)
+        local tab = tonumber(n)
+        if not tab or tab < 0 or tab > 3 or tab ~= math.floor(tab) then return end
+        fact.wall_tab = tab
+        if tab == 3 then WS.status(nil, favourites, function(status) favourite_status = status; if fact.wall_tab == 3 then rebuild(3) end end) end
+        rebuild(tab)
     end)
 
     on("wall_scroll", function(wheel)
@@ -820,19 +851,45 @@ module("wallpapers", function(panel, opened, shown, closed)
         end
     end)
 
-    local function apply(w)
-        if not w then
-            return
-        end
-        current = w.path
+    local function committed(result)
+        applying, fact.wall_busy = false, false
+        if not result.ok then text.wall_status = result.message or "Could not change wallpaper"; return end
+        current = result.path
+        text.wall_status = "Wallpaper applied"
         paint()
-        -- Remember it (start.sh and the lock screen read this file) and let the wallpaper scene reveal it.
-        run("sh", { "-c", 'mkdir -p "$HOME/.config/beskar" && printf "%s\\n" "$1" > "$HOME/.config/beskar/wallpaper"', "x", w.path }, nil, { output = false })
-        pcall(sys.call, "say", "wallpaper", "text wp_new " .. w.path)
-        if fact["Settings.accent_auto"] == true then
-            accent_from(w.path)
-        end
+        local sent = pcall(sys.call, "say", "wallpaper", "text wp_new " .. current)
+        if not sent then text.wall_status = "Choice saved; wallpaper process is unavailable" end
+        if fact["Settings.accent_auto"] == true then accent_from(current) end
     end
+    local function apply(w)
+        if not w or applying then return end
+        if #w.path > 3500 then text.wall_status = "Picture path is too long"; return end
+        applying, fact.wall_busy = true, true
+        text.wall_status = "Checking picture…"
+        WS.commit(nil, w.path, committed)
+    end
+    on("wall_restore", function()
+        if applying then return end
+        applying, fact.wall_busy = true, true
+        text.wall_status = "Checking previous picture…"
+        WS.restore(nil, committed)
+    end)
+    on("wall_favourite_toggle", function(index)
+        if not favourites_writable then text.wall_status = "Favourites file is protected; repair it before editing"; return end
+        local n = tonumber(index)
+        if not n or n < 0 then n = cur else n = row + n end
+        local picture = view[n + 1]
+        if not picture then return end
+        cur = n
+        local next_list, status = WS.fav_toggle(favourites, picture.path)
+        if status == "full" then text.wall_status = "Favourites is full (48 pictures)"; return end
+        if status == "invalid" then text.wall_status = "This picture cannot be saved as a favourite"; return end
+        local ok = pcall(sys.call, "files.write", "wallpaper-favourites.json", WS.fav_encode(next_list))
+        if not ok then text.wall_status = "Could not save favourites"; return end
+        favourites = next_list
+        text.wall_status = status == "added" and "Added to favourites" or "Removed from favourites"
+        if fact.wall_tab == 3 then rebuild(3) else paint() end
+    end)
 
     on("wall_pick", function(i)
         local idx = row + (tonumber(i) or 0)
@@ -877,7 +934,13 @@ module("wallpapers", function(panel, opened, shown, closed)
     end)
 
     -- Opening the picker looks again (a new picture in the folder shows up) and lands on the one in use.
-    opened(scan)
+    opened(function()
+        WS.status(nil, favourites, function(status)
+            favourite_status = status
+            if fact.wall_tab == 3 then rebuild(3) end
+        end)
+        scan()
+    end)
 
     scan()
 end)
@@ -885,11 +948,16 @@ end)
 
 module("widget_bar", function(panel, opened, shown, closed)
     -- The widget bar's logic: it only forwards its buttons to the widgets scene (which owns every decision) and keeps
-    -- edit mode and the bar in step (closing the bar by Esc ends edit mode).
-    panel.height(132)
+    -- edit mode and the bar in step (closing the bar by Esc ends edit mode). Its second page, Desktops (C4a), lists the
+    -- layouts Widgets keeps: widget_bar_layouts.luau reads Widgets' snapshot (`text wb_layouts`, pushed by `say`) and asks
+    -- Widgets to save / load / rename / duplicate / update / delete; nothing here writes the layouts file.
+    local PAGE_H = { [0] = 176, [1] = 272, [2] = 336 }     -- Card includes a bounded stack chooser; surface = max page + dock
+    -- Page 2 (Card options) is a local overlay on the layouts controller, which only knows pages 0 and 1: `layout_page`
+    -- is the page it reports and `fact.wb_page` shows 2 while the Card page is up.
+    panel.height(PAGE_H[0])
 
     local function widgets(words)
-        pcall(sys.call, "say", "widgets", words)
+        return pcall(sys.call, "say", "widgets", words)
     end
 
     on("wb_add", function(code) widgets("emit w_add " .. math.floor(tonumber(code) or 0)) end)
@@ -899,15 +967,145 @@ module("widget_bar", function(panel, opened, shown, closed)
     on("wb_grid", function() widgets("emit w_grid") end)
     on("wb_done", function() widgets("emit edit_done") end)
 
-    opened(function() widgets("emit w_bar_open") end)
-    closed(function() widgets("emit edit_done") end)
-    panel.keep()                 -- a click outside does not close it: you work on the desktop with it
-
-
     local DATA = require("widgets_data")
     local kinds, presets = {}, {}
     for _, k in ipairs(DATA.KINDS) do kinds[#kinds + 1] = { id = k.id, name = k.name, icon = k.icon } end
     for i, p in ipairs(DATA.PRESETS) do presets[#presets + 1] = { id = i, name = p.name } end
     model.kinds = kinds
     model.presets = presets
+
+    -- ── saved desktops ──
+    local shown_rows = ""
+    local ctl, opt
+    local layout_page, card_page = 0, false
+    local function apply_page()
+        local page = card_page and 2 or layout_page
+        fact.wb_page = page
+        panel.height(PAGE_H[page] or PAGE_H[0])
+    end
+    ctl = require("widget_bar_layouts").controller({
+        json = json,
+        say = widgets,
+        after = after,
+        clear_name = function() text.wb_name = "" end,
+        page_changed = function(page) layout_page = page; apply_page() end,
+        publish = function(v)
+            -- the rows are the only list: write them when they change, the scalars every time (they are cheap)
+            local sig = {}
+            for _, r in ipairs(v.rows) do sig[#sig + 1] = r.id .. "|" .. r.name .. "|" .. r.meta .. "|" .. r.tag .. "|" .. tostring(r.sel) end
+            local joined = table.concat(sig, "\n")
+            if joined ~= shown_rows then
+                shown_rows = joined
+                local rows = {}
+                for i, r in ipairs(v.rows) do rows[i] = { id = r.id, name = r.name, meta = r.meta, tag = r.tag, sel = r.sel } end
+                model.wb_rows = rows
+            end
+            layout_page = v.page
+            fact.wb_page = card_page and 2 or v.page
+            fact.wb_selected = v.sel_id
+            fact.wb_total = v.total
+            fact.wb_top = v.top
+            fact.wb_arm = v.arm
+            fact.wb_exists = v.exists
+            fact.wb_ready = v.ready
+            fact.wb_status_ok = v.status_ok
+            fact.wb_can_save = v.can_save
+            fact.wb_can_load = v.can_load
+            fact.wb_can_rename = v.can_rename
+            fact.wb_can_dup = v.can_duplicate
+            fact.wb_can_update = v.can_update
+            fact.wb_can_delete = v.can_delete
+            text.wb_hint = v.hint
+            text.wb_status = v.status
+            text.wb_range = v.range
+        end,
+    })
+    on("text:wb_layouts", function(body) ctl.snapshot(body) end)
+    on("text:wb_name", function(name) ctl.set_name(name) end)
+    -- ── card options (C4b) ──
+    local shown_opts = ""
+    opt = require("widget_bar_options").controller({
+        json = json,
+        say = widgets,
+        kind_name = function(id)
+            for _, k in ipairs(DATA.KINDS) do if k.id == id then return k.name end end
+            return "Widget " .. id
+        end,
+        page_changed = function(active) card_page = active; apply_page() end,
+        publish = function(v)
+            local sig = {}
+            for _, r in ipairs(v.rows) do sig[#sig + 1] = r.id .. "|" .. r.label .. "|" .. r.value .. "|" .. r.n .. "|" .. r.l1 .. "|" .. r.l2 .. "|" .. r.l3 .. "|" .. tostring(r.sel) end
+            local joined = table.concat(sig, "\n")
+            if joined ~= shown_opts then
+                shown_opts = joined
+                local rows = {}
+                for i, r in ipairs(v.rows) do rows[i] = { id = r.id, label = r.label, value = r.value, n = r.n, l1 = r.l1, l2 = r.l2, l3 = r.l3, sel = r.sel } end
+                model.wb_opts = rows
+            end
+            fact.wb_opt_has = v.has_card
+            fact.wb_opt_row = v.row
+            fact.wb_opt_count = v.count
+            fact.wb_opt_ok = v.status_ok
+            fact.wb_opt_can_reset = v.can_reset
+            text.wb_opt_title = v.title
+            text.wb_opt_sub = v.sub
+            text.wb_opt_empty = v.empty
+            text.wb_opt_hint = v.hint
+            text.wb_opt_status = v.status
+            fact.wb_stack_join = v.stack_can_join
+            fact.wb_stacked = v.stacked
+            fact.wb_stack_unstack = v.stack_can_unstack
+            text.wb_stack_label = v.stack_label
+            text.wb_stack_position = v.stack_position
+        end,
+    })
+    on("text:wb_card_options", function(body) opt.snapshot(body) end)
+    on("wb_opt", function(code) opt.choose(code) end)
+    on("wb_opt_pick", function(id) opt.pick(id) end)
+    on("wb_opt_move", function(d) opt.move(d) end)
+    on("wb_opt_change", function(d) opt.change(d) end)
+    on("wb_opt_cycle", function() opt.cycle() end)
+    on("wb_opt_reset", function() opt.reset() end)
+    on("wb_stack_target", function(d) opt.stack_target(d) end)
+    on("wb_stack_join", function() opt.stack_join() end)
+    on("wb_stack_prev", function() opt.stack_page(-1) end)
+    on("wb_stack_next", function() opt.stack_page(1) end)
+    on("wb_stack_unstack", function() opt.stack_unstack() end)
+
+    on("wb_tab", function(n)
+        n = math.floor(tonumber(n) or 0)
+        if n == 2 then opt.enter(); return end
+        opt.leave()                       -- back to Widgets / Desktops: the layouts controller never left its own page
+        ctl.tab(n)
+        apply_page()
+    end)
+    on("wb_pick", function(id) ctl.pick(id) end)
+    on("wb_move", function(d) ctl.move(d) end)
+    on("wb_scroll", function(wheel) ctl.scroll(wheel) end)
+    on("wb_save", function() ctl.save() end)
+    on("wb_load", function() ctl.load() end)
+    on("wb_rename", function() ctl.rename() end)
+    on("wb_dup", function() ctl.duplicate() end)
+    on("wb_update", function() ctl.update() end)
+    on("wb_delete", function() ctl.delete() end)
+    on("wb_submit", function() ctl.submit() end)
+    -- Esc cancels a pending confirmation first; otherwise it closes the bar like every dock panel
+    on("wb_escape", function()
+        if opt.active() or not ctl.escape() then close_panel() end
+    end)
+
+    opened(function()
+        ctl.opened()
+        opt.opened()
+        apply_page()
+        widgets("emit w_bar_open")
+    end)
+    closed(function()
+        ctl.closed()
+        opt.closed()
+        apply_page()
+        widgets("emit edit_done")
+    end)
+    panel.keep()                 -- a click outside does not close it: you work on the desktop with it
 end)
+end

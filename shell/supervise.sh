@@ -14,6 +14,16 @@ launch() {      # launch <index> <delay seconds>: the subshell sleeps, then BECO
     T0[$i]=$(( $(date +%s) + d ))
     (
         [ "$d" -gt 0 ] && sleep "$d"
+        # niri/AMD kept faded panel pixels with pleamar's own partial-damage buffers.
+        # Keep the workaround in startup, not just a one-session environment override.
+        if [ "${SCENE[$i]}" = "$DIR/shell/desktop.plm" ]; then
+            sh "$DIR/shell/migrate.sh" >/dev/null 2>&1 || true        # saved files of merged scenes (idempotent)
+            if [ "${BESKAR_DESKTOP_SWAPCHAIN:-1}" = 1 ]; then
+                export PLEAMAR_SWAPCHAIN=1
+            else
+                unset PLEAMAR_SWAPCHAIN
+            fi
+        fi
         exec "${PLEAMAR_BIN:-$DIR/bin/pleamar}" --no-hud --scene "${SCENE[$i]}" </dev/null >>"${LOGF[$i]}" 2>&1
     ) &
     BYPID[$!]=$i

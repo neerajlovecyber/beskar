@@ -4,6 +4,8 @@
 --   record   wf-recorder on the focused monitor; the top bar shows a red dot and the time while it runs
 --            (topbar.plm `rec_on`, `rec_time`), and a click there stops it
 
+require("style_options").follow_motion({ fact = fact, on = on })
+
 local rec_running = false
 local rec_file = nil
 local timer_id = nil
