@@ -1,7 +1,7 @@
 import "geometry.plm"
 
 // Shared UI controls: import this library, then pass the scene's theme colours as named ui_* arguments.
-// Explicit colour inputs also work inside PanelBody children on pleamar 0.8.0-exp.8; implicit scene colour
+// Explicit colour inputs also work inside a part's content component on pleamar 0.8; implicit scene colour
 // lookup there loses the imported scene boundary. Defaults remain for direct use in a standalone scene.
 //
 //   Plate(w, h, r)                 a glass plate (the shell's own: glass / acrylic / solid, light or dark) with its edge

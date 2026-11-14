@@ -92,3 +92,42 @@ Do not add surfaces, owners, service watchers or polling loops for styling.
 Keep the process split, small model capacities and desktop swapchain workaround.
 Compare compiled counts when changing shared drawing. Measure rather than
 claiming a frame-time improvement from source reuse.
+
+## Choosing a control (Settings and panels)
+
+A new setting picks its control from this table; it does not invent one.
+
+| The setting is… | Use |
+| :--- | :--- |
+| on or off | `ToggleRow` (title, one-line hint, `Switch` on the right) |
+| one of 2–5 named choices | a card with title + hint on the left and a row of `Seg`, right-aligned, ending at the card's right inset (see Appearance → Window glass, Panel text size, Glass strength) |
+| one of a few things easier seen than named | picture tiles (Appearance → Light / Dark / Auto) |
+| a colour from presets | a row of circles, right-aligned like a `Seg` row |
+| an amount | `SliderRow` |
+| something that happens once (Apply, Reset, Open…) | `Btn`; `ActionRow` when it is a whole row |
+| a list to pick one from | `Chip` rows, or `RowFrame` rows for longer lists |
+
+A row of buttons to choose from is a `Seg` row, never a row of independent `Btn`s. Every card in one page uses the same
+title / hint positions: title at `inset_card`, 18; hint at `inset_card`, 48 (72 px card) or the `ToggleRow` / `ActionRow` layout.
+
+## Panel anatomy
+
+- Every panel is drawn by the frame over its island's glass (AGENTS.md rules 13 and 70). Content is laid out at its FINAL place
+  and never moves while the glass grows; only the clip reveals it.
+- Top panels: header (`PanelHeader` or a title) on the first row, actions on the same line at the right.
+- Dock panels: header at the top, content in the middle, the search field at the BOTTOM nearest the dock (`PanelSearch`).
+- Panel sizes come from content where possible (`measure` for text, a named `row` / `column` and its `.width` / `.height`),
+  not from hand-added pixel sums. The logic's `panel.height(…)` should be derived from the same row counts the layout uses.
+
+## Lessons (each was a real bug)
+
+- **Centre text blocks with `measure`.** A title and a body of one or two lines are ONE block: measure the body, compute the
+  block's height, centre the block in its card (`NoticeCard`). Fixed `y` values left a two-line body touching the bottom.
+- **A control's background shape and its hit target are the same element.** The music play disc and its button were placed
+  separately and drifted 4 px apart; centre symmetric controls on one axis (`IconButton` at x = axis − w/2).
+- **No edge fade on a card.** `ScrollChrome`'s fade is in the glass colour; over a card fill it shows as a grey band. On a card
+  use `ScrollBar` alone.
+- **Glyphs on a FIXED-colour tile use `tile_fg`** (always white); `on_accent` is for text on the accent colour itself.
+- **A sidebar or inner pane inside a rounded window is rounded only on the window's own corners** (clip it), or its inner
+  corners curve in and show the window border as a line.
+- **One card height per role.** A list row is shorter than a banner of the same item (notification centre 80 px, banner 92 px).

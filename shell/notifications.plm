@@ -11,7 +11,6 @@ uses scene "activities.plm" as Activities   // explicit temporary quiet modes (f
 scene Notifications {
     include "common/theme_owner.plm"
     include "common/theme.plm"
-    include "common/morph_core.plm"
 
     //  `notifications` makes this the receiver of the desktop's notifications; `files` / `files.write` keep the history of
     //  dismissed ones across restarts; `say:topbar` / `say:lock` tell the bell and the lock screen how many are waiting.
