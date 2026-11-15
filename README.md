@@ -12,6 +12,47 @@ is named after Apple, and nothing is hard-coded to one machine.
 > **Status:** a personal project under active development, tested on one machine (CachyOS, niri,
 > two monitors). Expect rough edges. Issues and pull requests are welcome.
 
+<p align="center">
+  <img src="docs/screenshots/home.jpg" alt="Beskar: the glass frame, desktop widgets and dock over a wallpaper" width="100%">
+</p>
+
+---
+
+## Screenshots
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/control-center.jpg" alt="Control Center"><br><sub><b>Control Center</b>: Wi-Fi, Bluetooth, now playing, Do Not Disturb, dark mode, brightness and volume. It grows out of the right island.</sub></td>
+    <td width="50%"><img src="docs/screenshots/spotlight.jpg" alt="Spotlight"><br><sub><b>Spotlight</b>: apps, windows (<code>@</code>), settings (<code>?</code>), files (<code>/</code>), commands (<code>&gt;</code>), calculator and web search. It rises out of the dock.</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/wallpapers.jpg" alt="Wallpaper picker"><br><sub><b>Wallpapers</b>: a strip you move through with the keyboard (Up / Down change section, Left / Right move inside it), with filters, favourites and transitions.</sub></td>
+    <td><img src="docs/screenshots/today.jpg" alt="Today dashboard"><br><sub><b>Today</b>: weather, calendar, notes, to-dos, system activity and battery, from a click on the clock.</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/notifications.jpg" alt="Notification centre"><br><sub><b>Notifications</b>: the shell is the notification server; cards with actions, history and Do Not Disturb.</sub></td>
+    <td><img src="docs/screenshots/session.jpg" alt="Session menu"><br><sub><b>Session menu</b>: lock, sleep, log out, restart and shut down, all from the keyboard.</sub></td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><img src="docs/screenshots/settings.jpg" alt="Settings" width="50%"><br><sub><b>Settings</b>: appearance, displays, sound, notifications, menu bar and dock, shortcuts, night light and power.</sub></td>
+  </tr>
+</table>
+
+## Keyboard
+
+Every panel works from the keyboard, on every monitor. The same keys everywhere:
+
+| Key | Does |
+| :--- | :--- |
+| `Up` / `Down` | Move between items in a list, or between **sections** in a panel with several rows (the wallpaper strip: tabs, strip, transition, actions) |
+| `Left` / `Right` | Move along a row (the strip, a set of tabs, sliders in 5 % steps) |
+| `Tab` / `Shift+Tab` | Next / previous item |
+| `Enter` / `Space` | Activate the focused item |
+| `Home` / `End`, `PgUp` / `PgDn` | First / last, a page at a time, in lists that scroll |
+| `Esc` | Go back a level, then close |
+
+One white ring always shows where the focus is.
+
 ---
 
 ## What's in it
@@ -72,7 +113,7 @@ Use one to eight existing folders, as absolute paths or `~/` paths. Each selecte
 ## Requirements
 
 - **niri** (workspaces, windows and outputs are read with `niri msg`)
-- **[pleamar](https://github.com/k4ditano/pleamar)**, **0.8.0-exp.16**, built from source: needs a Rust toolchain. `./beskar install`
+- **[pleamar](https://github.com/k4ditano/pleamar)**, **0.8.0-exp.21**, built from source: needs a Rust toolchain. `./beskar install`
   (or the first start) fetches the pinned tag and builds it into `bin/exp/`; `./beskar update` keeps that pin.
 - **matugen** (colours from the wallpaper), **ImageMagick** (`magick`), **fd**, **GNU timeout** (coreutils), **curl**
 - **grim**, **slurp** and **wf-recorder** (screenshots and recording), **wl-clipboard** and **cliphist** (clipboard)
