@@ -13,10 +13,11 @@ part NotificationsView {
         prop hot = 0 ~quick
         let close_x = notice_w - notice_pad - control_h_compact / 2
         measure nb                             // the body's measured height: title + body are centred as ONE block, whatever its lines
+        let ah = if(n.na > 0 and not flat, 36, 0)  // the row of the notification's own buttons, under the text
         let block_h = 22 + nb.height
-        let title_y = (h - block_h) / 2 + 9
+        let title_y = (h - ah - block_h) / 2 + 9
         let close_y = title_y - 2
-        let icon_y = (h - notice_icon) / 2
+        let icon_y = (h - ah - notice_icon) / 2
         group {
             show: not flat
             CardBg(notice_w, h, radius_card, true, ui_card_fill: card_fill, ui_card_stroke: card_stroke)
@@ -49,6 +50,33 @@ part NotificationsView {
         zone box x_hit { at: close_x, close_y; size: control_h_compact, control_h_compact; corner: control_h_compact / 2; cursor: pointer; active: hot > 0.5 and stack < 0 }
         zone box stack_hit { from: 0, 0; size: notice_w, h; corner: radius_card; cursor: pointer; active: stack >= 0 }
         zone box stack_x { at: close_x, close_y; size: control_h_compact, control_h_compact; corner: control_h_compact / 2; cursor: pointer; active: hot > 0.5 and stack >= 0 }
+        //  The notification's own buttons (declared AFTER the card's zones so they are on top of them) (Reply, Mark as read…): pressing one tells the application and answers the notification.
+        let ax = notice_pad + notice_icon + notice_gap
+        let aw = (notice_w - notice_pad - ax - space_8) / 2
+        group {
+            show: n.na > 0 and not flat
+            move: ax, h - ah
+            prop h1 = 0 ~quick
+            prop h2 = 0 ~quick
+            box { from: 0, 0; size: aw, control_h; corner: control_r; color: item_solid; opacity: 0.85 + h1 * 0.15 }
+            text n.a1 { at: aw / 2, control_h / 2; anchor: center center; size: font_secondary; weight: 600; color: ink_c; width: aw - space_12; lines: 1; align: center }
+            zone box act1_hit { from: 0, 0; size: aw, control_h; corner: control_r; cursor: pointer; label: n.a1 }
+            on enter act1_hit { h1: 1 }
+            on leave act1_hit { h1: 0 }
+            on press act1_hit { emit Notifications.invoke_action(n.id * 10 + 1) }
+            on press right act1_hit { }
+            group {
+                show: n.na > 1
+                box { from: aw + space_8, 0; size: aw, control_h; corner: control_r; color: item_solid; opacity: 0.85 + h2 * 0.15 }
+                text n.a2 { at: aw + space_8 + aw / 2, control_h / 2; anchor: center center; size: font_secondary; weight: 600; color: ink_c; width: aw - space_12; lines: 1; align: center }
+                zone box act2_hit { from: aw + space_8, 0; size: aw, control_h; corner: control_r; cursor: pointer; label: n.a2 }
+                on enter act2_hit { h2: 1 }
+                on leave act2_hit { h2: 0 }
+                on press act2_hit { emit Notifications.invoke_action(n.id * 10 + 2) }
+                on press right act2_hit { }
+            }
+        }
+
         on enter card_hit { hot: 1; emit Notifications.set_banner_hover(1) }
         on leave card_hit { hot: 0; emit Notifications.set_banner_hover(0) }
         on enter stack_hit { hot: 1 }
@@ -75,7 +103,7 @@ part NotificationsView {
         }
         group {
             show: r.kind < 2
-            NoticeCard(r, false, if(r.kind == 1, r.key, -1), 80)
+            NoticeCard(r, false, if(r.kind == 1, r.key, -1), if(r.kind == 0, r.h - 8, 80))
         }
         group {
             show: r.kind == 2

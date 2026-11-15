@@ -20,12 +20,12 @@ scene Notifications {
 
     //  Both are painted by notifications.luau. `icon` is the application's own icon (a name or a path).
     //  `notices` are the ones waiting; `past` the ones already dealt with, newest first.
-    model notices max 6 { id: number; app: text; title: text; body: text; icon: image 40, 40; has_icon: bool; age: text }
+    model notices max 6 { id: number; app: text; title: text; body: text; icon: image 40, 40; has_icon: bool; age: text ; na: number = 0; a1: text = ""; a2: text = "" }
     //  `rows` is what the centre lists: notifications grouped by app. kind 0 a card · 1 a stack (the newest of an app
     //  with several, `extra` more behind it) · 2 the header of an app that is open. `key` names the group, `h` is the row's height.
-    model rows max 16 { kind: number; key: number; id: number; app: text; title: text; body: text; icon: image 40, 40; has_icon: bool; age: text; h: number; y: number }
+    model rows max 16 { kind: number; key: number; id: number; app: text; title: text; body: text; icon: image 40, 40; has_icon: bool; age: text; h: number; y: number ; na: number = 0; a1: text = ""; a2: text = "" }
     //  The newest notification whose app may show a banner (a per-app rule can keep one out): the banner card draws this.
-    model toast max 1 { id: number; app: text; title: text; body: text; icon: image 40, 40; has_icon: bool; age: text }
+    model toast max 1 { id: number; app: text; title: text; body: text; icon: image 40, 40; has_icon: bool; age: text ; na: number = 0; a1: text = ""; a2: text = "" }
     //  For Settings: the apps with a quiet rule (mode 1 no banner · 2 muted; `rule` true) then recent senders without one (mode 0).
     model quiet_apps max 32 { app: text; mode: number; rule: bool }
     model past max 5 { title: text; body: text; icon: image 28, 28; age: text }
@@ -66,6 +66,7 @@ scene Notifications {
     event card_click ->
     event clear_past ->
     event dismiss_notice ->
+    event invoke_action ->      // id * 10 + n (1 or 2): press that button of the notification (the app finds out)
     event group_toggle ->       // a stack opens, an open group closes: the group's key
     event dismiss_group ->      // × on a stack: all of that app's notifications
     event set_banner_hover ->   // 1 / 0: the pointer is on a card the frame draws (the banner stays while it is)

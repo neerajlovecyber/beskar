@@ -113,10 +113,25 @@ on("list_scrolled", function(offset)
     paint_window()
 end)
 
+-- The buttons a notification offers (not its "default" action: a click on the card is that), at most two.
+local ROW_ACTIONS = 36
+local function buttons_of(n)
+    local out = {}
+    for _, a in ipairs(type(n.actions) == "table" and n.actions or {}) do
+        if type(a) == "table" and a.key ~= "default" and type(a.label) == "string" and a.label ~= "" and #out < 2 then
+            out[#out + 1] = a
+        end
+    end
+    return out
+end
+
 local function row_of(n, kind, key, h, age)
+    local b = kind == 0 and buttons_of(n) or {}
     return {
         kind = kind, key = key, id = n.id, app = n.app or "", title = n.title or "", body = flat(n.body),
-        icon = n.icon or "", has_icon = (n.icon or "") ~= "", age = age or age_of(n.time), h = h,
+        icon = n.icon or "", has_icon = (n.icon or "") ~= "", age = age or age_of(n.time),
+        h = h + (#b > 0 and ROW_ACTIONS or 0),
+        na = #b, a1 = b[1] and b[1].label or "", a2 = b[2] and b[2].label or "",
     }
 end
 
@@ -430,6 +445,16 @@ if not ok then
 end
 
 -- ── buttons ──────────────────────────────────────────────────────
+on("invoke_action", function(v)
+    v = tonumber(v) or 0
+    local id, index = v // 10, v % 10
+    local n = live[id]
+    local a = n and buttons_of(n)[index]
+    if not a then return end
+    pcall(sys.call, "notifications.invoke", id, a.key)
+    pcall(sys.call, "notifications.dismiss", id)          -- answered: it leaves the centre like a dismissed one
+end)
+
 on("dismiss_notice", function(id)
     if id then
         pcall(sys.call, "notifications.dismiss", id)

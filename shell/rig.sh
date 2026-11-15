@@ -40,6 +40,7 @@ export HOME='$R/home'
 export PATH='$R/fakebin:$PATH'
 export PLEAMAR_SWAPCHAIN=1 PLEAMAR_NO_LENS=1 BESKAR_RIG=1
 export BESKAR_DESKTOP_LOG='$R/desktop.log'
+export DBUS_SESSION_BUS_ADDRESS='$DBUS_SESSION_BUS_ADDRESS'      # the rig's own bus: notify-send / gdbus here reach the rig, not you
 EOF
     . "$(envfile)"
     "$BIN" --no-hud --scene "$DIR/shell/wallpaper.plm" >"$R/wallpaper.log" 2>&1 &

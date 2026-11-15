@@ -1448,7 +1448,9 @@ cam=0
 fuser /dev/video* >/dev/null 2>&1 && cam=1
 mic=0
 pactl list short source-outputs 2>/dev/null | grep -q . && mic=1
-echo "$cam $mic"
+scr=0
+niri msg -j casts 2>/dev/null | grep -q '"' && scr=1
+echo "$cam $mic $scr"
 ]]
 
 local last_cam, last_mic = nil, nil
@@ -1460,12 +1462,19 @@ local function show_privacy_activity(is_cam)
     card_open(14, 3000, { glyph = is_cam and "󰄀" or "󰍬", title = is_cam and "Camera in use" or "Microphone in use", sub = "An app is using it right now", tone = is_cam and 1 or 2 })
 end
 
+local last_scr = nil
 local function poll_privacy()
     run("sh", { "-c", PRIVACY }, function(out)
-        local cam, mic = (out or ""):match("(%d) (%d)")
+        local cam, mic, scr = (out or ""):match("(%d) (%d) ?(%d?)")
         if cam then
             local is_cam = cam == "1"
             local is_mic = mic == "1"
+            local is_scr = scr == "1"          -- niri is casting a screen or a window (a call, a recording through the portal)
+            if fact.priv_scr ~= is_scr then fact.priv_scr = is_scr end
+            if last_scr ~= nil and (not last_scr) and is_scr and not (owner.cp and (PRIORITIES[owner.cp] or 0) > 20) then
+                card_open(14, 3000, { glyph = "󰹑", title = "Screen is being shared", sub = "An app is casting your screen", tone = 3 })
+            end
+            last_scr = is_scr
             if fact.priv_cam ~= is_cam then
                 fact.priv_cam = is_cam
             end
