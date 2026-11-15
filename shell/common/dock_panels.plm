@@ -224,8 +224,8 @@ part DockPanels {
                 image w.thumb { at: 0, 0; size: 176, 99; show: w.ready }
             }
             box { from: 0, 0; size: 176, 99; corner: r_m; stroke: 3; color: accent_c; opacity: if(w.current, 100%, 0%) }
-            box { from: 0, 0; size: 176, 99; corner: r_m; stroke: 1.2; color: ink_c; opacity: max(lift * 35%, if(w.sel, 95%, 0%)) * if(w.current, 0, 1) }
-            box { from: -3, -3; size: 182, 105; corner: r_m + 3; stroke: focus_stroke; color: ink_c; opacity: if(w.sel, 85%, 0%) }
+            box { from: 0, 0; size: 176, 99; corner: r_m; stroke: 1.2; color: ink_c; opacity: max(lift * 35%, if(w.sel and wall_sec == 1, 95%, 0%)) * if(w.current, 0, 1) }
+            box { from: -3, -3; size: 182, 105; corner: r_m + 3; stroke: focus_stroke; color: ring_c; opacity: if(w.sel and wall_sec == 1, 100%, 0%) }
             //  a small tick on the one in use
             group {
                 show: w.current
@@ -557,7 +557,7 @@ part DockPanels {
         box {
             from: if(wall_sec == 0, pick(wall_item, 608, 676, 750, 842), if(wall_sec == 2, pick(wall_item, 110, 188, 266), pick(wall_item, 474, 670))), if(wall_sec == 0, 16, 210) - 2
             size: if(wall_sec == 0, pick(wall_item, 64, 70, 88, 110), if(wall_sec == 2, 76, pick(wall_item, 188, 172))), control_h + 4
-            corner: control_r; stroke: focus_stroke; color: ink_c; opacity: if(wall_sec == 1, 0%, 85%)
+            corner: control_r; stroke: focus_stroke; color: ring_c; opacity: if(wall_sec == 1, 0%, 100%)
         }
         text wall_status { at: 28, 258; size: font_secondary; color: ink_sub; width: 924; lines: 1 }
         KeyHint(490, 290, "↑ ↓ Section · ← → Move · Enter Apply · F Favourite · Ctrl+Z Previous · Esc Close", ui_ink_sub: ink_sub)
@@ -585,7 +585,7 @@ part DockPanels {
                 box {
                     from: if(wb_cur < kinds.count, 22 + mod(wb_cur, 6) * 126, 90 + (wb_cur - kinds.count) * 106), if(wb_cur < kinds.count, 50 + floor(wb_cur / 6) * 38, 126)
                     size: if(wb_cur < kinds.count, 120, 102), control_h + 4
-                    corner: control_r_large; stroke: focus_stroke; color: ink_c; opacity: if(wb_cur >= 0, 85%, 0%)
+                    corner: control_r_large; stroke: focus_stroke; color: ring_c; opacity: if(wb_cur >= 0, 100%, 0%)
                 }
                 text "Presets" { at: 24, 142; anchor: left center; size: ts_sub; weight: 600; color: ink_sub }
                 for pr in presets { group { move: 92 + (pr.id - 1) * 106, 128; Chip(pr.name, false, wb_preset, pr.id, 98, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill) } }

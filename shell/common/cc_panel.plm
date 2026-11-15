@@ -556,7 +556,7 @@ part ControlCenterPanel {
         group {
             show: cc_focus >= 0 and not asking
             move: ring_x, ring_y
-            box { from: -3, -3; size: ring_w + 6, ring_h + 6; corner: ring_r + 3; stroke: 2; color: focus_c }
+            box { from: -3, -3; size: ring_w + 6, ring_h + 6; corner: ring_r + 3; stroke: focus_stroke; color: ring_c }
         }
 
         // Sliders & Media Actions, navigation and theme: the rules name zones drawn above, so they live in the component

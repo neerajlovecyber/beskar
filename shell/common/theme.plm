@@ -25,6 +25,7 @@ part Theme {
     // ── text ─────────────────────────────────────────────────────
     let ink_c   = if(dark_mode, #f5f7f5, #1d1d1f)
     let ink_sub = if(dark_mode, #9a9ea7, #6e6e73)
+    let ring_c  = ink_c                                // the keyboard focus ring: ONE colour and width (focus_stroke) in every panel
 
     // ── glass panels ─────────────────────────────────────────────
     let surf_c    = rgb(pal_sr, pal_sg, pal_sb)       // the wallpaper-tinted surface (only meaningful when pal_on)

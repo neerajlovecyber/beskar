@@ -112,7 +112,7 @@ part InfoPanels {
             Sym("󰍎", 10, 22, 15, accent_c)
             text wx_city { at: 26, 22; anchor: left center; size: ts_title; weight: 700; color: ink_c; width: 250; lines: 1 }
             group { move: 300, 9; Pill("Change", 88, loc_change, 0, control_h_compact, false, ui_accent_c: accent_c, ui_danger_c: danger_c, ui_ink_c: ink_c, ui_item_bg: item_bg, ui_on_accent: on_accent) }
-            box { from: 298, 7; size: 92, control_h_compact + 4; corner: control_r_large; stroke: 2; color: focus_c; show: wx_focus == 0 }
+            box { from: 298, 7; size: 92, control_h_compact + 4; corner: control_r_large; stroke: focus_stroke; color: ring_c; show: wx_focus == 0 }
             text w_cond { at: 4, 52; anchor: left center; size: ts_sub; color: ink_sub; width: 380; lines: 1 }
 
             //  now
@@ -184,7 +184,7 @@ part InfoPanels {
             text w_rain { at: 4, 622; anchor: left center; size: ts_sub; color: ink_c }
             text w_status { at: 4, 644; width: 288; lines: 2; size: ts_cap; color: ink_sub }
             group { move: 300, 640; Pill("Refresh", 88, weather_reload, 0, control_h, false, not wx_loading, ui_accent_c: accent_c, ui_danger_c: danger_c, ui_ink_c: ink_c, ui_item_bg: item_bg, ui_on_accent: on_accent) }
-            box { from: 298, 638; size: 92, control_h + 4; corner: control_r_large; stroke: 2; color: focus_c; show: wx_focus == 1 }
+            box { from: 298, 638; size: 92, control_h + 4; corner: control_r_large; stroke: focus_stroke; color: ring_c; show: wx_focus == 1 }
 
             //  nothing yet
             group { show: not wx_loaded; EmptyState(194, 300, "󰅟", "No forecast yet", w_status, ui_ink_sub: ink_sub) }
@@ -196,11 +196,11 @@ part InfoPanels {
 
             text "Choose a location" { at: 4, 22; anchor: left center; size: ts_title; weight: 700; color: ink_c }
             group { move: 300, 9; Pill("Back", 88, loc_back, 0, control_h_compact, false, ui_accent_c: accent_c, ui_danger_c: danger_c, ui_ink_c: ink_c, ui_item_bg: item_bg, ui_on_accent: on_accent) }
-            box { from: 298, 7; size: 92, control_h_compact + 4; corner: control_r_large; stroke: 2; color: focus_c; show: wx_sel == -2 }
+            box { from: 298, 7; size: 92, control_h_compact + 4; corner: control_r_large; stroke: focus_stroke; color: ring_c; show: wx_sel == -2 }
 
             //  your IP
             group { move: 0, 46; Pill("󰩟  Use my location (from my IP address)", 388, loc_ip, 1, control_h_large, false, ui_accent_c: accent_c, ui_danger_c: danger_c, ui_ink_c: ink_c, ui_item_bg: item_bg, ui_on_accent: on_accent) }
-            box { from: -2, 44; size: 392, control_h_large + 4; corner: control_r_large + 2; stroke: 2; color: focus_c; show: wx_sel == -1 }
+            box { from: -2, 44; size: 392, control_h_large + 4; corner: control_r_large + 2; stroke: focus_stroke; color: ring_c; show: wx_sel == -1 }
 
             //  search
             group {
@@ -220,7 +220,7 @@ part InfoPanels {
                         prop on = 0 ~quick
                         RowFrame(388, 44, on, ui_accent_c: accent_c)
                         box { from: 0, 0; size: 388, 44; corner: r_m; color: accent_c; opacity: 10%; show: wx_sel == p.index }
-                        box { from: 1, 1; size: 386, 42; corner: r_m; stroke: 2; color: focus_c; show: wx_sel == p.index }
+                        box { from: 1, 1; size: 386, 42; corner: r_m; stroke: focus_stroke; color: ring_c; show: wx_sel == p.index }
                         text p.name { at: 16, 15; anchor: left center; size: ts_body; weight: 600; color: ink_c; width: 350; lines: 1 }
                         text p.sub { at: 16, 32; anchor: left center; size: ts_cap; color: ink_sub; width: 350; lines: 1 }
                         zone box wx_pick_hit { from: 0, 0; size: 388, 44; corner: r_m; cursor: pointer }
@@ -308,7 +308,7 @@ part InfoPanels {
             on enter dw_hit { d_hot: 1 }
             on leave dw_hit { d_hot: 0 }
             on press dw_hit { last_screen = screen.index; emit open_weather }
-            box { from: 1, 1; size: 318, 90; corner: r_l; stroke: 2; color: focus_c; show: d_focus == 0 }
+            box { from: 1, 1; size: 318, 90; corner: r_l; stroke: focus_stroke; color: ring_c; show: d_focus == 0 }
             on press right dw_hit { }
         }
 
@@ -323,7 +323,7 @@ part InfoPanels {
             on press right d_title_hit { }
             group { move: 248, 8; IconButton("󰅁", "Previous month", cal_prev, ink_c, item_bg, fill_op: item_bg_op) }
             group { move: 282, 8; IconButton("󰅂", "Next month", cal_next, ink_c, item_bg, fill_op: item_bg_op) }
-            box { from: 1, 1; size: 318, 230; corner: r_l; stroke: 2; color: focus_c; show: d_focus == 1 }
+            box { from: 1, 1; size: 318, 230; corner: r_l; stroke: focus_stroke; color: ring_c; show: d_focus == 1 }
             group {
                 move: 16, 44
                 for month in cal_month { MonthGrid(month, 289, 27, ink_c, ink_sub, accent_c, on_accent, day_size: t_sub, heading_size: t_micro) }
@@ -339,14 +339,14 @@ part InfoPanels {
             text Personal.note_preview { at: 16, 46; anchor: left center; size: ts_sub; color: ink_sub; width: 288; lines: 1 }
             zone box d_notes { from: 0, 0; size: 320, 68; cursor: pointer; label: "Open notes" }
             on press d_notes { emit pe_open(0) }
-            box { from: 4, 4; size: 312, 62; corner: r_m; stroke: 2; color: focus_c; show: d_focus == 2 }
+            box { from: 4, 4; size: 312, 62; corner: r_m; stroke: focus_stroke; color: ring_c; show: d_focus == 2 }
             on press right d_notes { }
             Sym("󰄱", 24, 90, 18, accent_c)
             text "To-dos" { at: 44, 90; anchor: left center; size: ts_sub; weight: 600; color: ink_c }
             text "All caught up" { at: 16, 118; anchor: left center; size: ts_cap; color: ink_sub; show: pe_today_tasks.count == 0 }
             zone box d_tasks { from: 0, 70; size: 320, 74; cursor: pointer; label: "Open to-dos" }
             on press d_tasks { emit pe_open(1) }
-            box { from: 4, 72; size: 312, 68; corner: r_m; stroke: 2; color: focus_c; show: d_focus == 3 }
+            box { from: 4, 72; size: 312, 68; corner: r_m; stroke: focus_stroke; color: ring_c; show: d_focus == 3 }
             on press right d_tasks { }
             for t in pe_today_tasks {
                 Sym("󰄱", 24, 112 + t.index * 20, 16, ink_sub)

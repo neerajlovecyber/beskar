@@ -31,7 +31,7 @@ part TimerPanel {
                 group { move: 138, 174; Chip("10 min", tm_seconds == 600, tm_preset, 600, 110, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill) }
                 group { move: 256, 174; Chip("25 min", tm_seconds == 1500, tm_preset, 1500, 110, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill) }
                 box { from: inset_panel, 216; size: 348, search_h; corner: control_r_large; color: item_solid }
-                box { from: inset_panel, 216; size: 348, search_h; corner: control_r_large; stroke: 1; color: if(tm_valid, focus_c, danger_c); show: tm_focus == -1 }
+                box { from: inset_panel, 216; size: 348, search_h; corner: control_r_large; stroke: focus_stroke; color: if(tm_valid, ring_c, danger_c); show: tm_focus == -1 }
                 //  (the duration field is declared in topbar.plm, at scene level)
                 text tm_hint { at: inset_panel, 266; anchor: left center; size: ts_cap; color: if(tm_valid, ink_sub, danger_c); width: 348; lines: 1 }
             }
@@ -42,11 +42,11 @@ part TimerPanel {
             }
             group { move: inset_panel, 292; Pill(pick(Activities.timer_state, "Start", "Pause", "Resume", "Start again"), 164, tm_primary, 1, control_h_large, false, Activities.ready and (Activities.timer_state == 1 or Activities.timer_state == 2 or tm_valid), ui_accent_c: accent_c, ui_danger_c: danger_c, ui_ink_c: ink_c, ui_item_bg: item_bg, ui_on_accent: on_accent) }
             //  focus ring: 2 / 3 / 4 the presets, 0 the main button, 1 the other one (-1 is the duration field, which draws its own)
-            box { from: inset_panel - 2, 172; size: 114, control_h + 4; corner: control_r + 2; stroke: 2; color: focus_c; show: tm_focus == 2 and (Activities.timer_state == 0 or Activities.timer_state == 3) }
-            box { from: 136, 172; size: 114, control_h + 4; corner: control_r + 2; stroke: 2; color: focus_c; show: tm_focus == 3 and (Activities.timer_state == 0 or Activities.timer_state == 3) }
-            box { from: 254, 172; size: 114, control_h + 4; corner: control_r + 2; stroke: 2; color: focus_c; show: tm_focus == 4 and (Activities.timer_state == 0 or Activities.timer_state == 3) }
+            box { from: inset_panel - 2, 172; size: 114, control_h + 4; corner: control_r + 2; stroke: focus_stroke; color: ring_c; show: tm_focus == 2 and (Activities.timer_state == 0 or Activities.timer_state == 3) }
+            box { from: 136, 172; size: 114, control_h + 4; corner: control_r + 2; stroke: focus_stroke; color: ring_c; show: tm_focus == 3 and (Activities.timer_state == 0 or Activities.timer_state == 3) }
+            box { from: 254, 172; size: 114, control_h + 4; corner: control_r + 2; stroke: focus_stroke; color: ring_c; show: tm_focus == 4 and (Activities.timer_state == 0 or Activities.timer_state == 3) }
             group { move: 204, 292; Pill(pick(Activities.timer_state, "Close", "Cancel timer", "Cancel timer", "Dismiss"), 164, tm_secondary, 0, control_h_large, false, ui_accent_c: accent_c, ui_danger_c: danger_c, ui_ink_c: ink_c, ui_item_bg: item_bg, ui_on_accent: on_accent) }
-            box { from: if(tm_focus == 0, inset_panel - 2, 202), 290; size: 168, control_h_large + 4; corner: control_r_large; stroke: 2; color: focus_c; show: tm_focus == 0 or tm_focus == 1 }
+            box { from: if(tm_focus == 0, inset_panel - 2, 202), 290; size: 168, control_h_large + 4; corner: control_r_large; stroke: focus_stroke; color: ring_c; show: tm_focus == 0 or tm_focus == 1 }
             text Activities.storage_status { at: inset_panel, 338; anchor: left center; size: ts_cap; color: danger_c; width: 348; lines: 1 }
     }
     on sub_tm_duration while screen.index == 0 { emit tm_submit }

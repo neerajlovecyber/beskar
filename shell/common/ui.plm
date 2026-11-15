@@ -184,9 +184,9 @@ library Ui {
 
     //  A selectable card (app switcher, overview): a soft fill, a 1 px edge, and when selected the accent fill and a 2 px
     //  accent edge. Visual only: the scene adds its `zone box hit { … cursor: pointer }` over it.
-    component SelectCard(w: number, h: number, selected: bool, ui_accent_c: color = accent_c, ui_card_stroke: color = card_stroke, ui_item_solid: color = item_solid) {
+    component SelectCard(w: number, h: number, selected: bool, ui_accent_c: color = accent_c, ui_card_stroke: color = card_stroke, ui_item_solid: color = item_solid, ui_ring_c: color = ink_c) {
         box { from: 0, 0; size: w, h; corner: r_l; color: if(selected, ui_accent_c, ui_item_solid); opacity: if(selected, 24%, 40%) }
-        box { from: 0, 0; size: w, h; corner: r_l; stroke: if(selected, 2, 1); color: if(selected, ui_accent_c, ui_card_stroke); opacity: if(selected, 90%, card_stroke_op) }
+        box { from: 0, 0; size: w, h; corner: r_l; stroke: if(selected, focus_stroke, 1); color: if(selected, ui_ring_c, ui_card_stroke); opacity: if(selected, 100%, card_stroke_op) }
     }
 
     //  The fill of a card (and its 1 px edge when `edge`): ONE place for the look of every card in every panel.

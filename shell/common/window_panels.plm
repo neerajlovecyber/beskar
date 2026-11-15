@@ -22,7 +22,7 @@ part WindowPanels {
         prop on = 0 ~quick
         follow on = if(sw_sel == w.index, 1, 0)
 
-        SelectCard(140, 112, sw_sel == w.index, ui_accent_c: accent_c, ui_card_stroke: card_stroke, ui_item_solid: item_solid)
+        SelectCard(140, 112, sw_sel == w.index, ui_accent_c: accent_c, ui_card_stroke: card_stroke, ui_item_solid: item_solid, ui_ring_c: ring_c)
         zone box hit { from: 0, 0; size: 140, 112; corner: r_l; cursor: pointer }
 
         // Preview thumbnail area (clipped)
@@ -93,7 +93,7 @@ part WindowPanels {
         prop on = 0 ~quick
         follow on = if(ov_sel == w.index, 1, 0)
 
-        SelectCard(274, 165, ov_sel == w.index, ui_accent_c: accent_c, ui_card_stroke: card_stroke, ui_item_solid: item_solid)
+        SelectCard(274, 165, ov_sel == w.index, ui_accent_c: accent_c, ui_card_stroke: card_stroke, ui_item_solid: item_solid, ui_ring_c: ring_c)
         zone box hit { from: 0, 0; size: 274, 165; corner: r_l; cursor: pointer }
 
         // Preview thumbnail area (clipped)

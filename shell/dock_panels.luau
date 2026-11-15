@@ -886,6 +886,8 @@ module("wallpapers", function(panel, opened, shown, closed)
 
     -- Keyboard sectors (rules in common/dock_panels.plm): 0 filter tabs · 1 the strip · 2 transition · 3 actions.
     -- Up / Down change sector; Left / Right move inside it. Tabs and transition apply as you move; Enter on the actions presses them.
+    -- the sector handlers call these directly (a plugin cannot emit to itself): registered as events AND in topbar_hooks
+    local function reg(name, fn) on(name, fn); Hooks.handlers[name] = fn end
     local SECTOR_ITEMS = { [0] = 4, [1] = 1, [2] = 3, [3] = 2 }
     local function sector_enter(sec)
         fact.wall_sec = sec
@@ -937,13 +939,13 @@ module("wallpapers", function(panel, opened, shown, closed)
         text.wall_status = "Checking picture…"
         WS.commit(nil, w.path, committed)
     end
-    on("wall_restore", function()
+    reg("wall_restore", function()
         if applying then return end
         applying, fact.wall_busy = true, true
         text.wall_status = "Checking previous picture…"
         WS.restore(nil, committed)
     end)
-    on("wall_favourite_toggle", function(index)
+    reg("wall_favourite_toggle", function(index)
         if not favourites_writable then text.wall_status = "Favourites file is protected; repair it before editing"; return end
         local n = tonumber(index)
         if not n or n < 0 then n = cur else n = row + n end
@@ -978,7 +980,7 @@ module("wallpapers", function(panel, opened, shown, closed)
         row = math.max(0, math.min(max_off, row))
     end
 
-    on("wall_move", function(d)
+    reg("wall_move", function(d)
         if #view < 1 then
             return
         end
@@ -998,7 +1000,7 @@ module("wallpapers", function(panel, opened, shown, closed)
         paint()
     end)
 
-    on("wall_enter", function()
+    reg("wall_enter", function()
         apply(view[cur + 1])
     end)
 

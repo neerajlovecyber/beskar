@@ -56,12 +56,12 @@ part UpdatesPanel {
         group {
             show: up_focus == 0 or up_n < 1
             move: 240, 9
-            box { from: -3, -3; size: 106, control_h_compact + 6; corner: control_r + 3; stroke: 2; color: focus_c }
+            box { from: -3, -3; size: 106, control_h_compact + 6; corner: control_r + 3; stroke: focus_stroke; color: ring_c }
         }
         group {
             show: up_focus == 1 and up_n > 0
             move: 0, 70 + min(max(up_n, 1), 8) * 34 + 24
-            box { from: -3, -3; size: 346, control_h_large + 6; corner: control_r_large + 3; stroke: 2; color: focus_c }
+            box { from: -3, -3; size: 346, control_h_large + 6; corner: control_r_large + 3; stroke: focus_stroke; color: ring_c }
         }
         on k_up while Panels.cur == 16 and screen.index == 0 { up_list.scroll: up_list.scroll - 34 ~quick }
         on k_down while Panels.cur == 16 and screen.index == 0 { up_list.scroll: up_list.scroll + 34 ~quick }

@@ -38,7 +38,7 @@ part DialogPanels {
     component SessionAction(a: record) {
         size: 80, 88
         let selected = ses_index == a.index
-        SelectCard(80, 88, selected, ui_accent_c: if(a.danger, danger_c, accent_c), ui_card_stroke: card_stroke, ui_item_solid: item_solid)
+        SelectCard(80, 88, selected, ui_accent_c: if(a.danger, danger_c, accent_c), ui_card_stroke: card_stroke, ui_item_solid: item_solid, ui_ring_c: ring_c)
         text a.glyph { at: 40, 30; anchor: center center; family: "JetBrainsMono Nerd Font Mono"; size: icon_button_size; color: if(a.danger, danger_c, ink_c) }
         text a.label { at: 40, 66; anchor: center center; size: font_secondary; weight: 600; color: ink_c; width: 72; lines: 1; align: center }
         zone box ses_action_hit { from: 0, 0; size: 80, 88; corner: radius_card; cursor: pointer; label: a.label }
@@ -94,12 +94,12 @@ part DialogPanels {
                     group {
                         size: 120, control_h_large
                         Pill("Cancel", 120, dismiss, 0, control_h_large, ui_accent_c: accent_c, ui_danger_c: danger_c, ui_ink_c: ink_c, ui_item_bg: item_solid, ui_on_accent: on_accent)
-                        box { from: -2, -2; size: 124, 36; corner: control_r_large; stroke: focus_stroke; color: ink_c; opacity: if(ses_sel == 0, 80%, 0%) }
+                        box { from: -2, -2; size: 124, 36; corner: control_r_large; stroke: focus_stroke; color: ring_c; opacity: if(ses_sel == 0, 100%, 0%) }
                     }
                     group {
                         size: 130, control_h_large
                         Pill(pick(ses_kind, "Shut Down", "Restart", "Log Out", "Sleep"), 130, confirm_action, 1, control_h_large, ui_accent_c: pick(ses_kind, danger_c, warn_c, focus_c, accent_c), ui_danger_c: danger_c, ui_ink_c: ink_c, ui_item_bg: item_bg, ui_on_accent: on_accent)
-                        box { from: -2, -2; size: 134, 36; corner: control_r_large; stroke: focus_stroke; color: ink_c; opacity: if(ses_sel == 1, 80%, 0%) }
+                        box { from: -2, -2; size: 134, 36; corner: control_r_large; stroke: focus_stroke; color: ring_c; opacity: if(ses_sel == 1, 100%, 0%) }
                     }
                 }
                 KeyHint(240, 234, "← →  choose   ·   Enter  activate   ·   Esc  cancel", ui_ink_sub: ink_sub)
