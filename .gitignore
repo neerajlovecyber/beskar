@@ -11,3 +11,9 @@ Cargo.lock
 
 # Python bytecode from the shell helpers
 __pycache__/
+
+# local scratch files
+/main.plm
+/main.luau
+/child.plm
+/child.luau

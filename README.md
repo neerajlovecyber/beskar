@@ -48,7 +48,8 @@ is named after Apple, and nothing is hard-coded to one machine.
     <td><img src="docs/screenshots/session.jpg" alt="Session menu"><br><sub><b>Session menu</b>: lock, sleep, log out, restart and shut down, all from the keyboard.</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/settings.jpg" alt="Settings" width="50%"><br><sub><b>Settings</b>: appearance, displays, sound, notifications, menu bar and dock, shortcuts, night light and power.</sub></td>
+    <td><img src="docs/screenshots/light.jpg" alt="Light mode"><br><sub><b>Light mode</b>: dark, light or automatic by time of day; the accent can follow the wallpaper.</sub></td>
+    <td><img src="docs/screenshots/settings.jpg" alt="Settings"><br><sub><b>Settings</b>: appearance, displays, sound, notifications, menu bar and dock, shortcuts, night light and power.</sub></td>
   </tr>
 </table>
 
@@ -100,6 +101,8 @@ cd beskar
 ./beskar start        # or log out and back in
 ```
 
+Or in one line: `curl -fsSL https://raw.githubusercontent.com/neerajlovecyber/beskar/master/install.sh | sh` (clones into `~/.local/share/beskar-shell` and runs `./beskar install`; add `-s -- --dry-run` to only list the steps).
+
 You need **niri** (26.04 or newer) and a GPU with a Vulkan driver. `./beskar install` asks before each step
 (`--yes` answers them all, `--dry-run` only lists them, `--no-packages` skips the package step). On Arch it installs everything the
 shell uses, including the fonts, the Bibata cursor and Papirus icons (only if you have not chosen your own), and builds the
@@ -148,3 +151,4 @@ notes are in [`docs/`](docs/) ([UI standards](docs/UI_STANDARDS.md), [components
 - [iNiR](https://github.com/snowarch/iNiR) (GPL-3.0), for the island and frame ideas and the built-in wallpapers;
   artwork credit belongs to the original artists
 - The macOS design language is the inspiration; Beskar is not affiliated with Apple
+- Code: [MIT](LICENSE). The built-in wallpapers keep their original artists' credit

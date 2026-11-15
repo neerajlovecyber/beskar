@@ -159,3 +159,5 @@ pattern matches the invoking command) and relaunching `bin/pleamar --no-hud --sc
 
 78. **One keyboard focus ring everywhere.** Every panel draws its focus ring with `stroke: focus_stroke; color: ring_c` at 100 % (`ring_c` in `theme.plm` is `ink_c`; `focus_stroke` 2 in `geometry.plm`), never `focus_c` (that is a palette colour used for Do Not Disturb and dark-mode tiles), `accent_c`, or a literal width. `SelectCard` takes `ui_ring_c`. A selection that is not keyboard focus uses `RowFrame`. A ring that belongs to a sector (rule 77) is hidden while another sector has the focus.
 
+79. **Releases and one-line install.** `shell/release.sh vX.Y.Z` runs `verify.sh`, tags master, pushes the tag and creates the GitHub release from the commits since the last tag (versions below 1.0 are pre-releases). `install.sh` at the root is the `curl | sh` entry: it clones into `~/.local/share/beskar-shell` and runs `./beskar install`. The code is MIT (`LICENSE`); the wallpapers are iNiR's and keep their artists' credit.
+
