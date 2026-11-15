@@ -70,11 +70,11 @@ part DockPanels {
         on enter hit { sp_sel = h.index }
         on press hit { emit launch(h.index) }
     }
-    on key Escape while Panels.cur == 4 { emit Panels.close }
-    on key Tab while Panels.cur == 4 { sp_sel = min(sp_sel + 1, max(hits.count - 1, 0)); sc_t = clamp(sc_t, (min(sp_sel + 1, max(hits.count - 1, 0)) - 6) * 44, min(sp_sel + 1, max(hits.count - 1, 0)) * 44) }
-    on blur while Panels.cur == 4 and not Panels.fresh { emit Panels.close }
-    on key Down while Panels.cur == 4 { sp_sel = min(sp_sel + 1, max(hits.count - 1, 0)); sc_t = clamp(sc_t, (min(sp_sel + 1, max(hits.count - 1, 0)) - 6) * 44, min(sp_sel + 1, max(hits.count - 1, 0)) * 44) }
-    on key Up while Panels.cur == 4 { sp_sel = max(sp_sel - 1, 0); sc_t = clamp(sc_t, (max(sp_sel - 1, 0) - 6) * 44, max(sp_sel - 1, 0) * 44) }
+    on key Escape while Panels.cur == 4 and Panels.open_screen == screen.index { emit Panels.close }
+    on key Tab while Panels.cur == 4 and Panels.open_screen == screen.index { sp_sel = min(sp_sel + 1, max(hits.count - 1, 0)); sc_t = clamp(sc_t, (min(sp_sel + 1, max(hits.count - 1, 0)) - 6) * 44, min(sp_sel + 1, max(hits.count - 1, 0)) * 44) }
+    on blur while Panels.cur == 4 and not Panels.fresh and Panels.open_screen == screen.index { emit Panels.close }
+    on key Down while Panels.cur == 4 and Panels.open_screen == screen.index { sp_sel = min(sp_sel + 1, max(hits.count - 1, 0)); sc_t = clamp(sc_t, (min(sp_sel + 1, max(hits.count - 1, 0)) - 6) * 44, min(sp_sel + 1, max(hits.count - 1, 0)) * 44) }
+    on key Up while Panels.cur == 4 and Panels.open_screen == screen.index { sp_sel = max(sp_sel - 1, 0); sc_t = clamp(sc_t, (max(sp_sel - 1, 0) - 6) * 44, max(sp_sel - 1, 0) * 44) }
     on change sp_sel while sp_sel == 0 { sc_t = 0 }
     on submit query    { emit launch(sp_sel) }
 
@@ -145,12 +145,12 @@ part DockPanels {
         on press hit { emit copy_clip(c.index) }
         on press right hit { }
     }
-    on key Down while Panels.cur == 6 { clip_sel = min(clip_sel + 1, max(clips.count - 1, 0)) }
-    on key Up while Panels.cur == 6 { clip_sel = max(clip_sel - 1, 0) }
-    on key Return while Panels.cur == 6 { emit copy_clip(clip_sel) }
-    on key Tab while Panels.cur == 6 { clip_sel = min(clip_sel + 1, max(clips.count - 1, 0)) }
-    on key Escape while Panels.cur == 6 { emit Panels.close }
-    on blur while Panels.cur == 6 and not Panels.fresh { emit Panels.close }
+    on key Down while Panels.cur == 6 and Panels.open_screen == screen.index { clip_sel = min(clip_sel + 1, max(clips.count - 1, 0)) }
+    on key Up while Panels.cur == 6 and Panels.open_screen == screen.index { clip_sel = max(clip_sel - 1, 0) }
+    on key Return while Panels.cur == 6 and Panels.open_screen == screen.index { emit copy_clip(clip_sel) }
+    on key Tab while Panels.cur == 6 and Panels.open_screen == screen.index { clip_sel = min(clip_sel + 1, max(clips.count - 1, 0)) }
+    on key Escape while Panels.cur == 6 and Panels.open_screen == screen.index { emit Panels.close }
+    on blur while Panels.cur == 6 and not Panels.fresh and Panels.open_screen == screen.index { emit Panels.close }
 
     // ── wallpapers ─────────────────────────────────────────────────
     //  Painted by wallpapers.luau: the five on screen, in one row.
@@ -223,18 +223,18 @@ part DockPanels {
     }
 
     //  The glass is drawn by the frame: the dock island grows up and out into the strip (topbar.plm).
-    on key Left while Panels.cur == 5 { emit wall_move(-1) }
-    on key Right while Panels.cur == 5 { emit wall_move(1) }
-    on key Return while Panels.cur == 5 { emit wall_enter }
-    on key KP_Enter while Panels.cur == 5 { emit wall_enter }
+    on key Left while Panels.cur == 5 and Panels.open_screen == screen.index { emit wall_move(-1) }
+    on key Right while Panels.cur == 5 and Panels.open_screen == screen.index { emit wall_move(1) }
+    on key Return while Panels.cur == 5 and Panels.open_screen == screen.index { emit wall_enter }
+    on key KP_Enter while Panels.cur == 5 and Panels.open_screen == screen.index { emit wall_enter }
     on wall_favourite_selected { emit wall_favourite_toggle(-1) }
-    on key f while Panels.cur == 5 { emit wall_favourite_toggle(-1) }
-    on key Ctrl+z while Panels.cur == 5 { emit wall_restore }
-    on key Ctrl+F1 while Panels.cur == 5 { emit Settings.wallpaper_fx_pick(0) }
-    on key Ctrl+F2 while Panels.cur == 5 { emit Settings.wallpaper_fx_pick(1) }
-    on key Ctrl+F3 while Panels.cur == 5 { emit Settings.wallpaper_fx_pick(2) }
-    on key Escape while Panels.cur == 5 { emit Panels.close }
-    on blur while Panels.cur == 5 and not Panels.fresh { emit Panels.close }
+    on key f while Panels.cur == 5 and Panels.open_screen == screen.index { emit wall_favourite_toggle(-1) }
+    on key Ctrl+z while Panels.cur == 5 and Panels.open_screen == screen.index { emit wall_restore }
+    on key Ctrl+F1 while Panels.cur == 5 and Panels.open_screen == screen.index { emit Settings.wallpaper_fx_pick(0) }
+    on key Ctrl+F2 while Panels.cur == 5 and Panels.open_screen == screen.index { emit Settings.wallpaper_fx_pick(1) }
+    on key Ctrl+F3 while Panels.cur == 5 and Panels.open_screen == screen.index { emit Settings.wallpaper_fx_pick(2) }
+    on key Escape while Panels.cur == 5 and Panels.open_screen == screen.index { emit Panels.close }
+    on blur while Panels.cur == 5 and not Panels.fresh and Panels.open_screen == screen.index { emit Panels.close }
 
     // ── widget_bar ─────────────────────────────────────────────────
     model kinds max 12 { id: number; name: text; icon: text }
@@ -351,38 +351,38 @@ part DockPanels {
             IconTextButton(k.icon, k.name, wb_add, open_screen * 100 + k.id, ink_c, accent_c, item_bg, 116, control_h, item_bg_op, control_r_large, t_cap, 14, 8%)
         }
     }
-    on key Escape while Panels.cur == 10 { emit wb_escape }
-    on key Down while Panels.cur == 10 and wb_page == 1 { emit wb_move(1) }
-    on key Tab while Panels.cur == 10 and wb_page == 1 { emit wb_move(1) }
-    on key Up while Panels.cur == 10 and wb_page == 1 { emit wb_move(-1) }
-    on key Shift+Tab while Panels.cur == 10 and wb_page == 1 { emit wb_move(-1) }
-    on key Next while Panels.cur == 10 and wb_page == 1 { emit wb_move(5) }          // xkb's name for Page Down / Page Up
-    on key Prior while Panels.cur == 10 and wb_page == 1 { emit wb_move(-5) }
-    on key Page_Down while Panels.cur == 10 and wb_page == 1 { emit wb_move(5) }
-    on key Page_Up while Panels.cur == 10 and wb_page == 1 { emit wb_move(-5) }
-    on key Ctrl+KP_Enter while Panels.cur == 10 and wb_page == 1 { emit wb_load }
-    on key Ctrl+Return while Panels.cur == 10 and wb_page == 1 { emit wb_load }
-    on key F2 while Panels.cur == 10 and wb_page == 1 { emit wb_rename }
-    on key F3 while Panels.cur == 10 and wb_page == 1 { emit wb_dup }
-    on key F4 while Panels.cur == 10 and wb_page == 1 { emit wb_update }
-    on key F8 while Panels.cur == 10 and wb_page == 1 { emit wb_delete }
+    on key Escape while Panels.cur == 10 and Panels.open_screen == screen.index { emit wb_escape }
+    on key Down while Panels.cur == 10 and wb_page == 1 and Panels.open_screen == screen.index { emit wb_move(1) }
+    on key Tab while Panels.cur == 10 and wb_page == 1 and Panels.open_screen == screen.index { emit wb_move(1) }
+    on key Up while Panels.cur == 10 and wb_page == 1 and Panels.open_screen == screen.index { emit wb_move(-1) }
+    on key Shift+Tab while Panels.cur == 10 and wb_page == 1 and Panels.open_screen == screen.index { emit wb_move(-1) }
+    on key Next while Panels.cur == 10 and wb_page == 1 and Panels.open_screen == screen.index { emit wb_move(5) }          // xkb's name for Page Down / Page Up
+    on key Prior while Panels.cur == 10 and wb_page == 1 and Panels.open_screen == screen.index { emit wb_move(-5) }
+    on key Page_Down while Panels.cur == 10 and wb_page == 1 and Panels.open_screen == screen.index { emit wb_move(5) }
+    on key Page_Up while Panels.cur == 10 and wb_page == 1 and Panels.open_screen == screen.index { emit wb_move(-5) }
+    on key Ctrl+KP_Enter while Panels.cur == 10 and wb_page == 1 and Panels.open_screen == screen.index { emit wb_load }
+    on key Ctrl+Return while Panels.cur == 10 and wb_page == 1 and Panels.open_screen == screen.index { emit wb_load }
+    on key F2 while Panels.cur == 10 and wb_page == 1 and Panels.open_screen == screen.index { emit wb_rename }
+    on key F3 while Panels.cur == 10 and wb_page == 1 and Panels.open_screen == screen.index { emit wb_dup }
+    on key F4 while Panels.cur == 10 and wb_page == 1 and Panels.open_screen == screen.index { emit wb_update }
+    on key F8 while Panels.cur == 10 and wb_page == 1 and Panels.open_screen == screen.index { emit wb_delete }
     on submit wb_name { emit wb_submit }
     //  Card page: arrows pick and change, Return / keypad Enter cycle (Esc closes through wb_escape above)
-    on key Down while Panels.cur == 10 and wb_page == 2 { emit wb_opt_move(1) }
-    on key Tab while Panels.cur == 10 and wb_page == 2 { emit wb_opt_move(1) }
-    on key Up while Panels.cur == 10 and wb_page == 2 { emit wb_opt_move(-1) }
-    on key Shift+Tab while Panels.cur == 10 and wb_page == 2 { emit wb_opt_move(-1) }
-    on key Left while Panels.cur == 10 and wb_page == 2 { emit wb_opt_change(-1) }
-    on key Right while Panels.cur == 10 and wb_page == 2 { emit wb_opt_change(1) }
-    on key Return while wb_page == 2 and Panels.cur == 10 { emit wb_opt_cycle }      // page 1's Enter is its input's submit
-    on key KP_Enter while wb_page == 2 and Panels.cur == 10 { emit wb_opt_cycle }
-    on key Ctrl+Left while Panels.cur == 10 and wb_page == 2 { emit wb_stack_target(-1) }
-    on key Ctrl+Right while Panels.cur == 10 and wb_page == 2 { emit wb_stack_target(1) }
-    on key Ctrl+Return while Panels.cur == 10 and wb_page == 2 { emit wb_stack_join }
-    on key Ctrl+KP_Enter while Panels.cur == 10 and wb_page == 2 { emit wb_stack_join }
-    on key Prior while Panels.cur == 10 and wb_page == 2 { emit wb_stack_prev }
-    on key Next while Panels.cur == 10 and wb_page == 2 { emit wb_stack_next }
-    on key Ctrl+u while Panels.cur == 10 and wb_page == 2 { emit wb_stack_unstack }
+    on key Down while Panels.cur == 10 and wb_page == 2 and Panels.open_screen == screen.index { emit wb_opt_move(1) }
+    on key Tab while Panels.cur == 10 and wb_page == 2 and Panels.open_screen == screen.index { emit wb_opt_move(1) }
+    on key Up while Panels.cur == 10 and wb_page == 2 and Panels.open_screen == screen.index { emit wb_opt_move(-1) }
+    on key Shift+Tab while Panels.cur == 10 and wb_page == 2 and Panels.open_screen == screen.index { emit wb_opt_move(-1) }
+    on key Left while Panels.cur == 10 and wb_page == 2 and Panels.open_screen == screen.index { emit wb_opt_change(-1) }
+    on key Right while Panels.cur == 10 and wb_page == 2 and Panels.open_screen == screen.index { emit wb_opt_change(1) }
+    on key Return while wb_page == 2 and Panels.cur == 10 and Panels.open_screen == screen.index { emit wb_opt_cycle }      // page 1's Enter is its input's submit
+    on key KP_Enter while wb_page == 2 and Panels.cur == 10 and Panels.open_screen == screen.index { emit wb_opt_cycle }
+    on key Ctrl+Left while Panels.cur == 10 and wb_page == 2 and Panels.open_screen == screen.index { emit wb_stack_target(-1) }
+    on key Ctrl+Right while Panels.cur == 10 and wb_page == 2 and Panels.open_screen == screen.index { emit wb_stack_target(1) }
+    on key Ctrl+Return while Panels.cur == 10 and wb_page == 2 and Panels.open_screen == screen.index { emit wb_stack_join }
+    on key Ctrl+KP_Enter while Panels.cur == 10 and wb_page == 2 and Panels.open_screen == screen.index { emit wb_stack_join }
+    on key Prior while Panels.cur == 10 and wb_page == 2 and Panels.open_screen == screen.index { emit wb_stack_prev }
+    on key Next while Panels.cur == 10 and wb_page == 2 and Panels.open_screen == screen.index { emit wb_stack_next }
+    on key Ctrl+u while Panels.cur == 10 and wb_page == 2 and Panels.open_screen == screen.index { emit wb_stack_unstack }
 
 
 

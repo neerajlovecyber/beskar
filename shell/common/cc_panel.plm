@@ -537,6 +537,6 @@ part ControlCenterPanel {
     on open_sound { cc_page = 3 }
 
     // Window lifecycle: Esc and losing the keyboard (only while the password sheet has it) close the panel
-    on key Escape while Panels.cur == 1 { emit Panels.close; cc_page = 0 }
-    on blur while Panels.cur == 1 and not Panels.fresh and askhold < 0.2 { emit Panels.close; cc_page = 0 }
+    on key Escape while Panels.cur == 1 and Panels.open_screen == screen.index { emit Panels.close; cc_page = 0 }
+    on blur while Panels.cur == 1 and not Panels.fresh and askhold < 0.2 and Panels.open_screen == screen.index { emit Panels.close; cc_page = 0 }
 }

@@ -140,18 +140,18 @@ part DialogPanels {
 
 
     // Activate on release: holding Enter cannot repeat into the confirmation.
-    on keyup Return while Panels.open and Panels.cur == 11 { emit ses_enter }
-    on keyup KP_Enter while Panels.open and Panels.cur == 11 { emit ses_enter }
-    on keyup space while Panels.open and Panels.cur == 11 { emit ses_enter }
-    on key Escape while Panels.open and Panels.cur == 11 { emit ses_cancel }
-    on key Left while Panels.open and Panels.cur == 11 { emit ses_move(-1) }
-    on key Up while Panels.open and Panels.cur == 11 { emit ses_move(-1) }
-    on key Right while Panels.open and Panels.cur == 11 { emit ses_move(1) }
-    on key Down while Panels.open and Panels.cur == 11 { emit ses_move(1) }
-    on key Tab while Panels.open and Panels.cur == 11 { emit ses_move(1) }
-    on key Shift+Tab while Panels.open and Panels.cur == 11 { emit ses_move(-1) }
-    on blur while Panels.cur == 11 and not Panels.fresh { emit Panels.close }
-    on key Escape while Panels.cur == 12 { emit pk_cancel }
+    on keyup Return while Panels.open and Panels.cur == 11 and Panels.open_screen == screen.index { emit ses_enter }
+    on keyup KP_Enter while Panels.open and Panels.cur == 11 and Panels.open_screen == screen.index { emit ses_enter }
+    on keyup space while Panels.open and Panels.cur == 11 and Panels.open_screen == screen.index { emit ses_enter }
+    on key Escape while Panels.open and Panels.cur == 11 and Panels.open_screen == screen.index { emit ses_cancel }
+    on key Left while Panels.open and Panels.cur == 11 and Panels.open_screen == screen.index { emit ses_move(-1) }
+    on key Up while Panels.open and Panels.cur == 11 and Panels.open_screen == screen.index { emit ses_move(-1) }
+    on key Right while Panels.open and Panels.cur == 11 and Panels.open_screen == screen.index { emit ses_move(1) }
+    on key Down while Panels.open and Panels.cur == 11 and Panels.open_screen == screen.index { emit ses_move(1) }
+    on key Tab while Panels.open and Panels.cur == 11 and Panels.open_screen == screen.index { emit ses_move(1) }
+    on key Shift+Tab while Panels.open and Panels.cur == 11 and Panels.open_screen == screen.index { emit ses_move(-1) }
+    on blur while Panels.cur == 11 and not Panels.fresh and Panels.open_screen == screen.index { emit Panels.close }
+    on key Escape while Panels.cur == 12 and Panels.open_screen == screen.index { emit pk_cancel }
     on submit password { emit pk_answer }
     on pk_shake { impulse shake 18 }
     on change Panels.open while Panels.open and Panels.cur == 12 { focus password }
@@ -250,10 +250,10 @@ part DialogPanels {
             }
     }
 
-    on key Escape while Panels.cur == 24 { emit wl_done }
-    on key Right  while Panels.cur == 24 { emit wl_next }
-    on key Left   while Panels.cur == 24 { emit wl_back }
-    on key Return while Panels.cur == 24 { emit wl_next }
+    on key Escape while Panels.cur == 24 and Panels.open_screen == screen.index { emit wl_done }
+    on key Right  while Panels.cur == 24 and Panels.open_screen == screen.index { emit wl_next }
+    on key Left   while Panels.cur == 24 and Panels.open_screen == screen.index { emit wl_back }
+    on key Return while Panels.cur == 24 and Panels.open_screen == screen.index { emit wl_next }
 
     //  an icon, a title and a sentence
     component Tip(x: number, y: number, icon: text, title: text, body: text) {

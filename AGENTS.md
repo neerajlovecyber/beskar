@@ -148,3 +148,5 @@ pattern matches the invoking command) and relaunching `bin/pleamar --no-hud --sc
 
 73. **A merged panel brings its PERMISSIONS with it.** When a scene is merged into the frame, every `run:` command and `services:` entry it declared must be added to `topbar.plm`'s `permissions` (a missing one fails only at run time: the wallpaper picker said "wallpaper process is unavailable" because `say:wallpaper` was dropped, and the Control Center's Wi-Fi actions needed `network.*`). Check with the old scene from git: `git show <commit>:shell/<scene>.plm | sed -n '/permissions {/,/}/p'`.
 
+74. **Every key / blur rule in the frame is guarded by the monitor: `… and Panels.open_screen == screen.index`.** The frame is `screens: each`, which pleamar compiles as up to FOUR copies (one per possible monitor), and each copy runs its own rules, even copies with no monitor. Unguarded, one Right press in the wallpaper strip moved the selection four places, and every arrow, Tab and Enter in every panel fired four times. A new `on key`, `on keyup` or `on blur` rule in `topbar.plm` or a panel part MUST carry this guard. Count events in the rig with a temporary `log(...)` when in doubt.
+

@@ -59,12 +59,12 @@ part WindowPanels {
 
         on press hit { emit sw_switch_to(w.index) }
     }
-    on key Tab while Panels.cur == 21 { emit next_app }
-    on key Left while Panels.cur == 21 { emit prev_app }
-    on key Right while Panels.cur == 21 { emit next_app }
-    on key Return while Panels.cur == 21 { emit sw_switch_to(sw_sel) }
-    on key Escape while Panels.cur == 21 { emit Panels.close }
-    on blur while Panels.cur == 21 and not Panels.fresh { emit Panels.close }
+    on key Tab while Panels.cur == 21 and Panels.open_screen == screen.index { emit next_app }
+    on key Left while Panels.cur == 21 and Panels.open_screen == screen.index { emit prev_app }
+    on key Right while Panels.cur == 21 and Panels.open_screen == screen.index { emit next_app }
+    on key Return while Panels.cur == 21 and Panels.open_screen == screen.index { emit sw_switch_to(sw_sel) }
+    on key Escape while Panels.cur == 21 and Panels.open_screen == screen.index { emit Panels.close }
+    on blur while Panels.cur == 21 and not Panels.fresh and Panels.open_screen == screen.index { emit Panels.close }
 
     // ── window overview ─────────────────────────────────────────
     fact ov_sel = 0
@@ -134,14 +134,14 @@ part WindowPanels {
 
         on press hit { emit ov_switch_to(w.index) }
     }
-    on key Tab while Panels.cur == 22 { emit next_win }
-    on key Left while Panels.cur == 22 { emit prev_win }
-    on key Right while Panels.cur == 22 { emit next_win }
-    on key Up while Panels.cur == 22 { emit up_win }
-    on key Down while Panels.cur == 22 { emit down_win }
-    on key Return while Panels.cur == 22 { emit ov_switch_to(ov_sel) }
-    on key Escape while Panels.cur == 22 { emit Panels.close }
-    on blur while Panels.cur == 22 and not Panels.fresh { emit Panels.close }
+    on key Tab while Panels.cur == 22 and Panels.open_screen == screen.index { emit next_win }
+    on key Left while Panels.cur == 22 and Panels.open_screen == screen.index { emit prev_win }
+    on key Right while Panels.cur == 22 and Panels.open_screen == screen.index { emit next_win }
+    on key Up while Panels.cur == 22 and Panels.open_screen == screen.index { emit up_win }
+    on key Down while Panels.cur == 22 and Panels.open_screen == screen.index { emit down_win }
+    on key Return while Panels.cur == 22 and Panels.open_screen == screen.index { emit ov_switch_to(ov_sel) }
+    on key Escape while Panels.cur == 22 and Panels.open_screen == screen.index { emit Panels.close }
+    on blur while Panels.cur == 22 and not Panels.fresh and Panels.open_screen == screen.index { emit Panels.close }
 
     //  The app switcher grows out of the dock like Spotlight: the frame draws the glass (width follows the number of windows,
     //  reported by the logic with panel.width), this surface draws the cards. Content is centred on the surface.

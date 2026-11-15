@@ -89,6 +89,6 @@ part PersonalEditor {
     }
     event pe_filter ->
     on submit pe_new_task { emit pe_add_task }
-    on key Escape while Panels.cur == 25 { emit Panels.close }
-    on blur while Panels.cur == 25 and not Panels.fresh { emit Panels.close }
+    on key Escape while Panels.cur == 25 and Panels.open_screen == screen.index { emit Panels.close }
+    on blur while Panels.cur == 25 and not Panels.fresh and Panels.open_screen == screen.index { emit Panels.close }
 }

@@ -47,12 +47,12 @@ part TimerPanel {
             text Activities.storage_status { at: inset_panel, 338; anchor: left center; size: ts_cap; color: danger_c; width: 348; lines: 1 }
     }
     on submit tm_duration { emit tm_submit }
-    on key Tab while Panels.open and Panels.cur == 26 { emit tm_move(1) }
-    on key Shift+Tab while Panels.open and Panels.cur == 26 { emit tm_move(-1) }
-    on key Left while Panels.open and Panels.cur == 26 and tm_focus >= 0 { emit tm_move(-1) }
-    on key Right while Panels.open and Panels.cur == 26 and tm_focus >= 0 { emit tm_move(1) }
-    on keyup Return while Panels.open and Panels.cur == 26 and tm_focus >= 0 { emit tm_activate }
-    on keyup KP_Enter while Panels.open and Panels.cur == 26 and tm_focus >= 0 { emit tm_activate }
-    on keyup space while Panels.open and Panels.cur == 26 and tm_focus >= 0 { emit tm_activate }
-    on blur while Panels.cur == 26 and not Panels.fresh { emit Panels.close }
+    on key Tab while Panels.open and Panels.cur == 26 and Panels.open_screen == screen.index { emit tm_move(1) }
+    on key Shift+Tab while Panels.open and Panels.cur == 26 and Panels.open_screen == screen.index { emit tm_move(-1) }
+    on key Left while Panels.open and Panels.cur == 26 and tm_focus >= 0 and Panels.open_screen == screen.index { emit tm_move(-1) }
+    on key Right while Panels.open and Panels.cur == 26 and tm_focus >= 0 and Panels.open_screen == screen.index { emit tm_move(1) }
+    on keyup Return while Panels.open and Panels.cur == 26 and tm_focus >= 0 and Panels.open_screen == screen.index { emit tm_activate }
+    on keyup KP_Enter while Panels.open and Panels.cur == 26 and tm_focus >= 0 and Panels.open_screen == screen.index { emit tm_activate }
+    on keyup space while Panels.open and Panels.cur == 26 and tm_focus >= 0 and Panels.open_screen == screen.index { emit tm_activate }
+    on blur while Panels.cur == 26 and not Panels.fresh and Panels.open_screen == screen.index { emit Panels.close }
 }

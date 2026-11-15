@@ -369,6 +369,6 @@ part InfoPanels {
         }
     }
 
-    on key Escape while Panels.cur == 15 or Panels.cur == 3 { emit Panels.close }
-    on blur while Panels.cur == 3 and not Panels.fresh { emit Panels.close }     // today (dashboard) closes when it loses the focus
+    on key Escape while Panels.cur == 15 or Panels.cur == 3 and Panels.open_screen == screen.index { emit Panels.close }
+    on blur while Panels.cur == 3 and not Panels.fresh and Panels.open_screen == screen.index { emit Panels.close }     // today (dashboard) closes when it loses the focus
 }
