@@ -884,6 +884,32 @@ module("wallpapers", function(panel, opened, shown, closed)
         set_tab(math.max(0, math.min(3, (tonumber(fact.wall_tab) or 0) + (tonumber(d) or 0))))
     end)
 
+    -- Keyboard sectors (rules in common/dock_panels.plm): 0 filter tabs · 1 the strip · 2 transition · 3 actions.
+    -- Up / Down change sector; Left / Right move inside it. Tabs and transition apply as you move; Enter on the actions presses them.
+    local SECTOR_ITEMS = { [0] = 4, [1] = 1, [2] = 3, [3] = 2 }
+    local function sector_enter(sec)
+        fact.wall_sec = sec
+        if sec == 0 then fact.wall_item = tonumber(fact.wall_tab) or 0
+        elseif sec == 2 then fact.wall_item = tonumber(fact["Settings.wallpaper_fx"]) or 0
+        else fact.wall_item = 0 end
+    end
+    on("wall_sec_step", function(d)
+        sector_enter(math.max(0, math.min(3, (tonumber(fact.wall_sec) or 1) + (tonumber(d) or 0))))
+    end)
+    on("wall_item_step", function(d)
+        local sec, step = tonumber(fact.wall_sec) or 1, tonumber(d) or 0
+        if sec == 1 then Hooks.call("wall_move", step); return end
+        local item = math.max(0, math.min(SECTOR_ITEMS[sec] - 1, (tonumber(fact.wall_item) or 0) + step))
+        fact.wall_item = item
+        if sec == 0 then set_tab(item)
+        elseif sec == 2 then emit("Settings.wallpaper_fx_pick", item) end
+    end)
+    on("wall_activate", function()
+        local sec, item = tonumber(fact.wall_sec) or 1, tonumber(fact.wall_item) or 0
+        if sec == 1 then Hooks.call("wall_enter")
+        elseif sec == 3 then Hooks.call(item == 0 and "wall_favourite_toggle" or "wall_restore", -1) end
+    end)
+
     on("wall_scroll", function(wheel)
         local max_off = math.max(0, #view - PAGE)
         local step = (tonumber(wheel) or 0) > 0 and -1 or 1
@@ -978,6 +1004,7 @@ module("wallpapers", function(panel, opened, shown, closed)
 
     -- Opening the picker looks again (a new picture in the folder shows up) and lands on the one in use.
     opened(function()
+        fact.wall_sec, fact.wall_item = 1, 0
         WS.status(nil, favourites, function(status)
             favourite_status = status
             if fact.wall_tab == 3 then rebuild(3) end
