@@ -493,6 +493,8 @@ module("clipboard", function(panel, opened, shown, closed)
         end
         model.clips = rows
         local n = #view
+        fact.clip_off = off
+        fact.clip_total = n
         text.clip_count = (q ~= "" and (n .. " found")) or (#history .. " saved" .. (#pins > 0 and (" · " .. #pins .. " pinned") or ""))
         text.clip_empty = clip_missing and "Clipboard history needs cliphist (install the cliphist package)"
             or ((q ~= "") and "Nothing matches" or "Nothing copied yet")
@@ -582,9 +584,39 @@ module("clipboard", function(panel, opened, shown, closed)
         rebuild(true)
     end)
 
-    -- Keep the cursor in view when the arrows run past the ends of the 8 shown rows.
-    on("fact:clip_sel", function()
-        -- (the rows are the window; moving past it is handled by the wheel)
+    -- Keys. `clip_sel` is the cursor's row INSIDE the 8 shown; the window (`off`) scrolls so the cursor never leaves it.
+    local function goto_entry(abs)
+        local n = #view
+        if n == 0 then return end
+        abs = math.max(0, math.min(n - 1, abs))
+        if abs < off then off = abs elseif abs >= off + MAX_SHOWN then off = abs - MAX_SHOWN + 1 end
+        off = math.max(0, math.min(math.max(0, n - MAX_SHOWN), off))
+        rebuild(true)
+        fact.clip_sel = abs - off
+    end
+    on("clip_move", function(d)
+        d = tonumber(d) or 0
+        goto_entry((off + (tonumber(fact.clip_sel) or 0)) + d)
+    end)
+
+    -- Delete takes the entry under the cursor out of the history (a pinned one: off the pins). The search field
+    -- owns Delete while something is typed in it.
+    on("clip_delete", function(i)
+        if (text.clip_q or "") ~= "" then return end
+        local v = entry_at(i)
+        if not v then return end
+        local keep = off + (tonumber(i) or 0)
+        if v.kind == "pin" then
+            table.remove(pins, v.idx)
+            save_pins()
+            rebuild(true)
+        else
+            local raw = history[v.idx].raw
+            table.remove(history, v.idx)
+            run("sh", { "-c", 'printf "%s\\n" "$1" | cliphist delete', "x", raw }, nil, { output = false })
+            rebuild(true)
+        end
+        goto_entry(keep)
     end)
 
     on("clear_all", function()
@@ -838,12 +870,17 @@ module("wallpapers", function(panel, opened, shown, closed)
     end)
 
     -- ── buttons ──────────────────────────────────────────────────────
-    on("wall_tab_set", function(n)
+    local function set_tab(n)
         local tab = tonumber(n)
         if not tab or tab < 0 or tab > 3 or tab ~= math.floor(tab) then return end
         fact.wall_tab = tab
         if tab == 3 then WS.status(nil, favourites, function(status) favourite_status = status; if fact.wall_tab == 3 then rebuild(3) end end) end
         rebuild(tab)
+    end
+    on("wall_tab_set", set_tab)
+    -- Up / Down on the keyboard: the previous / next filter tab (stops at the ends)
+    on("wall_tab_step", function(d)
+        set_tab(math.max(0, math.min(3, (tonumber(fact.wall_tab) or 0) + (tonumber(d) or 0))))
     end)
 
     on("wall_scroll", function(wheel)
@@ -1077,12 +1114,64 @@ module("widget_bar", function(panel, opened, shown, closed)
     on("wb_stack_next", function() opt.stack_page(1) end)
     on("wb_stack_unstack", function() opt.stack_unstack() end)
 
-    on("wb_tab", function(n)
+    local function switch_page(n)
         n = math.floor(tonumber(n) or 0)
+        fact.wb_cur = -1
         if n == 2 then opt.enter(); return end
         opt.leave()                       -- back to Widgets / Desktops: the layouts controller never left its own page
         ctl.tab(n)
         apply_page()
+    end
+    on("wb_tab", switch_page)
+    -- Alt+Left / Alt+Right: the previous / next page
+    on("wb_tab_step", function(d)
+        local page = math.max(0, math.min(2, (tonumber(fact.wb_page) or 0) + (tonumber(d) or 0)))
+        if page ~= tonumber(fact.wb_page) then switch_page(page) end
+    end)
+
+    -- Widgets page, keyboard: one cursor over the kinds (6 per row) and then the presets (one row), laid out as drawn.
+    local COLS = 6
+    local function cursor_move(dir)
+        local nk, np = #kinds, #presets
+        local total = nk + np
+        if total == 0 then return end
+        local c = tonumber(fact.wb_cur) or -1
+        if c < 0 or c >= total then fact.wb_cur = 0; return end
+        local is_kind = c < nk
+        if dir == 1 then c = math.max(0, c - 1)
+        elseif dir == 2 then c = math.min(total - 1, c + 1)
+        elseif dir == 5 then c = 0
+        elseif dir == 6 then c = total - 1
+        elseif dir == 4 then            -- down: the next row of kinds, else the preset under the column
+            if is_kind then
+                if c + COLS < nk then c = c + COLS
+                elseif np > 0 then
+                    local x = 24 + (c % COLS) * 126
+                    c = nk + math.max(0, math.min(np - 1, math.floor((x - 92) / 106 + 0.5)))
+                end
+            end
+        elseif dir == 3 then            -- up: the kind above (the preset: the kind above its x, on the last row)
+            if is_kind then
+                if c - COLS >= 0 then c = c - COLS end
+            else
+                local x = 92 + (c - nk) * 106
+                local col = math.max(0, math.min(COLS - 1, math.floor((x - 24) / 126 + 0.5)))
+                local last_row = math.floor((nk - 1) / COLS)
+                c = math.min(nk - 1, last_row * COLS + col)
+            end
+        end
+        fact.wb_cur = c
+    end
+    on("wb_nav", function(dir) cursor_move(math.floor(tonumber(dir) or 0)) end)
+    on("wb_activate", function()
+        local c = tonumber(fact.wb_cur) or -1
+        if c < 0 then return end
+        if c < #kinds then
+            -- the same code as the chip's press: monitor * 100 + kind
+            widgets("emit w_add " .. math.floor((tonumber(fact.open_screen) or 0) * 100 + kinds[c + 1].id))
+        elseif presets[c - #kinds + 1] then
+            widgets("emit w_preset " .. presets[c - #kinds + 1].id)
+        end
     end)
     on("wb_pick", function(id) ctl.pick(id) end)
     on("wb_move", function(d) ctl.move(d) end)
@@ -1100,6 +1189,7 @@ module("widget_bar", function(panel, opened, shown, closed)
     end)
 
     opened(function()
+        fact.wb_cur = -1
         ctl.opened()
         opt.opened()
         apply_page()

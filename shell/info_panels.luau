@@ -9,6 +9,7 @@ module("weather", function(panel, opened, shown)
     local Data=require("weather_data")
     local VIEW_FORECAST_H=692
     local found={}
+    local function field_focus(on) if on then focus("wq") else focus() end end
     local function urlencode(value)
         return (value:gsub("[^%w%-_%.~]",function(c) return string.format("%%%02X",c:byte()) end))
     end
@@ -29,18 +30,30 @@ module("weather", function(panel, opened, shown)
     after(100,paint_forecast)
 
     -- ── choosing a place ────────────────────────────────────────────
-    local function save_place(lat,lon,city)
-        emit("Weather.choose_location",{lat=lat,lon=lon,city=city})
-        fact.wx_view=0
+    local function show_forecast()
+        fact.wx_view=0; fact.wx_focus=-1; fact.wx_sel=0
+        field_focus(false)
         panel.height(VIEW_FORECAST_H)
     end
+    local function save_place(lat,lon,city)
+        emit("Weather.choose_location",{lat=lat,lon=lon,city=city})
+        show_forecast()
+    end
 
+    -- keyboard: wx_focus (forecast: -1 none, 0 Change, 1 Refresh) and wx_sel (places: -2 Back, -1 my location, 0.. a found place;
+    -- the search field has the keys while wx_sel >= 0)
+    local function set_sel(v)
+        v = math.max(-2, math.min(v, math.max(#found - 1, 0)))
+        fact.wx_sel = v
+        field_focus(v >= 0)
+    end
     local function paint_places()
         local rows = {}
         for i, p in ipairs(found) do
             rows[i] = { name = p.name, sub = p.sub }
         end
         model.places = rows
+        if (tonumber(fact.wx_sel) or 0) >= 0 then fact.wx_sel = 0 end     -- new results: the first one is the one Enter picks
         panel.height(172 + math.max(#rows, 1) * 48 + 20)
     end
 
@@ -83,33 +96,61 @@ module("weather", function(panel, opened, shown)
         end)
     end)
 
-    on("loc_change", function()
+    local change_place, pick_place, use_ip
+    function change_place()
         fact.wx_view = 1
+        fact.wx_focus = -1
         text.wq = ""
         found = {}
         paint_places()
+        set_sel(0)
         text.w_source = "Current location: " .. (text["Weather.city"] or "Choose a city")
-    end)
+    end
+    on("loc_change", change_place)
 
-    on("loc_back", function()
-        fact.wx_view = 0
-        panel.height(VIEW_FORECAST_H)
-    end)
+    on("loc_back", show_forecast)
 
-    on("loc_pick", function(i)
+    function pick_place(i)
         local p = found[(tonumber(i) or -1) + 1]
         if p then
             save_place(p.lat, p.lon, p.name)
         end
-    end)
+    end
+    on("loc_pick", pick_place)
 
-    on("loc_ip",function()
-        fact.wx_view=0;panel.height(VIEW_FORECAST_H)
+    function use_ip()
+        show_forecast()
         emit("Weather.use_ip")
-    end)
+    end
+    on("loc_ip", use_ip)
     on("weather_reload",function() emit("Weather.refresh") end)
+
+    -- keys (rules in common/info_panels.plm): 1 previous · 2 next · 6 activate (release of Enter / Space) · 7 Enter in the search field
+    on("wx_nav", function(code)
+        if not shown() then return end
+        code = tonumber(code) or 0
+        if (tonumber(fact.wx_view) or 0) == 0 then
+            local f = tonumber(fact.wx_focus) or -1
+            local last = fact.wx_loading and 0 or 1            -- "Refresh" is off while a forecast is loading
+            if code == 2 then fact.wx_focus = f >= last and 0 or f + 1
+            elseif code == 1 then fact.wx_focus = f <= 0 and last or f - 1
+            elseif code == 6 then
+                if f == 0 then change_place() elseif f == 1 and not fact.wx_loading then emit("weather_reload") end
+            end
+            return
+        end
+        local sel = tonumber(fact.wx_sel) or 0
+        local top = math.max(#found - 1, 0)
+        if code == 2 then set_sel(sel >= top and -2 or sel + 1)          -- Tab / Down walk Back → my location → places, and wrap
+        elseif code == 1 then set_sel(sel <= -2 and top or sel - 1)
+        elseif code == 7 then                                              -- Enter in the search field
+            if sel >= 0 and found[sel + 1] then pick_place(sel) end
+        elseif code == 6 then                                              -- Enter / Space on a button
+            if sel == -2 then show_forecast() elseif sel == -1 then use_ip() end
+        end
+    end)
     opened(function()
-        fact.wx_view=0;panel.height(VIEW_FORECAST_H)
+        show_forecast()
         paint_forecast();emit("Weather.ensure")
     end)
     panel.height(VIEW_FORECAST_H)
@@ -119,6 +160,24 @@ end)
 module("music", function(panel, opened, shown)
     -- Music panel logic: the `media` service (MPRIS) → the card. The frame draws the glass (panel.luau reports the height).
     panel.height(196)
+    -- keys (rules in common/info_panels.plm); the player controls are the System scene's events. The release of the Enter that OPENED the
+    -- panel (from Spotlight, a shortcut) must not toggle the player: key releases count only 350 ms after it opens.
+    local armed = false
+    opened(function() armed = false; after(350, function() armed = true end) end)
+    on("mu_nav", function(code)
+        if not shown() then return end
+        code = tonumber(code) or 0
+        if code == 1 then if armed then emit("System.play_pause") end
+        elseif code == 2 then emit("System.previous")
+        elseif code == 3 then emit("System.next")
+        elseif code == 4 or code == 5 then
+            local len = tonumber(fact["System.track_len"]) or 0
+            if len > 0 then
+                local pos = tonumber(fact["System.track_pos"]) or 0
+                emit("System.seek", math.max(0, math.min(1, (pos + (code == 5 and 10 or -10)) / len)))
+            end
+        end
+    end)
     -- (what is playing and the player controls are the System scene's: system.luau)
 end)
 
@@ -158,6 +217,26 @@ module("dashboard", function(panel, opened, shown)
     on("cal_next", function() fact.cal_shift = (tonumber(fact.cal_shift) or 0) + 1; paint_calendar() end)
     on("cal_now", function() fact.cal_shift = 0; paint_calendar() end)
     paint_calendar()
+
+    -- keys (rules in common/info_panels.plm): focus ring 0 weather · 1 calendar · 2 notes · 3 to-dos (-1 none until the first move)
+    on("d_nav", function(code)
+        if not shown() then return end
+        code = tonumber(code) or 0
+        local f = tonumber(fact.d_focus) or -1
+        if code == 2 then fact.d_focus = (f + 1) % 4
+        elseif code == 1 then fact.d_focus = f < 0 and 3 or (f - 1) % 4
+        elseif code == 3 then fact.cal_shift = (tonumber(fact.cal_shift) or 0) - 1; paint_calendar()
+        elseif code == 4 then fact.cal_shift = (tonumber(fact.cal_shift) or 0) + 1; paint_calendar()
+        elseif code == 5 then fact.cal_shift = 0; paint_calendar()
+        elseif code == 6 then
+            if f == 0 then
+                fact.last_screen = tonumber(fact["Panels.open_screen"]) or 0         -- the monitor Today is on
+                require("topbar_hooks").emit("Topbar.open_weather")
+            elseif f == 1 then fact.cal_shift = 0; paint_calendar()
+            elseif f == 2 then require("topbar_hooks").call("pe_open", 0)
+            elseif f == 3 then require("topbar_hooks").call("pe_open", 1) end
+        end
+    end)
 
     -- ── CPU, memory, disk, uptime ────────────────────────────────────
     -- Real CPU use: /proc/stat read twice, 0.4 s apart.
@@ -230,6 +309,7 @@ module("dashboard", function(panel, opened, shown)
     end)
     opened(function()
         fact.cal_shift = 0
+        fact.d_focus = -1
         refresh_all()
     end)
     on("refresh_stats", refresh_all)

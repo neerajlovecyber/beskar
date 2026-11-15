@@ -32,6 +32,12 @@ part ControlCenterPanel {
     // ── Navigation & Theme Facts ──────────────────────────────────
     // Navigation: 0 = Main, 1 = Wi-Fi, 2 = Bluetooth, 3 = Sound
     fact cc_page = 0
+    //  Keyboard focus: a slot number whose meaning depends on the page (cc.luau owns the navigation; the ring below draws it).
+    //  page 0: 0 Wi-Fi · 1 Bluetooth · 2 player · 3 Do Not Disturb · 4 dark mode · 5 Settings · 6 display · 7 sound · 8-11 shortcuts
+    //  page 1: 0 radio switch · 1 connection button · 2 look again · 3+ networks     page 2: 0 switch · 1 search · 2+ devices
+    //  page 3: 0-5 outputs · 6-9 apps' own sliders
+    fact cc_focus = 0
+    event cc_key ->
     prop dm_k = 0 ~quick
     follow dm_k = if(dark_mode, 1, 0)
 
@@ -518,6 +524,51 @@ part ControlCenterPanel {
             }
         }
 
+
+        // ==========================================================
+        // KEYBOARD FOCUS RING (drawn over every page; cc.luau moves `cc_focus`)
+        // ==========================================================
+        let cc_x = pick(cc_page,
+            pick(cc_focus, 16, 16, 186, 16, 186, 271, 16, 16, 16, 106.7, 197.3, 288),
+            pick(cc_focus, 300, 316 - pick(wifi_state, 84, 84, 104, 104, 76), 270, 16, 16, 16, 16, 16, 16, 16, 16, 16),
+            pick(cc_focus, 300, 214, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16),
+            16)
+        let cc_y = pick(cc_page,
+            pick(cc_focus, 16, 88, 16, 160, 160, 160, 232, 298, 362, 362, 362, 362),
+            pick(cc_focus, 24, 18, 134, 158, 198, 238, 278, 318, 358, 398, 438, 478),
+            pick(cc_focus, 24, 24, 62, 114, 166, 218, 270, 322, 374, 426, 478, 530),
+            pick(cc_focus, 74, 114, 154, 194, 234, 274, 98 + outs_list.height, 98 + outs_list.height + 56, 98 + outs_list.height + 112, 98 + outs_list.height + 168, 0, 0))
+        let cc_w = pick(cc_page,
+            pick(cc_focus, 158, 158, 158, 158, 73, 73, 328, 328, 56, 56, 56, 56),
+            pick(cc_focus, switch_w, pick(wifi_state, 84, 84, 104, 104, 76), 74, 328, 328, 328, 328, 328, 328, 328, 328, 328),
+            pick(cc_focus, switch_w, 82, 328, 328, 328, 328, 328, 328, 328, 328, 328, 328),
+            328)
+        let cc_h = pick(cc_page,
+            pick(cc_focus, 60, 60, 132, 60, 60, 60, 54, 54, 56, 56, 56, 56),
+            pick(cc_focus, switch_h, control_h, 20, 36, 36, 36, 36, 36, 36, 36, 36, 36),
+            pick(cc_focus, switch_h, 24, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46),
+            pick(cc_focus, 36, 36, 36, 36, 36, 36, 50, 50, 50, 50, 50, 50))
+        let cc_r = pick(cc_page,
+            pick(cc_focus, 16, 16, 16, 16, 16, 16, 16, 16, 28, 28, 28, 28),
+            pick(cc_focus, 10, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8),
+            pick(cc_focus, 10, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12),
+            pick(cc_focus, 8, 8, 8, 8, 8, 8, 12, 12, 12, 12, 12, 12))
+        prop ring_x = 16 ~quick
+        prop ring_y = 16 ~quick
+        prop ring_w = 158 ~quick
+        prop ring_h = 60 ~quick
+        prop ring_r = 16 ~quick
+        follow ring_x = cc_x
+        follow ring_y = cc_y
+        follow ring_w = cc_w
+        follow ring_h = cc_h
+        follow ring_r = cc_r
+        group {
+            show: cc_focus >= 0 and not asking
+            move: ring_x, ring_y
+            box { from: -3, -3; size: ring_w + 6, ring_h + 6; corner: ring_r + 3; stroke: 2; color: focus_c }
+        }
+
         // Sliders & Media Actions, navigation and theme: the rules name zones drawn above, so they live in the component
     on press sc_clip_hit   { emit sc_clip; emit Panels.close; cc_page = 0 }
     on press sc_shot_hit   { emit sc_shot; emit Panels.close; cc_page = 0 }
@@ -537,6 +588,22 @@ part ControlCenterPanel {
     on open_sound { cc_page = 3 }
 
     // Window lifecycle: Esc and losing the keyboard (only while the password sheet has it) close the panel
-    on key Escape while Panels.cur == 1 and Panels.open_screen == screen.index { emit Panels.close; cc_page = 0 }
+
+    //  Keyboard: every rule is guarded by the monitor (the frame is compiled once per monitor copy) and by this panel.
+    //  cc.luau moves the focus and activates: 1 up · 2 down · 3 left · 4 right · 5 tab · 6 shift+tab · 9 escape ·
+    //  10 / 11 Enter / space pressed (they arm the release) · 20 / 21 Enter / space released.
+    on key Up while Panels.cur == 1 and Panels.open_screen == screen.index { emit cc_key(1) }
+    on key Down while Panels.cur == 1 and Panels.open_screen == screen.index { emit cc_key(2) }
+    on key Left while Panels.cur == 1 and Panels.open_screen == screen.index { emit cc_key(3) }
+    on key Right while Panels.cur == 1 and Panels.open_screen == screen.index { emit cc_key(4) }
+    on key Tab while Panels.cur == 1 and Panels.open_screen == screen.index { emit cc_key(5) }
+    on key Shift+Tab while Panels.cur == 1 and Panels.open_screen == screen.index { emit cc_key(6) }
+    on key Escape while Panels.cur == 1 and Panels.open_screen == screen.index { emit cc_key(9) }
+    on key Return while Panels.cur == 1 and Panels.open_screen == screen.index { emit cc_key(10) }
+    on key KP_Enter while Panels.cur == 1 and Panels.open_screen == screen.index { emit cc_key(10) }
+    on key space while Panels.cur == 1 and Panels.open_screen == screen.index { emit cc_key(11) }
+    on keyup Return while Panels.cur == 1 and Panels.open_screen == screen.index { emit cc_key(20) }
+    on keyup KP_Enter while Panels.cur == 1 and Panels.open_screen == screen.index { emit cc_key(20) }
+    on keyup space while Panels.cur == 1 and Panels.open_screen == screen.index { emit cc_key(21) }
     on blur while Panels.cur == 1 and not Panels.fresh and askhold < 0.2 and Panels.open_screen == screen.index { emit Panels.close; cc_page = 0 }
 }

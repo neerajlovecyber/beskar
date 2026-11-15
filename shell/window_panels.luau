@@ -207,17 +207,30 @@ module("switcher", function(panel, opened, shown, closed)
     opened(refresh_windows)
     closed(function() pcall(sys.call, "thumbnails.want") end)      -- stop asking when closed
 
+    -- (a change made by this very logic does not come back through `on("fact:sw_sel")`: show the title here too)
+    local function select_app(i)
+        fact.sw_sel = i
+        show_title(i)
+    end
+
     on("next_app", function()
         local count = #window_list
         if count > 0 then
-            fact.sw_sel = (fact.sw_sel + 1) % count
+            select_app(((tonumber(fact.sw_sel) or 0) + 1) % count)
         end
     end)
 
     on("prev_app", function()
         local count = #window_list
         if count > 0 then
-            fact.sw_sel = (fact.sw_sel - 1 + count) % count
+            select_app(((tonumber(fact.sw_sel) or 0) - 1 + count) % count)
+        end
+    end)
+
+    on("sw_edge", function(d)
+        local count = #window_list
+        if count > 0 then
+            select_app((tonumber(d) or 0) < 0 and 0 or count - 1)
         end
     end)
 
@@ -430,12 +443,13 @@ module("overview", function(panel, opened, shown, closed)
         end
     end)
 
+    -- Down / Up go one row; a short last row is reached by its last window (so Down never "does nothing" on a gap)
     on("down_win", function()
         local count = #window_list
         if count > 0 then
-            local target = fact.ov_sel + COLS
-            if target < count then
-                fact.ov_sel = target
+            local sel = tonumber(fact.ov_sel) or 0
+            if math.floor(sel / COLS) < math.floor((count - 1) / COLS) then
+                fact.ov_sel = math.min(sel + COLS, count - 1)
             end
         end
     end)
@@ -443,10 +457,17 @@ module("overview", function(panel, opened, shown, closed)
     on("up_win", function()
         local count = #window_list
         if count > 0 then
-            local target = fact.ov_sel - COLS
+            local target = (tonumber(fact.ov_sel) or 0) - COLS
             if target >= 0 then
                 fact.ov_sel = target
             end
+        end
+    end)
+
+    on("ov_edge", function(d)
+        local count = #window_list
+        if count > 0 then
+            fact.ov_sel = (tonumber(d) or 0) < 0 and 0 or count - 1
         end
     end)
 

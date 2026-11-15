@@ -3,6 +3,11 @@ part PersonalEditor {
     fact pe_tab = 0
     fact pe_completed = false
     fact pe_selected = 0
+    fact pe_focus = 1             // keyboard zone: 0 the header (Notes · To-dos · Undo · Done) · 1 the list · 2 the editor / the to-do field
+    fact pe_head = 0              // which header item has the ring while pe_focus == 0
+    fact pe_note_i = 0            // index of the selected note / the highlighted to-do in its list (for the ring and to scroll it into view)
+    fact pe_task_i = 0
+    event pe_nav ->               // 1 up · 2 down · 3 left · 4 right · 5 Tab · 6 Shift+Tab · 7 Enter / Space (release) · 8 Esc · 9 Delete · 10 Ctrl+N · 11 / 12 Alt+Up / Alt+Down
     text pe_draft = ""
     text pe_new_task = ""
     text pe_modified = ""
@@ -26,6 +31,10 @@ part PersonalEditor {
             group { move: 286, 12; Chip("To-dos", pe_tab == 1, pe_open, 1, 90, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill) }
             group { move: 406, 12; Pill("Undo", 72, pe_undo, 0, control_h, false, Personal.can_undo, ui_accent_c: accent_c, ui_danger_c: danger_c, ui_ink_c: ink_c, ui_item_bg: item_bg, ui_on_accent: on_accent) }
             group { move: 488, 12; Pill("Done", 88, Panels.close, 0, control_h, false, ui_accent_c: accent_c, ui_danger_c: danger_c, ui_ink_c: ink_c, ui_item_bg: item_bg, ui_on_accent: on_accent) }
+            box { from: 186, 10; size: 94, control_h + 4; corner: control_r + 2; stroke: 2; color: focus_c; show: pe_focus == 0 and pe_head == 0 }
+            box { from: 284, 10; size: 94, control_h + 4; corner: control_r + 2; stroke: 2; color: focus_c; show: pe_focus == 0 and pe_head == 1 }
+            box { from: 404, 10; size: 76, control_h + 4; corner: control_r + 2; stroke: 2; color: focus_c; show: pe_focus == 0 and pe_head == 2 }
+            box { from: 486, 10; size: 92, control_h + 4; corner: control_r + 2; stroke: 2; color: focus_c; show: pe_focus == 0 and pe_head == 3 }
             text Personal.status { at: 24, 506; anchor: left center; size: ts_cap; color: ink_sub; width: 552; lines: 2 }
             group {
                 show: pe_tab == 0 and Personal.ready
@@ -39,6 +48,7 @@ part PersonalEditor {
                         group {
                             size: 152, 40
                             box { from: 0, 0; size: 152, 40; corner: r_s; color: if(n.selected, accent_c, item_bg); opacity: if(n.selected, 18%, item_bg_op) }
+                            box { from: 1, 1; size: 150, 38; corner: r_s; stroke: 2; color: focus_c; show: n.selected and pe_focus == 1 }
                             text n.title { at: 10, 20; anchor: left center; size: ts_sub; color: ink_c; width: 132; lines: 1 }
                             zone box pe_note_hit { from: 0, 0; size: 152, 40; cursor: pointer; label: n.title }
                             on press pe_note_hit { emit pe_pick(n.id) }
@@ -46,11 +56,13 @@ part PersonalEditor {
                         }
                     }
                 }
+                on change pe_note_i { pe_note_list.scroll: clamp(pe_note_list.scroll, max(0, pe_note_i * 44 - 286), pe_note_i * 44) ~calm }
                 group { move: 24, 110; ScrollChrome(152, 326, pe_note_list.scroll, pe_note_list.content, ink_c, bg_color) }
                 group {
                     show: pe_selected > 0
                     box { from: 202, 66; size: 374, 352; corner: r_l; color: item_solid }
                     //  (the note field is declared in topbar.plm, at scene level)
+                    box { from: 201, 65; size: 376, 354; corner: r_l; stroke: 2; color: focus_c; show: pe_focus == 2 }
                     text pe_modified { at: 202, 440; anchor: left center; size: ts_cap; color: ink_sub; width: 240; lines: 1 }
                     group { move: 474, 428; Pill("Remove", 102, pe_delete_note, 0, control_h, false, ui_accent_c: accent_c, ui_danger_c: danger_c, ui_ink_c: ink_c, ui_item_bg: item_bg, ui_on_accent: on_accent) }
                 }
@@ -62,6 +74,7 @@ part PersonalEditor {
                 group { move: 134, 64; Chip("Completed", pe_completed, pe_filter, 1, 124, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill) }
                 box { from: 24, 110; size: 444, 38; corner: r_s; color: item_solid }
                 //  (the to-do field is declared in topbar.plm, at scene level)
+                box { from: 23, 109; size: 446, 40; corner: r_s; stroke: 2; color: focus_c; show: pe_focus == 2 }
                 group { move: 480, 112; Pill("Add", 96, pe_add_task, 0, control_h_large, false, ui_accent_c: accent_c, ui_danger_c: danger_c, ui_ink_c: ink_c, ui_item_bg: item_bg, ui_on_accent: on_accent) }
                 text if(pe_completed, "Completed to-dos appear here.", "Nothing waiting. Add a to-do above.") { at: 24, 190; size: ts_body; color: ink_sub; show: pe_tasks.count == 0 }
                 column pe_task_list {
@@ -73,6 +86,7 @@ part PersonalEditor {
                         group {
                             size: 552, 44
                             box { from: 0, 0; size: 552, 44; corner: r_s; color: item_bg; opacity: item_bg_op }
+                            box { from: 1, 1; size: 550, 42; corner: r_s; stroke: 2; color: focus_c; show: t.index == pe_task_i and pe_focus == 1 }
                             Sym(if(t.done, "󰱒", "󰄱"), 20, 22, 20, if(t.done, ok_c, ink_sub))
                             text t.title { at: 42, 22; anchor: left center; size: ts_body; color: if(t.done, ink_sub, ink_c); width: 390; lines: 1 }
                             zone box pe_toggle_hit { from: 0, 0; size: 434, 44; cursor: pointer; label: t.title }
@@ -84,11 +98,28 @@ part PersonalEditor {
                         }
                     }
                 }
+                on change pe_task_i { pe_task_list.scroll: clamp(pe_task_list.scroll, max(0, pe_task_i * 48 - 276), pe_task_i * 48) ~calm }
                 group { move: 24, 162; ScrollChrome(552, 316, pe_task_list.scroll, pe_task_list.content, ink_c, bg_color) }
             }
     }
     event pe_filter ->
     on submit pe_new_task { emit pe_add_task }
-    on key Escape while Panels.cur == 25 and Panels.open_screen == screen.index { emit Panels.close }
+    //  Keyboard (rules guarded by the monitor, AGENTS rule 74; the logic decides by zone, personal_editor.luau): Tab / Shift+Tab move between the header,
+    //  the list and the editor; Up / Down walk notes or to-dos; Enter / Space toggle a to-do or open the note; Del removes; Ctrl+N a new note;
+    //  Alt+Up / Alt+Down reorder a to-do; Left / Right switch Active / Completed; Esc leaves the editor, then closes.
+    on key Escape while Panels.cur == 25 and Panels.open_screen == screen.index { emit pe_nav(8) }
+    on key Up while Panels.cur == 25 and Panels.open_screen == screen.index { emit pe_nav(1) }
+    on key Down while Panels.cur == 25 and Panels.open_screen == screen.index { emit pe_nav(2) }
+    on key Left while Panels.cur == 25 and Panels.open_screen == screen.index { emit pe_nav(3) }
+    on key Right while Panels.cur == 25 and Panels.open_screen == screen.index { emit pe_nav(4) }
+    on key Tab while Panels.cur == 25 and Panels.open_screen == screen.index { emit pe_nav(5) }
+    on key Shift+Tab while Panels.cur == 25 and Panels.open_screen == screen.index { emit pe_nav(6) }
+    on keyup Return while Panels.cur == 25 and Panels.open_screen == screen.index { emit pe_nav(7) }
+    on keyup KP_Enter while Panels.cur == 25 and Panels.open_screen == screen.index { emit pe_nav(7) }
+    on keyup space while Panels.cur == 25 and Panels.open_screen == screen.index { emit pe_nav(7) }
+    on key Delete while Panels.cur == 25 and Panels.open_screen == screen.index { emit pe_nav(9) }
+    on key Ctrl+n while Panels.cur == 25 and Panels.open_screen == screen.index { emit pe_nav(10) }
+    on key Alt+Up while Panels.cur == 25 and Panels.open_screen == screen.index { emit pe_nav(11) }
+    on key Alt+Down while Panels.cur == 25 and Panels.open_screen == screen.index { emit pe_nav(12) }
     on blur while Panels.cur == 25 and not Panels.fresh and Panels.open_screen == screen.index { emit Panels.close }
 }

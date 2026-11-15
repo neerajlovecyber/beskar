@@ -71,6 +71,18 @@ scene Notifications {
     event dismiss_group ->      // × on a stack: all of that app's notifications
     event set_banner_hover ->   // 1 / 0: the pointer is on a card the frame draws (the banner stays while it is)
 
+    //  Keyboard focus in the centre (the frame's rules send `nc_key(code)`, notif.luau owns the navigation and these facts, the
+    //  frame draws the ring): nc_kind -1 nothing · 0 a row of the list · 1 the Clear All button · 2 the "Clear" of Earlier.
+    //  nc_row is the focused row's kind (0 card · 1 stack · 2 group header), nc_fy / nc_fh its top and height in the list,
+    //  nc_sub 0 the card itself · 1 / 2 its own buttons. nc_bump counts moves: the frame scrolls the focused row into view.
+    fact nc_kind = -1
+    fact nc_row = 0
+    fact nc_fy = 0
+    fact nc_fh = 0
+    fact nc_sub = 0
+    fact nc_bump = 0
+    event nc_key ->
+
     // ── look ─────────────────────────────────────────────────────
 
 }

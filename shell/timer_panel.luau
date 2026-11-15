@@ -2,6 +2,8 @@
 return function(panel, opened, shown, closed)
     local Timer = require("timer_state")
     local submitted, programmatic = false, nil
+    local armed = false          -- the release of the Enter that opened the panel must not act on it
+    local preset
     local function state() return tonumber(fact["Activities.timer_state"]) or 0 end
     local function editing() return state() == 0 or state() == 3 end
     local function draft()
@@ -42,15 +44,23 @@ return function(panel, opened, shown, closed)
     on("tm_submit", function() if editing() then submitted = true; primary() end end)
     on("tm_activate", function()
         if submitted then submitted = false; return end
-        if tonumber(fact.tm_focus) == 1 then secondary() else primary() end
+        if not armed then return end
+        local f = tonumber(fact.tm_focus)
+        if f == 1 then secondary()
+        elseif f == 2 then preset(300)
+        elseif f == 3 then preset(600)
+        elseif f == 4 then preset(1500)
+        else primary() end
     end)
     on("tm_move", function(delta)
         if not shown() then return end
-        local first = editing() and -1 or 0
-        local index = tonumber(fact.tm_focus) or first
-        set_focus(first + ((index - first + (tonumber(delta) or 1)) % (2 - first)))
+        -- focus order: the duration field (-1), the three presets (2 3 4), then the two buttons (0 1); a running timer has only the buttons
+        local order = editing() and { -1, 2, 3, 4, 0, 1 } or { 0, 1 }
+        local at = 1
+        for i, v in ipairs(order) do if v == (tonumber(fact.tm_focus) or order[1]) then at = i end end
+        set_focus(order[(at - 1 + (tonumber(delta) or 1)) % #order + 1])
     end)
-    on("tm_preset", function(seconds)
+    function preset(seconds)
         if not shown() or not editing() then return end
         local presets = { [300] = true, [600] = true, [1500] = true }
         seconds = tonumber(seconds)
@@ -58,7 +68,8 @@ return function(panel, opened, shown, closed)
         programmatic = tostring(seconds / 60):gsub("%.0$", "")
         text.tm_duration = programmatic
         draft(); set_focus(0)
-    end)
+    end
+    on("tm_preset", preset)
     on("text:tm_duration", function()
         if shown() and editing() then
             if text.tm_duration ~= programmatic then fact.tm_focus = -1 end
@@ -68,6 +79,7 @@ return function(panel, opened, shown, closed)
     on("fact:Activities.timer_state", sync)
     opened(function()
         submitted = false
+        armed = false; after(350, function() armed = true end)
         if editing() then
             local duration = tonumber(fact["Activities.timer_duration"]) or 1500
             programmatic = duration % 60 == 0 and tostring(math.floor(duration / 60)) or (duration .. "s")

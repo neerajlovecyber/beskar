@@ -1,6 +1,11 @@
 -- (the body of the notifications scene: notifications.luau runs it as module("notifications", require("notif")))
 -- Notification centre logic, after Marea's: this logic is the receiver of the desktop's notifications.
 return function(panel, opened, shown, closed)
+-- Every handler is also kept in H: the keyboard code at the end calls them directly (this plugin cannot emit to itself).
+local base_on = on
+local H = {}
+local function on(name, fn) H[name] = fn; return base_on(name, fn) end
+local refocus = function() end        -- set by the keyboard code at the end: keeps the focus on the same row after a repaint
 --
 --   · what arrives is KEPT until somebody deals with it (`notifications.keep`): a centre is not a bar of
 --     bubbles, so a notification that asks to expire after 5 s does not vanish before you open it
@@ -229,6 +234,7 @@ local function paint()
     fact.nc_height = height
     panel.height(height)
     paint_window()
+    refocus()
 
     -- Senders Settings can offer a rule for: waiting first, then the history.
     for _, h in ipairs(history) do recent[#recent + 1] = h.app end
@@ -386,7 +392,9 @@ on("fact:banner_on", function(v)
 end)
 
 -- opening the centre hides the banner; a click on the banner opens the centre
-opened(function() banner_hide(); if held > 0 then set_held(0) end end)
+local focus_reset = function() end
+opened(function() banner_hide(); if held > 0 then set_held(0) end; focus_reset() end)
+closed(function() focus_reset() end)
 on("card_click", function()
     if shown() then
         return
@@ -489,6 +497,141 @@ end)
 -- Ages move on; and the bell has to hear again if the top bar was restarted.
 every(30000, function() refresh_quiet(); paint() end)
 refresh_quiet()
+
+
+
+-- ── keyboard ─────────────────────────────────────────────────────
+-- The frame's rules (common/notice_view.plm) send `nc_key(code)`. The focus walks the STOPS: every row of the list (card, stack,
+-- group header; all of them, not only the 16 drawn), then Clear All, then the Clear of Earlier. A card with its own buttons has
+-- up to two more positions inside it (`fsub`). The focus is remembered by the row's identity, so a repaint (a new notification,
+-- one dismissed, the ages ticking) keeps it on the same card; the frame draws the ring from the nc_* facts.
+local fi, fid, fsub = 1, nil, 0
+local armed_enter, armed_space = false, false
+
+local function stops()
+    local list = {}
+    for _, r in ipairs(all_rows) do
+        local ident = (r.kind == 0 and ("c" .. r.id)) or (r.kind == 1 and ("s" .. r.key)) or ("h" .. r.key)
+        list[#list + 1] = { t = 0, row = r, ident = ident }
+    end
+    if #order > 0 then list[#list + 1] = { t = 1, ident = "clear" } end
+    if #history > 0 then list[#list + 1] = { t = 2, ident = "past" } end
+    return list
+end
+
+local function max_sub(s)
+    return (s and s.t == 0 and s.row.kind == 0) and s.row.na or 0
+end
+
+local function publish(bump)
+    local list = stops()
+    if #list == 0 then
+        fact.nc_kind = -1
+        fid = nil
+        return list
+    end
+    if fid then
+        for i, s in ipairs(list) do
+            if s.ident == fid then fi = i; break end
+        end
+    end
+    fi = math.max(1, math.min(fi, #list))
+    local s = list[fi]
+    fid = s.ident
+    fsub = math.max(0, math.min(fsub, max_sub(s)))
+    fact.nc_kind = s.t
+    fact.nc_sub = fsub
+    if s.t == 0 then
+        fact.nc_row = s.row.kind
+        fact.nc_fy = s.row.y
+        fact.nc_fh = s.row.kind == 0 and (s.row.h - 8) or (s.row.kind == 1 and 80 or ROW_HEAD)
+    elseif s.t == 2 then
+        fact.nc_fy = tonumber(fact.live_h) or 0
+        fact.nc_fh = 40
+    end
+    if bump and s.t ~= 1 then fact.nc_bump = (tonumber(fact.nc_bump) or 0) + 1 end
+    return list
+end
+
+refocus = function() publish(false) end
+focus_reset = function()
+    fi, fid, fsub = 1, nil, 0
+    armed_enter, armed_space = false, false
+    publish(true)
+end
+
+local function go(index, sub)
+    fi, fid, fsub = index, nil, sub or 0
+    publish(true)
+end
+
+local function activate()
+    local list = stops()
+    local s = list[fi]
+    if not s then return end
+    if s.t == 1 then H.clear_notices(); fi, fid, fsub = 1, nil, 0; return end
+    if s.t == 2 then H.clear_past(); return end
+    local r = s.row
+    if r.kind == 0 then
+        local n = live[r.id]
+        if fsub > 0 then
+            H.invoke_action(r.id * 10 + fsub)
+        elseif n then
+            for _, a in ipairs(type(n.actions) == "table" and n.actions or {}) do
+                if type(a) == "table" and a.key == "default" then
+                    pcall(sys.call, "notifications.invoke", r.id, "default")
+                    pcall(sys.call, "notifications.dismiss", r.id)
+                    break
+                end
+            end
+        end
+    else
+        -- a stack opens on its first card; a group closes back onto its stack
+        if r.kind == 1 then fi, fid, fsub = fi + 1, nil, 0 else fid, fsub = nil, 0 end
+        H.group_toggle(r.key)
+        publish(true)
+    end
+end
+
+local function dismiss()
+    local s = stops()[fi]
+    if not s or s.t ~= 0 then return end
+    local r = s.row
+    fsub = 0
+    if r.kind == 0 then H.dismiss_notice(r.id)
+    elseif r.kind == 1 then H.dismiss_group(r.key) end
+end
+
+base_on("nc_key", function(code)
+    code = tonumber(code)
+    if not shown() or not code then return end
+    local list = publish(false)
+    if #list == 0 then return end
+    local s = list[fi]
+    if code == 1 then go((fi - 2) % #list + 1)
+    elseif code == 2 then go(fi % #list + 1)
+    elseif code == 5 then
+        if fsub < max_sub(s) then go(fi, fsub + 1) else go(fi % #list + 1) end
+    elseif code == 6 then
+        if fsub > 0 then go(fi, fsub - 1)
+        else
+            local pi = (fi - 2) % #list + 1
+            go(pi, max_sub(list[pi]))
+        end
+    elseif code == 4 then
+        if fsub < max_sub(s) then go(fi, fsub + 1)
+        elseif s.t == 0 and s.row.kind == 1 then activate() end       -- Right on a stack opens it
+    elseif code == 3 then
+        if fsub > 0 then go(fi, fsub - 1) end
+    elseif code == 7 then dismiss()
+    elseif code == 10 then armed_enter = true
+    elseif code == 11 then armed_space = true
+    elseif code == 20 then
+        if armed_enter then armed_enter = false; activate() end
+    elseif code == 21 then
+        if armed_space then armed_space = false; activate() end
+    end
+end)
 
 
 end

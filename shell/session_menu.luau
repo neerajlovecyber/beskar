@@ -87,6 +87,13 @@ return function(panel, opened, shown, closed)
         if fact.ses_mode == 0 then select((tonumber(fact.ses_index) or 0) + delta)
         else fact.ses_sel = 1 - (tonumber(fact.ses_sel) or 0) end
     end)
+    -- Home / End: the first / last action (the confirmation: Cancel / the action)
+    on("ses_edge", function(d)
+        if not shown() then return end
+        local last = (tonumber(d) or 0) > 0
+        if fact.ses_mode == 0 then select(last and #actions - 1 or 0)
+        else fact.ses_sel = last and 1 or 0 end
+    end)
     on("ses_choose", activate)
     on("ses_cancel", function() if shown() then cancel_choice() end end)
     on("dismiss", function() if shown() then cancel_choice() end end)

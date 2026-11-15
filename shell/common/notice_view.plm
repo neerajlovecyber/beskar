@@ -4,6 +4,14 @@
 // disagree on the monitor nor on timing. Included by the frame's scene.
 part NotificationsView {
     let nc_view_h = Notifications.nc_height - 78
+    let nc_ax = notice_pad + notice_icon + notice_gap                    // where a card's own buttons start (see NoticeCard)
+    let nc_aw = (notice_w - notice_pad - nc_ax - space_8) / 2
+    //  the focus ring of the focused row, inside its own box (nc_sub 0 the card, 1 / 2 its buttons; nc_row 2 is a group's "Show less")
+    let nc_rx = if(Notifications.nc_row == 2, 268, pick(Notifications.nc_sub, 1, nc_ax - 2, nc_ax + nc_aw + space_8 - 2))
+    let nc_ry = if(Notifications.nc_row == 2, 0, if(Notifications.nc_sub == 0, 1, Notifications.nc_fh - 36 - 2))
+    let nc_rw = if(Notifications.nc_row == 2, 84, if(Notifications.nc_sub == 0, notice_w - 2, nc_aw + 4))
+    let nc_rh = if(Notifications.nc_row == 2, 32, if(Notifications.nc_sub == 0, Notifications.nc_fh - 2, control_h + 4))
+    let nc_rr = if(Notifications.nc_row == 2, radius_card, if(Notifications.nc_sub == 0, radius_card - 1, control_r + 2))
 
     //  One notification, after the macOS design: a large rounded card, the app's icon in a squircle on
     //  the left, a bold title, up to two lines of body and the time on the right. The round × shows on
@@ -140,6 +148,7 @@ part NotificationsView {
         group {
             show: Notifications.notices.count > 0
             group { move: 264, 18; Pill("Clear All", 88, Notifications.clear_notices, 0, control_h, false, ui_accent_c: accent_c, ui_danger_c: danger_c, ui_ink_c: ink_c, ui_item_bg: item_solid, ui_on_accent: on_accent) }
+            box { from: 261, 15; size: 94, control_h + 6; corner: control_r + 3; stroke: 2; color: focus_c; show: Notifications.nc_kind == 1 }
         }
 
         zone box nc_inside { from: 14, 62; size: 368, nc_view_h }
@@ -157,6 +166,12 @@ part NotificationsView {
                     for r in Notifications.rows {
                         group { move: 0, r.y; NoticeRow(r) }
                     }
+                    //  keyboard focus: the card, its own button, a stack, or a group's "Show less"
+                    group {
+                        show: Notifications.nc_kind == 0
+                        move: 0, Notifications.nc_fy
+                        box { from: nc_rx, nc_ry; size: nc_rw, nc_rh; corner: nc_rr; stroke: 2; color: focus_c }
+                    }
                 }
                 group {
                     show: Notifications.past.count > 0
@@ -166,6 +181,7 @@ part NotificationsView {
                     zone box clear_past_hit { from: 286, 8; size: 56, 22; corner: radius_medium; cursor: pointer }
                     on press clear_past_hit { emit Notifications.clear_past }
                     on press right clear_past_hit { }
+                    box { from: 282, 6; size: 64, 26; corner: radius_medium; stroke: 2; color: focus_c; show: Notifications.nc_kind == 2 }
                     column {
                         at: 0, 36
                         gap: space_6
@@ -176,6 +192,8 @@ part NotificationsView {
         }
         group { move: 14, 62; ScrollChrome(352, nc_view_h, nc_list.scroll, nc_list.content, ink_c, bg_color) }
         on change floor(nc_list.scroll / 32) { emit Notifications.list_scrolled(nc_list.scroll) }
+        //  a key moved the focus: bring that row into view (only when it is not)
+        on change Notifications.nc_bump { nc_list.scroll: clamp(nc_list.scroll, Notifications.nc_fy + Notifications.nc_fh + space_8 - nc_view_h, max(Notifications.nc_fy - space_8, 0)) ~quick }
 
         //  Nothing new
         group {
@@ -199,4 +217,23 @@ part NotificationsView {
             }
         }
     }
+    //  Keyboard (every rule is guarded by the monitor and this panel; notif.luau moves the focus): 1 up · 2 down · 3 left ·
+    //  4 right · 5 tab · 6 shift+tab · 7 delete / backspace (dismiss) · 10 / 11 Enter / space pressed (they arm the release) ·
+    //  20 / 21 Enter / space released (they act). Escape closes the centre.
+    on key Up while Panels.cur == 2 and Panels.open_screen == screen.index { emit Notifications.nc_key(1) }
+    on key Down while Panels.cur == 2 and Panels.open_screen == screen.index { emit Notifications.nc_key(2) }
+    on key Left while Panels.cur == 2 and Panels.open_screen == screen.index { emit Notifications.nc_key(3) }
+    on key Right while Panels.cur == 2 and Panels.open_screen == screen.index { emit Notifications.nc_key(4) }
+    on key Tab while Panels.cur == 2 and Panels.open_screen == screen.index { emit Notifications.nc_key(5) }
+    on key Shift+Tab while Panels.cur == 2 and Panels.open_screen == screen.index { emit Notifications.nc_key(6) }
+    on key Delete while Panels.cur == 2 and Panels.open_screen == screen.index { emit Notifications.nc_key(7) }
+    on key BackSpace while Panels.cur == 2 and Panels.open_screen == screen.index { emit Notifications.nc_key(7) }
+    on key Return while Panels.cur == 2 and Panels.open_screen == screen.index { emit Notifications.nc_key(10) }
+    on key KP_Enter while Panels.cur == 2 and Panels.open_screen == screen.index { emit Notifications.nc_key(10) }
+    on key space while Panels.cur == 2 and Panels.open_screen == screen.index { emit Notifications.nc_key(11) }
+    on keyup Return while Panels.cur == 2 and Panels.open_screen == screen.index { emit Notifications.nc_key(20) }
+    on keyup KP_Enter while Panels.cur == 2 and Panels.open_screen == screen.index { emit Notifications.nc_key(20) }
+    on keyup space while Panels.cur == 2 and Panels.open_screen == screen.index { emit Notifications.nc_key(21) }
+    on key Escape while Panels.cur == 2 and Panels.open_screen == screen.index { emit Panels.close }
+    on blur while Panels.cur == 2 and not Panels.fresh and Panels.open_screen == screen.index { emit Panels.close }
 }

@@ -115,8 +115,11 @@ module("welcome", function(panel, opened, shown, closed)
         end
     end)
 
+    opened(function() fact.page = 0 end)            -- every opening starts on the first page (Esc on the last one used to leave it there)
+
     on("wl_next", function() fact.page = math.min(2, (tonumber(fact.page) or 0) + 1) end)
     on("wl_back", function() fact.page = math.max(0, (tonumber(fact.page) or 0) - 1) end)
+    on("wl_goto", function(n) fact.page = math.max(0, math.min(2, math.floor(tonumber(n) or 0))) end)
 
     on("wl_done", function()
         if shown() then close_panel() end

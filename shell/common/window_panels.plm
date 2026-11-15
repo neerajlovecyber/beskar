@@ -14,6 +14,7 @@ part WindowPanels {
     model sw_wins max 7 { id: number; title: text; app_id: text; icon: image 48, 48; thumb: image 132, 78; has_thumb: bool }
     event next_app ->
     event prev_app ->
+    event sw_edge ->
     event sw_switch_to ->
 
     component AppTile(w: record) {
@@ -60,6 +61,10 @@ part WindowPanels {
         on press hit { emit sw_switch_to(w.index) }
     }
     on key Tab while Panels.cur == 21 and Panels.open_screen == screen.index { emit next_app }
+    on key Shift+Tab while Panels.cur == 21 and Panels.open_screen == screen.index { emit prev_app }
+    on key Home while Panels.cur == 21 and Panels.open_screen == screen.index { emit sw_edge(-1) }
+    on key End while Panels.cur == 21 and Panels.open_screen == screen.index { emit sw_edge(1) }
+    on key KP_Enter while Panels.cur == 21 and Panels.open_screen == screen.index { emit sw_switch_to(sw_sel) }
     on key Left while Panels.cur == 21 and Panels.open_screen == screen.index { emit prev_app }
     on key Right while Panels.cur == 21 and Panels.open_screen == screen.index { emit next_app }
     on key Return while Panels.cur == 21 and Panels.open_screen == screen.index { emit sw_switch_to(sw_sel) }
@@ -78,6 +83,7 @@ part WindowPanels {
     let ov_h = min(800, 80 + ov_rows * 181)
     event next_win ->
     event prev_win ->
+    event ov_edge ->
     event up_win ->
     event down_win ->
     event ov_switch_to ->
@@ -135,6 +141,10 @@ part WindowPanels {
         on press hit { emit ov_switch_to(w.index) }
     }
     on key Tab while Panels.cur == 22 and Panels.open_screen == screen.index { emit next_win }
+    on key Shift+Tab while Panels.cur == 22 and Panels.open_screen == screen.index { emit prev_win }
+    on key Home while Panels.cur == 22 and Panels.open_screen == screen.index { emit ov_edge(-1) }
+    on key End while Panels.cur == 22 and Panels.open_screen == screen.index { emit ov_edge(1) }
+    on key KP_Enter while Panels.cur == 22 and Panels.open_screen == screen.index { emit ov_switch_to(ov_sel) }
     on key Left while Panels.cur == 22 and Panels.open_screen == screen.index { emit prev_win }
     on key Right while Panels.cur == 22 and Panels.open_screen == screen.index { emit next_win }
     on key Up while Panels.cur == 22 and Panels.open_screen == screen.index { emit up_win }
@@ -166,7 +176,7 @@ part WindowPanels {
                 Sym("󰕰", 14, 14, 15, accent_c)
                 text "Window Overview" { at: 38, 14; anchor: left center; size: 16; weight: 700; color: ink_c }
                 text win_count_text { at: 200, 14; anchor: left center; size: ts_sub; color: ink_sub }
-                KeyHint(ov_w - 230, 14, "← →  select   ·   Enter  focus   ·   Esc  close", ui_ink_sub: ink_sub)
+                KeyHint(ov_w - 230, 14, "← → ↑ ↓  select   ·   Enter  focus   ·   Esc  close", ui_ink_sub: ink_sub)
             }
 
             //  Grid of window previews
@@ -183,7 +193,7 @@ part WindowPanels {
             group {
                 show: ov_wins.count < 1
                 move: 620, ov_h / 2
-                EmptyState(0, 0, "󰕰", "No Panels.open windows", ui_ink_sub: ink_sub)
+                EmptyState(0, 0, "󰕰", "No open windows", ui_ink_sub: ink_sub)
             }
     }
 }

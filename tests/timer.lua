@@ -100,6 +100,7 @@ local function panel()
     local env = setmetatable({ fact = { ["Activities.ready"] = true, ["Activities.timer_state"] = 0, tm_focus = -1 }, text = { tm_duration = "25" },
         require = function() return Timer end, on = function(n, fn) h.handlers[n] = fn end,
         focus = function(n) h.focused = n end,
+        after = function(ms, fn) h.timers = h.timers or {}; h.timers[#h.timers + 1] = fn end,
         emit = function(n, v) h.events[#h.events + 1] = { n, v } end }, { __index = _G })
     assert(loadfile("shell/timer_panel.luau", "t", env))()({ height = function(n) h.height = n end, close = function() h.visible = false end },
         function(fn) h.open = fn end, function() return h.visible end, function(fn) h.close = fn end)
@@ -109,6 +110,11 @@ local function panel()
 end
 local p = panel(); p.open()
 check(p.focused == "tm_duration" and p.height == 350, "Idle opens with duration field focused")
+p:fire("tm_activate"); p:fire("tm_move", 1); p:fire("tm_activate")
+check(#p.events == 0, "The release of the Enter that opened the panel does nothing")
+for _, fn in ipairs(p.timers) do fn() end            -- 350 ms later key releases count
+p:fire("tm_move", -1)
+check(p.fact.tm_focus == -1 and p.focused == "tm_duration", "Shift Tab from the first preset returns to the duration field")
 p:fire("tm_submit"); p.fact["Activities.timer_state"] = 1; p:fire("tm_activate")
 check(#p.events == 1 and p.events[1][1] == "Activities.start", "Submitting and releasing Enter starts without immediately pausing")
 p:fire("tm_activate")

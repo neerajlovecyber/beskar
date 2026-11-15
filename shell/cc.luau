@@ -3,6 +3,14 @@ local Hooks = require("topbar_hooks")        -- the frame cannot emit to itself:
 return function(panel, opened, shown, closed)
 -- Control Center companion logic
 
+-- Every handler is also kept in H: the keyboard navigation at the end of the file calls them directly (this plugin cannot emit
+-- an event to itself).
+local base_on = on
+local H = {}
+local function on(name, fn) H[name] = fn; return base_on(name, fn) end
+local panel_shown = shown                 -- (a Bluetooth local below is also called `shown`)
+local ensure_valid = function() end          -- set by the keyboard code below, called when a list changes under the focus
+
 -- The look is owned by Settings (it tells every scene, saves it to disk and tells GTK apps): here we only ASK it.
 on("toggle_dark", function()
     local cur = (fact["Settings.dark_mode"] == true or fact["Settings.dark_mode"] == 1)
@@ -40,6 +48,7 @@ end)
 -- The frame (topbar.plm) draws the glass, so it has to know how big the card is and whether it is open.
 -- Counts of what the pages list are kept by the code below.
 local wifi_n, bt_n, outs_n, apps_n = 0, 0, 1, 0
+local outs_c, out_ids, app_vols = 0, {}, {}     -- real output count, their ids, each app stream's volume (keyboard)
 local last_h = nil
 local function push_height()
     local page = tonumber(fact.cc_page) or 0
@@ -58,7 +67,7 @@ local function push_height()
         panel.height(h)
     end
 end
-on("fact:cc_page", push_height)
+on("fact:cc_page", function() push_height(); fact.cc_focus = 0 end)
 on("fact:asking", push_height)
 
 -- ── Wi-Fi ────────────────────────────────────────────────────────
@@ -97,6 +106,7 @@ local function paint_wifi()
     model.wifi_rows = rows
     wifi_n = #rows
     push_height()
+    ensure_valid()
     if joining and current and current.ssid == joining then joining = nil end
 
     local wired = net_state.kind == "wired" and net_state.online
@@ -285,6 +295,7 @@ local function paint_bt()
     model.bt_rows = rows
     bt_n = #rows
     push_height()
+    ensure_valid()
 
     local present = bt_state.present ~= false
     fact.bt_present = present
@@ -369,9 +380,15 @@ on("bt_scan", function()
 end)
 
 -- Stop listening for new devices when the panel closes.
-opened(push_height)
+opened(function()
+    push_height()
+    fact.cc_focus = 0                       -- keyboard focus starts on the first item of the page
+end)
 closed(function()
     stop_asking()
+    focus()
+    fact.cc_page = 0                        -- reopening starts on the overview with the focus on its first item
+    fact.cc_focus = 0
     if bt_state.discovering then
         pcall(sys.call, "bluetooth.scan", false)
     end
@@ -395,15 +412,21 @@ sys.watch("audio", function(a)
     end
     model.app_rows = rows
     apps_n = #rows
+    app_vols = {}
+    for i, r in ipairs(rows) do app_vols[i] = r.volume end
     local outs = {}
     for _, o in ipairs((a and a.outputs) or {}) do
         outs[#outs + 1] = { id = o.id, name = o.name or "", default = o.default == true }
     end
     model.outs = outs
+    outs_c = #outs
+    out_ids = {}
+    for i, o in ipairs(outs) do out_ids[i] = o.id end
     outs_n = math.max(1, #outs)
     fact.snd_volume = tonumber(a and a.volume) or 0
     fact.snd_muted = (a and a.muted) == true
     push_height()
+    ensure_valid()
 end)
 sys.watch("brightness", function(b)
     fact.disp_level = tonumber(b and b.level) or 1
@@ -416,6 +439,178 @@ on("app_volume", function(v)
     local id = app_ids[idx + 1]
     if id then
         pcall(sys.call, "audio.app_volume", id, frac)
+    end
+end)
+
+
+-- ── keyboard ─────────────────────────────────────────────────────
+-- The frame's rules (common/cc_panel.plm) send `cc_key(code)`; the focus is the fact `cc_focus` (a SLOT of the page, drawn as a
+-- ring by the panel). Up / Down / Tab move it, Left / Right adjust a slider, switch the player's track or step inside a row of
+-- tiles, Enter / space act on release (and only after their own press was seen here, so the Enter that opened or submitted
+-- something never fires the item under it), Escape leaves a sub-page, then closes.
+local function truthy(v) return v == true or v == 1 end
+local function page_n() return tonumber(fact.cc_page) or 0 end
+local function focus_n() return tonumber(fact.cc_focus) or 0 end
+local MAX_SLOT = { [0] = 11, 8, 9, 9 }
+local ROWS0 = { { 0 }, { 1 }, { 2 }, { 3, 4, 5 }, { 6 }, { 7 }, { 8, 9, 10, 11 } }
+
+local function present(page, s)
+    if s < 0 or s > (MAX_SLOT[page] or 0) then return false end
+    if page == 0 then
+        if s == 2 then return truthy(fact["System.has_player"]) end
+        return true
+    elseif page == 1 then
+        local st = tonumber(fact.wifi_state) or 1
+        if s == 0 then return true end
+        if s == 1 then return st == 0 or st == 2 or st == 4 end
+        if s == 2 then return st ~= 0 end
+        return s - 3 < wifi_n and st ~= 0
+    elseif page == 2 then
+        if s == 0 then return truthy(fact.bt_present) end
+        if s == 1 then return truthy(fact.bt_on) end
+        return s - 2 < bt_n
+    end
+    if s < 6 then return s < outs_c end
+    return s - 6 < apps_n
+end
+
+local function first_present(page)
+    for s = 0, MAX_SLOT[page] or 0 do
+        if present(page, s) then return s end
+    end
+    return 0
+end
+
+local function step(delta)
+    local page = page_n()
+    local n = (MAX_SLOT[page] or 0) + 1
+    local s = focus_n()
+    for _ = 1, n do
+        s = (s + delta) % n
+        if present(page, s) then fact.cc_focus = s; return end
+    end
+end
+
+ensure_valid = function()
+    if not present(page_n(), focus_n()) then fact.cc_focus = first_present(page_n()) end
+end
+
+-- the overview is a grid: Up / Down go row to row (keeping the column where the row has several), Left / Right along a row
+local col_mem = 1
+local function row_of0(s)
+    for r, row in ipairs(ROWS0) do
+        for c, v in ipairs(row) do
+            if v == s then return r, c end
+        end
+    end
+    return 1, 1
+end
+local function move0(dir)
+    local r, c = row_of0(focus_n())
+    for _ = 1, #ROWS0 do
+        r = (r - 1 + dir) % #ROWS0 + 1
+        local row = ROWS0[r]
+        local want = math.min(col_mem, #row)
+        if present(0, row[want]) then fact.cc_focus = row[want]; return end
+    end
+end
+local function side0(dir)
+    local r, c = row_of0(focus_n())
+    local row = ROWS0[r]
+    local nc = c + dir
+    if nc >= 1 and nc <= #row then
+        fact.cc_focus = row[nc]
+        col_mem = nc
+    end
+end
+
+local function adjust(dir)
+    local s = focus_n()
+    if page_n() == 0 and s == 6 then
+        local v = (tonumber(fact.disp_level) or 1) + dir * 0.05
+        H.brightness_set(math.max(0.1, math.min(1, v)))
+    elseif page_n() == 0 and s == 7 then
+        local v = (tonumber(fact.snd_volume) or 0) + dir * 0.05
+        H.volume_set(math.max(0, math.min(1, v)))
+    elseif page_n() == 3 and s >= 6 then
+        local id, vol = app_ids[s - 5], app_vols[s - 5]
+        if id and vol then pcall(sys.call, "audio.app_volume", id, math.max(0, math.min(1, vol + dir * 0.05))) end
+    end
+end
+
+local function go_back()
+    focus()
+    if fact.asking == true then H.wifi_cancel(); return end
+    if page_n() ~= 0 then fact.cc_page = 0 else panel.close() end
+end
+
+local function leave(fn)           -- an action that hands over to something else: it closes the panel first
+    fn()
+    panel.close()
+    fact.cc_page = 0
+end
+
+local function activate(by_space)
+    local page, s = page_n(), focus_n()
+    if page == 0 then
+        if s == 0 then if by_space then H.toggle_wifi() else fact.cc_page = 1 end
+        elseif s == 1 then if by_space then H.toggle_bt() else fact.cc_page = 2 end
+        elseif s == 2 then emit("System.play_pause")
+        elseif s == 3 then H.toggle_dnd()
+        elseif s == 4 then H.toggle_dark()
+        elseif s == 5 then leave(H.open_settings)
+        elseif s == 7 then fact.cc_page = 3
+        elseif s == 8 then leave(H.sc_search)
+        elseif s == 9 then leave(H.sc_clip)
+        elseif s == 10 then leave(H.sc_shot)
+        elseif s == 11 then leave(H.sc_session) end
+    elseif page == 1 then
+        local st = tonumber(fact.wifi_state) or 1
+        if s == 0 then H.toggle_wifi()
+        elseif s == 1 then if st == 0 then H.wifi_power() else H.wifi_disconnect() end
+        elseif s == 2 then H.wifi_rescan()
+        else H.pick_network(s - 3) end
+    elseif page == 2 then
+        if s == 0 then H.bt_power()
+        elseif s == 1 then H.bt_scan()
+        else H.bt_action(s - 2) end
+    else
+        if s < 6 and out_ids[s + 1] then H.pick_output(out_ids[s + 1]) end
+    end
+end
+
+local armed_enter, armed_space = false, false
+base_on("cc_key", function(code)
+    code = tonumber(code)
+    if not panel_shown() or not code then return end
+    if fact.asking == true then                   -- the password sheet owns the keys: only Escape (cancel) is ours
+        armed_enter, armed_space = false, false
+        if code == 9 then go_back() end
+        return
+    end
+    ensure_valid()
+    local page, s = page_n(), focus_n()
+    if code == 9 then go_back()
+    elseif code == 5 then step(1)
+    elseif code == 6 then step(-1)
+    elseif code == 1 or code == 2 then
+        if page == 0 then move0(code == 1 and -1 or 1) else step(code == 1 and -1 or 1) end
+    elseif code == 3 or code == 4 then
+        local dir = code == 3 and -1 or 1
+        if page == 0 then
+            if s == 6 or s == 7 then adjust(dir)
+            elseif s == 2 then emit(dir < 0 and "System.previous" or "System.next")
+            elseif s == 0 and dir > 0 then fact.cc_page = 1
+            elseif s == 1 and dir > 0 then fact.cc_page = 2
+            else side0(dir) end
+        elseif page == 3 and s >= 6 then adjust(dir)
+        elseif dir < 0 then fact.cc_page = 0 end        -- Left on a sub-page: back
+    elseif code == 10 then armed_enter = true
+    elseif code == 11 then armed_space = true
+    elseif code == 20 then
+        if armed_enter then armed_enter = false; activate(false) end
+    elseif code == 21 then
+        if armed_space then armed_space = false; activate(true) end
     end
 end)
 

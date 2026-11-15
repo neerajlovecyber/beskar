@@ -1,7 +1,7 @@
 -- The Updates panel's logic (panel 16): `checkupdates` (+ the AUR helper) -> the list, and "Update all" = one terminal. Loaded by
 -- topbar.luau (the panel's content is drawn in the frame's own surface: common/updates_panel.plm), so `fact.up_n` is also what
 -- the bar's arrow shows.
-return function(panel, opened, shown)
+return function(panel, opened, shown, closed)
     -- Updates panel logic: `checkupdates` (official repos) → the list, and "Update all" = one terminal with the update (see below).
     -- Tells the top bar the count (the arrow only shows when > 0).
 
@@ -110,7 +110,13 @@ return function(panel, opened, shown)
     on("do_update", update)
     -- the list is kept between checks: opening the panel shows it at once and only looks again when it is old
     opened(function()
+        fact.up_focus = 0                  -- keyboard focus starts on the first button; the Enter that opened the panel is not ours
+        fact.up_armed = false
         if not fact.up_running and not fresh then check() end
+    end)
+    closed(function()
+        fact.up_focus = 0
+        fact.up_armed = false
     end)
 
     resize()

@@ -326,7 +326,7 @@ end
 check(plm:find('text wb_layouts = "{}"', 1, true), "wb_layouts is declared")
 check(luau:find('on("text:wb_layouts"', 1, true), "wb_layouts is consumed with on text")
 check(plm:find("model wb_rows max 5", 1, true), "the row model is bounded to the five visible rows")
-check(plm:find("on submit wb_name", 1, true) and not plm:find("on key Return while Panels.cur == 10", 1, true), "Enter is the input's submit, not a second handler")
+check(plm:find("on submit wb_name", 1, true) and not plm:find("on key Return while Panels.cur == 10 and wb_page == 1", 1, true), "Enter on the Desktops page is the input's submit, not a second handler")
 for _, k in ipairs({ "Down", "Up", "Tab", "Shift+Tab", "Next", "Prior", "Ctrl+Return", "F2", "F3", "F4", "F8" }) do
     check(plm:find("on key " .. k .. " while Panels.cur == 10 and wb_page == 1", 1, true), k .. " is a guarded key rule")
 end

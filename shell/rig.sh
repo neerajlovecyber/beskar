@@ -58,7 +58,23 @@ start() {
     rm -rf "$R"; mkdir -p "$R/sockets" "$R/data" "$R/home/.config/beskar" "$R/fakebin"
     printf '%s\n' "$DIR" >"$R/home/.config/beskar/shell-dir"
     touch "$R/home/.config/beskar/welcome-done"
-    printf 'output "winit" { scale 1.0; }\nprefer-no-csd\nhotkey-overlay { skip-at-startup; }\nlayout { struts { left 6; right 6; top 6; bottom 6; } }\n' >"$R/nested.kdl"
+    cat >"$R/nested.kdl" <<'KDL'
+output "winit" {
+    scale 1.0
+}
+prefer-no-csd
+hotkey-overlay {
+    skip-at-startup
+}
+layout {
+    struts {
+        left 6
+        right 6
+        top 6
+        bottom 6
+    }
+}
+KDL
     for c in systemctl loginctl gsettings powerprofilesctl wlsunset hypridle pkexec kitty foot alacritty ghostty wezterm konsole xterm; do
         printf '#!/bin/sh\necho "rig: %s $*" >>"%s/stubbed.log"\nexit 0\n' "$c" "$R" >"$R/fakebin/$c"; chmod +x "$R/fakebin/$c"
     done
@@ -69,7 +85,6 @@ start() {
     for _ in $(seq 1 120); do
         [ "$("$BIN" --say settings 'get preferences_loaded' 2>/dev/null)" = true ] && break; sleep 0.25
     done
-    wtype -k Escape 2>/dev/null       # niri's hotkey overlay
     sleep 1
     echo "rig ready on $WAYLAND_DISPLAY (logs in $R)"
 }

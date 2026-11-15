@@ -70,11 +70,19 @@ part DockPanels {
         on enter hit { sp_sel = h.index }
         on press hit { emit launch(h.index) }
     }
+    //  Keys: Up / Down / Tab / Shift+Tab move one result, Page Up / Page Down seven (a page), the selection is
+    //  always kept inside the seven rows that are seen (`sc_t` is the scroll target: row n sits at n * 44).
+    //  Home / End belong to the search field's caret: Ctrl+Up / Ctrl+Down jump to the first / last result.
     on key Escape while Panels.cur == 4 and Panels.open_screen == screen.index { emit Panels.close }
-    on key Tab while Panels.cur == 4 and Panels.open_screen == screen.index { sp_sel = min(sp_sel + 1, max(hits.count - 1, 0)); sc_t = clamp(sc_t, (min(sp_sel + 1, max(hits.count - 1, 0)) - 6) * 44, min(sp_sel + 1, max(hits.count - 1, 0)) * 44) }
     on blur while Panels.cur == 4 and not Panels.fresh and Panels.open_screen == screen.index { emit Panels.close }
-    on key Down while Panels.cur == 4 and Panels.open_screen == screen.index { sp_sel = min(sp_sel + 1, max(hits.count - 1, 0)); sc_t = clamp(sc_t, (min(sp_sel + 1, max(hits.count - 1, 0)) - 6) * 44, min(sp_sel + 1, max(hits.count - 1, 0)) * 44) }
-    on key Up while Panels.cur == 4 and Panels.open_screen == screen.index { sp_sel = max(sp_sel - 1, 0); sc_t = clamp(sc_t, (max(sp_sel - 1, 0) - 6) * 44, max(sp_sel - 1, 0) * 44) }
+    on key Down while Panels.cur == 4 and Panels.open_screen == screen.index { sp_sel = min(sp_sel + 1, max(hits.count - 1, 0)); sc_t = clamp(sc_t, (sp_sel - 6) * 44, sp_sel * 44) }
+    on key Tab while Panels.cur == 4 and Panels.open_screen == screen.index { sp_sel = min(sp_sel + 1, max(hits.count - 1, 0)); sc_t = clamp(sc_t, (sp_sel - 6) * 44, sp_sel * 44) }
+    on key Up while Panels.cur == 4 and Panels.open_screen == screen.index { sp_sel = max(sp_sel - 1, 0); sc_t = clamp(sc_t, (sp_sel - 6) * 44, sp_sel * 44) }
+    on key Shift+Tab while Panels.cur == 4 and Panels.open_screen == screen.index { sp_sel = max(sp_sel - 1, 0); sc_t = clamp(sc_t, (sp_sel - 6) * 44, sp_sel * 44) }
+    on key Next while Panels.cur == 4 and Panels.open_screen == screen.index { sp_sel = min(sp_sel + 7, max(hits.count - 1, 0)); sc_t = clamp(sc_t, (sp_sel - 6) * 44, sp_sel * 44) }
+    on key Prior while Panels.cur == 4 and Panels.open_screen == screen.index { sp_sel = max(sp_sel - 7, 0); sc_t = clamp(sc_t, (sp_sel - 6) * 44, sp_sel * 44) }
+    on key Ctrl+Down while Panels.cur == 4 and Panels.open_screen == screen.index { sp_sel = max(hits.count - 1, 0); sc_t = clamp(sc_t, (sp_sel - 6) * 44, sp_sel * 44) }
+    on key Ctrl+Up while Panels.cur == 4 and Panels.open_screen == screen.index { sp_sel = 0; sc_t = 0 }
     on change sp_sel while sp_sel == 0 { sc_t = 0 }
     on submit query    { emit launch(sp_sel) }
 
@@ -92,6 +100,10 @@ part DockPanels {
     event pin_clip ->
     event clear_all ->
     event clip_scroll ->
+    event clip_move ->
+    event clip_delete ->
+    fact clip_off = 0                // the first entry on screen
+    fact clip_total = 0              // how many entries match
 
     component ClipRow(c: record) {
         size: 520, 42
@@ -145,10 +157,24 @@ part DockPanels {
         on press hit { emit copy_clip(c.index) }
         on press right hit { }
     }
-    on key Down while Panels.cur == 6 and Panels.open_screen == screen.index { clip_sel = min(clip_sel + 1, max(clips.count - 1, 0)) }
-    on key Up while Panels.cur == 6 and Panels.open_screen == screen.index { clip_sel = max(clip_sel - 1, 0) }
+    //  Keys (the search field keeps Home / End, so the first / last entry are Ctrl+Up / Ctrl+Down here): the logic moves the
+    //  cursor over ALL entries and scrolls the eight rows that are seen so the cursor never leaves them. Delete / Ctrl+D remove
+    //  the entry (the field keeps Delete while something is typed in it), Ctrl+P pins it, Enter copies it.
+    on key Down while Panels.cur == 6 and Panels.open_screen == screen.index { emit clip_move(1) }
+    on key Tab while Panels.cur == 6 and Panels.open_screen == screen.index { emit clip_move(1) }
+    on key Up while Panels.cur == 6 and Panels.open_screen == screen.index { emit clip_move(-1) }
+    on key Shift+Tab while Panels.cur == 6 and Panels.open_screen == screen.index { emit clip_move(-1) }
+    on key Next while Panels.cur == 6 and Panels.open_screen == screen.index { emit clip_move(8) }
+    on key Prior while Panels.cur == 6 and Panels.open_screen == screen.index { emit clip_move(-8) }
+    on key Ctrl+Up while Panels.cur == 6 and Panels.open_screen == screen.index { emit clip_move(-100000) }
+    on key Ctrl+Down while Panels.cur == 6 and Panels.open_screen == screen.index { emit clip_move(100000) }
     on key Return while Panels.cur == 6 and Panels.open_screen == screen.index { emit copy_clip(clip_sel) }
-    on key Tab while Panels.cur == 6 and Panels.open_screen == screen.index { clip_sel = min(clip_sel + 1, max(clips.count - 1, 0)) }
+    on key KP_Enter while Panels.cur == 6 and Panels.open_screen == screen.index { emit copy_clip(clip_sel) }
+    on key Delete while Panels.cur == 6 and Panels.open_screen == screen.index { emit clip_delete(clip_sel) }
+    on key Ctrl+d while Panels.cur == 6 and Panels.open_screen == screen.index { emit clip_delete(clip_sel) }
+    on key Alt+Delete while Panels.cur == 6 and Panels.open_screen == screen.index { emit clip_delete(clip_sel) }
+    on key Ctrl+p while Panels.cur == 6 and Panels.open_screen == screen.index { emit pin_clip(clip_sel) }
+    on submit clip_q { emit copy_clip(clip_sel) }           // the search field owns Enter: it submits
     on key Escape while Panels.cur == 6 and Panels.open_screen == screen.index { emit Panels.close }
     on blur while Panels.cur == 6 and not Panels.fresh and Panels.open_screen == screen.index { emit Panels.close }
 
@@ -172,6 +198,7 @@ part DockPanels {
     event wall_pick ->
     event wall_scroll ->
     event wall_tab_set ->
+    event wall_tab_step ->
     event wall_move ->
     event wall_page ->
     event wall_enter ->
@@ -192,7 +219,8 @@ part DockPanels {
                 image w.thumb { at: 0, 0; size: 176, 99; show: w.ready }
             }
             box { from: 0, 0; size: 176, 99; corner: r_m; stroke: 3; color: accent_c; opacity: if(w.current, 100%, 0%) }
-            box { from: 0, 0; size: 176, 99; corner: r_m; stroke: 1.2; color: ink_c; opacity: max(lift * 35%, if(w.sel, 60%, 0%)) * if(w.current, 0, 1) }
+            box { from: 0, 0; size: 176, 99; corner: r_m; stroke: 1.2; color: ink_c; opacity: max(lift * 35%, if(w.sel, 95%, 0%)) * if(w.current, 0, 1) }
+            box { from: -3, -3; size: 182, 105; corner: r_m + 3; stroke: focus_stroke; color: ink_c; opacity: if(w.sel, 85%, 0%) }
             //  a small tick on the one in use
             group {
                 show: w.current
@@ -223,8 +251,18 @@ part DockPanels {
     }
 
     //  The glass is drawn by the frame: the dock island grows up and out into the strip (topbar.plm).
+    //  Keys: Left / Right (Tab / Shift+Tab) one picture, Page Up / Page Down a page of five, Home / End the first / last,
+    //  Up / Down the filter tab (All, Mine, Built-in, Favourites), Enter applies. The strip scrolls to keep the cursor in view.
     on key Left while Panels.cur == 5 and Panels.open_screen == screen.index { emit wall_move(-1) }
     on key Right while Panels.cur == 5 and Panels.open_screen == screen.index { emit wall_move(1) }
+    on key Shift+Tab while Panels.cur == 5 and Panels.open_screen == screen.index { emit wall_move(-1) }
+    on key Tab while Panels.cur == 5 and Panels.open_screen == screen.index { emit wall_move(1) }
+    on key Prior while Panels.cur == 5 and Panels.open_screen == screen.index { emit wall_move(-5) }
+    on key Next while Panels.cur == 5 and Panels.open_screen == screen.index { emit wall_move(5) }
+    on key Home while Panels.cur == 5 and Panels.open_screen == screen.index { emit wall_move(-100000) }
+    on key End while Panels.cur == 5 and Panels.open_screen == screen.index { emit wall_move(100000) }
+    on key Up while Panels.cur == 5 and Panels.open_screen == screen.index { emit wall_tab_step(-1) }
+    on key Down while Panels.cur == 5 and Panels.open_screen == screen.index { emit wall_tab_step(1) }
     on key Return while Panels.cur == 5 and Panels.open_screen == screen.index { emit wall_enter }
     on key KP_Enter while Panels.cur == 5 and Panels.open_screen == screen.index { emit wall_enter }
     on wall_favourite_selected { emit wall_favourite_toggle(-1) }
@@ -283,6 +321,10 @@ part DockPanels {
     event wb_scroll ->
     event wb_submit ->
     event wb_escape ->
+    event wb_tab_step ->
+    event wb_nav ->
+    event wb_activate ->
+    fact wb_cur = -1                 // the keyboard cursor on the Widgets page: a kind (0..), then the presets; -1 none yet
 
     //  Card options (C4b): a third page of the bar. Widgets owns the options and pushes a bounded snapshot into
     //  `wb_card_options` (widget_bar_options.luau validates it and fills everything below); the page only forwards
@@ -352,6 +394,22 @@ part DockPanels {
         }
     }
     on key Escape while Panels.cur == 10 and Panels.open_screen == screen.index { emit wb_escape }
+    //  Ctrl+Tab / Ctrl+Shift+Tab (Alt+Right / Alt+Left where no text field has the focus) switch the page (Widgets, Desktops, Card)
+    on key Alt+Left while Panels.cur == 10 and Panels.open_screen == screen.index { emit wb_tab_step(-1) }
+    on key Alt+Right while Panels.cur == 10 and Panels.open_screen == screen.index { emit wb_tab_step(1) }
+    on key Ctrl+Tab while Panels.cur == 10 and Panels.open_screen == screen.index { emit wb_tab_step(1) }
+    on key Ctrl+Shift+Tab while Panels.cur == 10 and Panels.open_screen == screen.index { emit wb_tab_step(-1) }
+    //  Widgets page: arrows (Tab) walk the kinds and then the presets, Home / End the first / last, Enter adds / applies
+    on key Left while Panels.cur == 10 and wb_page == 0 and Panels.open_screen == screen.index { emit wb_nav(1) }
+    on key Right while Panels.cur == 10 and wb_page == 0 and Panels.open_screen == screen.index { emit wb_nav(2) }
+    on key Up while Panels.cur == 10 and wb_page == 0 and Panels.open_screen == screen.index { emit wb_nav(3) }
+    on key Down while Panels.cur == 10 and wb_page == 0 and Panels.open_screen == screen.index { emit wb_nav(4) }
+    on key Shift+Tab while Panels.cur == 10 and wb_page == 0 and Panels.open_screen == screen.index { emit wb_nav(1) }
+    on key Tab while Panels.cur == 10 and wb_page == 0 and Panels.open_screen == screen.index { emit wb_nav(2) }
+    on key Home while Panels.cur == 10 and wb_page == 0 and Panels.open_screen == screen.index { emit wb_nav(5) }
+    on key End while Panels.cur == 10 and wb_page == 0 and Panels.open_screen == screen.index { emit wb_nav(6) }
+    on key Return while Panels.cur == 10 and wb_page == 0 and Panels.open_screen == screen.index { emit wb_activate }
+    on key KP_Enter while Panels.cur == 10 and wb_page == 0 and Panels.open_screen == screen.index { emit wb_activate }
     on key Down while Panels.cur == 10 and wb_page == 1 and Panels.open_screen == screen.index { emit wb_move(1) }
     on key Tab while Panels.cur == 10 and wb_page == 1 and Panels.open_screen == screen.index { emit wb_move(1) }
     on key Up while Panels.cur == 10 and wb_page == 1 and Panels.open_screen == screen.index { emit wb_move(-1) }
@@ -362,6 +420,8 @@ part DockPanels {
     on key Page_Up while Panels.cur == 10 and wb_page == 1 and Panels.open_screen == screen.index { emit wb_move(-5) }
     on key Ctrl+KP_Enter while Panels.cur == 10 and wb_page == 1 and Panels.open_screen == screen.index { emit wb_load }
     on key Ctrl+Return while Panels.cur == 10 and wb_page == 1 and Panels.open_screen == screen.index { emit wb_load }
+    on key Ctrl+Up while Panels.cur == 10 and wb_page == 1 and Panels.open_screen == screen.index { emit wb_move(-1000) }      // first / last desktop (Home / End stay the name field's)
+    on key Ctrl+Down while Panels.cur == 10 and wb_page == 1 and Panels.open_screen == screen.index { emit wb_move(1000) }
     on key F2 while Panels.cur == 10 and wb_page == 1 and Panels.open_screen == screen.index { emit wb_rename }
     on key F3 while Panels.cur == 10 and wb_page == 1 and Panels.open_screen == screen.index { emit wb_dup }
     on key F4 while Panels.cur == 10 and wb_page == 1 and Panels.open_screen == screen.index { emit wb_update }
@@ -372,6 +432,8 @@ part DockPanels {
     on key Tab while Panels.cur == 10 and wb_page == 2 and Panels.open_screen == screen.index { emit wb_opt_move(1) }
     on key Up while Panels.cur == 10 and wb_page == 2 and Panels.open_screen == screen.index { emit wb_opt_move(-1) }
     on key Shift+Tab while Panels.cur == 10 and wb_page == 2 and Panels.open_screen == screen.index { emit wb_opt_move(-1) }
+    on key Home while Panels.cur == 10 and wb_page == 2 and Panels.open_screen == screen.index { emit wb_opt_move(-10) }
+    on key End while Panels.cur == 10 and wb_page == 2 and Panels.open_screen == screen.index { emit wb_opt_move(10) }
     on key Left while Panels.cur == 10 and wb_page == 2 and Panels.open_screen == screen.index { emit wb_opt_change(-1) }
     on key Right while Panels.cur == 10 and wb_page == 2 and Panels.open_screen == screen.index { emit wb_opt_change(1) }
     on key Return while wb_page == 2 and Panels.cur == 10 and Panels.open_screen == screen.index { emit wb_opt_cycle }      // page 1's Enter is its input's submit
@@ -432,6 +494,7 @@ part DockPanels {
                 for c in clips { ClipRow(c) }
             }
 
+            group { move: 548, 58; ScrollBar(clip_off * 46, clip_total * 46 - space_4, 8 * 46 - space_4, ui_ink_c: ink_c) }
             group { show: clips.count < 1; EmptyState(280, 92, "󰅌", "Nothing copied yet", "Copy something and it shows up here", ui_ink_sub: ink_sub) }
     }
     component WallpapersContent() {
@@ -487,7 +550,7 @@ part DockPanels {
         Btn(if(wall_favourite, "Remove favourite", "Add favourite"), 184, wall_favourite_selected, false, 476, 212, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill, enabled: wall_favourites_writable)
         Btn("Restore previous", 168, wall_restore, false, 672, 212, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill, enabled: not wall_busy)
         text wall_status { at: 28, 258; size: font_secondary; color: ink_sub; width: 924; lines: 1 }
-        KeyHint(490, 290, "← → Browse · Enter Apply · F Favourite · Ctrl+Z Previous · Ctrl+F1/F2/F3 Transition · Esc Close", ui_ink_sub: ink_sub)
+        KeyHint(490, 290, "← → Browse · ↑ ↓ Filter · Enter Apply · F Favourite · Ctrl+Z Previous · Ctrl+F1/F2/F3 Transition · Esc Close", ui_ink_sub: ink_sub)
     }
     component WidgetBarContent() {
 
@@ -508,6 +571,12 @@ part DockPanels {
             group {
                 show: wb_page == 0
                 for k in kinds { WbKindChip(k) }
+                //  the keyboard cursor
+                box {
+                    from: if(wb_cur < kinds.count, 22 + mod(wb_cur, 6) * 126, 90 + (wb_cur - kinds.count) * 106), if(wb_cur < kinds.count, 50 + floor(wb_cur / 6) * 38, 126)
+                    size: if(wb_cur < kinds.count, 120, 102), control_h + 4
+                    corner: control_r_large; stroke: focus_stroke; color: ink_c; opacity: if(wb_cur >= 0, 85%, 0%)
+                }
                 text "Presets" { at: 24, 142; anchor: left center; size: ts_sub; weight: 600; color: ink_sub }
                 for pr in presets { group { move: 92 + (pr.id - 1) * 106, 128; Chip(pr.name, false, wb_preset, pr.id, 98, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill) } }
             }
@@ -542,7 +611,7 @@ part DockPanels {
 
                 //  what happened (Widgets' own words), and the keys
                 text wb_status { at: 24, 242; anchor: left center; size: ts_cap; weight: 600; color: if(wb_status_ok, ink_c, danger_c); width: 752; lines: 1 }
-                KeyHint(400, 260, "↑ ↓ select  ·  Enter save / load  ·  F2 rename  ·  F3 duplicate  ·  F4 update  ·  F8 delete  ·  Esc", ui_ink_sub: ink_sub)
+                KeyHint(400, 260, "↑ ↓ select  ·  Enter save / load  ·  F2 rename  ·  F3 duplicate  ·  F4 update  ·  F8 delete  ·  Ctrl Tab page  ·  Esc", ui_ink_sub: ink_sub)
             }
 
             //  page 2: options of the selected card
@@ -577,6 +646,7 @@ part DockPanels {
     on change Panels.open while Panels.open and Panels.cur == 6 { focus clip_q }
     on change Panels.cur while Panels.open and Panels.cur == 6 { focus clip_q }
     on change wb_page while Panels.open and Panels.cur == 10 and wb_page == 1 { focus wb_name }
+    on change wb_page while Panels.open and Panels.cur == 10 and wb_page == 0 { blur }
     on change wb_page while Panels.open and Panels.cur == 10 and wb_page == 2 { blur }      // the name field must not keep the arrow keys
     on wb_save { focus wb_name }
     on wb_load { focus wb_name }

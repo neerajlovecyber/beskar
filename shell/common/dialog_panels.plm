@@ -17,6 +17,7 @@ part DialogPanels {
     model ses_actions max 5 { label: text; glyph: text; detail: text; kind: number; danger: bool }
     event prepare_menu ->
     event ses_move ->
+    event ses_edge ->
     event ses_choose ->
     event ses_cancel ->
     event set_kind(k) ->         // 0 shut down / 1 restart / 2 log out (from Spotlight, the power menu, Settings)
@@ -62,7 +63,7 @@ part DialogPanels {
                     for a in ses_actions { SessionAction(a) }
                 }
                 text ses_detail { at: 240, 194; anchor: center center; size: font_body; color: ink_sub; width: 432; lines: 1; align: center }
-                KeyHint(240, 234, "← → ↑ ↓ / Tab  select   ·   Enter  choose   ·   Esc  close", ui_ink_sub: ink_sub)
+                KeyHint(240, 234, "← → ↑ ↓ Tab  select   ·   Home End  first / last   ·   Enter  choose   ·   Esc  close", ui_ink_sub: ink_sub)
             }
             group {
                 show: ses_mode == 1
@@ -78,7 +79,7 @@ part DialogPanels {
                     lines: 2
                     align: center
                 }
-                text pick(ses_kind, "Your computer will shut down automatically in {countdown} seconds.", "Your computer will restart automatically in {countdown} seconds.", "You will be logged out automatically in {countdown} seconds.", "Your applications will stay Panels.open.") {
+                text pick(ses_kind, "Your computer will shut down automatically in {countdown} seconds.", "Your computer will restart automatically in {countdown} seconds.", "You will be logged out automatically in {countdown} seconds.", "Your applications will stay open.") {
                     at: 240, 126
                     anchor: center center
                     size: font_secondary
@@ -139,16 +140,25 @@ part DialogPanels {
     }
 
 
-    // Activate on release: holding Enter cannot repeat into the confirmation.
-    on keyup Return while Panels.open and Panels.cur == 11 and Panels.open_screen == screen.index { emit ses_enter }
-    on keyup KP_Enter while Panels.open and Panels.cur == 11 and Panels.open_screen == screen.index { emit ses_enter }
-    on keyup space while Panels.open and Panels.cur == 11 and Panels.open_screen == screen.index { emit ses_enter }
+    // Activate on release: holding Enter cannot repeat into the confirmation. The release counts only when the press
+    // happened HERE (`ses_down`): the Enter that launched the panel (Spotlight "Log Out…") is released inside it and must
+    // not choose anything.
+    fact ses_down = 0
+    on key Return while Panels.open and Panels.cur == 11 and Panels.open_screen == screen.index { ses_down = 1 }
+    on key KP_Enter while Panels.open and Panels.cur == 11 and Panels.open_screen == screen.index { ses_down = 1 }
+    on key space while Panels.open and Panels.cur == 11 and Panels.open_screen == screen.index { ses_down = 1 }
+    on change Panels.cur { ses_down = 0 }
+    on keyup Return while Panels.open and Panels.cur == 11 and ses_down == 1 and Panels.open_screen == screen.index { ses_down = 0; emit ses_enter }
+    on keyup KP_Enter while Panels.open and Panels.cur == 11 and ses_down == 1 and Panels.open_screen == screen.index { ses_down = 0; emit ses_enter }
+    on keyup space while Panels.open and Panels.cur == 11 and ses_down == 1 and Panels.open_screen == screen.index { ses_down = 0; emit ses_enter }
     on key Escape while Panels.open and Panels.cur == 11 and Panels.open_screen == screen.index { emit ses_cancel }
     on key Left while Panels.open and Panels.cur == 11 and Panels.open_screen == screen.index { emit ses_move(-1) }
     on key Up while Panels.open and Panels.cur == 11 and Panels.open_screen == screen.index { emit ses_move(-1) }
     on key Right while Panels.open and Panels.cur == 11 and Panels.open_screen == screen.index { emit ses_move(1) }
     on key Down while Panels.open and Panels.cur == 11 and Panels.open_screen == screen.index { emit ses_move(1) }
     on key Tab while Panels.open and Panels.cur == 11 and Panels.open_screen == screen.index { emit ses_move(1) }
+    on key Home while Panels.open and Panels.cur == 11 and Panels.open_screen == screen.index { emit ses_edge(-1) }
+    on key End while Panels.open and Panels.cur == 11 and Panels.open_screen == screen.index { emit ses_edge(1) }
     on key Shift+Tab while Panels.open and Panels.cur == 11 and Panels.open_screen == screen.index { emit ses_move(-1) }
     on blur while Panels.cur == 11 and not Panels.fresh and Panels.open_screen == screen.index { emit Panels.close }
     on key Escape while Panels.cur == 12 and Panels.open_screen == screen.index { emit pk_cancel }
@@ -165,6 +175,7 @@ part DialogPanels {
     event show_again ->
     event wl_next ->
     event wl_back ->
+    event wl_goto ->
     event wl_done ->
     event choose_dark ->
     event choose_light ->
@@ -197,6 +208,7 @@ part DialogPanels {
                 Choice(228, 132, "󰖨", "Light", wl_mode == 0, choose_light)
                 Choice(396, 132, "󰔎", "Automatic", wl_mode == 2, choose_auto)
                 group { move: 60, 250; ToggleRow("Colours from the wallpaper", "The accent, highlights and glass tint follow the picture you choose.", wall_colours, toggle_colours, 520, ui_ink_c: ink_c, ui_ink_sub: ink_sub, ui_card_fill: card_fill, ui_card_stroke: card_stroke, ui_accent_c: accent_c, ui_on_accent: on_accent, ui_switch_off: switch_off) }
+                text "D Dark  ·  L Light  ·  A Automatic  ·  C Wallpaper colours  ·  T Theme other apps" { at: 320, 392; anchor: center center; size: ts_micro; color: ink_sub; opacity: 80% }
                 group { move: 60, 318; ToggleRow("Theme other apps", "Terminals, Files and other GTK and Qt apps wear the same colours.", theme_apps, toggle_apps_pref, 520, ui_ink_c: ink_c, ui_ink_sub: ink_sub, ui_card_fill: card_fill, ui_card_stroke: card_stroke, ui_accent_c: accent_c, ui_on_accent: on_accent, ui_switch_off: switch_off) }
             }
 
@@ -250,10 +262,24 @@ part DialogPanels {
             }
     }
 
+    //  Keys: Right / Tab / Enter go on (Enter on the last page starts Beskar), Left / Shift+Tab go back, Home / End jump to the
+    //  first / last page, Esc skips. Page 2: D / L / A choose Dark / Light / Automatic, C and T flip the two switches.
     on key Escape while Panels.cur == 24 and Panels.open_screen == screen.index { emit wl_done }
-    on key Right  while Panels.cur == 24 and Panels.open_screen == screen.index { emit wl_next }
-    on key Left   while Panels.cur == 24 and Panels.open_screen == screen.index { emit wl_back }
-    on key Return while Panels.cur == 24 and Panels.open_screen == screen.index { emit wl_next }
+    on key Right while Panels.cur == 24 and Panels.open_screen == screen.index { emit wl_next }
+    on key Tab while Panels.cur == 24 and Panels.open_screen == screen.index { emit wl_next }
+    on key Left while Panels.cur == 24 and Panels.open_screen == screen.index { emit wl_back }
+    on key Shift+Tab while Panels.cur == 24 and Panels.open_screen == screen.index { emit wl_back }
+    on key Home while Panels.cur == 24 and Panels.open_screen == screen.index { emit wl_goto(0) }
+    on key End while Panels.cur == 24 and Panels.open_screen == screen.index { emit wl_goto(2) }
+    on key Return while Panels.cur == 24 and page < 2 and Panels.open_screen == screen.index { emit wl_next }
+    on key KP_Enter while Panels.cur == 24 and page < 2 and Panels.open_screen == screen.index { emit wl_next }
+    on key Return while Panels.cur == 24 and page == 2 and Panels.open_screen == screen.index { emit wl_done }
+    on key KP_Enter while Panels.cur == 24 and page == 2 and Panels.open_screen == screen.index { emit wl_done }
+    on key d while Panels.cur == 24 and page == 1 and Panels.open_screen == screen.index { emit choose_dark }
+    on key l while Panels.cur == 24 and page == 1 and Panels.open_screen == screen.index { emit choose_light }
+    on key a while Panels.cur == 24 and page == 1 and Panels.open_screen == screen.index { emit choose_auto }
+    on key c while Panels.cur == 24 and page == 1 and Panels.open_screen == screen.index { emit toggle_colours }
+    on key t while Panels.cur == 24 and page == 1 and Panels.open_screen == screen.index { emit toggle_apps_pref }
 
     //  an icon, a title and a sentence
     component Tip(x: number, y: number, icon: text, title: text, body: text) {
