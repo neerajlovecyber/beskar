@@ -1377,4 +1377,7 @@ scene MacSettings {
     on key Escape while settings_search { emit settings_search_clear }
     on key Escape while not settings_search and not reset_review and not pin_edit and not display_pending and not look_open and not quiet_edit and not shortcut_open and not setup_open { open = false }
     on key Escape while reset_review { emit reset_appearance_cancel }
+    //  Up / Down walk the sidebar (one tab at a time, stopping at the ends); the search field and every sub-flow keep their own keys
+    on key Down while open and not settings_search and not reset_review and not pin_edit and not display_pending and not look_open and not quiet_edit and not shortcut_open and not setup_open and tab < 7 { emit pick_cat(tab + 1) }
+    on key Up while open and not settings_search and not reset_review and not pin_edit and not display_pending and not look_open and not quiet_edit and not shortcut_open and not setup_open and tab > 0 { emit pick_cat(tab - 1) }
 }

@@ -161,3 +161,5 @@ pattern matches the invoking command) and relaunching `bin/pleamar --no-hud --sc
 
 79. **Releases and one-line install.** `shell/release.sh vX.Y.Z` runs `verify.sh`, tags master, pushes the tag and creates the GitHub release from the commits since the last tag (versions below 1.0 are pre-releases). `install.sh` at the root is the `curl | sh` entry: it clones into `~/.local/share/beskar-shell` and runs `./beskar install`. The code is MIT (`LICENSE`); the wallpapers are iNiR's and keep their artists' credit.
 
+80. **Settings keyboard.** Up / Down walk the sidebar tabs (`emit pick_cat(tab ± 1)`, stopping at the ends) while no sub-flow (look, shortcut editor, quiet apps, display Keep/Revert, pin editor, setup, reset review) or the search field has the keys; Esc closes. The controls inside a tab are still pointer-only.
+
