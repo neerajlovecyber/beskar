@@ -46,7 +46,7 @@ scene MacTopBar {
 
     //  What topbar.luau may touch: compositor commands, session actions and the dock's apps.
     permissions {
-        services: "clock", "network", "battery", "window", "tray", "tray.*", "apps", "apps.launch", "audio", "audio.*", "brightness", "brightness.*", "bluetooth", "bluetooth.*", "env", "files", "files.write", "polkit", "polkit.*", "media", "media.*", "thumbnails", "thumbnails.*", "say:music", "say:weather", "say:updates", "say:capture", "say:control_center", "say:spotlight", "say:notifications", "say:dashboard", "say:settings", "say:session", "say:appswitcher", "say:lock", "say:clipboard", "say:wallpapers", "say:widget_bar", "say:polkit", "say:welcome", "say:widgets", "say:overview", "say:panels", "say:infopanels", "say:dockpanels", "say:dialogs", "say:windows", "say:controlcenter"
+        services: "clock", "network", "battery", "window", "tray", "tray.*", "apps", "apps.launch", "audio", "audio.*", "brightness", "brightness.*", "network.*", "bluetooth", "bluetooth.*", "env", "files", "files.write", "polkit", "polkit.*", "media", "media.*", "thumbnails", "thumbnails.*", "say:music", "say:weather", "say:updates", "say:capture", "say:control_center", "say:spotlight", "say:notifications", "say:dashboard", "say:settings", "say:session", "say:appswitcher", "say:lock", "say:clipboard", "say:wallpapers", "say:widget_bar", "say:polkit", "say:welcome", "say:widgets", "say:wallpaper", "say:overview", "say:panels", "say:infopanels", "say:dockpanels", "say:dialogs", "say:windows", "say:controlcenter"
         run: "niri msg", "sh", "curl", "systemctl", "xdg-open", "notify-send", "cliphist", "wl-copy", "timeout --signal=TERM --kill-after=0.2s 2s fd", "systemctl suspend"
     }
 
