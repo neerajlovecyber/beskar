@@ -23,7 +23,7 @@ Use the `pleamar` skill when touching any `.plm` / `.luau` file.
 | `shell/capture.plm` + `capture.luau` | The capture picker, started on demand (rule 56). |
 | `shell/common/` | Shared: `theme.plm` (part), `geometry.plm`, `icons.plm`, `ui.plm`, `buttons.plm`, `calendar.plm`, `scroll.plm` (libraries), the panel parts listed under topbar, `morph_core.plm`, `palette.plm`. |
 | `shell/start.sh`, `supervise.sh`, `migrate.sh`, `smoke.sh`, `rig.sh`, `verify.sh` | Start / stop the processes (wallpaper, desktop, lock, widgets) under one supervisor (which runs the idempotent data migration first); `smoke.sh` opens every panel and reads the log; `rig.sh` runs the shell in a nested niri; `verify.sh` is the gate before a commit (compile, every test, UI guard, smoke in the rig). |
-| `bin/exp/pleamar` | The runtime the shell needs: pleamar 0.8.0-exp.21 (pinned and built by `shell/runtime.sh` into `bin/exp/`). `bin/pleamar` is the old 0.7 and cannot run this shell. |
+| `bin/exp/pleamar` | The runtime the shell needs: pleamar 0.8.0-exp.22 (pinned and built by `shell/runtime.sh` into `bin/exp/`). `bin/pleamar` is the old 0.7 and cannot run this shell. |
 
 **Old scene names.** `controlcenter`, `infopanels`, `dockpanels`, `dialogs`, `windows` (and before them `weather.plm`, `music.plm`, `dashboard.plm`, `updates.plm`, `polkit.plm`, `welcome.plm`, `modals`, `overlays`) no longer exist: their panels are parts of the frame (table above). A rule below that names one of them means the part that now holds that panel; `--say topbar` reaches all of them.
 

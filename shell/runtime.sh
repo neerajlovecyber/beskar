@@ -2,7 +2,7 @@
 # Build the exact runtime required by the imported-scene shell.
 set -eu
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-VERSION=0.8.0-exp.21
+VERSION=0.8.0-exp.22
 TAG="v$VERSION"
 SRC="$DIR/cloned_repos/pleamar"
 DEST="$DIR/bin/exp/pleamar-$VERSION"
