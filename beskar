@@ -2,7 +2,9 @@
 # beskar: install, check, update and run the Beskar shell.
 #
 #   ./beskar doctor      check everything the shell needs and say what is missing (changes nothing)
-#   ./beskar install     build pleamar if needed, wire the shell into niri (an include file, with a backup), first run
+#   ./beskar install     install the packages the shell uses (Arch: asks first), the cursor / icon / app themes, build pleamar,
+#                        wire the shell into niri (an include file, with a backup)   [--yes] [--dry-run] [--no-packages]
+#   ./beskar uninstall   take the niri include lines out again (your data and config backups stay)
 #   ./beskar update      pull the newest Beskar, build its pinned pleamar release, restart the shell
 #   ./beskar start | stop | restart | status | lock | settings | ...   (everything else goes to shell/start.sh)
 set -u
@@ -21,8 +23,102 @@ head_() { printf '\n%s%s%s\n' "$B" "$1" "$N"; }
 pkg_for() {
     case "$1" in
         magick) echo imagemagick ;; timeout) echo coreutils ;; wl-copy) echo wl-clipboard ;; checkupdates) echo pacman-contrib ;;
+        notify-send) echo libnotify ;; xdg-open) echo xdg-utils ;; fuser) echo psmisc ;; powerprofilesctl) echo power-profiles-daemon ;;
+        upower) echo upower ;; pactl) echo libpulse ;; wlsunset) echo wlsunset ;;
         *) echo "$1" ;;
     esac
+}
+
+# ── what the shell needs, as Arch packages (the installer offers them; other distributions get the same list to translate) ──
+REPO_PKGS="git curl fontconfig imagemagick fd coreutils grim slurp wf-recorder wl-clipboard cliphist matugen
+  networkmanager bluez bluez-utils power-profiles-daemon polkit upower libnotify xdg-utils xdg-user-dirs xdg-desktop-portal-gtk
+  psmisc wlsunset hypridle pacman-contrib qt5ct qt6ct adw-gtk-theme papirus-icon-theme ttf-jetbrains-mono-nerd pipewire-pulse wireplumber"
+AUR_PKGS="bibata-cursor-theme-bin"
+CURSOR_THEME="Bibata-Modern-Ice"
+ICON_THEME="Papirus-Dark"
+
+have_theme() { # name: an icon / cursor theme folder exists
+    [ -d "/usr/share/icons/$1" ] || [ -d "$HOME/.local/share/icons/$1" ] || [ -d "$HOME/.icons/$1" ]
+}
+vulkan_ok() {
+    if command -v vulkaninfo >/dev/null 2>&1; then vulkaninfo --summary 2>/dev/null | grep -qi 'deviceName'; return; fi
+    compgen -G "/usr/share/vulkan/icd.d/*.json" >/dev/null || compgen -G "/etc/vulkan/icd.d/*.json" >/dev/null
+}
+vulkan_pkg() { # the driver package(s) for the GPU(s) in this machine (Arch names; a hybrid laptop gets both), or nothing
+    local g out=""; g=$(lspci 2>/dev/null | grep -Ei 'vga|3d|display' | tr 'A-Z' 'a-z')
+    case "$g" in *nvidia*) out="$out nvidia-utils" ;; esac
+    case "$g" in *amd*|*radeon*|*ati*) out="$out vulkan-radeon" ;; esac
+    case "$g" in *intel*) out="$out vulkan-intel" ;; esac
+    echo $out
+}
+aur_helper() { command -v paru >/dev/null 2>&1 && { echo paru; return; }; command -v yay >/dev/null 2>&1 && echo yay; return 0; }
+
+# do <description> <command…>: the command runs unless --dry-run (then it is only printed)
+do_() { local d=$1; shift; if [ "$DRY" = 1 ]; then printf '  would: %s\n' "$d"; return 0; fi; "$@"; }
+confirm() { # question: --yes answers for you; a pipe (no terminal) means no
+    [ "$YES" = 1 ] && return 0
+    [ -t 0 ] || return 1
+    local a; read -r -p "  $1 [Y/n] " a; case "$a" in n|N|no|No) return 1 ;; *) return 0 ;; esac
+}
+
+install_packages() {
+    command -v pacman >/dev/null 2>&1 || { warn "not an Arch-based system: install these yourself:  $(echo $REPO_PKGS $AUR_PKGS)"; return 0; }
+    local missing="" p vk aur=""
+    vk=$(vulkan_pkg); vulkan_ok || { [ -n "$vk" ] && missing="$missing $vk"; }
+    for p in $REPO_PKGS; do pacman -Qq "$p" >/dev/null 2>&1 || missing="$missing $p"; done
+    for p in $AUR_PKGS; do pacman -Qq "$p" >/dev/null 2>&1 || aur="$aur $p"; done
+    if [ -z "$missing$aur" ]; then ok "every package the shell uses is installed"; return 0; fi
+    [ -n "$missing" ] && echo "  missing:$missing"
+    [ -n "$aur" ] && echo "  missing (AUR):$aur"
+    if [ -n "$missing" ]; then
+        if confirm "install the missing packages with pacman (sudo)?"; then
+            do_ "sudo pacman -S --needed$missing" sudo pacman -S --needed --noconfirm $missing || warn "pacman did not finish: run  sudo pacman -S --needed$missing"
+        else warn "skipped. Later:  sudo pacman -S --needed$missing"; fi
+    fi
+    if [ -n "$aur" ]; then
+        local h; h=$(aur_helper)
+        if [ -z "$h" ]; then warn "no AUR helper (paru / yay): install$aur from the AUR for the cursor theme"
+        elif confirm "install$aur from the AUR with $h?"; then do_ "$h -S --needed$aur" "$h" -S --needed --noconfirm $aur || warn "$h did not finish: run  $h -S$aur"
+        else warn "skipped. Later:  $h -S$aur"; fi
+    fi
+}
+
+# cursor, icon and app themes: only what is missing is set, a choice of yours is never replaced
+setup_look() {
+    head_ "Cursor, icons and themes"
+    # cursor for niri (the compositor draws it): written to ~/.config/niri/beskar-look.kdl unless some niri file already sets one
+    if grep -qs 'xcursor-theme' "$NIRI_CFG" "$NIRI_DIR"/*.kdl "$NIRI_DIR"/*/*.kdl 2>/dev/null; then ok "niri already has a cursor theme (left alone)"
+    elif have_theme "$CURSOR_THEME"; then
+        do_ "write $NIRI_DIR/beskar-look.kdl (cursor $CURSOR_THEME)" bash -c "mkdir -p '$NIRI_DIR' && printf '// Beskar: the cursor (written by ./beskar install; replace it with your own)\ncursor {\n    xcursor-theme \"$CURSOR_THEME\"\n    xcursor-size 24\n}\n' > '$NIRI_DIR/beskar-look.kdl'"
+        if [ -f "$NIRI_CFG" ] && ! grep -q 'beskar-look.kdl' "$NIRI_CFG"; then
+            do_ "include beskar-look.kdl from config.kdl" bash -c "printf 'include \"beskar-look.kdl\"\n' >> '$NIRI_CFG'"
+        fi
+        ok "cursor: $CURSOR_THEME"; SET_CURSOR=1
+    else warn "no cursor theme installed ($CURSOR_THEME comes from the AUR: bibata-cursor-theme-bin); niri uses its default"; fi
+    # the same cursor and icon theme for GTK apps, only when the current one is not installed
+    if command -v gsettings >/dev/null 2>&1; then
+        local cur ic
+        cur=$(gsettings get org.gnome.desktop.interface cursor-theme 2>/dev/null | tr -d "'")
+        ic=$(gsettings get org.gnome.desktop.interface icon-theme 2>/dev/null | tr -d "'")
+        if { [ -z "$cur" ] || ! have_theme "$cur" || [ "${SET_CURSOR:-0}" = 1 ]; } && have_theme "$CURSOR_THEME"; then
+            do_ "gsettings cursor-theme $CURSOR_THEME" gsettings set org.gnome.desktop.interface cursor-theme "$CURSOR_THEME"; ok "GTK cursor: $CURSOR_THEME"
+        else ok "GTK cursor: ${cur:-default}"; fi
+        if { [ -z "$ic" ] || [ "$ic" = Adwaita ] || [ "$ic" = hicolor ] || ! have_theme "$ic"; } && have_theme "$ICON_THEME"; then
+            do_ "gsettings icon-theme $ICON_THEME" gsettings set org.gnome.desktop.interface icon-theme "$ICON_THEME"; ok "icons: $ICON_THEME"
+        else ok "icons: ${ic:-default}"; fi
+    fi
+    fc-list 2>/dev/null | grep -qi "JetBrainsMono Nerd Font Mono" && ok "JetBrainsMono Nerd Font Mono (the shell's icon font)" \
+        || warn "JetBrainsMono Nerd Font Mono is missing: the shell draws its icons with it (Arch: ttf-jetbrains-mono-nerd)"
+}
+
+uninstall_() {
+    head_ "Beskar uninstall"
+    rm -f "$NIRI_DIR/beskar.kdl" "$NIRI_DIR/beskar-look.kdl"
+    if [ -f "$NIRI_CFG" ]; then
+        # only the lines we added: the include lines and our one-line comment
+        sed -i -e '/^include "beskar\.kdl"$/d' -e '/^include "beskar-look\.kdl"$/d' -e '/^\/\/ Beskar shell$/d' "$NIRI_CFG"
+    fi
+    ok "niri no longer starts the shell (config.kdl.beskar-bak is your original; ~/.config/beskar and the data folder are untouched). A running shell keeps running: ./beskar stop ends it"
 }
 
 MISSING=0
@@ -49,6 +145,14 @@ doctor() {
     need curl "weather, wallpaper location"
     if fc-list 2>/dev/null | grep -qi "nerd font\| NF"; then ok "a Nerd Font  (status glyphs)"; else bad "no Nerd Font found: install a Nerd Font (Arch: ttf-jetbrains-mono-nerd)"; fi
 
+    head_ "Graphics, cursor and icons"
+    if vulkan_ok; then ok "a Vulkan driver (pleamar draws with Vulkan)"; else
+        bad "no Vulkan driver found: nothing can start without one (Arch: $(vulkan_pkg | sed 's/^$/vulkan-radeon, vulkan-intel or nvidia-utils/'))"; NEED_PKGS="$NEED_PKGS $(vulkan_pkg)"; fi
+    if have_theme "$CURSOR_THEME"; then ok "cursor theme $CURSOR_THEME"; else warn "cursor theme $CURSOR_THEME missing (AUR: bibata-cursor-theme-bin): niri's default cursor is used"; fi
+    if have_theme "$ICON_THEME"; then ok "icon theme $ICON_THEME"; else warn "icon theme $ICON_THEME missing (Arch: papirus-icon-theme): apps may show blank icons in Spotlight and the dock"; fi
+    need qt6ct "Qt apps wear the shell's colours" optional
+    [ -d /usr/share/themes/adw-gtk3 ] && ok "adw-gtk3 (GTK apps wear the shell's colours)" || warn "adw-gtk3 missing (Arch: adw-gtk-theme): GTK apps keep their own look"
+
     head_ "Capture, clipboard and system"
     need grim "screenshots"
     need slurp "region selection"
@@ -56,6 +160,13 @@ doctor() {
     need wl-copy "clipboard (wl-clipboard)"
     need cliphist "clipboard history"
     need hypridle "lock when away / before sleep" optional
+    need notify-send "tests and the shell's own notices (libnotify)" optional
+    need xdg-open "opening links, files and web searches (xdg-utils)"
+    need fuser "the camera privacy dot (psmisc)" optional
+    need powerprofilesctl "the power mode (power-profiles-daemon)" optional
+    need wlsunset "night light" optional
+    need upower "battery time left" optional
+    [ -e /usr/share/xdg-desktop-portal/portals/gtk.portal ] && ok "xdg-desktop-portal-gtk (file pickers and permission prompts)" || warn "xdg-desktop-portal-gtk missing: apps' file pickers and screen-share prompts may not work" 
     need checkupdates "the Software Update page (pacman-contrib)" optional
     for svc in NetworkManager bluetooth; do
         if systemctl is-active --quiet "$svc" 2>/dev/null; then ok "$svc running"; else warn "$svc is not running (the Wi-Fi / Bluetooth pages need it)"; fi
@@ -82,12 +193,7 @@ doctor() {
     return $((MISSING > 0))
 }
 
-install_() {
-    head_ "Beskar install"
-    # 1. the pinned runtime
-    bash "$DIR/shell/runtime.sh" || exit 1
-
-    # 2. niri: one include file of ours, one line in the user's config (backup first)
+wire_niri() {
     mkdir -p "$NIRI_DIR"
     if grep -q "start.sh" "$NIRI_CFG" "$NIRI_DIR"/*.kdl 2>/dev/null; then
         ok "niri already starts the shell and has the shortcuts (left alone)"
@@ -139,6 +245,23 @@ KDL
         else warn "niri says the config is not valid now: see 'niri validate'; your original is config.kdl.beskar-bak"; fi
     fi
 
+}
+
+YES=0; DRY=0; PKGS=1
+install_() {
+    local a; for a in "$@"; do case "$a" in --yes|-y) YES=1 ;; --dry-run) DRY=1 ;; --no-packages) PKGS=0 ;; esac; done
+    head_ "Beskar install"
+    [ "$DRY" = 1 ] && warn "dry run: nothing is changed, the steps are only listed"
+    # 0. packages (Arch: asks first; anything else gets the list)
+    if [ "$PKGS" = 1 ]; then head_ "Packages"; install_packages; fi
+    # 1. the pinned runtime
+    if [ "$DRY" = 1 ]; then echo "  would: build the pinned pleamar (shell/runtime.sh)"; else bash "$DIR/shell/runtime.sh" || exit 1; fi
+
+    # 2. niri: one include file of ours, one line in the user's config (backup first)
+    if [ "$DRY" = 1 ]; then echo "  would: write $NIRI_DIR/beskar.kdl and include it from config.kdl (backup config.kdl.beskar-bak)"; else wire_niri; fi
+
+    setup_look
+
     # 3. a first-run marker is NOT written here: the welcome screen appears the first time the shell starts
     echo
     doctor
@@ -160,8 +283,9 @@ update_() {
 
 case "${1:-help}" in
     doctor) doctor ;;
-    install) install_ ;;
+    install) shift; install_ "$@" ;;
+    uninstall) uninstall_ ;;
     update) update_ ;;
-    help|-h|--help) sed -n '2,8p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//' ;;
+    help|-h|--help) sed -n '2,12p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//' ;;
     *) exec "$START" "$@" ;;
 esac

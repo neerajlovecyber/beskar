@@ -126,9 +126,17 @@ Use one to eight existing folders, as absolute paths or `~/` paths. Each selecte
 ```bash
 git clone https://github.com/neerajlovecyber/beskar
 cd beskar
-./beskar install      # builds pleamar if needed, wires the shell into niri (a backup is kept), checks everything
+./beskar install      # packages, cursor + icons + app themes, builds pleamar, wires niri (a backup is kept), checks everything
 ./beskar start        # or log out and back in
 ```
+
+`./beskar install` asks before each step (`--yes` answers them all, `--dry-run` only lists what it would do,
+`--no-packages` skips the package step). On Arch it installs what the shell uses with `pacman` (and the cursor theme from the
+AUR with `paru` / `yay`): a Vulkan driver for your GPU (pleamar draws with Vulkan; without one nothing starts), the
+fonts (JetBrainsMono Nerd Font), the **Bibata-Modern-Ice cursor** and **Papirus-Dark icons** (set only if you have not
+chosen your own), `adw-gtk-theme` and `qt5ct` / `qt6ct` (other apps wear the shell's colours), the portals and
+polkit, NetworkManager / BlueZ / power-profiles-daemon / UPower, grim / slurp / wf-recorder, cliphist and the rest. On
+other distributions it prints the same list to translate. `./beskar uninstall` takes the niri include lines out again.
 
 `./beskar doctor` lists what is installed and what is missing (with the pacman line for Arch), `./beskar update` pulls
 the newest Beskar and pleamar, rebuilds if needed and restarts the shell, `./beskar welcome` shows the first-run
