@@ -2,7 +2,7 @@
 
   <h1>Beskar</h1>
 
-  <p><strong>A macOS-style glass desktop shell for niri: a thin frame, and panels that grow out of it.</strong></p>
+  <p><strong>A liquid-glass desktop shell, written in pleamar: a thin frame, and panels that grow out of it.</strong></p>
 
   <p>
     <a href="https://github.com/k4ditano/pleamar"><img src="https://img.shields.io/badge/pleamar-0.8.0--exp.21-9ed6bd?style=for-the-badge" alt="pleamar 0.8.0-exp.21" /></a>
@@ -17,7 +17,7 @@
 
 ---
 
-A macOS-style glass desktop shell for the [niri](https://github.com/YaLTeR/niri) Wayland compositor,
+A liquid-glass desktop shell for the [niri](https://github.com/YaLTeR/niri) Wayland compositor,
 written in [pleamar](https://github.com/k4ditano/pleamar): declarative scenes (`.plm`) drawn on the GPU,
 with small sandboxed Luau scripts (`.luau`) for the logic.
 
