@@ -97,7 +97,8 @@ local function controller(disk)
         end,
         watch = function(name, fn) state.watchers[name] = fn; fn(apps); return true end,
     }
-    package.loaded.topbar_hooks = { emit = function(name, value) emit(name, value) end, call = function() end, handlers = {} }
+    package.loaded.topbar_hooks = { emit = function(name, value) emit(name, value) end, call = function() end, focus = function() end, handlers = {} }
+    package.loaded.keys_text = text                -- the search field is the Keys scene's; here it is the plain text table
     -- dock_panels.luau returns a function taking the frame's panel client
     dofile("shell/dock_panels.luau")(function(name, init)
         if name ~= "spotlight" then return end
@@ -108,7 +109,7 @@ local function controller(disk)
     end)
     function state.open() state.visible = true; state.open_hook() end
     function state.close() state.visible = false; state.close_hook() end
-    function state.query(value) text.query = value; state.handlers["text:query"]() end
+    function state.query(value) text.query = value; state.handlers["text:Keys.query"]() end
     function state.flush()
         local jobs = state.jobs
         state.jobs = {}

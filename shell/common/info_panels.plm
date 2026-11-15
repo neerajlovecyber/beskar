@@ -28,7 +28,6 @@ part InfoPanels {
     text w_source = ""
     text w_rain = "Rain chance: --"
     text w_status = "Loading weather…"
-    text wq = ""
 
     model hours max 8 { t: text; icon: text; temp: text; rain: text }
     model days max 5 { day: text; icon: text; lo: text; hi: text; lo_n: number; hi_n: number }
@@ -388,44 +387,44 @@ part InfoPanels {
     //  ── keyboard (every rule is guarded by the monitor: the frame has one copy per monitor, AGENTS rule 74) ──
     //  Today: Up / Down / Tab move the focus ring over the weather card, calendar, notes and to-dos; Left / Right / Page Up / Page Down
     //  change the month, Home comes back to this one, Enter / Space (on release) open the focused card, Esc closes.
-    on key Escape while Panels.cur == 3 and Panels.open_screen == screen.index { emit Panels.close }
-    on key Up while Panels.cur == 3 and Panels.open_screen == screen.index { emit d_nav(1) }
-    on key Shift+Tab while Panels.cur == 3 and Panels.open_screen == screen.index { emit d_nav(1) }
-    on key Down while Panels.cur == 3 and Panels.open_screen == screen.index { emit d_nav(2) }
-    on key Tab while Panels.cur == 3 and Panels.open_screen == screen.index { emit d_nav(2) }
-    on key Left while Panels.cur == 3 and Panels.open_screen == screen.index { emit d_nav(3) }
-    on key Prior while Panels.cur == 3 and Panels.open_screen == screen.index { emit d_nav(3) }
-    on key Right while Panels.cur == 3 and Panels.open_screen == screen.index { emit d_nav(4) }
-    on key Next while Panels.cur == 3 and Panels.open_screen == screen.index { emit d_nav(4) }
-    on key Home while Panels.cur == 3 and Panels.open_screen == screen.index { emit d_nav(5) }
-    on keyup Return while Panels.cur == 3 and Panels.open_screen == screen.index { emit d_nav(6) }
-    on keyup KP_Enter while Panels.cur == 3 and Panels.open_screen == screen.index { emit d_nav(6) }
-    on keyup space while Panels.cur == 3 and Panels.open_screen == screen.index { emit d_nav(6) }
-    on blur while Panels.cur == 3 and not Panels.fresh and Panels.open_screen == screen.index { emit Panels.close }     // today (dashboard) closes when it loses the focus
+    on k_escape while Panels.cur == 3 and screen.index == 0 { emit Panels.close }
+    on k_up while Panels.cur == 3 and screen.index == 0 { emit d_nav(1) }
+    on k_shift_tab while Panels.cur == 3 and screen.index == 0 { emit d_nav(1) }
+    on k_down while Panels.cur == 3 and screen.index == 0 { emit d_nav(2) }
+    on k_tab while Panels.cur == 3 and screen.index == 0 { emit d_nav(2) }
+    on k_left while Panels.cur == 3 and screen.index == 0 { emit d_nav(3) }
+    on k_prior while Panels.cur == 3 and screen.index == 0 { emit d_nav(3) }
+    on k_right while Panels.cur == 3 and screen.index == 0 { emit d_nav(4) }
+    on k_next while Panels.cur == 3 and screen.index == 0 { emit d_nav(4) }
+    on k_home while Panels.cur == 3 and screen.index == 0 { emit d_nav(5) }
+    on ku_return while Panels.cur == 3 and screen.index == 0 { emit d_nav(6) }
+    on ku_kp_enter while Panels.cur == 3 and screen.index == 0 { emit d_nav(6) }
+    on ku_space while Panels.cur == 3 and screen.index == 0 { emit d_nav(6) }
+    on k_blur while Panels.cur == 3 and not Panels.fresh and screen.index == 0 { emit Panels.close }     // today (dashboard) closes when it loses the focus
 
     //  Weather. Forecast: Tab / arrows move the ring between "Change" and "Refresh", Enter / Space activate. Choosing a place: typing goes to the
     //  search field, Up / Down walk the found places (and then "Use my location" and "Back"), Enter picks, Esc goes back to the forecast.
-    on key Escape while Panels.cur == 15 and wx_view == 1 and Panels.open_screen == screen.index { emit loc_back }
-    on key Escape while Panels.cur == 15 and wx_view == 0 and Panels.open_screen == screen.index { emit Panels.close }
-    on key Up while Panels.cur == 15 and Panels.open_screen == screen.index { emit wx_nav(1) }
-    on key Shift+Tab while Panels.cur == 15 and Panels.open_screen == screen.index { emit wx_nav(1) }
-    on key Left while Panels.cur == 15 and wx_view == 0 and Panels.open_screen == screen.index { emit wx_nav(1) }
-    on key Down while Panels.cur == 15 and Panels.open_screen == screen.index { emit wx_nav(2) }
-    on key Tab while Panels.cur == 15 and Panels.open_screen == screen.index { emit wx_nav(2) }
-    on key Right while Panels.cur == 15 and wx_view == 0 and Panels.open_screen == screen.index { emit wx_nav(2) }
-    on keyup Return while Panels.cur == 15 and Panels.open_screen == screen.index { emit wx_nav(6) }
-    on keyup KP_Enter while Panels.cur == 15 and Panels.open_screen == screen.index { emit wx_nav(6) }
-    on keyup space while Panels.cur == 15 and wx_view == 0 and Panels.open_screen == screen.index { emit wx_nav(6) }
-    on keyup space while Panels.cur == 15 and wx_view == 1 and wx_sel < 0 and Panels.open_screen == screen.index { emit wx_nav(6) }
-    on submit wq { emit wx_nav(7) }
+    on k_escape while Panels.cur == 15 and wx_view == 1 and screen.index == 0 { emit loc_back }
+    on k_escape while Panels.cur == 15 and wx_view == 0 and screen.index == 0 { emit Panels.close }
+    on k_up while Panels.cur == 15 and screen.index == 0 { emit wx_nav(1) }
+    on k_shift_tab while Panels.cur == 15 and screen.index == 0 { emit wx_nav(1) }
+    on k_left while Panels.cur == 15 and wx_view == 0 and screen.index == 0 { emit wx_nav(1) }
+    on k_down while Panels.cur == 15 and screen.index == 0 { emit wx_nav(2) }
+    on k_tab while Panels.cur == 15 and screen.index == 0 { emit wx_nav(2) }
+    on k_right while Panels.cur == 15 and wx_view == 0 and screen.index == 0 { emit wx_nav(2) }
+    on ku_return while Panels.cur == 15 and screen.index == 0 { emit wx_nav(6) }
+    on ku_kp_enter while Panels.cur == 15 and screen.index == 0 { emit wx_nav(6) }
+    on ku_space while Panels.cur == 15 and wx_view == 0 and screen.index == 0 { emit wx_nav(6) }
+    on ku_space while Panels.cur == 15 and wx_view == 1 and wx_sel < 0 and screen.index == 0 { emit wx_nav(6) }
+    on sub_wq while screen.index == 0 { emit wx_nav(7) }
 
     //  Music: Space / Enter play or pause, Left / Right the previous / next track, Shift+Left / Shift+Right seek 10 s, Esc closes.
-    on key Escape while Panels.cur == 9 and Panels.open_screen == screen.index { emit Panels.close }
-    on keyup Return while Panels.cur == 9 and Panels.open_screen == screen.index { emit mu_nav(1) }
-    on keyup KP_Enter while Panels.cur == 9 and Panels.open_screen == screen.index { emit mu_nav(1) }
-    on keyup space while Panels.cur == 9 and Panels.open_screen == screen.index { emit mu_nav(1) }
-    on key Left while Panels.cur == 9 and Panels.open_screen == screen.index { emit mu_nav(2) }
-    on key Right while Panels.cur == 9 and Panels.open_screen == screen.index { emit mu_nav(3) }
-    on key Shift+Left while Panels.cur == 9 and Panels.open_screen == screen.index { emit mu_nav(4) }
-    on key Shift+Right while Panels.cur == 9 and Panels.open_screen == screen.index { emit mu_nav(5) }
+    on k_escape while Panels.cur == 9 and screen.index == 0 { emit Panels.close }
+    on ku_return while Panels.cur == 9 and screen.index == 0 { emit mu_nav(1) }
+    on ku_kp_enter while Panels.cur == 9 and screen.index == 0 { emit mu_nav(1) }
+    on ku_space while Panels.cur == 9 and screen.index == 0 { emit mu_nav(1) }
+    on k_left while Panels.cur == 9 and screen.index == 0 { emit mu_nav(2) }
+    on k_right while Panels.cur == 9 and screen.index == 0 { emit mu_nav(3) }
+    on k_shift_left while Panels.cur == 9 and screen.index == 0 { emit mu_nav(4) }
+    on k_shift_right while Panels.cur == 9 and screen.index == 0 { emit mu_nav(5) }
 }

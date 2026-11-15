@@ -30,7 +30,6 @@ part DialogPanels {
     text pk_message = ""
     text pk_prompt = "Password"
     text pk_info = ""
-    text password = ""
     prop shake = 0 ~quick
     event pk_cancel ->
     event pk_answer ->
@@ -144,28 +143,28 @@ part DialogPanels {
     // happened HERE (`ses_down`): the Enter that launched the panel (Spotlight "Log Out…") is released inside it and must
     // not choose anything.
     fact ses_down = 0
-    on key Return while Panels.open and Panels.cur == 11 and Panels.open_screen == screen.index { ses_down = 1 }
-    on key KP_Enter while Panels.open and Panels.cur == 11 and Panels.open_screen == screen.index { ses_down = 1 }
-    on key space while Panels.open and Panels.cur == 11 and Panels.open_screen == screen.index { ses_down = 1 }
+    on k_return while Panels.open and Panels.cur == 11 and screen.index == 0 { ses_down = 1 }
+    on k_kp_enter while Panels.open and Panels.cur == 11 and screen.index == 0 { ses_down = 1 }
+    on k_space while Panels.open and Panels.cur == 11 and screen.index == 0 { ses_down = 1 }
     on change Panels.cur { ses_down = 0 }
-    on keyup Return while Panels.open and Panels.cur == 11 and ses_down == 1 and Panels.open_screen == screen.index { ses_down = 0; emit ses_enter }
-    on keyup KP_Enter while Panels.open and Panels.cur == 11 and ses_down == 1 and Panels.open_screen == screen.index { ses_down = 0; emit ses_enter }
-    on keyup space while Panels.open and Panels.cur == 11 and ses_down == 1 and Panels.open_screen == screen.index { ses_down = 0; emit ses_enter }
-    on key Escape while Panels.open and Panels.cur == 11 and Panels.open_screen == screen.index { emit ses_cancel }
-    on key Left while Panels.open and Panels.cur == 11 and Panels.open_screen == screen.index { emit ses_move(-1) }
-    on key Up while Panels.open and Panels.cur == 11 and Panels.open_screen == screen.index { emit ses_move(-1) }
-    on key Right while Panels.open and Panels.cur == 11 and Panels.open_screen == screen.index { emit ses_move(1) }
-    on key Down while Panels.open and Panels.cur == 11 and Panels.open_screen == screen.index { emit ses_move(1) }
-    on key Tab while Panels.open and Panels.cur == 11 and Panels.open_screen == screen.index { emit ses_move(1) }
-    on key Home while Panels.open and Panels.cur == 11 and Panels.open_screen == screen.index { emit ses_edge(-1) }
-    on key End while Panels.open and Panels.cur == 11 and Panels.open_screen == screen.index { emit ses_edge(1) }
-    on key Shift+Tab while Panels.open and Panels.cur == 11 and Panels.open_screen == screen.index { emit ses_move(-1) }
-    on blur while Panels.cur == 11 and not Panels.fresh and Panels.open_screen == screen.index { emit Panels.close }
-    on key Escape while Panels.cur == 12 and Panels.open_screen == screen.index { emit pk_cancel }
-    on submit password { emit pk_answer }
+    on ku_return while Panels.open and Panels.cur == 11 and ses_down == 1 and screen.index == 0 { ses_down = 0; emit ses_enter }
+    on ku_kp_enter while Panels.open and Panels.cur == 11 and ses_down == 1 and screen.index == 0 { ses_down = 0; emit ses_enter }
+    on ku_space while Panels.open and Panels.cur == 11 and ses_down == 1 and screen.index == 0 { ses_down = 0; emit ses_enter }
+    on k_escape while Panels.open and Panels.cur == 11 and screen.index == 0 { emit ses_cancel }
+    on k_left while Panels.open and Panels.cur == 11 and screen.index == 0 { emit ses_move(-1) }
+    on k_up while Panels.open and Panels.cur == 11 and screen.index == 0 { emit ses_move(-1) }
+    on k_right while Panels.open and Panels.cur == 11 and screen.index == 0 { emit ses_move(1) }
+    on k_down while Panels.open and Panels.cur == 11 and screen.index == 0 { emit ses_move(1) }
+    on k_tab while Panels.open and Panels.cur == 11 and screen.index == 0 { emit ses_move(1) }
+    on k_home while Panels.open and Panels.cur == 11 and screen.index == 0 { emit ses_edge(-1) }
+    on k_end while Panels.open and Panels.cur == 11 and screen.index == 0 { emit ses_edge(1) }
+    on k_shift_tab while Panels.open and Panels.cur == 11 and screen.index == 0 { emit ses_move(-1) }
+    on k_blur while Panels.cur == 11 and not Panels.fresh and screen.index == 0 { emit Panels.close }
+    on k_escape while Panels.cur == 12 and screen.index == 0 { emit pk_cancel }
+    on sub_password while screen.index == 0 { emit pk_answer }
     on pk_shake { impulse shake 18 }
-    on change Panels.open while Panels.open and Panels.cur == 12 { focus password }
-    on change Panels.cur while Panels.open and Panels.cur == 12 { focus password }
+    on change Panels.open while Panels.open and Panels.cur == 12 { fld_req = 8; fld_seq = fld_seq + 1 }
+    on change Panels.cur while Panels.open and Panels.cur == 12 { fld_req = 8; fld_seq = fld_seq + 1 }
 
     // ── welcome ─────────────────────────────────────────────────
     fact page = 0
@@ -264,22 +263,22 @@ part DialogPanels {
 
     //  Keys: Right / Tab / Enter go on (Enter on the last page starts Beskar), Left / Shift+Tab go back, Home / End jump to the
     //  first / last page, Esc skips. Page 2: D / L / A choose Dark / Light / Automatic, C and T flip the two switches.
-    on key Escape while Panels.cur == 24 and Panels.open_screen == screen.index { emit wl_done }
-    on key Right while Panels.cur == 24 and Panels.open_screen == screen.index { emit wl_next }
-    on key Tab while Panels.cur == 24 and Panels.open_screen == screen.index { emit wl_next }
-    on key Left while Panels.cur == 24 and Panels.open_screen == screen.index { emit wl_back }
-    on key Shift+Tab while Panels.cur == 24 and Panels.open_screen == screen.index { emit wl_back }
-    on key Home while Panels.cur == 24 and Panels.open_screen == screen.index { emit wl_goto(0) }
-    on key End while Panels.cur == 24 and Panels.open_screen == screen.index { emit wl_goto(2) }
-    on key Return while Panels.cur == 24 and page < 2 and Panels.open_screen == screen.index { emit wl_next }
-    on key KP_Enter while Panels.cur == 24 and page < 2 and Panels.open_screen == screen.index { emit wl_next }
-    on key Return while Panels.cur == 24 and page == 2 and Panels.open_screen == screen.index { emit wl_done }
-    on key KP_Enter while Panels.cur == 24 and page == 2 and Panels.open_screen == screen.index { emit wl_done }
-    on key d while Panels.cur == 24 and page == 1 and Panels.open_screen == screen.index { emit choose_dark }
-    on key l while Panels.cur == 24 and page == 1 and Panels.open_screen == screen.index { emit choose_light }
-    on key a while Panels.cur == 24 and page == 1 and Panels.open_screen == screen.index { emit choose_auto }
-    on key c while Panels.cur == 24 and page == 1 and Panels.open_screen == screen.index { emit toggle_colours }
-    on key t while Panels.cur == 24 and page == 1 and Panels.open_screen == screen.index { emit toggle_apps_pref }
+    on k_escape while Panels.cur == 24 and screen.index == 0 { emit wl_done }
+    on k_right while Panels.cur == 24 and screen.index == 0 { emit wl_next }
+    on k_tab while Panels.cur == 24 and screen.index == 0 { emit wl_next }
+    on k_left while Panels.cur == 24 and screen.index == 0 { emit wl_back }
+    on k_shift_tab while Panels.cur == 24 and screen.index == 0 { emit wl_back }
+    on k_home while Panels.cur == 24 and screen.index == 0 { emit wl_goto(0) }
+    on k_end while Panels.cur == 24 and screen.index == 0 { emit wl_goto(2) }
+    on k_return while Panels.cur == 24 and page < 2 and screen.index == 0 { emit wl_next }
+    on k_kp_enter while Panels.cur == 24 and page < 2 and screen.index == 0 { emit wl_next }
+    on k_return while Panels.cur == 24 and page == 2 and screen.index == 0 { emit wl_done }
+    on k_kp_enter while Panels.cur == 24 and page == 2 and screen.index == 0 { emit wl_done }
+    on k_d while Panels.cur == 24 and page == 1 and screen.index == 0 { emit choose_dark }
+    on k_l while Panels.cur == 24 and page == 1 and screen.index == 0 { emit choose_light }
+    on k_a while Panels.cur == 24 and page == 1 and screen.index == 0 { emit choose_auto }
+    on k_c while Panels.cur == 24 and page == 1 and screen.index == 0 { emit toggle_colours }
+    on k_t while Panels.cur == 24 and page == 1 and screen.index == 0 { emit toggle_apps_pref }
 
     //  an icon, a title and a sentence
     component Tip(x: number, y: number, icon: text, title: text, body: text) {

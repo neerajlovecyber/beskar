@@ -1,4 +1,5 @@
 -- View state only. All content mutations are typed events to Personal.
+local text = require("keys_text")     -- the text fields are the Keys scene's (keys_text.luau)
 local Hooks = require("topbar_hooks")        -- the frame cannot emit to itself: its own events are called directly
 return function(module)
     local Store = require("personal_store")
@@ -36,7 +37,7 @@ return function(module)
     on("pe_new_note", function() creating = #data.notes < Store.MAX_NOTES; emit("Personal.add_note") end)
     on("pe_delete_note", function() emit("Personal.remove_note", selected) end)
     on("pe_undo", function() reload = true; emit("Personal.undo") end)
-    on("text:pe_draft", function()
+    on("text:Keys.pe_draft", function()
         if selected > 0 then
             local value = text.pe_draft or ""
             for _, n in ipairs(data.notes) do
@@ -48,7 +49,7 @@ return function(module)
             end
         end
     end)
-    on("text:pe_new_task", function() if (text.pe_new_task or "") ~= "" then fact.pe_focus = 2 end end)
+    on("text:Keys.pe_new_task", function() if (text.pe_new_task or "") ~= "" then fact.pe_focus = 2 end end)
     on("pe_add_task", function()
         local value = text.pe_new_task or ""
         if value:match("%S") and #value <= Store.TASK_BYTES and #data.tasks < Store.MAX_TASKS then
@@ -82,9 +83,9 @@ return function(module)
     -- ── keyboard (rules in common/personal_editor.plm send pe_nav(code)); zones: 0 header · 1 list · 2 editor or the to-do field ──
     local function zone_focus(z)
         fact.pe_focus = z
-        if z ~= 2 then focus()
-        elseif (tonumber(fact.pe_tab) or 0) == 0 then focus("pe_draft")
-        else focus("pe_new_task") end
+        if z ~= 2 then require("topbar_hooks").focus()
+        elseif (tonumber(fact.pe_tab) or 0) == 0 then require("topbar_hooks").focus("pe_draft")
+        else require("topbar_hooks").focus("pe_new_task") end
     end
     local function has_zone2()
         if not fact["Personal.ready"] then return false end
@@ -162,7 +163,7 @@ return function(module)
         opened(function()
             fact.pe_head = fact.pe_tab; fact.pe_focus = 1; fact.pe_task_i = 0
             armed = false; after(350, function() armed = true end)
-            focus()
+            require("topbar_hooks").focus()
             sync()
         end)
         closed(function() emit("Personal.flush") end)

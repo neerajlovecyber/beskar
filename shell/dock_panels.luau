@@ -1,4 +1,5 @@
 -- The dock panels: Spotlight, clipboard, wallpaper strip, widget bar (common/dock_panels.plm).
+local text = require("keys_text")     -- the text fields are the Keys scene's (keys_text.luau)
 local Hooks = require("topbar_hooks")        -- the frame cannot emit to itself: its own events are called directly
 -- Loaded by topbar.luau with its panel client; the panels' content is drawn in the frame's own surface.
 return function(module)
@@ -344,7 +345,7 @@ module("spotlight", function(panel, opened, shown, closed)
         apps = {}
         filter()
     end
-    on("text:query", function()
+    on("text:Keys.query", function()
         file_search.update(text.query or "", shown())
         filter()
     end)
@@ -532,7 +533,7 @@ module("clipboard", function(panel, opened, shown, closed)
         rebuild(false)
     end)
 
-    on("text:clip_q", function()
+    on("text:Keys.clip_q", function()
         rebuild(false)
     end)
 
@@ -1063,7 +1064,7 @@ module("widget_bar", function(panel, opened, shown, closed)
         end,
     })
     on("text:wb_layouts", function(body) ctl.snapshot(body) end)
-    on("text:wb_name", function(name) ctl.set_name(name) end)
+    on("text:Keys.wb_name", function(name) ctl.set_name(name) end)
     -- ── card options (C4b) ──
     local shown_opts = ""
     opt = require("widget_bar_options").controller({

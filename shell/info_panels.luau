@@ -1,4 +1,5 @@
 -- The info panels' logic: weather, music, today, the timer and the Personal editor. Their content is drawn inside the frame's own surface
+local text = require("keys_text")     -- the text fields are the Keys scene's (keys_text.luau)
 -- (common/info_panels.plm, timer_panel.plm, personal_editor.plm); topbar.luau calls this with its panel client.
 return function(module)
 
@@ -9,7 +10,7 @@ module("weather", function(panel, opened, shown)
     local Data=require("weather_data")
     local VIEW_FORECAST_H=692
     local found={}
-    local function field_focus(on) if on then focus("wq") else focus() end end
+    local function field_focus(on) if on then require("topbar_hooks").focus("wq") else require("topbar_hooks").focus() end end
     local function urlencode(value)
         return (value:gsub("[^%w%-_%.~]",function(c) return string.format("%%%02X",c:byte()) end))
     end
@@ -81,7 +82,7 @@ module("weather", function(panel, opened, shown)
             end)
     end
 
-    on("text:wq", function(q)
+    on("text:Keys.wq", function(q)
         q = (q or ""):gsub("^%s+", ""):gsub("%s+$", "")
         fact.wx_q_has = q ~= ""
         if search_timer then cancel(search_timer) search_timer = nil end

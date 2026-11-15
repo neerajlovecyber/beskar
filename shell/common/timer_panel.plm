@@ -1,6 +1,5 @@
 // One timer panel, drawn in the frame. Activities owns the countdown and storage.
 part TimerPanel {
-    text tm_duration = "25"
     text tm_preview = "25:00"
     text tm_hint = "25:00 · maximum 24 hours"
     fact tm_seconds = 1500
@@ -50,16 +49,16 @@ part TimerPanel {
             box { from: if(tm_focus == 0, inset_panel - 2, 202), 290; size: 168, control_h_large + 4; corner: control_r_large; stroke: 2; color: focus_c; show: tm_focus == 0 or tm_focus == 1 }
             text Activities.storage_status { at: inset_panel, 338; anchor: left center; size: ts_cap; color: danger_c; width: 348; lines: 1 }
     }
-    on submit tm_duration { emit tm_submit }
-    on key Escape while Panels.cur == 26 and Panels.open_screen == screen.index { emit Panels.close }
-    on key Up while Panels.cur == 26 and Panels.open_screen == screen.index { emit tm_move(-1) }
-    on key Down while Panels.cur == 26 and Panels.open_screen == screen.index { emit tm_move(1) }
-    on key Tab while Panels.open and Panels.cur == 26 and Panels.open_screen == screen.index { emit tm_move(1) }
-    on key Shift+Tab while Panels.open and Panels.cur == 26 and Panels.open_screen == screen.index { emit tm_move(-1) }
-    on key Left while Panels.open and Panels.cur == 26 and tm_focus >= 0 and Panels.open_screen == screen.index { emit tm_move(-1) }
-    on key Right while Panels.open and Panels.cur == 26 and tm_focus >= 0 and Panels.open_screen == screen.index { emit tm_move(1) }
-    on keyup Return while Panels.open and Panels.cur == 26 and tm_focus >= 0 and Panels.open_screen == screen.index { emit tm_activate }
-    on keyup KP_Enter while Panels.open and Panels.cur == 26 and tm_focus >= 0 and Panels.open_screen == screen.index { emit tm_activate }
-    on keyup space while Panels.open and Panels.cur == 26 and tm_focus >= 0 and Panels.open_screen == screen.index { emit tm_activate }
-    on blur while Panels.cur == 26 and not Panels.fresh and Panels.open_screen == screen.index { emit Panels.close }
+    on sub_tm_duration while screen.index == 0 { emit tm_submit }
+    on k_escape while Panels.cur == 26 and screen.index == 0 { emit Panels.close }
+    on k_up while Panels.cur == 26 and screen.index == 0 { emit tm_move(-1) }
+    on k_down while Panels.cur == 26 and screen.index == 0 { emit tm_move(1) }
+    on k_tab while Panels.open and Panels.cur == 26 and screen.index == 0 { emit tm_move(1) }
+    on k_shift_tab while Panels.open and Panels.cur == 26 and screen.index == 0 { emit tm_move(-1) }
+    on k_left while Panels.open and Panels.cur == 26 and tm_focus >= 0 and screen.index == 0 { emit tm_move(-1) }
+    on k_right while Panels.open and Panels.cur == 26 and tm_focus >= 0 and screen.index == 0 { emit tm_move(1) }
+    on ku_return while Panels.open and Panels.cur == 26 and tm_focus >= 0 and screen.index == 0 { emit tm_activate }
+    on ku_kp_enter while Panels.open and Panels.cur == 26 and tm_focus >= 0 and screen.index == 0 { emit tm_activate }
+    on ku_space while Panels.open and Panels.cur == 26 and tm_focus >= 0 and screen.index == 0 { emit tm_activate }
+    on k_blur while Panels.cur == 26 and not Panels.fresh and screen.index == 0 { emit Panels.close }
 }

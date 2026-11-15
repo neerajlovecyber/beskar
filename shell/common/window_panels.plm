@@ -60,16 +60,16 @@ part WindowPanels {
 
         on press hit { emit sw_switch_to(w.index) }
     }
-    on key Tab while Panels.cur == 21 and Panels.open_screen == screen.index { emit next_app }
-    on key Shift+Tab while Panels.cur == 21 and Panels.open_screen == screen.index { emit prev_app }
-    on key Home while Panels.cur == 21 and Panels.open_screen == screen.index { emit sw_edge(-1) }
-    on key End while Panels.cur == 21 and Panels.open_screen == screen.index { emit sw_edge(1) }
-    on key KP_Enter while Panels.cur == 21 and Panels.open_screen == screen.index { emit sw_switch_to(sw_sel) }
-    on key Left while Panels.cur == 21 and Panels.open_screen == screen.index { emit prev_app }
-    on key Right while Panels.cur == 21 and Panels.open_screen == screen.index { emit next_app }
-    on key Return while Panels.cur == 21 and Panels.open_screen == screen.index { emit sw_switch_to(sw_sel) }
-    on key Escape while Panels.cur == 21 and Panels.open_screen == screen.index { emit Panels.close }
-    on blur while Panels.cur == 21 and not Panels.fresh and Panels.open_screen == screen.index { emit Panels.close }
+    on k_tab while Panels.cur == 21 and screen.index == 0 { emit next_app }
+    on k_shift_tab while Panels.cur == 21 and screen.index == 0 { emit prev_app }
+    on k_home while Panels.cur == 21 and screen.index == 0 { emit sw_edge(-1) }
+    on k_end while Panels.cur == 21 and screen.index == 0 { emit sw_edge(1) }
+    on k_kp_enter while Panels.cur == 21 and screen.index == 0 { emit sw_switch_to(sw_sel) }
+    on k_left while Panels.cur == 21 and screen.index == 0 { emit prev_app }
+    on k_right while Panels.cur == 21 and screen.index == 0 { emit next_app }
+    on k_return while Panels.cur == 21 and screen.index == 0 { emit sw_switch_to(sw_sel) }
+    on k_escape while Panels.cur == 21 and screen.index == 0 { emit Panels.close }
+    on k_blur while Panels.cur == 21 and not Panels.fresh and screen.index == 0 { emit Panels.close }
 
     // ── window overview ─────────────────────────────────────────
     fact ov_sel = 0
@@ -140,18 +140,18 @@ part WindowPanels {
 
         on press hit { emit ov_switch_to(w.index) }
     }
-    on key Tab while Panels.cur == 22 and Panels.open_screen == screen.index { emit next_win }
-    on key Shift+Tab while Panels.cur == 22 and Panels.open_screen == screen.index { emit prev_win }
-    on key Home while Panels.cur == 22 and Panels.open_screen == screen.index { emit ov_edge(-1) }
-    on key End while Panels.cur == 22 and Panels.open_screen == screen.index { emit ov_edge(1) }
-    on key KP_Enter while Panels.cur == 22 and Panels.open_screen == screen.index { emit ov_switch_to(ov_sel) }
-    on key Left while Panels.cur == 22 and Panels.open_screen == screen.index { emit prev_win }
-    on key Right while Panels.cur == 22 and Panels.open_screen == screen.index { emit next_win }
-    on key Up while Panels.cur == 22 and Panels.open_screen == screen.index { emit up_win }
-    on key Down while Panels.cur == 22 and Panels.open_screen == screen.index { emit down_win }
-    on key Return while Panels.cur == 22 and Panels.open_screen == screen.index { emit ov_switch_to(ov_sel) }
-    on key Escape while Panels.cur == 22 and Panels.open_screen == screen.index { emit Panels.close }
-    on blur while Panels.cur == 22 and not Panels.fresh and Panels.open_screen == screen.index { emit Panels.close }
+    on k_tab while Panels.cur == 22 and screen.index == 0 { emit next_win }
+    on k_shift_tab while Panels.cur == 22 and screen.index == 0 { emit prev_win }
+    on k_home while Panels.cur == 22 and screen.index == 0 { emit ov_edge(-1) }
+    on k_end while Panels.cur == 22 and screen.index == 0 { emit ov_edge(1) }
+    on k_kp_enter while Panels.cur == 22 and screen.index == 0 { emit ov_switch_to(ov_sel) }
+    on k_left while Panels.cur == 22 and screen.index == 0 { emit prev_win }
+    on k_right while Panels.cur == 22 and screen.index == 0 { emit next_win }
+    on k_up while Panels.cur == 22 and screen.index == 0 { emit up_win }
+    on k_down while Panels.cur == 22 and screen.index == 0 { emit down_win }
+    on k_return while Panels.cur == 22 and screen.index == 0 { emit ov_switch_to(ov_sel) }
+    on k_escape while Panels.cur == 22 and screen.index == 0 { emit Panels.close }
+    on k_blur while Panels.cur == 22 and not Panels.fresh and screen.index == 0 { emit Panels.close }
 
     //  The app switcher grows out of the dock like Spotlight: the frame draws the glass (width follows the number of windows,
     //  reported by the logic with panel.width), this surface draws the cards. Content is centred on the surface.

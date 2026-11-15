@@ -220,20 +220,20 @@ part NotificationsView {
     //  Keyboard (every rule is guarded by the monitor and this panel; notif.luau moves the focus): 1 up · 2 down · 3 left ·
     //  4 right · 5 tab · 6 shift+tab · 7 delete / backspace (dismiss) · 10 / 11 Enter / space pressed (they arm the release) ·
     //  20 / 21 Enter / space released (they act). Escape closes the centre.
-    on key Up while Panels.cur == 2 and Panels.open_screen == screen.index { emit Notifications.nc_key(1) }
-    on key Down while Panels.cur == 2 and Panels.open_screen == screen.index { emit Notifications.nc_key(2) }
-    on key Left while Panels.cur == 2 and Panels.open_screen == screen.index { emit Notifications.nc_key(3) }
-    on key Right while Panels.cur == 2 and Panels.open_screen == screen.index { emit Notifications.nc_key(4) }
-    on key Tab while Panels.cur == 2 and Panels.open_screen == screen.index { emit Notifications.nc_key(5) }
-    on key Shift+Tab while Panels.cur == 2 and Panels.open_screen == screen.index { emit Notifications.nc_key(6) }
-    on key Delete while Panels.cur == 2 and Panels.open_screen == screen.index { emit Notifications.nc_key(7) }
-    on key BackSpace while Panels.cur == 2 and Panels.open_screen == screen.index { emit Notifications.nc_key(7) }
-    on key Return while Panels.cur == 2 and Panels.open_screen == screen.index { emit Notifications.nc_key(10) }
-    on key KP_Enter while Panels.cur == 2 and Panels.open_screen == screen.index { emit Notifications.nc_key(10) }
-    on key space while Panels.cur == 2 and Panels.open_screen == screen.index { emit Notifications.nc_key(11) }
-    on keyup Return while Panels.cur == 2 and Panels.open_screen == screen.index { emit Notifications.nc_key(20) }
-    on keyup KP_Enter while Panels.cur == 2 and Panels.open_screen == screen.index { emit Notifications.nc_key(20) }
-    on keyup space while Panels.cur == 2 and Panels.open_screen == screen.index { emit Notifications.nc_key(21) }
-    on key Escape while Panels.cur == 2 and Panels.open_screen == screen.index { emit Panels.close }
-    on blur while Panels.cur == 2 and not Panels.fresh and Panels.open_screen == screen.index { emit Panels.close }
+    on k_up while Panels.cur == 2 and screen.index == 0 { emit Notifications.nc_key(1) }
+    on k_down while Panels.cur == 2 and screen.index == 0 { emit Notifications.nc_key(2) }
+    on k_left while Panels.cur == 2 and screen.index == 0 { emit Notifications.nc_key(3) }
+    on k_right while Panels.cur == 2 and screen.index == 0 { emit Notifications.nc_key(4) }
+    on k_tab while Panels.cur == 2 and screen.index == 0 { emit Notifications.nc_key(5) }
+    on k_shift_tab while Panels.cur == 2 and screen.index == 0 { emit Notifications.nc_key(6) }
+    on k_delete while Panels.cur == 2 and screen.index == 0 { emit Notifications.nc_key(7) }
+    on k_backspace while Panels.cur == 2 and screen.index == 0 { emit Notifications.nc_key(7) }
+    on k_return while Panels.cur == 2 and screen.index == 0 { emit Notifications.nc_key(10) }
+    on k_kp_enter while Panels.cur == 2 and screen.index == 0 { emit Notifications.nc_key(10) }
+    on k_space while Panels.cur == 2 and screen.index == 0 { emit Notifications.nc_key(11) }
+    on ku_return while Panels.cur == 2 and screen.index == 0 { emit Notifications.nc_key(20) }
+    on ku_kp_enter while Panels.cur == 2 and screen.index == 0 { emit Notifications.nc_key(20) }
+    on ku_space while Panels.cur == 2 and screen.index == 0 { emit Notifications.nc_key(21) }
+    on k_escape while Panels.cur == 2 and screen.index == 0 { emit Panels.close }
+    on k_blur while Panels.cur == 2 and not Panels.fresh and screen.index == 0 { emit Panels.close }
 }

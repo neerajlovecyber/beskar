@@ -63,28 +63,28 @@ part UpdatesPanel {
             move: 0, 70 + min(max(up_n, 1), 8) * 34 + 24
             box { from: -3, -3; size: 346, control_h_large + 6; corner: control_r_large + 3; stroke: 2; color: focus_c }
         }
-        on key Up while Panels.cur == 16 and Panels.open_screen == screen.index { up_list.scroll: up_list.scroll - 34 ~quick }
-        on key Down while Panels.cur == 16 and Panels.open_screen == screen.index { up_list.scroll: up_list.scroll + 34 ~quick }
-        on key Prior while Panels.cur == 16 and Panels.open_screen == screen.index { up_list.scroll: up_list.scroll - 238 ~quick }
-        on key Next while Panels.cur == 16 and Panels.open_screen == screen.index { up_list.scroll: up_list.scroll + 238 ~quick }
-        on key Home while Panels.cur == 16 and Panels.open_screen == screen.index { up_list.scroll: 0 ~quick }
-        on key End while Panels.cur == 16 and Panels.open_screen == screen.index { up_list.scroll: up_list.content ~quick }
+        on k_up while Panels.cur == 16 and screen.index == 0 { up_list.scroll: up_list.scroll - 34 ~quick }
+        on k_down while Panels.cur == 16 and screen.index == 0 { up_list.scroll: up_list.scroll + 34 ~quick }
+        on k_prior while Panels.cur == 16 and screen.index == 0 { up_list.scroll: up_list.scroll - 238 ~quick }
+        on k_next while Panels.cur == 16 and screen.index == 0 { up_list.scroll: up_list.scroll + 238 ~quick }
+        on k_home while Panels.cur == 16 and screen.index == 0 { up_list.scroll: 0 ~quick }
+        on k_end while Panels.cur == 16 and screen.index == 0 { up_list.scroll: up_list.content ~quick }
     }
 
     //  Tab, Shift+Tab, Left and Right move between Check and Update all; Enter / space (on release) press the focused one; Esc closes.
-    on key Tab while Panels.cur == 16 and Panels.open_screen == screen.index { up_focus = if(up_n > 0, 1 - up_focus, 0) }
-    on key Shift+Tab while Panels.cur == 16 and Panels.open_screen == screen.index { up_focus = if(up_n > 0, 1 - up_focus, 0) }
-    on key Left while Panels.cur == 16 and Panels.open_screen == screen.index { up_focus = 0 }
-    on key Right while Panels.cur == 16 and Panels.open_screen == screen.index { up_focus = if(up_n > 0, 1, 0) }
-    on key Return while Panels.cur == 16 and Panels.open_screen == screen.index { up_armed = true }
-    on key KP_Enter while Panels.cur == 16 and Panels.open_screen == screen.index { up_armed = true }
-    on key space while Panels.cur == 16 and Panels.open_screen == screen.index { up_armed = true }
-    on keyup Return while Panels.cur == 16 and up_armed and up_focus == 0 and Panels.open_screen == screen.index { up_armed = false; emit do_check }
-    on keyup KP_Enter while Panels.cur == 16 and up_armed and up_focus == 0 and Panels.open_screen == screen.index { up_armed = false; emit do_check }
-    on keyup space while Panels.cur == 16 and up_armed and up_focus == 0 and Panels.open_screen == screen.index { up_armed = false; emit do_check }
-    on keyup Return while Panels.cur == 16 and up_armed and up_focus == 1 and up_n > 0 and Panels.open_screen == screen.index { up_armed = false; emit do_update }
-    on keyup KP_Enter while Panels.cur == 16 and up_armed and up_focus == 1 and up_n > 0 and Panels.open_screen == screen.index { up_armed = false; emit do_update }
-    on keyup space while Panels.cur == 16 and up_armed and up_focus == 1 and up_n > 0 and Panels.open_screen == screen.index { up_armed = false; emit do_update }
-    on key Escape while Panels.cur == 16 and Panels.open_screen == screen.index { emit Panels.close }
-    on blur while Panels.cur == 16 and not Panels.fresh and Panels.open_screen == screen.index { emit Panels.close }
+    on k_tab while Panels.cur == 16 and screen.index == 0 { up_focus = if(up_n > 0, 1 - up_focus, 0) }
+    on k_shift_tab while Panels.cur == 16 and screen.index == 0 { up_focus = if(up_n > 0, 1 - up_focus, 0) }
+    on k_left while Panels.cur == 16 and screen.index == 0 { up_focus = 0 }
+    on k_right while Panels.cur == 16 and screen.index == 0 { up_focus = if(up_n > 0, 1, 0) }
+    on k_return while Panels.cur == 16 and screen.index == 0 { up_armed = true }
+    on k_kp_enter while Panels.cur == 16 and screen.index == 0 { up_armed = true }
+    on k_space while Panels.cur == 16 and screen.index == 0 { up_armed = true }
+    on ku_return while Panels.cur == 16 and up_armed and up_focus == 0 and screen.index == 0 { up_armed = false; emit do_check }
+    on ku_kp_enter while Panels.cur == 16 and up_armed and up_focus == 0 and screen.index == 0 { up_armed = false; emit do_check }
+    on ku_space while Panels.cur == 16 and up_armed and up_focus == 0 and screen.index == 0 { up_armed = false; emit do_check }
+    on ku_return while Panels.cur == 16 and up_armed and up_focus == 1 and up_n > 0 and screen.index == 0 { up_armed = false; emit do_update }
+    on ku_kp_enter while Panels.cur == 16 and up_armed and up_focus == 1 and up_n > 0 and screen.index == 0 { up_armed = false; emit do_update }
+    on ku_space while Panels.cur == 16 and up_armed and up_focus == 1 and up_n > 0 and screen.index == 0 { up_armed = false; emit do_update }
+    on k_escape while Panels.cur == 16 and screen.index == 0 { emit Panels.close }
+    on k_blur while Panels.cur == 16 and not Panels.fresh and screen.index == 0 { emit Panels.close }
 }

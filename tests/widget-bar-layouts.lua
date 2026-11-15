@@ -326,11 +326,11 @@ end
 check(plm:find('text wb_layouts = "{}"', 1, true), "wb_layouts is declared")
 check(luau:find('on("text:wb_layouts"', 1, true), "wb_layouts is consumed with on text")
 check(plm:find("model wb_rows max 5", 1, true), "the row model is bounded to the five visible rows")
-check(plm:find("on submit wb_name", 1, true) and not plm:find("on key Return while Panels.cur == 10 and wb_page == 1", 1, true), "Enter on the Desktops page is the input's submit, not a second handler")
+check(plm:find("on sub_wb_name while", 1, true) and not plm:find("on k_return while Panels.cur == 10 and wb_page == 1", 1, true), "Enter on the Desktops page is the input's submit, not a second handler")
 for _, k in ipairs({ "Down", "Up", "Tab", "Shift+Tab", "Next", "Prior", "Ctrl+Return", "F2", "F3", "F4", "F8" }) do
-    check(plm:find("on key " .. k .. " while Panels.cur == 10 and wb_page == 1", 1, true), k .. " is a guarded key rule")
+    check(plm:find("on k_" .. k:lower():gsub("%W+", "_") .. " while Panels.cur == 10 and wb_page == 1", 1, true), k .. " is a guarded key rule")
 end
-check(plm:find("on key Escape while Panels.cur == 10 and Panels.open_screen == screen.index { emit wb_escape }", 1, true), "Esc goes through the confirmation first")
+check(plm:find("on k_escape while Panels.cur == 10 and screen.index == 0 { emit wb_escape }", 1, true), "Esc goes through the confirmation first")
 check(luau:find('require("widget_bar_layouts")', 1, true), "the pure controller is used")
 check(not luau:find("widget-layouts.json", 1, true), "the bar never touches the layouts file")
 for _, p in ipairs({ "wb_preset", "wb_undo", "wb_tidy", "wb_grid", "wb_done" }) do check(plm:find("event " .. p .. " ->", 1, true), "existing " .. p .. " kept") end

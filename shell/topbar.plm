@@ -21,7 +21,8 @@ import "common/ui.plm"
 import "common/buttons.plm"
 import "common/scroll.plm"
 import "common/calendar.plm"
-uses scene "panels.plm" as Panels      // the owner of which panel is open: read here to order a hand-over to Settings
+uses scene "panels.plm" as Panels
+uses scene "keys.plm" as Keys            // holds the keyboard and the text fields on the panel's monitor      // the owner of which panel is open: read here to order a hand-over to Settings
 
 scene MacTopBar {
     include "common/theme_owner.plm"
@@ -41,7 +42,6 @@ scene MacTopBar {
         reserve: 42          // windows leave the top strip; the ring only overlaps their edges
         screens: each
         level: top, overlay while Panels.open and Panels.open_screen == screen.index         // a panel over a full-screen window, like the overlay surfaces it replaces
-        keyboard: exclusive while Panels.open and Panels.open_screen == screen.index     // every panel takes the keys while it is open on this monitor (arrows, Tab, Enter, Esc; and its text fields)
     }
 
     //  What topbar.luau may touch: compositor commands, session actions and the dock's apps.
@@ -57,6 +57,79 @@ scene MacTopBar {
     //  not also be a `service tray` here: the tray has one listener, and two would fight over it.
     model icons max 8 { icon: image 18, 18 }
 
+
+    //  KEYS. pleamar delivers the keyboard only to the FIRST copy of a `screens: each` surface, so the frame (one copy per monitor)
+    //  cannot take keys on any other monitor. The `Keys` scene (keys.plm) holds the keyboard on the open panel's monitor, owns the
+    //  panels' text fields, and forwards every key the panels use as one of these events (`on key Down` -> `k_down`, `on keyup Return`
+    //  -> `ku_return`, focus loss -> `k_blur`, a field's Enter -> `sub_<field>`). The rules below run once (`screen.index == 0`).
+    //  A rule or the logic asks for a field with `fld_req` (1 wq · 2 pe_draft · 3 pe_new_task · 4 tm_duration · 5 query · 6 clip_q ·
+    //  7 wb_name · 8 password · 9 wifi_pw · 0 none) and `fld_seq + 1`; the Keys scene focuses it.
+    fact fld_req = 0
+    fact fld_seq = 0
+    event k_blur ->
+    event k_a ->
+    event k_alt_delete ->
+    event k_alt_down ->
+    event k_alt_left ->
+    event k_alt_right ->
+    event k_alt_up ->
+    event k_backspace ->
+    event k_c ->
+    event k_ctrl_d ->
+    event k_ctrl_down ->
+    event k_ctrl_f1 ->
+    event k_ctrl_f2 ->
+    event k_ctrl_f3 ->
+    event k_ctrl_kp_enter ->
+    event k_ctrl_left ->
+    event k_ctrl_n ->
+    event k_ctrl_p ->
+    event k_ctrl_return ->
+    event k_ctrl_right ->
+    event k_ctrl_shift_tab ->
+    event k_ctrl_tab ->
+    event k_ctrl_u ->
+    event k_ctrl_up ->
+    event k_ctrl_z ->
+    event k_d ->
+    event k_delete ->
+    event k_down ->
+    event k_end ->
+    event k_escape ->
+    event k_f ->
+    event k_f2 ->
+    event k_f3 ->
+    event k_f4 ->
+    event k_f8 ->
+    event k_home ->
+    event k_kp_enter ->
+    event k_l ->
+    event k_left ->
+    event k_next ->
+    event k_page_down ->
+    event k_page_up ->
+    event k_prior ->
+    event k_return ->
+    event k_right ->
+    event k_shift_left ->
+    event k_shift_right ->
+    event k_shift_tab ->
+    event k_space ->
+    event k_t ->
+    event k_tab ->
+    event k_up ->
+    event ku_kp_enter ->
+    event ku_return ->
+    event ku_space ->
+    event sub_wq ->
+    event sub_pe_draft ->
+    event sub_pe_new_task ->
+    event sub_tm_duration ->
+    event sub_query ->
+    event sub_clip_q ->
+    event sub_wb_name ->
+    event sub_password ->
+    event sub_wifi_pw ->
     fact priv_cam = false       // a program is using the camera (topbar.luau polls)
     fact priv_mic = false       // a program is recording from a microphone
     fact priv_scr = false       // niri is casting the screen or a window (topbar.luau polls `niri msg -j casts`)
@@ -1205,51 +1278,4 @@ scene MacTopBar {
 
     Shell()
 
-    //  The panels' text fields. They are declared HERE, loose in the surface (not in Shell): a field inside a component is scoped to it and
-    //  the logic reads these texts by name (`wq`, `pe_draft`, `pe_new_task`, `tm_duration`). Positions are the panels' own content
-    //  coordinates, as in the groups above; a field shows only on the monitor its panel is on.
-    group {
-        show: Panels.cur == 12 and Panels.open and Panels.open_screen == screen.index
-        move: screen.width / 2 - 240 + shake, screen.height - Panels.panel_h
-        input password { at: 42, 181; width: 396; size: 14; color: ink_c; placeholder: "Password"; secret: true; agent: no }
-    }
-    prop fld_b = 0 ~calm
-    follow fld_b = if(Panels.open and (Panels.cur == 4 or Panels.cur == 6 or (Panels.cur == 10 and wb_page == 1)), 1, 0)
-    group {
-        show: Panels.cur == 4 and fld_b > 0.5 and Panels.open_screen == screen.index
-        move: screen.width / 2 - 320, screen.height - Panels.panel_h
-        input query { at: panel_search_text_x, Panels.panel_h - panel_search_text_y; width: 530; size: panel_search_font; color: ink_c; placeholder: "Search · / files · @ windows · ? settings"; selection: accent_c }
-    }
-    group {
-        show: Panels.cur == 6 and fld_b > 0.5 and Panels.open_screen == screen.index
-        move: screen.width / 2 - 280, screen.height - Panels.panel_h
-        input clip_q { at: panel_search_text_x, Panels.panel_h - panel_search_text_y; width: 450; size: panel_search_font; color: ink_c; placeholder: "Search clipboard history"; selection: accent_c }
-    }
-    group {
-        show: Panels.cur == 10 and wb_page == 1 and fld_b > 0.5 and Panels.open_screen == screen.index
-        move: screen.width / 2 - 400, screen.height - Panels.panel_h
-        input wb_name { at: 36, 58; width: 316; size: font_secondary; color: ink_c; placeholder: "Name this desktop"; selection: accent_c }
-    }
-    prop fld_v = 0 ~calm
-    follow fld_v = if(Panels.open and ((Panels.cur == 15 and wx_view == 1) or Panels.cur == 25 or Panels.cur == 26), 1, 0)
-    group {
-        show: Panels.cur == 15 and wx_view == 1 and fld_v > 0.5 and Panels.open_screen == screen.index
-        move: screen.width / 2 - 194, 40
-        input wq { at: 44, 104; width: 330; size: font_title; color: ink_c; placeholder: "Search a city"; selection: accent_c }
-    }
-    group {
-        show: Panels.cur == 25 and pe_tab == 0 and pe_selected > 0 and Personal.ready and fld_v > 0.5 and Panels.open_screen == screen.index
-        move: screen.width / 2 - 300, 40
-        input pe_draft { at: 216, 80; width: 346; height: 324; size: t_body; color: ink_c; selection: accent_c; placeholder: "Write a note…" }
-    }
-    group {
-        show: Panels.cur == 25 and pe_tab == 1 and Personal.ready and fld_v > 0.5 and Panels.open_screen == screen.index
-        move: screen.width / 2 - 300, 40
-        input pe_new_task { at: 36, 119; width: 418; size: t_body; color: ink_c; selection: accent_c; placeholder: "Add a to-do…" }
-    }
-    group {
-        show: Panels.cur == 26 and (Activities.timer_state == 0 or Activities.timer_state == 3) and fld_v > 0.5 and Panels.open_screen == screen.index
-        move: screen.width / 2 - 194, 40
-        input tm_duration { at: 32, 226; width: 324; size: t_body; color: ink_c; selection: accent_c; placeholder: "Minutes or 1h30m"; label: "Timer duration" }
-    }
 }

@@ -13,5 +13,6 @@ import scene "panels.plm" as Panels       // owns the shared panel state
 import scene "topbar.plm" as Topbar
 import scene "notifications.plm" as Notifications
 import scene "settings.plm" as Settings
+import scene "keys.plm" as Keys           // the keyboard and the panels' text fields on the open panel's monitor   (after the frame: a surface imported before it renumbers the frame's per-monitor copies)
 
 scene Desktop { }

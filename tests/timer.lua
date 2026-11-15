@@ -98,10 +98,15 @@ check(due_owner.fact.timer_state == 3 and #due_owner.events == 1, "Restart with 
 local function panel()
     local h = { handlers = {}, events = {}, visible = true, focused = nil }
     local env = setmetatable({ fact = { ["Activities.ready"] = true, ["Activities.timer_state"] = 0, tm_focus = -1 }, text = { tm_duration = "25" },
-        require = function() return Timer end, on = function(n, fn) h.handlers[n] = fn end,
-        focus = function(n) h.focused = n end,
+        on = function(n, fn) h.handlers[n] = fn end,
         after = function(ms, fn) h.timers = h.timers or {}; h.timers[#h.timers + 1] = fn end,
         emit = function(n, v) h.events[#h.events + 1] = { n, v } end }, { __index = _G })
+    -- the field is the Keys scene's (keys_text.luau) and focus goes through topbar_hooks: both stand in as the plain env here
+    env.require = function(n)
+        if n == "keys_text" then return env.text end
+        if n == "topbar_hooks" then return { focus = function(f) h.focused = f end } end
+        return Timer
+    end
     assert(loadfile("shell/timer_panel.luau", "t", env))()({ height = function(n) h.height = n end, close = function() h.visible = false end },
         function(fn) h.open = fn end, function() return h.visible end, function(fn) h.close = fn end)
     h.fact, h.text = env.fact, env.text
@@ -125,7 +130,7 @@ p:fire("tm_move", -1)
 check(p.fact.tm_focus == 1, "Shift Tab wraps across active controls")
 p:fire("tm_activate")
 check(p.events[4][1] == "Activities.cancel", "Selected secondary action cancels")
-p.fact["Activities.timer_state"] = 0; p.text.tm_duration = "bad"; p:fire("text:tm_duration"); p:fire("tm_primary")
+p.fact["Activities.timer_state"] = 0; p.text.tm_duration = "bad"; p:fire("text:Keys.tm_duration"); p:fire("tm_primary")
 check(#p.events == 4 and not p.fact.tm_valid and p.focused == "tm_duration", "Invalid custom duration does not dispatch")
 p:fire("tm_preset", 300)
 check(p.text.tm_duration == "5" and p.fact.tm_seconds == 300, "Preset updates the existing duration input")

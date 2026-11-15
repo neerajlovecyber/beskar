@@ -1,4 +1,5 @@
 -- The dialogs: session (shut down / restart / log out), the polkit password dialog and the first-run welcome (dialogs.plm → common/*_panels.plm).
+local text = require("keys_text")     -- the text fields are the Keys scene's (keys_text.luau)
 local Hooks = require("topbar_hooks")        -- the frame cannot emit to itself: its own events are called directly
 -- Loaded by topbar.luau with its panel client; the dialogs' content is drawn in the frame's own surface.
 return function(module)

@@ -55,7 +55,6 @@ part ControlCenterPanel {
     fact bt_on = false
     fact bt_present = true
     fact bt_scanning = false
-    text wifi_pw = ""            // what was typed in the password field, for cc.luau
     text bt_sub = "Off"
     event toggle_dark ->
     event set_dark_mode ->
@@ -140,7 +139,6 @@ part ControlCenterPanel {
 
     //  Laid out at the panel's own origin: x 0 = 74 px in from where its old surface (440 wide, flush right) began, y 0 = just under the bar.
     component ControlCenterContent() {
-        text pw_in = ""                   // the password field's own text: a field inside a component is scoped to it, so it is copied into `wifi_pw` for the logic
 
         // ==========================================================
         // PAGE 0: MAIN CONTROL CENTER OVERVIEW
@@ -405,15 +403,7 @@ part ControlCenterPanel {
                 text "Join" { at: 164, 24; anchor: center; size: ts_micro; color: ink_sub }
                 text ask_name { at: 164, 44; anchor: center; size: ts_title; weight: 600; color: ink_c; width: 290; lines: 1; tight: true }
                 box { from: 18, 66; size: 292, 34; corner: control_r; color: slider_bg; opacity: slider_bg_op }
-                input pw_in {
-                    at: 30, 74
-                    width: 270
-                    size: font_body
-                    color: ink_c
-                    secret: true
-                    placeholder: "Password"
-                    selection: accent_c
-                }
+                //  the password field itself is `Keys.wifi_pw` (keys.plm): only the Keys surface receives typing on every monitor
                 text ask_error { at: 164, 114; anchor: center; size: ts_micro; color: danger_c }
                 row {
                     at: 164, 132
@@ -576,10 +566,9 @@ part ControlCenterPanel {
     on press bt_scan_hit  { emit bt_scan }
     on press wifi_icon_hit    { emit toggle_wifi }
     on press wifi_rescan_hit  { emit wifi_rescan }
-    on submit pw_in           { wifi_pw = pw_in; emit wifi_join }
-    on wifi_join_click        { wifi_pw = pw_in; emit wifi_join }
-    on change asking          { focus pw_in }
-    on change asking while not asking { pw_in = "" }
+    on sub_wifi_pw while screen.index == 0 { emit wifi_join }
+    on wifi_join_click        { emit wifi_join }
+    on change asking while asking and screen.index == 0 { fld_req = 9; fld_seq = fld_seq + 1 }
     on press bt_chevron_hit   { cc_page = 2 }
     on press bt_icon_hit      { emit toggle_bt }
     on press dm_tile_hit   { emit toggle_dark }
@@ -592,18 +581,18 @@ part ControlCenterPanel {
     //  Keyboard: every rule is guarded by the monitor (the frame is compiled once per monitor copy) and by this panel.
     //  cc.luau moves the focus and activates: 1 up · 2 down · 3 left · 4 right · 5 tab · 6 shift+tab · 9 escape ·
     //  10 / 11 Enter / space pressed (they arm the release) · 20 / 21 Enter / space released.
-    on key Up while Panels.cur == 1 and Panels.open_screen == screen.index { emit cc_key(1) }
-    on key Down while Panels.cur == 1 and Panels.open_screen == screen.index { emit cc_key(2) }
-    on key Left while Panels.cur == 1 and Panels.open_screen == screen.index { emit cc_key(3) }
-    on key Right while Panels.cur == 1 and Panels.open_screen == screen.index { emit cc_key(4) }
-    on key Tab while Panels.cur == 1 and Panels.open_screen == screen.index { emit cc_key(5) }
-    on key Shift+Tab while Panels.cur == 1 and Panels.open_screen == screen.index { emit cc_key(6) }
-    on key Escape while Panels.cur == 1 and Panels.open_screen == screen.index { emit cc_key(9) }
-    on key Return while Panels.cur == 1 and Panels.open_screen == screen.index { emit cc_key(10) }
-    on key KP_Enter while Panels.cur == 1 and Panels.open_screen == screen.index { emit cc_key(10) }
-    on key space while Panels.cur == 1 and Panels.open_screen == screen.index { emit cc_key(11) }
-    on keyup Return while Panels.cur == 1 and Panels.open_screen == screen.index { emit cc_key(20) }
-    on keyup KP_Enter while Panels.cur == 1 and Panels.open_screen == screen.index { emit cc_key(20) }
-    on keyup space while Panels.cur == 1 and Panels.open_screen == screen.index { emit cc_key(21) }
-    on blur while Panels.cur == 1 and not Panels.fresh and askhold < 0.2 and Panels.open_screen == screen.index { emit Panels.close; cc_page = 0 }
+    on k_up while Panels.cur == 1 and screen.index == 0 { emit cc_key(1) }
+    on k_down while Panels.cur == 1 and screen.index == 0 { emit cc_key(2) }
+    on k_left while Panels.cur == 1 and screen.index == 0 { emit cc_key(3) }
+    on k_right while Panels.cur == 1 and screen.index == 0 { emit cc_key(4) }
+    on k_tab while Panels.cur == 1 and screen.index == 0 { emit cc_key(5) }
+    on k_shift_tab while Panels.cur == 1 and screen.index == 0 { emit cc_key(6) }
+    on k_escape while Panels.cur == 1 and screen.index == 0 { emit cc_key(9) }
+    on k_return while Panels.cur == 1 and screen.index == 0 { emit cc_key(10) }
+    on k_kp_enter while Panels.cur == 1 and screen.index == 0 { emit cc_key(10) }
+    on k_space while Panels.cur == 1 and screen.index == 0 { emit cc_key(11) }
+    on ku_return while Panels.cur == 1 and screen.index == 0 { emit cc_key(20) }
+    on ku_kp_enter while Panels.cur == 1 and screen.index == 0 { emit cc_key(20) }
+    on ku_space while Panels.cur == 1 and screen.index == 0 { emit cc_key(21) }
+    on k_blur while Panels.cur == 1 and not Panels.fresh and askhold < 0.2 and screen.index == 0 { emit Panels.close; cc_page = 0 }
 }

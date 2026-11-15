@@ -16,4 +16,12 @@ function M.emit(event, value)
     else emit(event) end
 end
 
+-- Focus a panel's text field (or none): the fields are the Keys scene's, which focuses the one named by `fld_req` whenever `fld_seq`
+-- changes (keys.plm). Numbers: 1 wq · 2 pe_draft · 3 pe_new_task · 4 tm_duration · 5 query · 6 clip_q · 7 wb_name · 8 password · 9 wifi_pw.
+local FIELD = { wq = 1, pe_draft = 2, pe_new_task = 3, tm_duration = 4, query = 5, clip_q = 6, wb_name = 7, password = 8, wifi_pw = 9 }
+function M.focus(name)
+    fact.fld_req = FIELD[name or ""] or 0
+    fact.fld_seq = (tonumber(fact.fld_seq) or 0) + 1
+end
+
 return M

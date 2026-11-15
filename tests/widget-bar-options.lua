@@ -201,11 +201,11 @@ end
 check(plm:find('text wb_card_options = "{}"', 1, true) and luau:find('on("text:wb_card_options"', 1, true), "the snapshot text is declared and consumed")
 check(plm:find("model wb_opts max 4", 1, true), "the option model is bounded to four rows")
 for _, k in ipairs({ "Down", "Up", "Left", "Right", "Tab", "Shift+Tab" }) do
-    check(plm:find("on key " .. k .. " while Panels.cur == 10 and wb_page == 2", 1, true), k .. " is a guarded Card key")
+    check(plm:find("on k_" .. k:lower():gsub("%W+", "_") .. " while Panels.cur == 10 and wb_page == 2", 1, true), k .. " is a guarded Card key")
 end
-check(plm:find("on key Return while wb_page == 2 and Panels.cur == 10", 1, true) and plm:find("on key KP_Enter while wb_page == 2 and Panels.cur == 10", 1, true), "Return and keypad Enter cycle on the Card page")
+check(plm:find("on k_return while wb_page == 2 and Panels.cur == 10", 1, true) and plm:find("on k_kp_enter while wb_page == 2 and Panels.cur == 10", 1, true), "Return and keypad Enter cycle on the Card page")
 check(plm:find('Chip("Card", wb_page == 2, wb_tab, 2', 1, true), "a Card tab exists")
-check(plm:find("wb_page == 2 { blur }", 1, true), "the name field is blurred on the Card page")
+check(plm:find("wb_page == 2 { fld_req = 0; fld_seq = fld_seq + 1 }", 1, true), "the name field is blurred on the Card page")
 check(plm:find("RowFrame(752", 1, true) and plm:find("EmptyState(400, 140", 1, true), "shared RowFrame and EmptyState are used")
 check(luau:find("PAGE_H = { [0] = 176, [1] = 272, [2] = 336 }", 1, true), "the Card page fits options and stack controls")
 check(luau:find('require("widget_bar_options")', 1, true), "the pure controller is used")

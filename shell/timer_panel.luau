@@ -1,4 +1,5 @@
 -- Panel presentation and keyboard focus; all timer mutations belong to Activities.
+local text = require("keys_text")     -- the text fields are the Keys scene's (keys_text.luau)
 return function(panel, opened, shown, closed)
     local Timer = require("timer_state")
     local submitted, programmatic = false, nil
@@ -16,7 +17,7 @@ return function(panel, opened, shown, closed)
     end
     local function set_focus(index)
         fact.tm_focus = index
-        if index == -1 then focus("tm_duration") else focus() end
+        if index == -1 then require("topbar_hooks").focus("tm_duration") else require("topbar_hooks").focus() end
     end
     local function sync()
         if not shown() then return end
@@ -70,7 +71,7 @@ return function(panel, opened, shown, closed)
         draft(); set_focus(0)
     end
     on("tm_preset", preset)
-    on("text:tm_duration", function()
+    on("text:Keys.tm_duration", function()
         if shown() and editing() then
             if text.tm_duration ~= programmatic then fact.tm_focus = -1 end
             programmatic = nil; draft()
@@ -87,7 +88,7 @@ return function(panel, opened, shown, closed)
         end
         draft(); set_focus(editing() and -1 or 0)
     end)
-    closed(function() focus() end)
+    closed(function() require("topbar_hooks").focus() end)
     panel.height(350)
     draft()
 end

@@ -1,4 +1,5 @@
 -- (the body of the Control Center scene: controlcenter.luau runs it as module("control_center", require("cc")))
+local text = require("keys_text")     -- the text fields are the Keys scene's (keys_text.luau)
 local Hooks = require("topbar_hooks")        -- the frame cannot emit to itself: its own events are called directly
 return function(panel, opened, shown, closed)
 -- Control Center companion logic
@@ -386,7 +387,7 @@ opened(function()
 end)
 closed(function()
     stop_asking()
-    focus()
+    require("topbar_hooks").focus()
     fact.cc_page = 0                        -- reopening starts on the overview with the focus on its first item
     fact.cc_focus = 0
     if bt_state.discovering then
@@ -539,7 +540,7 @@ local function adjust(dir)
 end
 
 local function go_back()
-    focus()
+    require("topbar_hooks").focus()
     if fact.asking == true then H.wifi_cancel(); return end
     if page_n() ~= 0 then fact.cc_page = 0 else panel.close() end
 end
