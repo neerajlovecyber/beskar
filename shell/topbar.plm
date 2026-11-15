@@ -41,7 +41,7 @@ scene MacTopBar {
         reserve: 42          // windows leave the top strip; the ring only overlaps their edges
         screens: each
         level: top, overlay while Panels.open and Panels.open_screen == screen.index         // a panel over a full-screen window, like the overlay surfaces it replaces
-        keyboard: exclusive while Panels.open_screen == screen.index and ((asking and Panels.cur == 1) or (Panels.open and (Panels.cur == 25 or Panels.cur == 26 or Panels.cur == 4 or Panels.cur == 5 or Panels.cur == 6 or Panels.cur == 10 or Panels.cur == 11 or Panels.cur == 12 or Panels.cur == 24 or Panels.cur == 21 or Panels.cur == 22)) or (Panels.open and Panels.cur == 15 and wx_view == 1))     // text fields: the Wi-Fi password, the timer and the Personal editor, the weather place search
+        keyboard: exclusive while Panels.open and Panels.open_screen == screen.index     // every panel takes the keys while it is open on this monitor (arrows, Tab, Enter, Esc; and its text fields)
     }
 
     //  What topbar.luau may touch: compositor commands, session actions and the dock's apps.
