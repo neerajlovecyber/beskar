@@ -1,4 +1,21 @@
-# Beskar
+<div align="center">
+
+  <h1>Beskar</h1>
+
+  <p><strong>A macOS-style glass desktop shell for niri: a thin frame, and panels that grow out of it.</strong></p>
+
+  <p>
+    <a href="https://github.com/k4ditano/pleamar"><img src="https://img.shields.io/badge/pleamar-0.8.0--exp.21-9ed6bd?style=for-the-badge" alt="pleamar 0.8.0-exp.21" /></a>
+    <a href="https://github.com/YaLTeR/niri"><img src="https://img.shields.io/badge/niri-26.04+-5A6BFF?style=for-the-badge" alt="niri 26.04+" /></a>
+    <img src="https://img.shields.io/badge/Wayland-Vulkan-ffb454?style=for-the-badge" alt="Wayland, Vulkan" />
+    <a href="https://github.com/neerajlovecyber/beskar/releases"><img src="https://img.shields.io/github/v/release/neerajlovecyber/beskar?include_prereleases&style=for-the-badge&label=release" alt="Latest release" /></a>
+  </p>
+
+  <img src="docs/screenshots/home.jpg" alt="Beskar: the glass frame, desktop widgets and dock over a wallpaper" width="100%" />
+
+</div>
+
+---
 
 A macOS-style glass desktop shell for the [niri](https://github.com/YaLTeR/niri) Wayland compositor,
 written in [pleamar](https://github.com/k4ditano/pleamar): declarative scenes (`.plm`) drawn on the GPU,
@@ -9,12 +26,9 @@ rising from the bottom), plus the panels you open from it: Control Center, notif
 clipboard history, wallpapers, Settings and a lock screen. It looks like a Mac, but it is its own thing: nothing
 is named after Apple, and nothing is hard-coded to one machine.
 
-> **Status:** a personal project under active development, tested on one machine (CachyOS, niri,
-> two monitors). Expect rough edges. Issues and pull requests are welcome.
+> [!WARNING]
+> Beskar is a personal project in active development, tested on one machine (CachyOS, niri, two monitors), so things can change or break between updates. It was built with AI tools. Issues and pull requests are welcome.
 
-<p align="center">
-  <img src="docs/screenshots/home.jpg" alt="Beskar: the glass frame, desktop widgets and dock over a wallpaper" width="100%">
-</p>
 
 ---
 
