@@ -174,7 +174,7 @@ the new unit by its absolute path. Never run `start.sh stop` / `./beskar uninsta
 
 1. **Right-click quits** a scene's process unless SOME rule in it uses `on press right`. Every scene with zones needs one
    (an empty `on press right zone { }` is enough).
-2. **`screens: each` compiles up to FOUR copies** of a surface (one per possible monitor, even with two). Loose `prop` / `follow` /
+2. **`screens: each` compiles up to FOUR copies** of a surface (one per possible monitor, even with two; `screens: each max 2` halves the compiled scene, 4183 -> 2211 zones, but measured only -27 MB RSS and no change in slow frames, and it would break a third monitor, so it is NOT used). Loose `prop` / `follow` /
    `fact` on it are shared by all copies, so put drawing, props and follows inside a `component` instantiated once; per-monitor
    data comes from a `model` indexed by `$screen`. Which copy is on which output changes between runs: never assume
    `screen.index` follows sorted output names; `topbar.luau` reads the startup log (`surface N on NAME … Topbar copy 1`, in
