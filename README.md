@@ -137,8 +137,8 @@ Settings does most of it. Everything is plain files under your home:
 ## How it is built
 
 Scenes (`.plm`) draw the shell on the GPU and small Luau scripts (`.luau`) hold the logic. The frame, panels, Settings and the
-shared owners (weather, timer, notes, system services) run in one process, `shell/desktop.plm`; the wallpaper, widgets and lock
-screen run on their own. To change something, read [`AGENTS.md`](AGENTS.md) first: it lists the tools and the pitfalls. Design
+shared owners (weather, timer, notes, system services), the wallpaper and the widgets run in one process, `shell/desktop.plm`;
+the lock screen runs on its own. To change something, read [`AGENTS.md`](AGENTS.md) first: it lists the tools and the pitfalls. Design
 notes are in [`docs/`](docs/) ([UI standards](docs/UI_STANDARDS.md), [components](docs/COMPONENT_LIBRARY.md),
 [session menu](docs/SESSION_MENU.md), [weather](docs/WEATHER.md), [timers](docs/TIMERS.md)).
 

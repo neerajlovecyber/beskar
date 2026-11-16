@@ -1,10 +1,7 @@
 // The whole shell in ONE process (pleamar 0.8 `import scene`): every scene keeps its own file, logic, permissions and
 // `--say` name (`--say topbar …` still reaches Topbar). Started by start.sh instead of one process per scene.
-// The WALLPAPER is its own process on purpose: brought in beside the frame, pleamar treats the picture as scene content
-// under the glass and repaints it (and the frame) whenever a panel morphs: 44-68 slow frames per 8 panel opens, 0 without.
-// Widgets and the wallpaper are their OWN processes for the same reason: brought in beside the frame, their cards / picture count as
-// scene content under the glass and are repainted with every panel morph (widgets in: 189 slow frames per 8 opens, 0 without).
-// The lock screen and the on-demand capture picker stay their own processes too.
+// The wallpaper and the widgets are in too (one process, about 60 % less memory than four): the lock screen stays its OWN process (a crash of
+// the desktop must never leave a locked session without its locker) and so does the on-demand capture picker.
 import scene "weather.plm" as Weather     // one forecast source for every weather view
 import scene "activities.plm" as Activities // shared persistent timer
 import scene "personal.plm" as Personal   // notes and to-dos: one content writer
@@ -14,5 +11,9 @@ import scene "topbar.plm" as Topbar
 import scene "notifications.plm" as Notifications
 import scene "settings.plm" as Settings
 import scene "keys.plm" as Keys           // the keyboard and the panels' text fields on the open panel's monitor   (after the frame: a surface imported before it renumbers the frame's per-monitor copies)
+
+import scene "wallpaper.plm" as Wallpaper  // one picture per monitor, level: background
+
+import scene "widgets.plm" as Widgets      // desktop widgets, level: bottom
 
 scene Desktop { }

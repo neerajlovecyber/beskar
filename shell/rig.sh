@@ -43,11 +43,7 @@ export BESKAR_DESKTOP_LOG='$R/desktop.log'
 export DBUS_SESSION_BUS_ADDRESS='$DBUS_SESSION_BUS_ADDRESS'      # the rig's own bus: notify-send / gdbus here reach the rig, not you
 EOF
     . "$(envfile)"
-    "$BIN" --no-hud --scene "$DIR/shell/wallpaper.plm" >"$R/wallpaper.log" 2>&1 &
-    echo $! >>"$R/scenes.pid"
     "$BIN" --no-hud --scene "$DIR/shell/desktop.plm" >"$R/desktop.log" 2>&1 &
-    echo $! >>"$R/scenes.pid"
-    "$BIN" --no-hud --scene "$DIR/shell/widgets.plm" >"$R/widgets.log" 2>&1 &
     echo $! >>"$R/scenes.pid"
     echo ready >"$R/state"
     wait

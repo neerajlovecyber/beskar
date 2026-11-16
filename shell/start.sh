@@ -122,10 +122,8 @@ start_shell() {
     # One supervisor; the desktop imports all panel scenes into one process.
     S="$DIR/shell"
     setsid "$S/supervise.sh" \
-        "$S/wallpaper.plm:/tmp/pleamar_wallpaper.log" \
         "$S/desktop.plm:/tmp/pleamar_desktop.log" \
         "$S/lock.plm:/tmp/pleamar_lock.log" \
-        "$S/widgets.plm:/tmp/pleamar_widgets.log" \
         </dev/null >/dev/null 2>&1 &
     echo "$!" > "$PID_FILE"
     sleep 0.6
