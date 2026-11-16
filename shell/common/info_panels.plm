@@ -384,7 +384,7 @@ part InfoPanels {
         }
     }
 
-    //  ── keyboard (every rule is guarded by the monitor: the frame has one copy per monitor, AGENTS rule 74) ──
+    //  ── keyboard (every rule is guarded by the monitor: the frame has one copy per monitor, AGENTS.md "Keyboard") ──
     //  Today: Up / Down / Tab move the focus ring over the weather card, calendar, notes and to-dos; Left / Right / Page Up / Page Down
     //  change the month, Home comes back to this one, Enter / Space (on release) open the focused card, Esc closes.
     on k_escape while Panels.cur == 3 and screen.index == 0 { emit Panels.close }
