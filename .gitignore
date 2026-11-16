@@ -1,7 +1,7 @@
 # Target Build Outputs
 /target/
 Cargo.lock
-/bin/
+/bin
 
 # Upstream Reference & Cloned Repositories
 /references/
