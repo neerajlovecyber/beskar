@@ -5,7 +5,7 @@
   <p><strong>A liquid-glass desktop shell, written in pleamar: a thin frame, and panels that grow out of it.</strong></p>
 
   <p>
-    <a href="https://github.com/k4ditano/pleamar"><img src="https://img.shields.io/badge/pleamar-0.8.0--exp.22-9ed6bd?style=for-the-badge" alt="pleamar 0.8.0-exp.22" /></a>
+    <a href="https://github.com/k4ditano/pleamar"><img src="https://img.shields.io/badge/pleamar-0.8.0--exp.24-9ed6bd?style=for-the-badge" alt="pleamar 0.8.0-exp.24" /></a>
     <a href="https://github.com/YaLTeR/niri"><img src="https://img.shields.io/badge/niri-26.04+-5A6BFF?style=for-the-badge" alt="niri 26.04+" /></a>
     <img src="https://img.shields.io/badge/Wayland-Vulkan-ffb454?style=for-the-badge" alt="Wayland, Vulkan" />
     <a href="https://github.com/neerajlovecyber/beskar/releases"><img src="https://img.shields.io/github/v/release/neerajlovecyber/beskar?include_prereleases&style=for-the-badge&label=release" alt="Latest release" /></a>
@@ -106,7 +106,7 @@ Or in one line: `curl -fsSL https://raw.githubusercontent.com/neerajlovecyber/be
 You need **niri** (26.04 or newer) and a GPU with a Vulkan driver. `./beskar install` asks before each step
 (`--yes` answers them all, `--dry-run` only lists them, `--no-packages` skips the package step). On Arch it installs everything the
 shell uses, including the fonts, the Bibata cursor and Papirus icons (only if you have not chosen your own), and builds the
-pinned [pleamar](https://github.com/k4ditano/pleamar) (**0.8.0-exp.22**) with Rust. Other distributions get the package list to
+pinned [pleamar](https://github.com/k4ditano/pleamar) (**0.8.0-exp.24**) with Rust. Other distributions get the package list to
 translate.
 
 | Command | Does |
