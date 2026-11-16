@@ -99,7 +99,7 @@ for its coverage and deliberate feature exceptions.
 ## Further consolidation
 
 For the proposed Figma-based sizing, spacing and corner migration, see
-[SHELL_CONSISTENCY_PLAN.md](SHELL_CONSISTENCY_PLAN.md). Extend the controls listed
+[SHELL_CONSISTENCY_PLAN.md](archive/SHELL_CONSISTENCY_PLAN.md). Extend the controls listed
 here and migrate their callers in stages.
 
 1. Keep the existing theme, UI and panel wrapper as the foundation. Do not add a

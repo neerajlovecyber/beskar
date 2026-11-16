@@ -112,7 +112,7 @@ title / hint positions: title at `inset_card`, 18; hint at `inset_card`, 48 (72 
 
 ## Panel anatomy
 
-- Every panel is drawn by the frame over its island's glass (AGENTS.md rules 13 and 70). Content is laid out at its FINAL place
+- Every panel is drawn by the frame over its island's glass (AGENTS.md "Panels"). Content is laid out at its FINAL place
   and never moves while the glass grows; only the clip reveals it.
 - Top panels: header (`PanelHeader` or a title) on the first row, actions on the same line at the right.
 - Dock panels: header at the top, content in the middle, the search field at the BOTTOM nearest the dock (`PanelSearch`).

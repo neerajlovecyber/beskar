@@ -87,7 +87,7 @@ and state inspection is still required before implementation.
 ## Applying the reference
 
 The shell-wide migration record is in
-[SHELL_CONSISTENCY_PLAN.md](SHELL_CONSISTENCY_PLAN.md). Its target values distinguish
+[SHELL_CONSISTENCY_PLAN.md](archive/SHELL_CONSISTENCY_PLAN.md). Its target values distinguish
 measured kit values from Beskar choices and stage the work by shared controls and
 their callers.
 

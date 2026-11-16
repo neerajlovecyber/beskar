@@ -1,7 +1,7 @@
 # Beskar roadmap
 
-Current customization priorities: [Customization plan](CUSTOMIZATION_PLAN.md) (2026-11-14), with audited gaps, phased scope and acceptance criteria.
-Broader feature priorities and reference review: [Next features and unification](NEXT_FEATURES_PLAN.md). This file remains the inventory; the linked plans define upcoming slices.
+Current customization priorities: [Customization plan](archive/CUSTOMIZATION_PLAN.md) (2026-11-14), with audited gaps, phased scope and acceptance criteria.
+Broader feature priorities and reference review: [Next features and unification](archive/NEXT_FEATURES_PLAN.md). This file remains the inventory; the linked plans define upcoming slices.
 
 Feature inventory compared with the iNiR / iRiS references; the customization plan records the latest local snapshot inspected. Tick a box when it is done and tested
 (on the live shell where possible, otherwise in a nested niri, as `AGENTS.md` describes).

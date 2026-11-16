@@ -644,7 +644,7 @@ local function say(scene, words)
     pcall(sys.call, "say", scene, words)
 end
 -- The monitor the power menu is on (`open_screen`), for the windows its items open.
--- the session / polkit / welcome dialogs live in ONE scene, `dialogs`; `cur` says which (rule 51)
+-- the session / polkit / welcome dialogs live in ONE scene, `dialogs`; `cur` says which
 local function show_dock_on_menu_monitor(id)        -- (the session dialog grows out of the dock: panel 11)
     local s = tonumber(fact.open_screen) or 0
     local p = BY_ID[id]

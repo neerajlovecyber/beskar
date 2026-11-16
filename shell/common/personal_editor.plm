@@ -102,7 +102,7 @@ part PersonalEditor {
     }
     event pe_filter ->
     on sub_pe_new_task while screen.index == 0 { emit pe_add_task }
-    //  Keyboard (rules guarded by the monitor, AGENTS rule 74; the logic decides by zone, personal_editor.luau): Tab / Shift+Tab move between the header,
+    //  Keyboard (rules guarded by the monitor, AGENTS.md "Keyboard"; the logic decides by zone, personal_editor.luau): Tab / Shift+Tab move between the header,
     //  the list and the editor; Up / Down walk notes or to-dos; Enter / Space toggle a to-do or open the note; Del removes; Ctrl+N a new note;
     //  Alt+Up / Alt+Down reorder a to-do; Left / Right switch Active / Completed; Esc leaves the editor, then closes.
     on k_escape while Panels.cur == 25 and screen.index == 0 { emit pe_nav(8) }
