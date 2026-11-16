@@ -270,8 +270,6 @@ scene MacTopBar {
     event reveal_edge ->
     event leave_edge ->
     event keep_dock ->     // pointer is on the dock
-    event setup_pins_snapshot ->
-    event setup_pins_apply ->
     event request_dock_pins ->   // Settings asks for the pinned apps in dock order: answered with `Settings.set_dock_pins` (a list of { index, pin, name, mvl, mvr })
     event peek_quick       // a reveal / keep_dock while Settings' dock delay is Quick (the layer below holds the dock up for its own time)
     event peek_slow        // the same for Relaxed

@@ -818,7 +818,6 @@ end
 -- (`pins_gen` changes with every edit and every finished write).
 local frame_options = require("frame_options")
 local pins_ready = false
-local pins_profile_busy = false
 local pins_gen = 0
 local pin_save_timer = nil          -- a move's debounced write is waiting
 local pin_save_busy = false         -- a write is running
@@ -842,7 +841,6 @@ local function flush_pins()
 end
 
 local function save_pins(list)
-    if pins_profile_busy then return false end
     pinned = list
     pins_gen = pins_gen + 1
     if pin_save_timer then
@@ -988,7 +986,6 @@ on("dock_click", function(i)
 end)
 
 on("dock_pin", function(i)
-    if pins_profile_busy then return end
     local it = items[(i or 0) + 1]
     if not it then
         return
@@ -1048,50 +1045,7 @@ local function send_dock_pins()
 end
 on("request_dock_pins", send_dock_pins)
 
--- These typed callbacks are declared by Settings when the setup coordinator is wired.
--- Until then requests are unused and the optional callbacks are harmless misses.
-local pin_profiles = require("pins_profile").new({
-    current = function() return pinned end,
-    ready = function() return pins_ready end,
-    busy = function() return pin_save_busy or pin_save_timer ~= nil end,
-    commit = function(data, cb)
-        pins_profile_busy = true
-        local SP, Store = require("setup_profiles"), require("pins_store")
-        local before = SP.snapshot("pins", {list=pinned}, {local_pins=true})
-        Store.read(run, function(read_ok, raw, error_code)
-            if not read_ok then pins_profile_busy = false; cb(false, error_code); return end
-            local disk = nil
-            if raw then
-                disk = {}
-                for line in raw:gmatch("[^\n]+") do
-                    local id = line:match("^%s*(.-)%s*$")
-                    if id ~= "" then disk[#disk+1] = id end
-                end
-            end
-            local disk_data = SP.snapshot("pins", {list=disk}, {local_pins=true})
-            if not disk_data or SP.fingerprint("pins", disk_data) ~= SP.fingerprint("pins", before) then
-                pins_profile_busy = false; cb(false, "stale", "The dock file changed; review the setup again"); return
-            end
-            Store.write(run, data, function(ok, code, message)
-                pins_profile_busy = false
-                cb(ok, code, message)
-            end, raw == nil and {missing=true} or {body=raw})
-        end)
-    end,
-    set = function(list)
-        pinned = list
-        pins_gen = pins_gen + 1
-        build_dock()
-        send_dock_pins()
-    end,
-    reply = function(info) pcall(emit, "Settings.setup_owner_ack", info) end,
-    snapshot = function(info) pcall(emit, "Settings.setup_owner_snapshot", info) end,
-})
-on("setup_pins_snapshot", pin_profiles.snapshot)
-on("setup_pins_apply", pin_profiles.apply)
-
 on("dock_move_pin", function(p)
-    if pins_profile_busy then return end
     local id, dir = frame_options.parse_move(p)
     if id == nil then
         return
@@ -1128,12 +1082,12 @@ end)
 
 -- ~/.config/beskar/dock, read now and every few seconds so a hand edit shows up
 local function read_pins()
-    if pin_save_timer or pin_save_busy or pins_profile_busy then
+    if pin_save_timer or pin_save_busy then
         return                  -- our own edit is not on disk yet: the file is older than what the dock shows
     end
     local gen = pins_gen
     run("sh", { "-c", 'if [ -f "$HOME/.config/beskar/dock" ]; then cat "$HOME/.config/beskar/dock"; else echo "__none__"; fi' }, function(out, code)
-        if code ~= 0 or not out or gen ~= pins_gen or pin_save_timer or pin_save_busy or pins_profile_busy then
+        if code ~= 0 or not out or gen ~= pins_gen or pin_save_timer or pin_save_busy then
             return
         end
         pins_ready = true

@@ -465,92 +465,6 @@ require("settings_looks")(preferences, {
     end,
 })
 
--- ── Portable setup (C5): Settings coordinates; it owns the appearance and frame sections itself ────────
--- Topbar answers for the dock pins through typed events, Widgets (own process) through its request / response files.
-local SetupProfiles = require("setup_profiles")
-local function setup_live_settings()
-    if not preference_store.ready() then return {} end
-    local frame = {}
-    for _, f in ipairs(SetupProfiles.FRAME_FIELDS) do frame[f.fact] = fact[f.fact] end
-    frame.frame_output_name = text.frame_output_name or ""
-    return { appearance = { values = fact, palette = PAL }, frame = { facts = frame } }
-end
-local function setup_section_now(section)
-    local st = setup_live_settings()
-    if not st[section] then return nil end
-    return SetupProfiles.snapshot(section, st[section], { preferences = preferences })
-end
-local function setup_apply_settings(act, cb)
-    if not preference_store.ready() then cb({ ok = false, untouched = true, code = "not_ready" }); return end
-    local section = act.section
-    if section ~= "appearance" and section ~= "frame" then cb({ ok = false, untouched = true, code = "invalid" }); return end
-    local now = setup_section_now(section)
-    if not now then cb({ ok = false, untouched = true, code = "unavailable" }); return end
-    if act.force ~= true and SetupProfiles.fingerprint(section, now) ~= act.expect then
-        cb({ ok = false, untouched = true, code = "stale", fp = SetupProfiles.fingerprint(section, now) }); return
-    end
-    local data = SetupProfiles.validate_section(section, act.data, { preferences = preferences })
-    if not data then cb({ ok = false, untouched = true, code = "invalid" }); return end
-    if section == "appearance" then
-        if act.op == "apply" then appearance_undo, fact.reset_undo = preferences.appearance_snapshot(fact, PAL), true end
-        apply_appearance({ values = SetupProfiles.to_facts("appearance", data, { preferences = preferences }), palette = data.palette })
-    else
-        for name, value in pairs(SetupProfiles.to_facts("frame", data)) do
-            if name == "frame_output_name" then text.frame_output_name, text.frame_output_edit = value, value
-            else fact[name] = value end
-        end
-        changed_pref()
-    end
-    -- the acknowledgement means the files are on disk (the store's queue is serialised)
-    preference_store.flush(function(ok)
-        if not ok then cb({ ok = false, untouched = false, code = "write_failed" }); return end
-        cb({ ok = true, fp = SetupProfiles.fingerprint(section, setup_section_now(section)) })
-    end)
-end
-
-local pin_waits, pin_serial = {}, 0
-local function pin_wait(key, fn)
-    pin_waits[key] = fn
-    after(15000, function() pin_waits[key] = nil end)
-end
-on("setup_owner_snapshot", function(info)
-    local key = type(info) == "table" and info.owner == "topbar" and info.request
-    local fn = key and pin_waits[tostring(key)]
-    if not fn then return end
-    pin_waits[tostring(key)] = nil
-    if info.ready ~= true or type(info.data) ~= "table" then fn(nil, "not ready"); return end
-    fn({ list = info.data.default and nil or info.data.list })
-end)
-on("setup_owner_ack", function(info)
-    local key = type(info) == "table" and info.owner == "topbar" and info.request
-    local fn = key and pin_waits[tostring(key)]
-    if not fn then return end
-    pin_waits[tostring(key)] = nil
-    fn(info)
-end)
-
-local setup = require("settings_setup")(preferences, {
-    live_settings = setup_live_settings,
-    apply_settings = setup_apply_settings,
-    read_pins = function(cb)
-        pin_serial = pin_serial + 1
-        local request = "snap" .. pin_serial
-        pin_wait(request, cb)
-        emit("Topbar.setup_pins_snapshot", request)
-    end,
-    apply_pins = function(act, cb)
-        local request = tostring(act.request)
-        pin_wait(request, cb)
-        emit("Topbar.setup_pins_apply", { request = request, expect = act.expect, force = act.force == true, data = act.data })
-    end,
-    ready = preference_store.ready,
-    run = function(script, args, cb, opts) run("sh", { "-c", script, "setup", unpack(args) }, cb, opts) end,
-    say = say,
-    clipboard = function(body, cb) run("sh", { "-c", 'printf "%s" "$1" | wl-copy >/dev/null 2>&1', "setup-export", body }, function(_, code) cb(code == 0) end) end,
-    now = function() return os.time() end,
-    decode = json.decode,
-})
-
 for _, setting in ipairs({ {"bar_left_order_pick", "bar_left_order", 1}, {"bar_right_order_pick", "bar_right_order", 1}, {"module_output_pick", "module_output_policy", 2}, {"dock_output_pick", "dock_output_policy", 2}, {"dock_show_delay_pick", "dock_show_delay", 2} }) do
     on(setting[1], function(n)
         n = tonumber(n)
@@ -927,7 +841,6 @@ finish_preferences = function()
     if fact.preferences_loaded then return end
     fact.preferences_loaded = true
     fact.preference_can_restore = preference_store.ready()
-    setup.poke()
     local m = tonumber(fact.appearance) or 1
     fact.dark_mode = m == 1 or (m == 2 and auto_dark())
     broadcast_theme(false)

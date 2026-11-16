@@ -8,9 +8,6 @@
 --   stack (C4c, only while stacked): { id, i, on } — cards of one stack share a footprint (out, x, y, sz); only the member
 --     with `on` is in the model (so only it is drawn, clickable and fed). Logic: shell/widget_stacks.luau.
 
--- Portable setup (C5): `emit setup_request <id>` + staged request / response files, answered by shell/widget_setup.luau
--- (snapshot + compare-and-swap apply of the whole placement; the protocol is documented there). Every widgets.json write is
--- serialised through `write_widgets`; while an apply is in flight the user's edits wait (`guarded`) and replay after it.
 local clockfmt = require("clockfmt")
 
 local UNIT, GAP = 160, 16
@@ -123,8 +120,7 @@ local have = {}             -- kind → true while some card shows it (feeds fol
 local start_feeds           -- defined below
 
 -- ── saving (debounced, atomic) ──
--- EVERY write of widgets.json goes through one queue, one at a time and in order (the debounced save, leaving edit mode, a
--- portable-setup apply): an older write can never land after a newer one. A body is text, or a function evaluated when
+-- EVERY write of widgets.json goes through one queue, one at a time and in order (the debounced save, leaving edit mode): an older write can never land after a newer one. A body is text, or a function evaluated when
 -- the write STARTS (so a queued save always writes the newest desktop).
 local WIDGETS_WRITE = 'd="$HOME/.config/beskar"; f="$d/widgets.json"; t="$f.tmp"; '
     .. 'mkdir -p "$d" && printf \'%s\\n\' "$1" > "$t" || { rm -f "$t"; exit 1; }; sync "$t" 2>/dev/null; '
@@ -284,27 +280,8 @@ end
 local SEL = 0       -- the card whose options the widget bar shows (0 = none); only while editing
 local opt_fail      -- tells the bar why a request was refused (below)
 
--- The portable-setup gate (shell/widget_setup.luau): while the owner applies a setup (compare-and-swap check -> file write
--- -> install, a few milliseconds) the user's state-changing events WAIT and replay, in order, AFTER the install, so a drag or
--- a removal made meanwhile is applied on top of the new desktop and never overwritten by it.
-local gate_up, deferred = false, {}
-local function guarded(fn)
-    return function(p)
-        if not gate_up then fn(p); return end
-        if #deferred >= 64 then opt_fail("A setup is being applied: try again in a moment"); return end
-        deferred[#deferred + 1] = function() fn(p) end
-    end
-end
-local function set_gate(on)
-    gate_up = on
-    if on then return end
-    local list = deferred
-    deferred = {}
-    for _, f in ipairs(list) do pcall(f) end
-end
-
 -- ── presets: whole desktops in one click (applied to every monitor) ──
-on("w_preset", guarded(function(n)
+on("w_preset", function(n)
     local p = PRESETS[tonumber(n) or 0]
     if not p then return end
     snapshot()
@@ -315,7 +292,7 @@ on("w_preset", guarded(function(n)
     for _, c in ipairs(CARDS) do clamp_card(c) end
     SEL = 0          -- a preset replaces the whole desktop, locked cards included (one undo step brings it back)
     changed()
-end))
+end)
 
 -- ── edit mode ──
 local function set_editing(on)
@@ -422,7 +399,7 @@ local function apply_option(def, idx)
     changed()
 end
 
-on("w_opt", guarded(function(p)
+on("w_opt", function(p)
     local def, idx
     if type(p) == "table" then
         def = type(p.opt) == "string" and Opts.def(p.opt) or Opts.by_id(tonumber(p.opt) or 0)
@@ -435,18 +412,18 @@ on("w_opt", guarded(function(p)
     end
     if not def then opt_fail("Unknown option"); return end
     apply_option(def, idx)
-end))
+end)
 
-on("w_opt_next", guarded(function(p)
+on("w_opt_next", function(p)
     if type(p) == "table" then p = p.id or p.opt end
     local def = Opts.by_id(math.floor(tonumber(p) or 0))
     if not def then opt_fail("Unknown option"); return end
     local c = selected()
     if not c then opt_fail("Select a widget first"); return end
     apply_option(def, Opts.index(c, def.key) % #def.keys + 1)
-end))
+end)
 
-on("w_opt_reset", guarded(function()
+on("w_opt_reset", function()
     local c = selected()
     if not c then opt_fail("Select a widget first"); return end
     if not c.opts then return end
@@ -454,7 +431,7 @@ on("w_opt_reset", guarded(function()
     Opts.reset(c)
     Stacks.set_lock(CARDS, c, false)
     changed()
-end))
+end)
 
 -- Edit mode and the widget bar (widget_bar.plm, grown out of the dock) open and close together: the bar opening
 -- starts edit mode (`w_bar_open`), and asking for edit mode opens the bar through the frame (it picks the monitor).
@@ -473,7 +450,7 @@ on("w_bar_open", function()
 end)
 on("edit_done", function() set_editing(false) end)
 
-on("w_drop", guarded(function(id)
+on("w_drop", function(id)
     local c = find(id)
     local dx, dy = tonumber(fact.drag_dx) or 0, tonumber(fact.drag_dy) or 0
     -- a locked card never moves (the scene does not even start the drag; this is the owner's own guard)
@@ -489,25 +466,25 @@ on("w_drop", guarded(function(id)
     fact.drag_id = 0
     fact.drag_dx = 0
     fact.drag_dy = 0
-end))
+end)
 
-on("w_add", guarded(function(code)
+on("w_add", function(code)
     local scr, kind = math.floor(code / 100), code % 100
     local out = OUTPUTS[scr + 1] or OUTPUTS[1]
     if not out or #CARDS >= 16 then return end
     snapshot()
     add_card(out, kind)
     changed()
-end))
+end)
 
-on("w_remove", guarded(function(id)
+on("w_remove", function(id)
     local c, i = find(id)
     if not c then return end
     snapshot()
     Stacks.leave(CARDS, c)       -- the rest of its stack closes up (a neighbour is shown when it was the face)
     table.remove(CARDS, i)
     changed()
-end))
+end)
 
 -- ── stacks (C4c) ──
 -- Cards of compatible size share ONE footprint; only the shown member ("face") is drawn, clickable and fed. Manual paging.
@@ -545,7 +522,7 @@ local function rollback()      -- take back the history step of a change that co
     push_bar()
 end
 
-on("w_stack", guarded(function(p)
+on("w_stack", function(p)
     local src = selected()
     if not src then opt_fail("Select a widget first"); return end
     if type(p) == "table" then p = p.target or p.id end
@@ -556,7 +533,7 @@ on("w_stack", guarded(function(p)
     Stacks.join(CARDS, src, tgt, kind_of)
     SEL = src.id
     changed()
-end))
+end)
 
 local function page(p, delta)
     local c = card_arg(p)
@@ -569,10 +546,10 @@ local function page(p, delta)
     if cur and Stacks.same(cur, shown) then SEL = shown.id end
     changed()
 end
-on("w_page_next", guarded(function(p) page(p, 1) end))
-on("w_page_prev", guarded(function(p) page(p, -1) end))
+on("w_page_next", function(p) page(p, 1) end)
+on("w_page_prev", function(p) page(p, -1) end)
 
-on("w_unstack", guarded(function(p)
+on("w_unstack", function(p)
     local c = card_arg(p)
     if not c or not c.stack then opt_fail("That widget is not in a stack"); return end
     if Opts.locked(c) then opt_fail("Unlock the stack to take it apart"); return end
@@ -585,9 +562,9 @@ on("w_unstack", guarded(function(p)
         end
     end
     changed()
-end))
+end)
 
-on("w_eject", guarded(function(p)
+on("w_eject", function(p)
     local c = card_arg(p)
     if not c or not c.stack then opt_fail("That widget is not in a stack"); return end
     if Opts.locked(c) then opt_fail("Unlock the stack to take a widget out"); return end
@@ -595,7 +572,7 @@ on("w_eject", guarded(function(p)
     Stacks.leave(CARDS, c)
     if not place_out(c) then rollback(); opt_fail("No room to take it out here"); return end
     changed()
-end))
+end)
 
 -- Would card `c` still fit where it stands at size `sz`? (work area, and with Grid on also free of other cards)
 local function fits_in_place(c, sz)
@@ -607,7 +584,7 @@ local function fits_in_place(c, sz)
     return ok
 end
 
-on("w_resize", guarded(function(id)
+on("w_resize", function(id)
     local c = find(id)
     if not c then return end
     -- a stack is resized as a whole: only sizes every member draws
@@ -643,23 +620,23 @@ on("w_resize", guarded(function(id)
     snap_card(c)
     Stacks.sync(CARDS, c)
     changed()
-end))
+end)
 
-on("w_undo", guarded(function()
+on("w_undo", function()
     local last = table.remove(HISTORY)
     if not last then return end
     CARDS = last.cards
     if last.snap ~= nil then fact.snap_on = last.snap end
     fact.can_undo = #HISTORY > 0
     changed()
-end))
+end)
 
-on("w_reset", guarded(function()
+on("w_reset", function()
     snapshot()
     defaults()
     SEL = 0
     changed()
-end))
+end)
 
 -- Tidy up: every card back on the grid, packed from the top left in reading order.
 local function tidy()
@@ -692,13 +669,13 @@ local function tidy()
     fact.snap_on = was
     changed()
 end
-on("w_tidy", guarded(tidy))
+on("w_tidy", tidy)
 
-on("w_grid", guarded(function()
+on("w_grid", function()
     fact.snap_on = not fact.snap_on
     push_bar()
     save()
-end))
+end)
 
 on("w_open", function(code)
     if fact.editing then return end
@@ -947,7 +924,7 @@ layouts = Layouts.controller({
     backup = function(cb)
         sh(LAYOUT_BACKUP, function(_, code) cb(code == 0) end, tostring(os.time()))
     end,
-    ready = function() return loaded and #OUTPUTS > 0 and not gate_up end,
+    ready = function() return loaded and #OUTPUTS > 0 end,
     capture = function() return { cards = CARDS, snap = fact.snap_on and true or false, sizes = SIZES } end,
     context = layout_context,
     apply = function(cards, snap)
@@ -991,7 +968,7 @@ local function layout_name(p)
 end
 on("wl_save", function(p) layouts.save(layout_name(p)) end)
 on("wl_update", function(p) layouts.update(layout_id(p)) end)
-on("wl_load", guarded(function(p) layouts.load(layout_id(p)) end))
+on("wl_load", function(p) layouts.load(layout_id(p)) end)
 on("wl_rename", function(p) local id = layout_id(p); layouts.rename(id, layout_name(p)) end)
 on("wl_duplicate", function(p) layouts.duplicate(layout_id(p)) end)
 on("wl_delete", function(p) layouts.delete(layout_id(p)) end)
@@ -1002,88 +979,6 @@ on("wl_get", function(p)
     text.wl_detail = ok and body or "{}"
 end)
 after(400, layouts.start)
-
--- ── portable setup bridge (C5, shell/widget_setup.luau; the exact protocol is documented there) ──
--- Settings stages ~/.config/beskar/setup-widget-request.json and sends `emit setup_request <id>`; this file answers in
--- ~/.config/beskar/setup-widget-response.json and only then says `emit setup_widgets_reply <id>` to settings. The request
--- file is read, the response written, and widgets.json replaced ATOMICALLY; nothing here polls or subscribes to anything.
-local SETUP_REQUEST_READ = 'f="$HOME/.config/beskar/setup-widget-request.json"; [ -e "$f" ] || exit 3; '
-    .. '[ -f "$f" ] && [ -r "$f" ] || exit 4; [ "$(wc -c < "$f")" -le ' .. require("widget_setup").MAX_REQUEST_BYTES .. ' ] || exit 5; cat "$f"'
-local SETUP_RESPONSE_WRITE = 'd="$HOME/.config/beskar"; f="$d/setup-widget-response.json"; t="$f.tmp"; '
-    .. 'mkdir -p "$d" && printf \'%s\\n\' "$1" > "$t" || { rm -f "$t"; exit 1; }; sync "$t" 2>/dev/null; '
-    .. 'mv -f "$t" "$f" || { rm -f "$t"; exit 1; }'
-local function next_id_after(cards)
-    local nid = NEXT_ID
-    for _, c in ipairs(cards) do
-        if c.id >= nid then nid = c.id + 1 end
-    end
-    return nid
-end
-local setup = require("widget_setup").new({
-    json = json,
-    profiles = function()
-        local ok, m = pcall(require, "setup_profiles")
-        return ok and type(m) == "table" and m or nil
-    end,
-    read_request = function(cb)
-        sh(SETUP_REQUEST_READ, function(out, code)
-            if code == 0 then cb("ok", out or "")
-            elseif code == 3 then cb("missing")
-            elseif code == 5 then cb("toolarge")
-            else cb("error") end
-        end)
-    end,
-    write_response = function(body, cb)
-        sh(SETUP_RESPONSE_WRITE, function(_, code) cb(code == 0) end, body)
-    end,
-    notify = function(id) say("settings", "emit setup_widgets_reply " .. math.floor(id)) end,
-    ready = function() return loaded and #OUTPUTS > 0 end,
-    live = function()
-        local cards = {}
-        for _, c in ipairs(CARDS) do cards[#cards + 1] = copy_card(c) end
-        return { snap = fact.snap_on and true or false, cards = cards }
-    end,
-    outputs = function()
-        local map = {}
-        for _, name in ipairs(OUTPUTS) do map[name] = true end
-        return map
-    end,
-    restore = function(layout, exact)
-        local ctx = layout_context()
-        if exact then ctx.connected = {} end        -- a rollback puts every card back exactly where it was (no reflow)
-        return Layouts.restore(layout, ctx)
-    end,
-    persist = function(cards, snap, cb)
-        local ok, body = pcall(json.encode, Opts.encode_file(cards, next_id_after(cards), snap))
-        if not ok then cb(false, false); return end
-        write_widgets(body, function(wrote, code)
-            cb(wrote, not wrote and (code == nil or code >= 128))
-        end)
-    end,
-    top_fp = function()
-        local top = HISTORY[#HISTORY]
-        return top and top.setup_fp or nil
-    end,
-    install = function(cards, snap, how, tag)
-        if how == "replace" then table.remove(HISTORY)
-        elseif how == "push" then
-            snapshot(true)           -- ONE undo step of widgets' own: the desktop as it was, with its grid option
-            HISTORY[#HISTORY].setup_fp = tag
-        end
-        CARDS = cards
-        SEL = 0
-        NEXT_ID = next_id_after(cards)
-        fact.snap_on = snap and true or false
-        fact.can_undo = #HISTORY > 0
-        changed()
-        if save_timer then cancel(save_timer); save_timer = nil end      -- the file already holds exactly this desktop
-    end,
-    gate = set_gate,
-    resave = function() save() end,
-    after = after,
-    cancel = cancel,
-})
-on("setup_request", function(p) setup.request(p) end)
 
 require("personal_client")()
 

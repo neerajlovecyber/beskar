@@ -129,7 +129,6 @@ scene Widgets {
     event w_page_prev ->
     event w_unstack ->
     event w_eject ->
-    event setup_request ->      // portable setup bridge (widget_setup.luau): `emit setup_request <id>`
 
     // Saved desktops (C4a): the owner is widgets.luau / widget_layouts.luau. Name in `wl_name` (consumed per call), ids as the
     // event's number; the snapshot (compact JSON, bounded) and the last status are read with `--say widgets "get wl_snapshot"`.

@@ -587,13 +587,12 @@ scene MacSettings {
 
         // 6 ── General ──────────────────────────────────────────
         group tab_6 {
-            show: tab == 6 and not setup_open
+            show: tab == 6
             move: 254, 60
             column tcol_6 {
                 view: 560, 500
                 step: 56
                 gap: space_12
-                ActionRow("Portable setup", "Share or import the look, menu bar, dock and widgets as one file", "Open…", setup_show)
                 Card(100) {
                     body {
                         gradient: 18, 18 to 78, 78, accent_c, focus_c
@@ -648,86 +647,6 @@ scene MacSettings {
                 }
             }
             group { move: 566, 0; ScrollBar(tcol_6.scroll, tcol_6.content, 500, ui_ink_c: ink_c) }
-        }
-
-        // 6 ── General › Portable setup ────────────────────────
-        group {
-            show: tab == 6 and setup_open
-            move: 254, 60
-            text "Portable setup" { at: 0, 8; size: font_title; weight: 600; color: ink_c }
-            group { move: 456, 0; Btn("Back", 100, setup_hide, false, 0, 0, enabled: not setup_running, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill) }
-            column tcol_s {
-                at: 0, 44
-                view: 560, 456
-                step: 56
-                gap: space_12
-                group {
-                    show: setup_has_banner
-                    size: 556, 100
-                    Card(100) {
-                        text setup_banner { at: 18, 12; size: font_secondary; color: warn_c; width: 520; lines: 3 }
-                        group { move: 18, 62; show: setup_recovery and not setup_recovery_clean; Btn("Roll back", 100, setup_recover_rollback, true, 0, 0, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill) }
-                        group { move: if(setup_recovery_clean, 18, 128), 62; show: setup_recovery; Btn("Keep current state", 160, setup_recover_keep, false, 0, 0, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill) }
-                        group { move: 18, 62; show: setup_waiting or setup_unreadable; Btn("Check again", 110, setup_recheck, true, 0, 0, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill) }
-                        group { move: 138, 62; show: setup_unreadable; Btn("Move aside", 110, setup_aside, false, 0, 0, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill) }
-                        group { move: 18, 62; show: setup_blocked; Btn("Retry", 90, setup_retry, true, 0, 0, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill) }
-                    }
-                }
-                group {
-                    show: not setup_reviewing and not setup_running
-                    size: 556, 250
-                    Card(250) {
-                        text "SHARE THIS SETUP" { at: 18, 18; anchor: left center; size: t_micro; weight: 700; color: ink_sub }
-                        column { at: 18, 36; gap: space_4; for r in setup_export_rows { SetupToggleRow(r, false, setup_export_toggle) } }
-                        group { move: 18, 206; Btn("Copy setup", 120, setup_export, true, 0, 0, enabled: not setup_busy and setup_export_count > 0, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill) }
-                    }
-                }
-                group {
-                    show: not setup_reviewing and not setup_running
-                    size: 556, 112
-                    Card(112) {
-                        text "IMPORT A SETUP" { at: 18, 18; anchor: left center; size: t_micro; weight: 700; color: ink_sub }
-                        box { from: 18, 36; size: 520, search_h_compact; corner: control_r; color: field_bg }
-                        input setup_document { at: 30, 41; width: 496; size: font_secondary; color: ink_c; selection: accent_c; placeholder: "Paste a setup to review it first" }
-                        group { move: 18, 72; Btn("Review", 100, setup_review_import, true, 0, 0, enabled: setup_ready, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill) }
-                    }
-                }
-                group {
-                    show: setup_reviewing
-                    size: 556, 250
-                    Card(250) {
-                        text "REVIEW · NOTHING IS CHANGED YET" { at: 18, 18; anchor: left center; size: t_micro; weight: 700; color: ink_sub }
-                        column { at: 18, 36; gap: space_4; for r in setup_review_rows { SetupToggleRow(r, not r.avail, setup_review_toggle) } }
-                        group { move: 18, 206; Btn("Apply", 100, setup_apply, true, 0, 0, enabled: setup_ready and setup_review_count > 0, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill) }
-                        group { move: 128, 206; Btn("Cancel", 100, setup_cancel, false, 0, 0, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill) }
-                    }
-                }
-                group {
-                    show: setup_running
-                    size: 556, 156
-                    Card(156) {
-                        text "APPLYING" { at: 18, 18; anchor: left center; size: t_micro; weight: 700; color: ink_sub }
-                        column { at: 18, 36; gap: space_4; for s in setup_steps { SetupStepRow(s) } }
-                    }
-                }
-                column {
-                    gap: space_4
-                    show: setup_has_lines
-                    text setup_lines_title { size: t_micro; weight: 700; color: ink_sub }
-                    for l in setup_lines { SetupLineRow(l) }
-                }
-                group {
-                    show: setup_can_undo or setup_stale_undo or setup_attention or (setup_has_lines and not setup_running)
-                    size: 556, control_h
-                    group { move: 0, 0; show: setup_can_undo; Btn("Undo setup", 110, setup_undo, false, 0, 0, enabled: setup_ready, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill) }
-                    group { move: 0, 0; show: setup_stale_undo; Btn("Undo what still matches", 190, setup_undo_skip, false, 0, 0, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill) }
-                    group { move: 0, 0; show: setup_attention; Btn("Retry putting back", 150, setup_retry_rollback, true, 0, 0, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill) }
-                    group { move: 160, 0; show: setup_attention; Btn("Accept current state", 160, setup_accept, false, 0, 0, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill) }
-                    group { move: 466, 0; show: setup_has_lines and not setup_running; Btn("Dismiss", 90, setup_dismiss, false, 0, 0, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill) }
-                }
-                text setup_status { size: font_caption; color: ink_sub; width: 556; lines: 2 }
-            }
-            group { move: 566, 44; ScrollBar(tcol_s.scroll, tcol_s.content, 456, ui_ink_c: ink_c) }
         }
 
         // 8 ── Night Light & Power ─────────────────────────────
@@ -860,8 +779,6 @@ scene MacSettings {
     event style_text_pick ->
     event style_glass_pick ->
     event toggle_reduce_motion ->
-    event setup_owner_snapshot ->
-    event setup_owner_ack ->
     on submit custom_accent_edit { emit custom_accent_apply }
 
     //  the sidebar's list (filtered by the search), displays, shortcuts, sound outputs, updates
@@ -957,51 +874,6 @@ scene MacSettings {
     event look_apply ->
     event look_export ->
     event look_retry ->
-    //  Portable setup (General → "Portable setup"): the adapter is shell/settings_setup.luau
-    fact setup_open = false
-    fact setup_busy = false
-    fact setup_running = false
-    fact setup_ready = false
-    fact setup_reviewing = false
-    fact setup_blocked = false
-    fact setup_attention = false
-    fact setup_recovery = false
-    fact setup_recovery_clean = false
-    fact setup_unreadable = false
-    fact setup_waiting = false
-    fact setup_can_undo = false
-    fact setup_stale_undo = false
-    fact setup_has_lines = false
-    fact setup_review_count = 0
-    fact setup_export_count = 0
-    text setup_document = ""
-    text setup_status = ""
-    text setup_banner = ""
-    text setup_lines_title = ""
-    model setup_export_rows max 4 { id: number; name: text; sub: text; on: bool }
-    model setup_review_rows max 4 { id: number; name: text; sub: text; on: bool; avail: bool }
-    model setup_steps max 4 { name: text; state: text; tone: number }
-    model setup_lines max 16 { kind: number; text: text }
-    event setup_show ->
-    event setup_hide ->
-    event setup_export_toggle ->
-    event setup_review_toggle ->
-    event setup_export ->
-    event setup_review_import ->
-    event setup_cancel ->
-    event setup_apply ->
-    event setup_undo ->
-    event setup_undo_skip ->
-    event setup_retry ->
-    event setup_retry_rollback ->
-    event setup_accept ->
-    event setup_recover_rollback ->
-    event setup_recover_keep ->
-    event setup_recheck ->
-    event setup_aside ->
-    event setup_dismiss ->
-    event setup_widgets_reply ->
-    let setup_has_banner = setup_recovery or setup_waiting or setup_unreadable or setup_blocked
     fact quiet_enabled = false
     fact quiet_start = 1320
     fact quiet_end = 420
@@ -1138,30 +1010,6 @@ scene MacSettings {
         group { move: 360, 2
             Chip(pick(a.mode, "Normal", "No banner", "Muted"), a.mode > 0, quiet_app_cycle, a.idx, 184, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
         }
-    }
-
-    //  A row of the portable-setup lists: a whole-row zone with a drawn switch (the event needs the row's id).
-    component SetupToggleRow(r: record, dim: bool, tap: event) {
-        size: 520, 36
-        opacity: if(dim, 0.45, 1)
-        zone box hit { from: 0, 0; size: 520, 36; corner: radius_row; cursor: pointer; label: r.name; active: not dim }
-        on press hit { emit tap(r.id) }
-        on press right hit { }
-        text r.name { at: 4, 11; anchor: left center; size: font_body; weight: 600; color: ink_c; width: 440; lines: 1 }
-        text r.sub { at: 4, 26; anchor: left center; size: font_caption; color: ink_sub; width: 440; lines: 1 }
-        box { from: 520 - switch_w, (36 - switch_h) / 2; size: switch_w, switch_h; corner: switch_h / 2; color: if(r.on, accent_c, switch_off) }
-        box { from: if(r.on, 520 - switch_knob_w - switch_inset, 520 - switch_w + switch_inset), (36 - switch_h) / 2 + switch_inset; size: switch_knob_w, switch_h - switch_inset * 2; corner: switch_h / 2 - switch_inset; color: on_accent }
-    }
-
-    component SetupStepRow(s: record) {
-        size: 520, 28
-        text s.name { at: 4, 14; anchor: left center; size: font_body; color: ink_c; width: 360; lines: 1 }
-        text s.state { at: 520, 14; anchor: right center; size: font_caption; weight: 600; color: pick(s.tone, ink_sub, ok_c, warn_c, danger_c); width: 150; lines: 1; align: right }
-    }
-
-    component SetupLineRow(l: record) {
-        size: 556, 16
-        text l.text { at: 0, 8; anchor: left center; size: font_caption; weight: if(l.kind == 0, 700, 400); color: pick(l.kind, ink_c, ink_c, warn_c, danger_c, ink_sub); width: 556; lines: 1 }
     }
 
     component LookRow(r: record) {
@@ -1340,11 +1188,6 @@ scene MacSettings {
     on key Up while look_open { emit look_step(-1) }
     on key Down while look_open { emit look_step(1) }
     on key Escape while look_open { emit look_close }
-    on change setup_open while setup_open { blur }
-    on key Escape while setup_open and not setup_running { emit setup_hide }
-    on submit setup_document { emit setup_review_import }
-    on key Ctrl+Return while setup_reviewing { emit setup_apply }
-    on key Ctrl+KP_Enter while setup_reviewing { emit setup_apply }
     on submit look_name { emit look_save }
     on submit look_document { emit look_preview }
     on key Ctrl+Return while look_open and look_preview { emit look_apply }
@@ -1375,9 +1218,9 @@ scene MacSettings {
     on key Tab while settings_search { emit settings_search_step(1); focus side_q }
     on key Shift+Tab while settings_search { emit settings_search_step(-1); focus side_q }
     on key Escape while settings_search { emit settings_search_clear }
-    on key Escape while not settings_search and not reset_review and not pin_edit and not display_pending and not look_open and not quiet_edit and not shortcut_open and not setup_open { open = false }
+    on key Escape while not settings_search and not reset_review and not pin_edit and not display_pending and not look_open and not quiet_edit and not shortcut_open { open = false }
     on key Escape while reset_review { emit reset_appearance_cancel }
     //  Up / Down walk the sidebar (one tab at a time, stopping at the ends); the search field and every sub-flow keep their own keys
-    on key Down while open and not settings_search and not reset_review and not pin_edit and not display_pending and not look_open and not quiet_edit and not shortcut_open and not setup_open and tab < 7 { emit pick_cat(tab + 1) }
-    on key Up while open and not settings_search and not reset_review and not pin_edit and not display_pending and not look_open and not quiet_edit and not shortcut_open and not setup_open and tab > 0 { emit pick_cat(tab - 1) }
+    on key Down while open and not settings_search and not reset_review and not pin_edit and not display_pending and not look_open and not quiet_edit and not shortcut_open and tab < 7 { emit pick_cat(tab + 1) }
+    on key Up while open and not settings_search and not reset_review and not pin_edit and not display_pending and not look_open and not quiet_edit and not shortcut_open and tab > 0 { emit pick_cat(tab - 1) }
 }
