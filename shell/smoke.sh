@@ -14,7 +14,14 @@ wanted() {
     local label; for label in "${selected[@]}"; do [ "$label" = "$1" ] && return 0; done
     return 1
 }
-say() { "$B" --say "$@" 2>&1 | head -1; }
+say() {      # a scene that is busy painting can miss the first ask ("? the render does not answer"): ask again
+    local out try
+    for try in 1 2 3 4; do
+        out=$("$B" --say "$@" 2>&1 | head -1)
+        case "$out" in "?"*) sleep 0.6 ;; *) break ;; esac
+    done
+    printf '%s\n' "$out"
+}
 err0=$(grep -ciE "runtime error|panic|thread .* panicked" "$L" 2>/dev/null); err0=${err0:-0}
 check() {      # check <label> <command to open> <expected cur>
     local label="$1" cmd="$2" want="$3"
@@ -24,6 +31,10 @@ check() {      # check <label> <command to open> <expected cur>
         eval "$cmd" >/dev/null 2>&1
         sleep 1.6
         cur=$(say panels 'get cur'); open=$(say panels 'get open')
+        for _ in 1 2 3 4 5 6; do      # a panel opens after a `niri msg` round trip: on a busy machine that takes longer
+            [ "$open" = true ] && [ "$cur" = "$want" ] && break
+            sleep 1; cur=$(say panels 'get cur'); open=$(say panels 'get open')
+        done
         [ "$open" = true ] && [ "$cur" = "$want" ] && break
         say panels "emit close" >/dev/null; sleep 1
     done
@@ -53,11 +64,26 @@ check "session menu"    "$B --say topbar 'emit open_session'" 11
 check "session dialog"  "$B --say topbar 'emit set_kind 0'; $B --say topbar 'emit open_panel 5'" 11
 # updates has no hotkey: ask the owner directly
 check "updates"         "$B --say panels 'emit show 16'" 16
-# settings (its own window)
+# settings: panel 30, the window the frame draws; it must also say it is open to its own owner scene
+check "settings"        "$B --say topbar 'emit open_panel 4'" 30
 if wanted settings; then
 "$B" --say topbar "emit open_panel 4" >/dev/null 2>&1; sleep 1.6
-if [ "$(say settings 'get open')" = true ]; then echo "ok    settings"; else echo "FAIL  settings"; fail=1; fi
-"$B" --say settings "fact open false" >/dev/null 2>&1
+for _ in 1 2 3 4 5 6; do [ "$(say settings 'get open')" = true ] && break; sleep 1; done
+for _ in 1 2 3 4 5 6; do [ "$(say settings 'get open')" = true ] && break; sleep 1; done
+if [ "$(say settings 'get open')" = true ]; then echo "ok    settings owner knows it is open"; else echo "FAIL  settings owner open=$(say settings 'get open')"; fail=1; fi
+say panels "emit close" >/dev/null; sleep 0.8
+for _ in 1 2 3 4; do [ "$(say settings 'get open')" = false ] && break; sleep 1; done
+if [ "$(say settings 'get open')" = false ]; then echo "ok    settings owner knows it closed"; else echo "FAIL  settings owner still open"; fail=1; fi
+# the keyboard path (Keys scene -> k_* event -> the frame's rule -> Settings): only in the rig, where wtype reaches the nested niri
+if [ -n "${BESKAR_RIG:-}" ] && command -v wtype >/dev/null 2>&1; then
+    "$B" --say settings "emit pick_cat 0" >/dev/null 2>&1
+    "$B" --say topbar "emit open_panel 4" >/dev/null 2>&1; sleep 1.6
+    for _ in 1 2 3 4 5 6; do [ "$(say settings 'get open')" = true ] && break; sleep 1; done
+    sleep 0.8; wtype -k Down; sleep 1.2
+    if [ "$(say settings 'get tab')" = 1 ]; then echo "ok    settings: Down walks the tabs"; else echo "FAIL  settings: Down left tab=$(say settings 'get tab')"; fail=1; fi
+    wtype -k Escape; sleep 1.2
+    if [ "$(say panels 'get open')" = false ]; then echo "ok    settings: Escape closes"; else echo "FAIL  settings: Escape did not close"; fail=1; say panels "emit close" >/dev/null; sleep 0.8; fi
+fi
 fi
 err1=$(grep -ciE "runtime error|panic|thread .* panicked" "$L" 2>/dev/null); err1=${err1:-0}
 if [ "$err1" -gt "$err0" ]; then echo "FAIL  $((err1 - err0)) new error(s) in $L:"; grep -iE 'runtime error|panic' "$L" | tail -3 | cut -c1-200; fail=1; else echo "ok    no new errors in the log"; fi

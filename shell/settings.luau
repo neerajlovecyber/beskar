@@ -6,6 +6,9 @@
 -- the scenes of their OWN process that do not read Settings' facts by name (everything in `desktop` does): they are told by `say`
 local THEMED = { "settings", "capture", "lock", "widgets" }
 
+local fields = require("keys_text")        -- the nine text fields are the Keys scene's (keys.plm); every other text is ours
+local Open = require("settings_open")
+
 local function say(scene, words)
     pcall(sys.call, "say", scene, words)
 end
@@ -184,7 +187,6 @@ local function extract_current()
     end)
 end
 
-on("set_screen", function(i) fact.open_screen = tonumber(i) or 0 end)
 on("set_pal_src", function(path)
     text.pal_src = path or ""
     if fact.accent_auto == true then extract_palette(path) end
@@ -321,7 +323,7 @@ require("settings_quiet")(changed_pref, preference_store.ready)
 
 local function load_prefs()
     preference_store.load("prefs", function(result)
-        for name, v in pairs(preferences.to_facts("prefs", result.value)) do if name == "frame_output_name" then text.frame_output_name = v; text.frame_output_edit = v else fact[name] = v end end
+        for name, v in pairs(preferences.to_facts("prefs", result.value)) do if name == "frame_output_name" then text.frame_output_name = v; fields.frame_output_edit = v else fact[name] = v end end
         push_prefs()
         finish_preferences()
         after(3000, push_prefs)
@@ -384,7 +386,7 @@ end)
 
 on("custom_accent_apply", function()
     if not preference_store.ready() then return end
-    local r, g, b = Style.parse_hex(text.custom_accent_edit or "")
+    local r, g, b = Style.parse_hex(fields.custom_accent_edit or "")
     if not r then text.custom_accent_status = "Enter a solid colour as #RRGGBB or #RGB"; return end
     fact.custom_accent, fact.accent_auto = r * 65536 + g * 256 + b, false
     broadcast_theme()
@@ -474,7 +476,7 @@ for _, setting in ipairs({ {"bar_left_order_pick", "bar_left_order", 1}, {"bar_r
 end
 on("frame_output_save", function()
     if not preference_store.ready() then return end
-    local name = tostring(text.frame_output_edit or ""):match("^%s*(.-)%s*$")
+    local name = tostring(fields.frame_output_edit or ""):match("^%s*(.-)%s*$")
     if #name > 64 or (name ~= "" and not name:match("^[%w_.:+%-]+$")) then
         text.frame_output_status = "Use an output name, for example HDMI-A-1"; return
     end
@@ -500,7 +502,7 @@ on("toggle_apps", function()
     end
 end)
 on("toggle_widgets", function() fact.pref_widgets = not b(fact.pref_widgets); changed_pref() end)
-on("widgets_edit", function() fact.open = false; say("widgets", "emit edit_toggle") end)
+on("widgets_edit", function() Open.close(); say("widgets", "emit edit_toggle") end)
 on("widgets_reset", function() say("widgets", "emit w_reset") end)
 on("toggle_tray", function() fact.pref_tray = not b(fact.pref_tray); changed_pref() end)
 on("toggle_dock_auto", function() fact.pref_dock_auto = not b(fact.pref_dock_auto); changed_pref() end)
@@ -700,7 +702,7 @@ local all_binds, bind_view, boff = {}, {}, 0
 local MAX_BINDS = 9
 
 local function paint_binds(reset)
-    bind_view = require("shortcuts").search(all_binds, text.bind_q or "")
+    bind_view = require("shortcuts").search(all_binds, fields.bind_q or "")
     if reset then boff = 0 end
     boff = math.max(0, math.min(boff, math.max(0, #bind_view - MAX_BINDS)))
     local rows = {}
@@ -720,7 +722,7 @@ local shortcut_controller = require("settings_shortcuts")(actions, function(rows
     paint_binds(true)
 end)
 local function load_binds() shortcut_controller.load() end
-on("text:bind_q", function() paint_binds(true) end)
+on("text:Keys.bind_q", function() paint_binds(true) end)
 on("bind_scroll", function(wheel)
     boff = boff + ((tonumber(wheel) or 0) > 0 and -1 or 1)
     paint_binds(false)
@@ -748,10 +750,10 @@ on("set_tab", choose_tab)
 on("pick_cat", function(v) fact.setting_target = 0; fact.reset_review = false; choose_tab(v) end)
 local settings_search = require("settings_search")(actions, choose_tab)
 on("fact:tab", tab_changed)
-on("fact:open", function(v)
-    if v == true or v == 1 then
+Open.on(function(v)
+    if v then
         local t = tonumber(fact.tab) or 0
-        text.side_q = ""
+        fields.side_q = ""
         text.pane_title = TITLES[t] or "Settings"
         if t == 1 then refresh_displays() elseif t == 5 then load_binds() end
         apply_mode(false)
@@ -796,7 +798,7 @@ every(60000, function()
 end)
 
 local function session(kind)
-    fact.open = false
+    Open.close()
     after(250, function()
         emit("Topbar.set_kind", tonumber(kind) or 0)
         emit("Topbar.open_panel", 5)
@@ -805,7 +807,7 @@ end
 on("session_restart", function() session(1) end)
 on("session_off", function() session(0) end)
 on("session_lock", function()
-    fact.open = false
+    Open.close()
     after(250, function() say("lock", "fact locked true") end)
 end)
 
@@ -816,7 +818,9 @@ on("theme_sync", function()
     push_prefs()
 end)
 
-require("exclusive")("settings")
+on("pin_select", function(v) fact.pin_sel = tonumber(v) or 0 end)
+on("reset_sel_flip", function() fact.reset_sel = 1 - (tonumber(fact.reset_sel) or 0) end)
+on("display_sel_flip", function() fact.display_sel = 1 - (tonumber(fact.display_sel) or 0) end)
 
 -- ── who is logged in: the full name if the account has one, else the login name ──
 local function load_user_name()

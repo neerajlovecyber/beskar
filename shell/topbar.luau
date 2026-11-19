@@ -10,7 +10,7 @@ local hooks = require("topbar_hooks")               -- every handler registered 
 local base_on = on
 local function on(name, fn) hooks.handlers[name] = fn; return base_on(name, fn) end
 
-local ALIAS = { settings = "Settings", panels = "Panels" }       -- scenes of `desktop` an event can be sent to by name
+local ALIAS = { panels = "Panels" }       -- scenes of `desktop` an event can be sent to by name
 local function send_toggle(panel)
     if ALIAS[panel] then emit(ALIAS[panel] .. ".toggle") else pcall(sys.call, "say", panel, "emit toggle") end
 end
@@ -20,6 +20,11 @@ local function toggle(panel)
     end
 end
 
+
+-- the account picture of the Settings window (common/settings_panel.plm): an `image` needs a text of the scene that draws it
+local function pull_avatar() text.stg_avatar_path = text["Settings.avatar_path"] or "" end
+on("text:Settings.avatar_path", pull_avatar)
+pull_avatar()
 
 -- ── panels that grow out of an island ───────────────────────────
 -- The glass is drawn by this scene (one shape per island, driven by the facts `rp_*` right, `cp_*` centre); the
@@ -144,9 +149,7 @@ local OUTPUT_NAMES
 local function overlay_screen(s, name)
     local n = OUTPUT_NAMES and OUTPUT_NAMES()[s + 1] or ""
     emit("Panels.set_screen", { s = s, name = n })
-    if name == "settings" then
-        emit("Settings.set_screen", s)               -- Settings' sheet has its own `open_screen`
-    elseif name and not (MERGED[name] or DOCK[name]) then
+    if name and not (MERGED[name] or DOCK[name]) then
         pcall(sys.call, "say", name, "fact open_screen " .. s)         -- the capture picker (its own process)
     end
 end
@@ -563,18 +566,8 @@ local function open_panel(n)
             emit("Panels.toggle", OVERLAY[name])
             return
         end
-        local function go()
-            overlay_screen(s, name)
-            send_toggle(name)
-        end
-        if name == "settings" and (fact["Panels.open"] == true or fact["Panels.open"] == 1) then
-            -- Settings opened FROM a panel (Spotlight, the Control Center…): close the panel first and let its closing
-            -- animation finish, or the old panel lingers over the new window, dimming it
-            emit("Panels.close")
-            after(260, go)
-        else
-            go()
-        end
+        overlay_screen(s, name)          -- (the capture picker: its own scene)
+        send_toggle(name)
     end
     monitor_of_click(function(s)
         if name == "capture" then
@@ -608,13 +601,9 @@ local function show_dock_on_menu_monitor(id)        -- (the session dialog grows
     overlay_screen(s)
     emit("Panels.show", id)
 end
-local function show_on_menu_monitor(name)
-    overlay_screen(tonumber(fact.open_screen) or 0, name)
-    emit(ALIAS[name] .. ".show")           -- only Settings is opened this way
-end
 local PM = {
-    [1] = function() emit("Settings.set_tab", 6); show_on_menu_monitor("settings") end,         -- About This PC
-    [2] = function() emit("Settings.set_tab", 0); show_on_menu_monitor("settings") end,         -- System Settings
+    [1] = function() emit("Settings.set_tab", 6); show_dock_on_menu_monitor(30) end,         -- About This PC
+    [2] = function() emit("Settings.set_tab", 0); show_dock_on_menu_monitor(30) end,         -- System Settings
     [8] = function() say("widgets", "emit edit_toggle") end,                                     -- Edit Widgets…
     [9] = function()
         hooks.call("prepare_menu")

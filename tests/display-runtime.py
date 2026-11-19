@@ -97,9 +97,18 @@ shutil.copytree(REPO / "assets/icons", base / "assets/icons")
 (home / ".config/beskar/shell-dir").write_text(str(base) + "\n")
 
 # owners other than Settings are stubs (no sessions, no notifications, no audio, no panels)
-for name in ("panels", "topbar", "dialogs", "notifications", "system", "activities"):
+for name in ("topbar", "dialogs", "notifications", "system", "activities"):
     (scene_dir / (name + ".luau")).write_text("-- isolated stub\n")
-(scene_dir / "panels.plm").write_text('scene Panels { text panel_mon = "winit"; event close; }')
+# Settings is panel 30 of the Panels owner (the frame draws its window): a Panels stub that keeps `open` / `cur` like the real owner
+(scene_dir / "panels.luau").write_text(
+    'on("close", function() fact.open = false end)\n'
+    'on("close_id", function(id) if tonumber(fact.cur) == tonumber(id) then fact.open = false end end)\n')
+(scene_dir / "panels.plm").write_text('scene Panels { text panel_mon = "winit"; fact open = false; fact cur = 0; event close ->; event close_id ->; }')
+# the Keys scene's texts, as stubs (the real one needs the frame)
+(scene_dir / "keys.luau").write_text("-- isolated stub\n")
+(scene_dir / "keys.plm").write_text(
+    'scene Keys { text side_q = ""; text bind_q = ""; text look_name = ""; text look_document = ""; text quiet_from = ""; text quiet_to = ""; '
+    'text shortcut_key = ""; text custom_accent_edit = ""; text frame_output_edit = ""; event set_text ->; }')
 (scene_dir / "topbar.plm").write_text(
     "scene Topbar { event close_menu; event open_panel ->; event request_dock_pins ->; event dock_move_pin ->; "
     "surface { size: full, full; level: bottom; anchor: top_left } "
@@ -114,7 +123,7 @@ for name in ("panels", "topbar", "dialogs", "notifications", "system", "activiti
 (scene_dir / "desktop.plm").write_text("".join(
     f'import scene "{n}.plm" as {a}\n' for n, a in
     [("panels", "Panels"), ("topbar", "Topbar"), ("dialogs", "Dialogs"), ("notifications", "Notifications"),
-     ("system", "System"), ("activities", "Activities"), ("settings", "Settings")]) + "scene Desktop { }\n")
+     ("system", "System"), ("activities", "Activities"), ("keys", "Keys"), ("settings", "Settings")]) + "scene Desktop { }\n")
 (root / "nested.kdl").write_text('output "winit" { scale 1.0; }\nprefer-no-csd\nhotkey-overlay { skip-at-startup; }\n')
 
 # harmless stand-ins for everything else Settings can run
@@ -194,6 +203,23 @@ def say(command):
     return r.stdout.strip()
 
 
+def panels(command):
+    r = subprocess.run([BINARY, "--say", "panels", command], env=env, text=True, capture_output=True, timeout=20)
+    if r.returncode:
+        raise subprocess.CalledProcessError(r.returncode, command, r.stdout, r.stderr)
+    return r.stdout.strip()
+
+
+def open_window():
+    """What the frame does for Settings (panel 30): the Panels owner says it is open."""
+    panels("fact cur 30")
+    panels("fact open true")
+
+
+def close_window():
+    panels("fact open false")
+
+
 def get(name):
     try:
         return say("get " + name)
@@ -216,7 +242,15 @@ def wait_get(name, value, seconds=10):
 
 
 def key(*args):
-    subprocess.run(["wtype", *args], env=env, check=True, timeout=10)
+    """The frame's rules (common/settings_panel.plm) turn the keys of the Keep / Revert prompt into these events; the key path itself
+    (Keys scene -> k_* event -> rule) is covered by shell/smoke.sh in the rig."""
+    names = [a for a in args if a not in ("-M", "-m", "shift")]
+    if names[:2] == ["-k", "Return"]:
+        say("emit display_activate")
+    elif names[:2] == ["-k", "Escape"]:
+        say("emit display_revert")
+    elif names[:2] == ["-k", "Tab"] or names[:2] == ["-k", "Left"] or names[:2] == ["-k", "Right"]:
+        say("emit display_sel_flip")
     time.sleep(0.2)
 
 
@@ -295,7 +329,7 @@ def reset(timeout=15, delay=None):
             scene.kill()
             scene.wait(timeout=5)
         start()
-    say("emit close")
+    close_window()
     wait_get("open", "false")
     show_displays()
 
@@ -303,7 +337,7 @@ def reset(timeout=15, delay=None):
 def show_displays(pick=0):
     """Open Settings on Displays; Settings reads the (fake) outputs itself."""
     before = len(niri_calls())
-    say("emit show")
+    open_window()
     wait_get("open", "true")
     say("emit set_tab 0")
     say("emit set_tab 1")
@@ -447,7 +481,7 @@ def s_close_reverts_now():
     reset()
     begin_scale(3)
     t0 = time.monotonic()
-    say("emit close")
+    close_window()
     wait_get("display_pending", "false", 8)
     check(time.monotonic() - t0 < 4, "closing Settings reverts at once (not after the 15 s)")
     j = journal()
@@ -462,7 +496,7 @@ def s_close_while_beginning():
     say("emit disp_scale 3")
     time.sleep(0.4)                                  # the apply is in flight (fake niri sleeps)
     check(get("display_pending") == "false", "not pending yet")
-    say("emit close")
+    close_window()
     wait_get("open", "false")
     until(lambda: (journal() or {}).get("state") in ("reverted", "kept", "pending"), 10, "begin finished")
     wait_get("display_pending", "false", 10)
@@ -485,7 +519,7 @@ def s_settings_crash_recovery():
     check(time.monotonic() - t0 < 6, "far sooner than the 15 s confirmation window")
     until(lambda: not alive(wd), 5, "watchdog exited")
     start()                                          # a fresh Settings
-    say("emit show")
+    open_window()
     wait_get("open", "true")
     check(get("display_pending") == "false" and get("display_busy") == "false", "the restarted Settings shows no modal")
     check(scale() == 1.0, "display stays restored")

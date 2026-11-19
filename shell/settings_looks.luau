@@ -1,4 +1,5 @@
 -- Settings owns applying appearance. This adapter keeps the named-look store and staged import UI together.
+local text = require("keys_text")        -- the text fields are the Keys scene's
 return function(P, host)
     local ctl, selected, top, preview, armed = nil, 0, 0, nil, nil
     local rows = {}
@@ -95,7 +96,7 @@ return function(P, host)
         end
         paint()
     end)
-    on("text:look_document", function() clear_preview(); status("") end)
+    on("text:Keys.look_document", function() clear_preview(); status("") end)
     on("look_apply", function()
         if not preview then return end
         local token = preview.token

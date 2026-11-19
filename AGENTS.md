@@ -14,7 +14,7 @@ The shell is **two pleamar processes** under one supervisor (`shell/supervise.sh
 
 | Process | What it is |
 | :--- | :--- |
-| `shell/desktop.plm` | `import scene` of everything below, in ONE process: the frame, the panels, Settings, the owners, the wallpaper and the widgets. |
+| `shell/desktop.plm` | `import scene` of everything below, in ONE process: the frame (which draws every panel, Settings included), the owners, the wallpaper and the widgets. |
 | `shell/lock.plm` | The lock screen, its OWN process on purpose: if the desktop crashes while the session is locked there must still be a locker. Never test it against the live session (use a nested niri). |
 
 On demand: `shell/capture.plm` (the capture picker; `start.sh capture-ensure` starts it, it quits itself when idle).
@@ -23,14 +23,14 @@ morphs, because the wallpaper and widgets are repainted with it. To go back, rev
 
 | Scene | Role |
 | :--- | :--- |
-| `topbar.plm` + `topbar.luau` | **The frame**: one full-screen surface per monitor (`screens: each`) that draws the glass (ring, three top islands, dock island) AND the content of every panel. Panels are parts it includes (`common/cc_panel.plm`, `updates_panel.plm`, `info_panels.plm`, `timer_panel.plm`, `personal_editor.plm`, `dock_panels.plm`, `dialog_panels.plm`, `window_panels.plm`, `notice_view.plm`); their logic is loaded by `topbar.luau` through ONE panel client (`cc.luau`, `updates_panel.luau`, `info_panels.luau`, `dock_panels.luau`, `dialog_panels.luau`, `window_panels.luau`, `session_menu.luau`). |
+| `topbar.plm` + `topbar.luau` | **The frame**: one full-screen surface per monitor (`screens: each`) that draws the glass (ring, three top islands, dock island) AND the content of every panel. Panels are parts it includes (`common/cc_panel.plm`, `updates_panel.plm`, `info_panels.plm`, `timer_panel.plm`, `personal_editor.plm`, `dock_panels.plm`, `dialog_panels.plm`, `window_panels.plm`, `settings_panel.plm`, `notice_view.plm`); their logic is loaded by `topbar.luau` through ONE panel client (`cc.luau`, `updates_panel.luau`, `info_panels.luau`, `dock_panels.luau`, `dialog_panels.luau`, `window_panels.luau`, `session_menu.luau`). |
 | `frame_dock.luau`, `frame_sensors.luau` | Split out of `topbar.luau`: the dock (pins, running apps, thumbnails; receives the frame's recording `on` and a `wins()` getter, returns `build_dock` and the app-name helpers) and the polled sensors (charger card, privacy dots). Pattern for more splits: `return function(env) … end` with what the frame owns passed in `env`. |
 | `keys.plm` + `keys.luau` | The keyboard and the panels' text fields (see **Keyboard**). Imported AFTER the frame. |
 | `panels.plm` + `panels.luau` | Owner of which panel is open (`open`, `cur`, `panel_h`, `panel_mon`, `open_screen`, `fresh`). Everyone else asks with typed events (`Panels.show`, `close`, `height`…). |
 | `system.plm` + `system.luau` | The system services held ONCE (battery, network, audio volume/muted, brightness, media with the player controls). Others read `System.bat.percent`, `System.net.online`, `System.sound.volume`, `System.is_playing`… and never declare those services themselves. |
 | `weather`, `activities` (the timer), `personal` (notes / to-dos) | Headless owners, the only writers of their data (see **Data owners**). |
 | `notifications.plm` + `notif.luau` | The notification server and owner (history in `~/.local/share/pleamar/notifications/`, DND, quiet rules). It has NO surface of its own: the frame draws the centre and the banner by reading its models by name. |
-| `settings.plm` + `settings.luau` | The Settings window (a single surface that follows `Panels.panel_mon`). |
+| `settings.plm` + `settings.luau` | The Settings OWNER: the look, the preferences, the saved files and every Settings event. It has NO surface: the window is panel 30 of the frame (`common/settings_panel.plm`, see **Settings**). |
 | `wallpaper.plm`, `widgets.plm` | Per-monitor surfaces (`level: background` / `bottom`) inside the desktop process. |
 | `common/` | Shared: `theme.plm` (part), `geometry.plm`, `icons.plm`, `ui.plm`, `buttons.plm`, `calendar.plm`, `scroll.plm` (libraries), the panel parts above, `morph_core.plm`, `palette.plm`. |
 | `shell/*.sh` | `start.sh`, `supervise.sh`, `migrate.sh`, `smoke.sh`, `rig.sh`, `verify.sh`, `release.sh`, `runtime.sh`, `appthemes.sh`, `nightlight.sh`, `idle.sh`. |
@@ -78,10 +78,13 @@ the new unit by its absolute path. Never run `start.sh stop` / `./beskar uninsta
   keyboard while a panel is open and is click-through except its fields. It forwards every key the panels use to the frame as
   an event (`on key Down` -> `Topbar.k_down`, `on keyup Return` -> `Topbar.ku_return`, focus loss -> `Topbar.k_blur`); the
   frame's rules are `on k_down while Panels.cur == N and screen.index == 0`. It owns the text fields (`query`, `clip_q`,
-  `wb_name`, `password`, `wq`, `pe_draft`, `pe_new_task`, `tm_duration`, `wifi_pw`), drawn where the frame draws the panels;
+  `wb_name`, `password`, `wq`, `pe_draft`, `pe_new_task`, `tm_duration`, `wifi_pw`, and the nine of Settings: `side_q`, `bind_q`,
+  `look_name`, `look_document`, `quiet_from`, `quiet_to`, `shortcut_key`, `custom_accent_edit`, `frame_output_edit`), drawn where the frame
+  draws the panels (the Settings ones at the window's origin, `screen.width / 2 - 420, screen.height / 2 - 290`);
   a field's Enter is `Topbar.sub_<field>`. The frame's logic reads and writes them with `require("keys_text")` (reads
-  `Keys.<field>`, writes `Keys.set_text`, watch `on("text:Keys.<field>")`). Focus a field with `fld_req = N; fld_seq = fld_seq + 1`
-  in a rule or `require("topbar_hooks").focus("name")` in Luau. A new key in a panel: its forwarder in `keys.plm` plus the
+  `Keys.<field>`, writes `Keys.set_text`, watch `on("text:Keys.<field>")`; the Settings plugin does the same). Focus a field with
+  `fld_req = N; fld_seq = fld_seq + 1` in a rule (10 `side_q`, 11 `shortcut_key`, 12 `look_name`, 0 none) or
+  `require("topbar_hooks").focus("name")` in Luau. A new key in a panel: its forwarder in `keys.plm` plus the
   `event k_… ->` in `topbar.plm`. `keys.plm` is imported AFTER `topbar.plm`. **Never add a second surface to the Topbar scene**
   (pleamar then moves surface 0 and drops the frame copy on the second monitor). Remove the whole scene when upstream ships #156
   in an exp release (revert the Keys commit and watch the issue).
@@ -98,9 +101,12 @@ the new unit by its absolute path. Never run `start.sh stop` / `./beskar uninsta
 - **One focus ring**: `stroke: focus_stroke; color: ring_c` at 100 % everywhere (`ring_c` in `theme.plm`, `focus_stroke` in
   `geometry.plm`), never `focus_c` (a palette colour), `accent_c` or a literal width. `SelectCard` takes `ui_ring_c`. A selection
   that is not keyboard focus is `RowFrame`.
-- **Settings keyboard**: Up/Down walk the sidebar tabs (`emit pick_cat(tab ± 1)`) while no sub-flow (look, shortcut editor, quiet
-  apps, display Keep/Revert, pin editor, reset review) or the search field has the keys; Esc closes. The controls INSIDE a tab are
-  still pointer-only (idea: build on `settings_catalog.luau` + `setting_reveal`).
+- **Settings keyboard**: the rules are in `common/settings_panel.plm` (`on k_down while stg_k and stg_free …`): Up/Down walk the sidebar
+  tabs (`emit Settings.pick_cat(tab ± 1)`) while no sub-flow (look, shortcut editor, quiet apps, display Keep/Revert, pin editor, reset
+  review) or the search field has the keys; Esc closes. The controls INSIDE a tab are still pointer-only (idea: build on
+  `settings_catalog.luau` + `setting_reveal`). The two fields inside scrolling lists (`custom_accent_edit`, `frame_output_edit`) are
+  placed by the card's `y` in `settings_catalog.luau` minus the list's scroll (`stg_sc0` / `stg_sc4`): change a card's height and
+  both the catalog and `keys.plm` move.
 - The frame's logic cannot emit an event to ITSELF (not even unqualified): use `require("topbar_hooks").call(name, v)` /
   `.emit("Topbar.x", v)`, and register direct-call handlers with `Hooks.handlers[name] = fn` (`topbar.luau` records every handler
   it registers there; a module-scoped `on` is not recorded).
@@ -112,7 +118,8 @@ the new unit by its absolute path. Never run `start.sh stop` / `./beskar uninsta
   windows (Settings, the power menu). A scene that says to another needs `say:<scene>` in its `permissions`.
 - A panel opens ONLY through the frame (it picks the monitor): `--say topbar "emit open_panel N"` or `open_island_panel(name)`.
   `cur` ids: 1 Control Center, 2 notifications, 3 today, 4 spotlight, 5 wallpapers, 6 clipboard, 9 music, 10 widget bar,
-  11 session dialog, 12 polkit, 15 weather, 16 updates, 21 app switcher, 22 window overview, 24 welcome, 25 personal, 26 timer.
+  11 session dialog, 12 polkit, 15 weather, 16 updates, 21 app switcher, 22 window overview, 24 welcome, 25 personal, 26 timer,
+  30 Settings (island `st`: no shared glass, the window draws its own).
 - The frame grows the island's glass from facts (`cp_*`, `rp_*`, `bp_*`: on / screen / w / h) through springs and in the same
   `Shell` component places the panel's `…Content()` component over it: `show: Panels.cur == N and <spring> > 0.01 and
   <island>_screen == screen.index`, `move:` to the panel's origin, opacity from the spring and the glass having arrived, a `clip box`
@@ -134,7 +141,7 @@ the new unit by its absolute path. Never run `start.sh stop` / `./beskar uninsta
   declared loose at scene level (now in `keys.plm`).
 - One panel's design language (dock panels): HEADER at the top (`PanelHeader`), content in the middle, the SEARCH FIELD always at the
   BOTTOM (`PanelSearch`); never a search field at the top of a dock panel.
-- Settings opened FROM a panel goes through `topbar.luau`'s `open_it`, which closes the panel and starts Settings 260 ms later.
+- Settings opened from a panel (Spotlight, the Control Center, the power menu) is just `Panels.show(30)`: it replaces the panel shown.
 - Closing is quick, opening calm: the island springs `cv` / `bv` / `rv` are `layer`s (`up` ~calm, `down` ~quick).
 - The dock island's glass width while a bottom panel opens uses the VISIBLE dock width (`dw_shown`), or an auto-hidden dock made
   a narrow tower and a jump.
@@ -213,7 +220,15 @@ the new unit by its absolute path. Never run `start.sh stop` / `./beskar uninsta
 
 ## Feature notes
 
-- **Settings** (`settings.plm` + `.luau`): a sidebar with search and 8 tabs (Appearance, Displays, Sound, Notifications, Menu Bar &
+- **Settings** (`settings.plm` + `.luau` the OWNER, `common/settings_panel.plm` the WINDOW): the window is panel 30 of the Panels owner
+  and is drawn INSIDE the frame (840 x 580, centred, its own glass, fades and scales in). Like the notification centre it reads the
+  owner's facts / models / texts by name (`Settings.tab`, `Settings.cats`…) and asks with typed events (`emit Settings.pick_cat(…)`);
+  it writes none of them (an event for each write, e.g. `pin_select`, `reset_sel_flip`). `Settings.open` is only a mirror of
+  `Panels.open and Panels.cur == 30`, kept by `settings_open.luau` (`require("settings_open").on(fn)`: a logic's own fact write does
+  not come back through `on("fact:open")`). Open it with `--say topbar "emit open_panel 4"` (`start.sh settings`). It was a separate
+  surface until 2026-11 (a glass and a window); moving it in cost +659 zones (4183 -> 4842: four copies of the window), about +8 MB RSS at idle (239 -> 247) and
+  3-5 more slow frames per 8 panel opens (rig, back to back); GPU memory did not change. Contents: a
+  sidebar with search and 8 tabs (Appearance, Displays, Sound, Notifications, Menu Bar &
   Dock, Shortcuts, General, Night Light & Power; Wi-Fi, Bluetooth and wallpaper choice live in the Control Center and the picker).
   Components (`Card`, `ToggleRow`, `SliderRow`, `Seg`, `Chip`, `Btn`, `ActionRow`…) keep tabs short. `settings_catalog.luau` lists
   searchable controls (tab, y, h). Settings OWNS the prefs: the bar's (`pref_seconds`, `pref_weather`, `pref_tray`, `pref_dock_auto`,

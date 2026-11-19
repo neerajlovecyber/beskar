@@ -202,8 +202,8 @@ local function environment(reactive)
     function env.live_jobs() local n = 0; for _, j in ipairs(env.jobs) do if j.live then n = n + 1 end end; return n end
     function env.emit(event, ...) local fn = env.handlers[event]; assert(fn, "no handler for " .. event); return fn(...) end
     function env.type_query(q)
-        env.text.side_q = q                                    -- the runtime fires text:side_q on a USER edit
-        env.handlers["text:side_q"](q)
+        env.text.side_q = q                                    -- the runtime fires text:Keys.side_q on a USER edit
+        env.handlers["text:Keys.side_q"](q)
     end
     function env.rows() local out = {}; for i, r in ipairs(env.model.setting_matches or {}) do out[i] = r end; return out end
     function env.prefs_unchanged()
@@ -217,6 +217,7 @@ local function boot(reactive)
     local env = environment(reactive)
     -- install the globals the module expects
     _G.text, _G.fact, _G.model = env.text, env.fact, env.model
+    package.loaded["keys_text"] = env.text        -- the search field is the Keys scene's: the module reads / writes it through keys_text
     _G.on, _G.after, _G.cancel = env.on, env.after, env.cancel
     local function choose_tab(v) env.tab_calls[#env.tab_calls + 1] = v; env.fact.tab = tonumber(v) or 0 end
     package.loaded["settings_search"] = nil
@@ -258,7 +259,7 @@ do
         check(env.fact.settings_search == false and #env.rows() == 0, "blank query '" .. q:gsub("%s", "·") .. "' hides results")
     end
     env.text.side_q = nil
-    env.handlers["text:side_q"](nil)
+    env.handlers["text:Keys.side_q"](nil)
     check(env.fact.settings_search == false, "nil text is a blank query, not an error")
     env.type_query("  accent  ")
     check(env.fact.settings_search == true and env.rows()[1].name == "Accent colour", "surrounding whitespace is ignored")

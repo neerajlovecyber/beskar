@@ -1,4 +1,5 @@
 -- Settings-local search navigation. The search index is data, never a second settings owner.
+local text = require("keys_text")        -- the text fields are the Keys scene's
 return function(actions, choose_tab)
     local catalogue, search = require("settings_catalog"), require("spotlight_search")
     local matches, highlight_job = {}, nil
@@ -39,7 +40,7 @@ return function(actions, choose_tab)
         if row.setting_id then reveal(row.setting_id)
         else clear(); choose_tab(row.tab); fact.setting_target = 0 end
     end
-    on("text:side_q", update)
+    on("text:Keys.side_q", update)
     on("settings_search_step", function(delta)
         local step = tonumber(delta) or 1
         if step ~= step or step == math.huge or step == -math.huge then return end

@@ -36,6 +36,7 @@ scene MacTopBar {
     include "common/dock_panels.plm"            // Spotlight, the wallpaper strip, the clipboard, the widget bar
     include "common/dialog_panels.plm"          // the session dialog, polkit, welcome
     include "common/window_panels.plm"          // the app switcher and the overview
+    include "common/settings_panel.plm"         // the Settings window (panel 30; the Settings scene owns its data)
     surface {
         size: full, full
         anchor: top
@@ -63,7 +64,7 @@ scene MacTopBar {
     //  panels' text fields, and forwards every key the panels use as one of these events (`on key Down` -> `k_down`, `on keyup Return`
     //  -> `ku_return`, focus loss -> `k_blur`, a field's Enter -> `sub_<field>`). The rules below run once (`screen.index == 0`).
     //  A rule or the logic asks for a field with `fld_req` (1 wq · 2 pe_draft · 3 pe_new_task · 4 tm_duration · 5 query · 6 clip_q ·
-    //  7 wb_name · 8 password · 9 wifi_pw · 0 none) and `fld_seq + 1`; the Keys scene focuses it.
+    //  7 wb_name · 8 password · 9 wifi_pw · 10 side_q · 11 shortcut_key · 12 look_name · 0 none) and `fld_seq + 1`; the Keys scene focuses it.
     fact fld_req = 0
     fact fld_seq = 0
     event k_blur ->
@@ -130,6 +131,14 @@ scene MacTopBar {
     event sub_wb_name ->
     event sub_password ->
     event sub_wifi_pw ->
+    event sub_side_q ->
+    event sub_shortcut_key ->
+    event sub_look_name ->
+    event sub_look_document ->
+    event sub_quiet_from ->
+    event sub_quiet_to ->
+    event sub_custom_accent_edit ->
+    event sub_frame_output_edit ->
     fact priv_cam = false       // a program is using the camera (topbar.luau polls)
     fact priv_mic = false       // a program is recording from a microphone
     fact priv_scr = false       // niri is casting the screen or a window (topbar.luau polls `niri msg -j casts`)
@@ -829,7 +838,7 @@ scene MacTopBar {
 
         //  A click anywhere that is neither the panel nor a bar / dock button closes the open panel (as macOS does). It is
         //  declared BEFORE every button zone so those stay on top; the panels are separate surfaces above this one.
-        zone box outside_zone { from: 0, 0; size: screen.width, screen.height; active: (rp_on or (cp_on and cp_kind == 0) or (bp_on and not bp_keep)) }
+        zone box outside_zone { from: 0, 0; size: screen.width, screen.height; active: (rp_on or (cp_on and cp_kind == 0) or (bp_on and not bp_keep) or st_on) }
         on press outside_zone { emit outside_click }
         on press right outside_zone { emit outside_click }
 
@@ -900,6 +909,8 @@ scene MacTopBar {
             clip box { from: -60, Panels.panel_h - (dock_h + max(0, bph - dock_h) * bv) - 4; size: 1300, dock_h + max(0, bph - dock_h) * bv + 90 }
             OverviewContent()
         }
+        //  ── the Settings window: its own glass (no island), above everything else ──
+        SettingsWindow()
         //  ── the centre island's panels: weather, music, today, the timer, the Personal editor ──
         group {
             show: Panels.cur == 15 and cv > 0.01 and cp_screen == screen.index

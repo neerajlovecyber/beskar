@@ -1,4 +1,5 @@
 -- Settings edits saved hours; Activities owns temporary modes and Notifications owns delivery rules.
+local text = require("keys_text")        -- the text fields are the Keys scene's
 return function(changed, ready)
     local apps, selected, top = {}, 1, 0
     local function clock(n) return string.format("%02d:%02d", math.floor(n / 60), n % 60) end

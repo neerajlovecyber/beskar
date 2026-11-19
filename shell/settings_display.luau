@@ -50,7 +50,7 @@ return function(refresh)
     on("display_keep", function() settle(true) end)
     on("display_revert", function() settle(false) end)
     on("display_activate", function() settle(fact.display_sel == 1) end)
-    on("fact:open", function(value) if value == false and token then settle(false) end end)
+    require("settings_open").on(function(value) if value == false and token then settle(false) end end)
     return function(name, kind, requested)
         if busy or token then return end
         busy, fact.display_busy = true, true

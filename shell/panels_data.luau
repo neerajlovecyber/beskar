@@ -18,17 +18,19 @@ local panels = {
     timer = { id = 26, island = "cp", w = 420, scene = "topbar" },
     personal = { id = 25, island = "cp", w = 600, scene = "topbar" },
     welcome = { id = 24, island = "bp", w = 640, scene = "topbar", slot = 9 },
+    -- the Settings window: no island (the frame draws its own glass, `st_*` facts), opened from the monitor with the focus like the dock panels
+    settings = { id = 30, island = "st", w = 840, scene = "topbar", slot = 4, window = true },
 }
 
 local by_id, known, dock, merged = {}, {}, {}, {}
-local focus = { [4] = "settings", [11] = "capture" }
-local slots = { settings = 4, capture = 11 }
+local focus = { [11] = "capture" }
+local slots = { capture = 11 }
 for name, panel in pairs(panels) do
     panel.name = name
     by_id[panel.id] = panel
     if not panel.kind then
         known[panel.id] = true
-        if panel.island == "bp" then dock[name] = panel.id else merged[name] = true end
+        if panel.island == "bp" or panel.window then dock[name] = panel.id else merged[name] = true end
     end
     if panel.slot then
         focus[panel.slot] = name

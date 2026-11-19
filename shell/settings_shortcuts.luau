@@ -1,4 +1,5 @@
 -- Recursive include discovery and bounded editing of Beskar's own shortcut include.
+local text = require("keys_text")        -- the text fields are the Keys scene's
 return function(actions, publish)
     local S = require("shortcuts")
     local ctx, cfg, snapshot, busy = nil, nil, nil, false
@@ -41,7 +42,7 @@ return function(actions, publish)
         route = ((route - 1 + ((tonumber(d) or 0) < 0 and -1 or 1)) % #routes) + 1
         accepted = nil; fact.shortcut_conflict = false; paint_route()
     end)
-    on("text:shortcut_key", function() accepted = nil; fact.shortcut_conflict = false end)
+    on("text:Keys.shortcut_key", function() accepted = nil; fact.shortcut_conflict = false end)
     on("shortcut_save", function()
         if busy or not ctx or not fact.shortcut_editable then return end
         local key = text.shortcut_key or ""

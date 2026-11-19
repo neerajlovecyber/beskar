@@ -5,7 +5,9 @@
 -- sees it.
 local real = text
 local FIELDS = { wq = true, pe_draft = true, pe_new_task = true, tm_duration = true, query = true, clip_q = true,
-    wb_name = true, password = true, wifi_pw = true }
+    wb_name = true, password = true, wifi_pw = true,
+    side_q = true, bind_q = true, look_name = true, look_document = true, quiet_from = true, quiet_to = true, shortcut_key = true,
+    custom_accent_edit = true, frame_output_edit = true }
 local written = {}
 
 return setmetatable({}, {

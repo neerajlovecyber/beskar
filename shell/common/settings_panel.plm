@@ -1,0 +1,962 @@
+// The Settings window, drawn in the frame (topbar.plm, `Shell`) like every other panel: panel 30, no island, its own glass. The
+// Settings SCENE (settings.plm) is the owner only (facts, models, texts, events, logic, saved preferences and the look); this part
+// reads them by name and asks with typed events, as the notification centre does. Its nine text fields are the Keys scene's
+// (keys.plm: pleamar gives typing only to the first copy of a `screens: each` surface); the keys arrive as `k_*` events.
+//
+//   0 Appearance · 1 Displays · 2 Sound · 3 Notifications · 4 Menu Bar & Dock · 5 Shortcuts · 6 General · 8 Night Light & Power
+part SettingsPanel {
+    fact st_on = false          // the window is up (panel_open / panel_close of topbar.luau keep the island facts of every panel)
+    fact st_screen = 0          // the monitor it is on
+    fact st_w = 0
+    fact st_h = 0
+    fact stg_sc0 = 0            // the scroll of the Appearance and the Menu Bar lists: the Keys scene places two text fields by them
+    fact stg_sc4 = 0
+    text stg_avatar_path = ""   // a copy of Settings.avatar_path (topbar.luau): `image … from` needs a text of its own scene
+    image stg_avatar = from stg_avatar_path, 36, 36
+
+    let sg_sidebar_bg = if(dark_mode, if(skin == 2, #13151a, if(skin == 1, #11131c, #0d0f14)), if(skin == 2, #ebecee, if(skin == 1, #e4e6ee, #f0f2f7)))
+    let sg_border = card_stroke
+    let sg_border_op = card_stroke_op
+    let sg_stroke_c = card_stroke
+    let sg_stroke_op = card_stroke_op
+    //  a key goes to the window only on the monitor the Keys scene serves (the rules run once: `screen.index == 0`)
+    let stg_k = Panels.open and Panels.cur == 30 and screen.index == 0
+    //  no sub-flow and no search has the keys
+    let stg_free = not Settings.settings_search and not Settings.reset_review and not Settings.pin_edit and not Settings.display_pending and not Settings.look_open and not Settings.quiet_edit and not Settings.shortcut_open
+
+    // ==============================================================
+    // COMPONENTS
+    // ==============================================================
+    //  A rounded card, 556 wide; what goes between its braces is drawn inside.
+    component StgCard(h: number = row_detail_h) {
+        size: 556, h
+        CardBg(556, h, radius_card, ui_card_fill: card_fill, ui_card_stroke: card_stroke)
+        box { from: 0, 0; size: 556, h; corner: radius_card; stroke: 1; color: sg_border; opacity: sg_border_op }
+        children
+    }
+
+    component StgQuietAppRow(a: record) {
+        size: 556, control_h_large
+        RowFrame(556, control_h_large, if(a.sel, 1, 0), ui_accent_c: accent_c)
+        text a.app { at: inset_compact, control_h_large / 2; anchor: left center; size: font_body; color: ink_c; width: 330; lines: 1 }
+        group { move: 360, 2
+            Chip(pick(a.mode, "Normal", "No banner", "Muted"), a.mode > 0, Settings.quiet_app_cycle, a.idx, 184, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+        }
+    }
+
+    component StgLookRow(r: record) {
+        size: 556, control_h_large
+        RowFrame(556, control_h_large, if(r.sel, 1, 0), ui_accent_c: accent_c)
+        zone box hit { from: 0, 0; size: 556, control_h_large; cursor: pointer; label: r.name }
+        on press hit { emit Settings.look_pick(r.id) }
+        on press right hit { }
+        text r.name { at: inset_compact, control_h_large / 2; anchor: left center; size: font_body; weight: 600; color: ink_c; width: 180; lines: 1 }
+        text r.sub { at: 200, control_h_large / 2; anchor: left center; size: font_caption; color: ink_sub; width: 264; lines: 1 }
+        text r.tag { at: 544, control_h_large / 2; anchor: right center; size: font_caption; color: accent_c; width: 72; lines: 1; align: right }
+    }
+
+    //  A row with a button on its right.
+    component StgActionRow(title: text, sub: text, label: text, tap: event) {
+        size: 556, row_detail_h
+        CardBg(556, row_detail_h, radius_card, ui_card_fill: card_fill, ui_card_stroke: card_stroke)
+        box { from: 0, 0; size: 556, row_detail_h; corner: radius_card; stroke: 1; color: sg_border; opacity: sg_border_op }
+        text title { at: inset_card, space_20; anchor: left center; size: ts_body; weight: 600; color: ink_c; width: 400; lines: 1 }
+        text sub { at: inset_card, row_detail_h - space_16; anchor: left center; size: ts_micro; color: ink_sub; width: 400; lines: 1 }
+        group {
+            move: 556 - inset_card - 88, (row_detail_h - control_h) / 2
+            Btn(label, 88, tap, false, 0, 0, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+        }
+    }
+
+    //  A slider you can drag.
+    component StgSliderRow(title: text, level: number, set: event, kind: number, live: bool) {
+        size: 556, row_slider_h
+        CardBg(556, row_slider_h, radius_card, ui_card_fill: card_fill, ui_card_stroke: card_stroke)
+        box { from: 0, 0; size: 556, row_slider_h; corner: radius_card; stroke: 1; color: sg_border; opacity: sg_border_op }
+        text title { at: inset_card, space_20; anchor: left center; size: ts_body; weight: 600; color: ink_c }
+        text "{clamp(level, 0, 1) * 100, 0}%" { at: 556 - inset_card, space_20; anchor: right center; size: t_cap; color: ink_sub }
+        group { move: inset_card, row_slider_h - space_24; Slider(556 - inset_card * 2, level, set, if(live, accent_c, ink_sub), 10, 0, ui_slider_bg: slider_bg) }
+    }
+
+    //  Light / Dark / Auto thumbnail.
+    component StgModeThumb(n: number, label: text, base: color, panel_c: color, bar: color) {
+        size: 100, 78
+        box { from: 0, 0; size: 100, 60; corner: r_s; color: base }
+        group {
+            show: n == 2
+            box { from: 0, 0; size: 50, 60; corner: r_s; color: #f2f3f7 }
+        }
+        group {
+            show: n != 2
+            box { from: 6, 6; size: 88, 8; corner: 2; color: bar }
+            box { from: 6, 18; size: 26, 36; corner: 2; color: panel_c }
+            box { from: 36, 18; size: 58, 36; corner: 2; color: panel_c }
+        }
+        box { from: 0, 0; size: 100, 60; corner: r_s; stroke: if(Settings.appearance == n, 2.5, 1); color: if(Settings.appearance == n, accent_c, sg_border) }
+        text label { at: 50, 72; anchor: center center; size: ts_sub; weight: if(Settings.appearance == n, 600, 400); color: if(Settings.appearance == n, accent_c, ink_c) }
+        zone box hit { from: 0, 0; size: 100, 78; cursor: pointer }
+        on press hit { emit Settings.set_mode(n) }
+        on press right hit { }
+    }
+
+    component StgAccentCircle(idx: number, col: color) {
+        size: 28, 28
+        ellipse { at: 14, 14; radius: 11; color: col }
+        ellipse { at: 14, 14; radius: 13.5; stroke: 2; color: ink_c; opacity: if(accent == idx and not accent_auto and Settings.custom_accent < 0, 90%, 0%) }
+        zone box hit { from: 0, 0; size: 28, 28; corner: radius_card; cursor: pointer }
+        on press hit { emit Settings.choose_accent(idx) }
+        on press right hit { }
+    }
+
+    //  A display: pick it to change its scale and mode.
+    component StgDispTile(d: record) {
+        size: 270, 78
+        CardBg(270, 78, r_m, ui_card_fill: card_fill, ui_card_stroke: card_stroke)
+        box { from: 0, 0; size: 270, 78; corner: r_m; stroke: if(d.sel, 2, 1); color: if(d.sel, accent_c, sg_border); opacity: if(d.sel, 100%, sg_border_op) }
+        Sym("󰍹", 34, 39, 30, if(d.sel, accent_c, ink_sub))
+        text d.title { at: 66, 28; anchor: left center; size: ts_sub; weight: 600; color: ink_c; width: 190; lines: 1 }
+        text d.mode { at: 66, 48; anchor: left center; size: ts_micro; color: ink_sub; width: 190; lines: 1 }
+        text d.name { at: 66, 62; anchor: left center; size: ts_micro; color: ink_sub; width: 190; lines: 1 }
+        zone box hit { from: 0, 0; size: 270, 78; corner: r_m; cursor: pointer }
+        on press hit { emit Settings.disp_pick(d.index) }
+        on press right hit { }
+    }
+
+    component StgOutRow(o: record) {
+        size: 556, 44
+        box { from: 0, 0; size: 556, 44; corner: r_m; color: if(o.def, sel_bg, card_fill); opacity: if(o.def, 100%, card_fill_op) }
+        box { from: 0, 0; size: 556, 44; corner: r_m; stroke: if(o.def, 2, 1); color: if(o.def, accent_c, sg_border); opacity: if(o.def, 100%, sg_border_op) }
+        Sym("󰓃", 26, 22, 16, if(o.def, accent_c, ink_sub))
+        text o.name { at: 48, 22; anchor: left center; size: ts_sub; color: ink_c; width: 440; lines: 1 }
+        text "󰄬" { family: "JetBrainsMono Nerd Font Mono"; at: 530, 22; anchor: center center; size: font_title; color: accent_c; show: o.def }
+        zone box hit { from: 0, 0; size: 556, 44; corner: r_m; cursor: pointer }
+        on press hit { emit Settings.pick_out(o.index) }
+        on press right hit { }
+    }
+
+    component StgBindRow(b: record) {
+        size: 556, 40
+        box { from: 0, 0; size: 556, 40; corner: r_s; color: card_fill; opacity: card_fill_op * 70% }
+        text b.what { at: 16, 12; anchor: left center; size: ts_sub; color: ink_c; width: 280; lines: 1 }
+        text b.origin { at: 16, 30; anchor: left center; size: font_micro; color: ink_sub; width: 360; lines: 1 }
+        text b.keys { at: 540, 20; anchor: right center; size: ts_sub; weight: 600; color: accent_c; width: 240; lines: 1; align: right }
+    }
+
+    //  A wallpaper thumbnail: click to apply.
+    component StgSpecRow(label_t: text, val_t: text) {
+        size: 520, 22
+        text label_t { at: 0, 11; anchor: left center; size: ts_sub; weight: 600; color: ink_sub; width: 110 }
+        text val_t { at: 120, 11; anchor: left center; size: ts_sub; color: ink_c; width: 390; lines: 1 }
+    }
+
+    //  A category in the sidebar; `c.tint` picks the icon colour.
+    component StgPinOrderRow(p: record) {
+        size: 556, 44
+        RowFrame(556, 44, Settings.pin_sel == p.idx, ui_accent_c: accent_c)
+        text p.name { at: inset_card, 22; anchor: left center; size: font_body; color: ink_c; width: 400; lines: 1 }
+        zone box hit { from: 0, 0; size: 462, 44; cursor: pointer }
+        on press hit { emit Settings.pin_select(p.idx) }
+        on press right hit { }
+        row { at: 476, 8; gap: space_8
+            IconButton("󰁍", "Move left", Settings.pin_left, ink_c, ink_c, value: p.idx, enabled: p.mvl)
+            IconButton("󰁔", "Move right", Settings.pin_right, ink_c, ink_c, value: p.idx, enabled: p.mvr)
+        }
+    }
+
+    component StgSettingsSearchRow(r: record) {
+        size: 206, 44
+        RowFrame(206, 44, Settings.settings_search_sel == r.idx, ui_accent_c: accent_c)
+        text r.name { at: inset_compact, 8; size: font_secondary; color: ink_c; width: 182; lines: 1 }
+        text r.sub { at: inset_compact, 25; size: font_micro; color: ink_sub; width: 182; lines: 1 }
+        zone box hit { from: 0, 0; size: 206, 44; cursor: pointer }
+        on press hit { emit Settings.settings_search_pick(r.idx) }
+        on press right hit { }
+    }
+
+    component StgSidebarItem(c: record) {
+        size: 206, 30
+        prop hot = 0 ~quick
+        box { from: 0, 0; size: 206, 30; corner: r_s; color: ink_c; opacity: if(Settings.tab == c.idx, 0%, hot * 7%) }
+        box hit {
+            from: 0, 0
+            size: 206, 30
+            corner: radius_small
+            color: accent_c
+            opacity: if(Settings.tab == c.idx, 95%, 0%)
+            cursor: pointer
+        }
+        group {
+            move: 6, 4
+            box { from: 0, 0; size: 22, 22; corner: control_r; color: pick(c.tint, #5856d6, #0a84ff, #ff2d55, #ff453a, #8e8e93, #ff9f0a, #8e8e93, #30d158) }
+            Sym(c.icon, 11 - c.dx, 11, 15, tile_fg)
+        }
+        text c.name { at: 36, 15; anchor: left center; size: ts_body; weight: if(Settings.tab == c.idx, 600, 400); color: if(Settings.tab == c.idx, on_accent, ink_c) }
+        on enter hit { hot: 1 }
+        on leave hit { hot: 0 }
+        on press hit { emit Settings.pick_cat(c.idx) }
+        on press right hit { }
+    }
+
+    //  The window: 840 x 580, centred on the monitor, its own glass; it fades and scales in.
+    component SettingsWindow() {
+        prop stg_seen = 0 ~quick
+        prop stg_scale = 0.96 ~lively
+        layer stg_panel ~quick {
+            shown while Panels.open and Panels.cur == 30 and st_screen == screen.index { stg_seen: 1 ~quick; stg_scale: 1 ~lively }
+            gone                                                                 { stg_seen: 0 ~quick; stg_scale: 0.96 ~quick }
+        }
+        group {
+            show: stg_seen > 0.02
+            move: screen.width / 2 - 420, screen.height / 2 - 290
+            pivot: 420, 290
+            scale: stg_scale
+            opacity: stg_seen
+
+                // ── window glass ─────────────────────────────────────────
+                body {
+                    color: bg_color
+                    glass: glass_amt
+                    lens: false
+                    frost: 100%
+                    dispersion: 0
+                    refraction: 0
+                    tint: tint_amt
+                    rim: rim_amt
+                    box { from: 0, 0; size: 840, 580; corner: radius_window }
+                }
+                box { from: 0, 0; size: 840, 580; corner: radius_window; stroke: 1; color: sg_stroke_c; opacity: sg_stroke_op }
+                //  the sidebar: rounded on the window's own (left) corners only. Its right corners are cut by the clip, or they curve
+                //  in and Settings.show the window's glass and border as a line along the bottom and top of the divider.
+                group {
+                    clip box { from: 0, 0; size: 230, 580 }
+                    box { from: 0, 0; size: 230 + radius_window * 2, 580; corner: radius_window; color: sg_sidebar_bg; opacity: 85% }
+                }
+                box { from: 230, 0; size: 1, 580; color: sg_stroke_c; opacity: sg_stroke_op }
+
+                //  clicks on the window itself do not Settings.close it
+                zone box inside { from: 0, 0; size: 840, 580 }
+                on press right inside { }
+
+                // ── sidebar ──────────────────────────────────────────────
+                group {
+                    move: 18, 18
+                    ellipse { at: 6, 6; radius: 6; color: #ff5f56 }
+                    zone box btn_close { from: 0, 0; size: 14, 14; cursor: pointer }
+                    on press btn_close { emit Panels.close }
+                    ellipse { at: 26, 6; radius: 6; color: #ffbd2e }
+                    zone box btn_min { from: 20, 0; size: 14, 14; cursor: pointer }
+                    on press btn_min { emit Panels.close }
+                    ellipse { at: 46, 6; radius: 6; color: #27c93f }
+                }
+
+                //  who is logged in
+                group {
+                    move: 14, 46
+                    box { from: 0, 0; size: 202, 54; corner: r_s; color: card_fill; opacity: card_fill_op * 50% }
+                    box { from: 0, 0; size: 202, 54; corner: r_s; stroke: 1; color: sg_border; opacity: sg_border_op }
+                    //  your picture if there is one (~/.face or the account's icon), else a gradient disc with your initial
+                    group {
+                        show: not Settings.has_avatar
+                        body {
+                            gradient: 8, 9 to 44, 45, accent_c, focus_c
+                            box { from: 8, 9; size: 36, 36; corner: r_l }
+                        }
+                    }
+                    text Settings.avatar_initial { at: 26, 27; anchor: center center; size: 18; weight: 700; color: on_accent; show: not Settings.has_avatar }
+                    group {
+                        show: Settings.has_avatar
+                        clip box { from: 8, 9; size: 36, 36; corner: r_l }
+                        image stg_avatar { at: 8, 9; size: 36, 36 }
+                    }
+                    column {
+                        at: 52, 17
+                        gap: space_2
+                        text Settings.user_name { size: ts_body; weight: 600; color: ink_c; width: 140; lines: 1 }
+                        text "This computer" { size: ts_micro; color: ink_sub }
+                    }
+                }
+
+                //  search: filters the list below
+                group {
+                    move: 14, 108
+                    box { from: 0, 0; size: 202, search_h_compact; corner: control_r; color: field_bg }
+                    Sym("󰍉", 18, 14, 13, ink_sub)
+                }
+
+                group {
+                    show: not Settings.settings_search
+                column cat_list {
+                    at: 12, 144
+                    gap: space_2
+                    for c in Settings.cats { StgSidebarItem(c) }
+                }
+                }
+                column {
+                    at: 12, 144
+                    gap: space_4
+                    show: Settings.settings_search
+                    for r in Settings.setting_matches { StgSettingsSearchRow(r) }
+                }
+                group { show: Settings.settings_search and Settings.setting_matches.count < 1; EmptyState(115, 190, "󰍉", "No matches", ui_ink_sub: ink_sub) }
+
+                // ── the pane ─────────────────────────────────────────────
+                text Settings.pane_title { at: 254, 34; anchor: left center; size: 20; weight: 700; color: ink_c }
+
+                group {
+                    move: 616, 20
+                    show: Settings.tab == 0 and not Settings.look_open
+                    Btn("Restore defaults…", 194, Settings.reset_appearance_review, false, 0, 0, enabled: Settings.preference_can_restore, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                }
+                text Settings.preference_status { at: 254, 570; anchor: left center; size: font_micro; color: ink_sub; width: 350; lines: 1 }
+                group {
+                    move: 616, 560
+                    show: Settings.reset_undo
+                    Btn("Undo appearance", 152, Settings.reset_appearance_undo, false, 0, 0, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                }
+                group {
+                    move: 730, 560
+                    show: Settings.preference_problem
+                    Btn("Retry", 80, Settings.preference_retry, false, 0, 0, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                }
+
+                // 0 ── Appearance ───────────────────────────────────────
+                group tab_0 {
+                    show: Settings.tab == 0 and not Settings.look_open
+                    move: 254, 60
+                    column tcol_0 {
+                        view: 560, 500
+                        step: 56
+                        gap: space_12
+                        StgActionRow("Saved looks & sharing", "Save this appearance or review a portable appearance document", "Open…", Settings.look_open)
+                        StgCard(138) {
+                            text "Appearance" { at: 18, 16; size: ts_body; weight: 600; color: ink_c }
+                            row {
+                                at: 40, 42
+                                gap: space_24
+                                StgModeThumb(0, "Light", #f2f3f7, on_accent, #e5e7eb)
+                                StgModeThumb(1, "Dark", #1e2026, #252830, #2d3139)
+                                StgModeThumb(2, "Auto", #1e2026, #f2f3f7, #8e8e93)
+                            }
+                            text "Auto switches to dark at 7 pm and back to light at 7 am" { at: 380, 70; anchor: left center; size: ts_micro; color: ink_sub; width: 160; lines: 3; show: Settings.appearance == 2 }
+                        }
+                        StgCard(72) {
+                            text "Window glass" { at: inset_card, 18; size: ts_body; weight: 600; color: ink_c }
+                            text "Liquid blurs and reflects, Acrylic is frosted, Solid is opaque" { at: inset_card, 48; size: ts_micro; color: ink_sub; width: 290; lines: 1 }
+                            row { at: 310, 14; gap: space_6
+                                Seg("Liquid", 0, skin, Settings.choose_skin, 74, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                                Seg("Acrylic", 1, skin, Settings.choose_skin, 78, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                                Seg("Solid", 2, skin, Settings.choose_skin, 64, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                            }
+                        }
+                        group {
+                            size: 556, row_detail_h
+                        ToggleRow("Colours from the wallpaper", "Accent, highlights and glass tint follow the picture (matugen)", accent_auto, Settings.toggle_accent_auto, ui_ink_c: ink_c, ui_ink_sub: ink_sub, ui_card_fill: card_fill, ui_card_stroke: card_stroke, ui_accent_c: accent_c, ui_on_accent: on_accent, ui_switch_off: switch_off)
+                        }
+                        group {
+                            size: 556, row_detail_h
+                        ToggleRow("Theme other apps", "Terminals, Files (Nautilus) and other GTK / Qt apps wear the same colours", Settings.pref_apps, Settings.toggle_apps, ui_ink_c: ink_c, ui_ink_sub: ink_sub, ui_card_fill: card_fill, ui_card_stroke: card_stroke, ui_accent_c: accent_c, ui_on_accent: on_accent, ui_switch_off: switch_off)
+                        }
+                        StgCard(72) {
+                            text "Accent colour" { at: inset_card, 18; size: ts_body; weight: 600; color: ink_c }
+                            text "Presets; the wallpaper option overrides them" { at: inset_card, 48; size: ts_micro; color: ink_sub; width: 280; lines: 1 }
+                            row {
+                                at: 306, 14
+                                gap: space_6
+                                StgAccentCircle(0, #007aff)
+                                StgAccentCircle(1, #af52de)
+                                StgAccentCircle(2, #ff2d55)
+                                StgAccentCircle(3, #ff3b30)
+                                StgAccentCircle(4, #ff9500)
+                                StgAccentCircle(5, #34c759)
+                                StgAccentCircle(6, #8e8e93)
+                            }
+                        }
+                        StgCard(72) {
+                            text "Wallpaper palette" { at: inset_card, 18; size: ts_body; weight: 600; color: if(accent_auto, ink_c, ink_sub) }
+                            text "How the colours taken from the picture are built" { at: inset_card, 48; size: ts_micro; color: ink_sub; width: 240; lines: 1 }
+                            row {
+                                at: 262, 14
+                                gap: space_6
+                                Seg("Tonal", 0, Settings.pal_style, Settings.pal_style_pick, 62, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                                Seg("Vibrant", 1, Settings.pal_style, Settings.pal_style_pick, 70, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                                Seg("Neutral", 2, Settings.pal_style, Settings.pal_style_pick, 70, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                                Seg("Soft", 3, Settings.pal_style, Settings.pal_style_pick, 56, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                            }
+                        }
+                        StgCard(112) {
+                            text "Custom accent" { at: inset_card, 18; size: ts_body; weight: 600; color: ink_c }
+                            box { from: inset_card, 40; size: 148, search_h_compact; corner: control_r; color: field_bg }
+                            group { move: 176, 40; Btn("Apply", 100, Settings.custom_accent_apply, true, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill) }
+                            group { move: 288, 40; Btn("Use preset", 132, Settings.custom_accent_clear, false, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill) }
+                            text Settings.custom_accent_current { at: inset_card, 86; size: ts_cap; color: ink_c; width: 148; lines: 1 }
+                            text Settings.custom_accent_status { at: 176, 86; size: ts_cap; color: ink_sub; width: 364; lines: 1 }
+                        }
+                        StgCard(72) {
+                            text "Panel text size" { at: inset_card, 18; size: ts_body; weight: 600; color: ink_c }
+                            text "Titles and descriptions; fields and icons keep their sizes" { at: inset_card, 48; size: ts_micro; color: ink_sub; width: 524; lines: 1 }
+                            row { at: 310, 14; gap: space_6
+                                Seg("Small", 0, style_text, Settings.style_text_pick, 72, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                                Seg("Standard", 1, style_text, Settings.style_text_pick, 82, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                                Seg("Large", 2, style_text, Settings.style_text_pick, 64, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                            }
+                        }
+                        StgCard(72) {
+                            text "Glass strength" { at: inset_card, 18; size: ts_body; weight: 600; color: ink_c }
+                            text "Lower amounts make translucent panels easier to read" { at: inset_card, 48; size: ts_micro; color: ink_sub; width: 524; lines: 1 }
+                            row { at: 310, 14; gap: space_6; show: skin != 2
+                                Seg("Minimal", 0, style_glass, Settings.style_glass_pick, 82, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                                Seg("Soft", 1, style_glass, Settings.style_glass_pick, 72, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                                Seg("Full", 2, style_glass, Settings.style_glass_pick, 64, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                            }
+                            text "Classic Solid is opaque" { at: 310, 28; anchor: left center; size: ts_cap; color: ink_sub; show: skin == 2 }
+                        }
+                        ToggleRow("Reduce motion", "Settle transitions immediately; keeps the system preference when off", Settings.reduce_motion, Settings.toggle_reduce_motion, ui_ink_c: ink_c, ui_ink_sub: ink_sub, ui_card_fill: card_fill, ui_card_stroke: card_stroke, ui_accent_c: accent_c, ui_on_accent: on_accent, ui_switch_off: switch_off)
+                    }
+                    on change tcol_0.scroll { stg_sc0 = tcol_0.scroll }
+                on change Settings.setting_reveal while Settings.tab == 0 { tcol_0.scroll: clamp(Settings.setting_y - space_12, 0, max(0, tcol_0.content - 500)) }
+                    group {
+                        show: (Settings.setting_target > 0 and Settings.setting_target <= 6) or (Settings.setting_target >= 32 and Settings.setting_target <= 35)
+                        clip box { from: 0, 0; size: 560, 500 }
+                        box { from: 0, Settings.setting_y - tcol_0.scroll; size: 556, Settings.setting_h; corner: radius_card; stroke: 2; color: focus_c }
+                    }
+                    group { move: 566, 0; ScrollBar(tcol_0.scroll, tcol_0.content, 500, ui_ink_c: ink_c) }
+                }
+
+                group {
+                    show: Settings.tab == 0 and Settings.look_open
+                    move: 254, 60
+                    text "Saved looks" { at: 0, 8; size: font_title; weight: 600; color: ink_c }
+                    group { move: 456, 0; Btn("Back", 100, Settings.look_close, false, 0, 0, enabled: true, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill) }
+
+                    box { from: 0, 40; size: 300, search_h_compact; corner: control_r; color: field_bg }
+                    group { move: 312, 40; Btn("Save new", 112, Settings.look_save, false, 0, 0, enabled: Settings.look_writable and Settings.look_ready, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill) }
+                    group { move: 436, 40; Btn("Retry", 120, Settings.look_retry, false, 0, 0, enabled: true, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill) }
+
+                    column { at: 0, 84; gap: space_4; for r in Settings.look_rows { StgLookRow(r) } }
+                    text Settings.look_range { at: 0, 258; size: font_caption; color: ink_sub }
+                    group { move: 0, 282; Btn("Load", 96, Settings.look_load, true, 0, 0, enabled: Settings.look_selected > 0 and Settings.look_ready, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill) }
+                    group { move: 108, 282; Btn("Update", 100, Settings.look_update, false, 0, 0, enabled: Settings.look_selected > 0 and Settings.look_writable, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill) }
+                    group { move: 220, 282; Btn("Rename", 106, Settings.look_rename, false, 0, 0, enabled: Settings.look_selected > 0 and Settings.look_writable, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill) }
+                    group { move: 338, 282; Btn("Delete", 100, Settings.look_delete, false, 0, 0, enabled: Settings.look_selected > 0 and Settings.look_writable, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill) }
+
+                    text "Share appearance" { at: 0, 330; size: font_body; weight: 600; color: ink_c }
+                    box { from: 0, 354; size: 556, search_h_compact; corner: control_r; color: field_bg }
+                    group { move: 0, 394; Btn("Copy current", 136, Settings.look_export, false, 0, 0, enabled: Settings.look_ready, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill) }
+                    group { move: 148, 394; Btn("Review import", 148, Settings.look_preview, false, 0, 0, enabled: Settings.look_ready, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill) }
+                    group { move: 308, 394; Btn("Apply import", 136, Settings.look_apply, true, 0, 0, enabled: Settings.look_preview and Settings.look_ready, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill) }
+
+                    text Settings.look_changes { at: 0, 434; size: font_caption; color: ink_c; width: 556; lines: 2; show: Settings.look_preview }
+                    text Settings.look_status { at: 0, 472; size: font_caption; color: ink_sub; width: 556; lines: 2 }
+                }
+
+                // 1 ── Displays ─────────────────────────────────────────
+                group tab_1 {
+                    show: Settings.tab == 1
+                    move: 254, 60
+                    column tcol_1 {
+                        view: 560, 500
+                        step: 56
+                        gap: space_12
+                        row {
+                            gap: space_12
+                            for d in Settings.disps { StgDispTile(d) }
+                        }
+                        StgCard(70) {
+                            text "Scale" { at: 18, 22; anchor: left center; size: ts_body; weight: 600; color: ink_c }
+                            text "Applies now; press Keep and it is restored at every login." { at: 18, 50; anchor: left center; size: ts_micro; color: ink_sub; width: 330 }
+                            row {
+                                at: 290, 14
+                                gap: space_6
+                                Seg("100%", 0, Settings.disp_scale_i, Settings.disp_scale, 62, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                                Seg("125%", 1, Settings.disp_scale_i, Settings.disp_scale, 62, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                                Seg("150%", 2, Settings.disp_scale_i, Settings.disp_scale, 62, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                                Seg("200%", 3, Settings.disp_scale_i, Settings.disp_scale, 62, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                            }
+                        }
+                        StgCard(56) {
+                            text "Resolution" { at: 18, 28; anchor: left center; size: ts_body; weight: 600; color: ink_c }
+                            row {
+                                at: 150, 14
+                                gap: space_6
+                                for r in Settings.reslist { Chip(r.label, r.cur, Settings.disp_res, r.index, 92, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill) }
+                            }
+                        }
+                        StgCard(56) {
+                            text "Refresh rate" { at: 18, 28; anchor: left center; size: ts_body; weight: 600; color: ink_c }
+                            row {
+                                at: 160, 14
+                                gap: space_6
+                                for r in Settings.hzlist { Chip(r.label, r.cur, Settings.disp_hz, r.index, 80, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill) }
+                            }
+                        }
+                        StgSliderRow("Brightness", System.display.level, Settings.brightness_set, 0, true)
+                        text Settings.display_status { size: font_secondary; color: ink_sub; width: 548; lines: 3 }
+                    }
+                    group { move: 566, 0; ScrollBar(tcol_1.scroll, tcol_1.content, 500, ui_ink_c: ink_c) }
+                }
+
+                // 2 ── Sound ────────────────────────────────────────────
+                group tab_2 {
+                    show: Settings.tab == 2
+                    move: 254, 60
+                    column tcol_2 {
+                        view: 560, 500
+                        step: 56
+                        gap: space_12
+                        StgSliderRow("Output volume", System.sound.volume, Settings.volume_set, 1, not System.sound.muted)
+                        ToggleRow("Mute", "Silences the output", System.sound.muted, Settings.toggle_mute, ui_ink_c: ink_c, ui_ink_sub: ink_sub, ui_card_fill: card_fill, ui_card_stroke: card_stroke, ui_accent_c: accent_c, ui_on_accent: on_accent, ui_switch_off: switch_off)
+                        StgSliderRow("Input volume", Settings.in_level, Settings.input_set, 2, true)
+                        text "Output device" { size: ts_body; weight: 600; color: ink_c }
+                        column {
+                            gap: space_6
+                            for o in Settings.outs { StgOutRow(o) }
+                        }
+                    }
+                    group { move: 566, 0; ScrollBar(tcol_2.scroll, tcol_2.content, 500, ui_ink_c: ink_c) }
+                }
+
+                // 3 ── Notifications ────────────────────────────────────
+                group tab_3 {
+                    show: Settings.tab == 3 and not Settings.quiet_edit
+                    move: 254, 60
+                    column tcol_3 {
+                        view: 560, 500
+                        step: 56
+                        gap: space_12
+                        StgActionRow("Quiet modes & app delivery", "Focus, Presentation, Game, quiet hours and per-app controls", "Open…", Settings.quiet_open)
+                        ToggleRow("Do Not Disturb", "Notifications still arrive, silently, in the centre", Notifications.dnd, Settings.toggle_dnd, ui_ink_c: ink_c, ui_ink_sub: ink_sub, ui_card_fill: card_fill, ui_card_stroke: card_stroke, ui_accent_c: accent_c, ui_on_accent: on_accent, ui_switch_off: switch_off)
+                        ToggleRow("Group by app", "Stack several notifications from one app into a pile", Settings.group_apps, Settings.toggle_group, ui_ink_c: ink_c, ui_ink_sub: ink_sub, ui_card_fill: card_fill, ui_card_stroke: card_stroke, ui_accent_c: accent_c, ui_on_accent: on_accent, ui_switch_off: switch_off)
+                        ToggleRow("Show banners", "A new notification drops into the clock pill", Settings.banners, Settings.toggle_banners, ui_ink_c: ink_c, ui_ink_sub: ink_sub, ui_card_fill: card_fill, ui_card_stroke: card_stroke, ui_accent_c: accent_c, ui_on_accent: on_accent, ui_switch_off: switch_off)
+                        StgCard(64) {
+                            text "Banner stays for" { at: 18, 22; anchor: left center; size: ts_body; weight: 600; color: ink_c }
+                            row {
+                                at: 270, 14
+                                gap: space_6
+                                Seg("3 s", 0, Settings.banner_i, Settings.banner_secs_pick, 62, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                                Seg("5 s", 1, Settings.banner_i, Settings.banner_secs_pick, 62, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                                Seg("8 s", 2, Settings.banner_i, Settings.banner_secs_pick, 62, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                                Seg("12 s", 3, Settings.banner_i, Settings.banner_secs_pick, 62, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                            }
+                            text "Hovering a banner keeps it open" { at: 18, 46; anchor: left center; size: ts_micro; color: ink_sub }
+                        }
+                        StgActionRow("History", "Forget the notifications listed under Earlier", "Clear", Settings.clear_notif_history)
+                    }
+                    group { move: 566, 0; ScrollBar(tcol_3.scroll, tcol_3.content, 500, ui_ink_c: ink_c) }
+                    on change Settings.setting_reveal while Settings.tab == 3 { tcol_3.scroll: clamp(Settings.setting_y - space_12, 0, max(0, tcol_3.content - 500)) }
+                    group {
+                        show: Settings.setting_target >= 7 and Settings.setting_target <= 11
+                        clip box { from: 0, 0; size: 560, 500 }
+                        box { from: 0, Settings.setting_y - tcol_3.scroll; size: 556, Settings.setting_h; corner: radius_card; stroke: 2; color: focus_c }
+                    }
+                }
+
+                group {
+                    show: Settings.tab == 3 and Settings.quiet_edit
+                    move: 254, 60
+                    text "Quiet modes" { at: 0, 8; size: font_title; weight: 600; color: ink_c }
+                    group { move: 456, 0; Btn("Back", 100, Settings.quiet_close, false, 0, 0, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill) }
+
+                    row { at: 0, 40; gap: space_8
+                        Chip("Focus", Activities.quiet_focus, Settings.quiet_mode, 1, 120, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                        Chip("Presentation", Activities.quiet_presentation, Settings.quiet_mode, 2, 152, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                        Chip("Game", Activities.quiet_game, Settings.quiet_mode, 3, 120, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                    }
+                    text Notifications.quiet_status { at: 0, 82; size: font_caption; color: ink_sub; width: 556; lines: 1 }
+                    group { move: 0, 108
+                        ToggleRow("Quiet hours", "Daily window, including overnight · manual DND stays independent", Settings.quiet_enabled, Settings.quiet_toggle, ui_ink_c: ink_c, ui_ink_sub: ink_sub, ui_card_fill: card_fill, ui_card_stroke: card_stroke, ui_accent_c: accent_c, ui_on_accent: on_accent, ui_switch_off: switch_off)
+                    }
+                    text "From" { at: 0, 190; anchor: left center; size: font_secondary; color: ink_sub }
+                    box { from: 44, 176; size: 100, search_h_compact; corner: control_r; color: field_bg }
+                    text "To" { at: 164, 190; anchor: left center; size: font_secondary; color: ink_sub }
+                    box { from: 192, 176; size: 100, search_h_compact; corner: control_r; color: field_bg }
+                    group { move: 312, 176; Btn("Save hours", 128, Settings.quiet_hours_save, false, 0, 0, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill) }
+
+                    text Settings.quiet_edit_status { at: 0, 218; size: font_caption; color: ink_sub; width: 556; lines: 1 }
+                    text "App delivery" { at: 0, 250; size: font_body; weight: 600; color: ink_c }
+                    column { at: 0, 274; gap: space_4; for a in Settings.quiet_app_rows { StgQuietAppRow(a) } }
+                    text Settings.quiet_app_range { at: 0, 462; size: font_caption; color: ink_sub; width: 556; lines: 1 }
+                    text Notifications.rules_status { at: 0, 482; size: font_caption; color: danger_c; width: 556; lines: 1 }
+                }
+
+                // 4 ── Menu Bar & Dock ──────────────────────────────────
+                group tab_4 {
+                    show: Settings.tab == 4
+                    move: 254, 60
+                    column tcol_4 {
+                        show: not Settings.pin_edit
+                        view: 560, 500
+                        step: 56
+                        gap: space_12
+                        StgCard(54) {
+                            text "Top bar style" { at: 18, 27; anchor: left center; size: ts_body; weight: 600; color: ink_c }
+                            row {
+                                at: 360, 13
+                                gap: space_6
+                                Seg("Notch", 0, Settings.bar_style, Settings.bar_style_pick, 86, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                                Seg("Strip", 1, Settings.bar_style, Settings.bar_style_pick, 86, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                            }
+                        }
+                        ToggleRow("24-hour clock", "Shows 14:05 instead of 2:05 PM", not hour12, Settings.toggle_hour12, ui_ink_c: ink_c, ui_ink_sub: ink_sub, ui_card_fill: card_fill, ui_card_stroke: card_stroke, ui_accent_c: accent_c, ui_on_accent: on_accent, ui_switch_off: switch_off)
+                        ToggleRow("Show seconds", "2:05:09 PM", Settings.pref_seconds, Settings.toggle_seconds, ui_ink_c: ink_c, ui_ink_sub: ink_sub, ui_card_fill: card_fill, ui_card_stroke: card_stroke, ui_accent_c: accent_c, ui_on_accent: on_accent, ui_switch_off: switch_off)
+                        ToggleRow("Show weather", "Temperature next to the clock", Settings.pref_weather, Settings.toggle_weather, ui_ink_c: ink_c, ui_ink_sub: ink_sub, ui_card_fill: card_fill, ui_card_stroke: card_stroke, ui_accent_c: accent_c, ui_on_accent: on_accent, ui_switch_off: switch_off)
+                        ToggleRow("Show system tray", "Icons of running applications in the top right", Settings.pref_tray, Settings.toggle_tray, ui_ink_c: ink_c, ui_ink_sub: ink_sub, ui_card_fill: card_fill, ui_card_stroke: card_stroke, ui_accent_c: accent_c, ui_on_accent: on_accent, ui_switch_off: switch_off)
+                        ToggleRow("Show workspaces", "Workspace indicators in the left island", Settings.pref_workspaces, Settings.toggle_workspaces, ui_ink_c: ink_c, ui_ink_sub: ink_sub, ui_card_fill: card_fill, ui_card_stroke: card_stroke, ui_accent_c: accent_c, ui_on_accent: on_accent, ui_switch_off: switch_off)
+                        ToggleRow("Show app indicator", "Focused application in the left island", Settings.pref_bar_apps, Settings.toggle_bar_apps, ui_ink_c: ink_c, ui_ink_sub: ink_sub, ui_card_fill: card_fill, ui_card_stroke: card_stroke, ui_accent_c: accent_c, ui_on_accent: on_accent, ui_switch_off: switch_off)
+                        ToggleRow("Show update status", "Available updates in the right island", Settings.pref_updates, Settings.toggle_updates, ui_ink_c: ink_c, ui_ink_sub: ink_sub, ui_card_fill: card_fill, ui_card_stroke: card_stroke, ui_accent_c: accent_c, ui_on_accent: on_accent, ui_switch_off: switch_off)
+                        StgCard(row_h) {
+                            text "Left indicators" { at: inset_card, row_h / 2; anchor: left center; size: font_body; color: ink_c }
+                            row { at: 236, 7; gap: space_6
+                                Seg("Workspaces first", 0, Settings.bar_left_order, Settings.bar_left_order_pick, 152, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                                Seg("Apps first", 1, Settings.bar_left_order, Settings.bar_left_order_pick, 132, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                            }
+                        }
+                        StgCard(row_h) {
+                            text "Right indicators" { at: inset_card, row_h / 2; anchor: left center; size: font_body; color: ink_c }
+                            row { at: 236, 7; gap: space_6
+                                Seg("Tray first", 0, Settings.bar_right_order, Settings.bar_right_order_pick, 152, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                                Seg("Updates first", 1, Settings.bar_right_order, Settings.bar_right_order_pick, 132, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                            }
+                        }
+                        StgCard(row_h) {
+                            text "Optional modules on" { at: inset_card, row_h / 2; anchor: left center; size: font_body; color: ink_c }
+                            row { at: 236, 7; gap: space_6
+                                Seg("All", 0, Settings.module_output_policy, Settings.module_output_pick, 96, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                                Seg("Focused", 1, Settings.module_output_policy, Settings.module_output_pick, 96, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                                Seg("Named", 2, Settings.module_output_policy, Settings.module_output_pick, 96, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                            }
+                        }
+                        StgCard(row_h) {
+                            text "Dock on" { at: inset_card, row_h / 2; anchor: left center; size: font_body; color: ink_c }
+                            row { at: 236, 7; gap: space_6
+                                Seg("All", 0, Settings.dock_output_policy, Settings.dock_output_pick, 96, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                                Seg("Focused", 1, Settings.dock_output_policy, Settings.dock_output_pick, 96, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                                Seg("Named", 2, Settings.dock_output_policy, Settings.dock_output_pick, 96, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                            }
+                        }
+                        StgCard(row_h) {
+                            text "Dock reveal delay" { at: inset_card, row_h / 2; anchor: left center; size: font_body; color: ink_c }
+                            row { at: 236, 7; gap: space_6
+                                Seg("Immediate", 0, Settings.dock_show_delay, Settings.dock_show_delay_pick, 96, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                                Seg("150 ms", 1, Settings.dock_show_delay, Settings.dock_show_delay_pick, 96, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                                Seg("350 ms", 2, Settings.dock_show_delay, Settings.dock_show_delay_pick, 96, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                            }
+                        }
+                        StgCard(88) {
+                            text "Named output" { at: inset_card, 18; size: font_body; weight: 600; color: ink_c }
+                            box { from: inset_card, 42; size: 300, search_h_compact; corner: control_r; color: field_bg }
+                            group { move: 340, 42; Btn("Save output", 144, Settings.frame_output_save, false, 0, 0, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill) }
+                        }
+                        group {
+                            size: 556, row_detail_h
+                            text Settings.frame_output_status { at: inset_card, 4; size: font_caption; color: ink_sub; width: 524; lines: 2 }
+                            text "Core controls and the ring stay on every output. Crowded tray rows scroll." { at: inset_card, 36; size: font_caption; color: ink_sub; width: 524; lines: 1 }
+                        }
+                        ToggleRow("Hide the dock automatically", "It rises when the pointer reaches the bottom edge", Settings.pref_dock_auto, Settings.toggle_dock_auto, ui_ink_c: ink_c, ui_ink_sub: ink_sub, ui_card_fill: card_fill, ui_card_stroke: card_stroke, ui_accent_c: accent_c, ui_on_accent: on_accent, ui_switch_off: switch_off)
+                        StgCard(row_h) {
+                            text "Dock icons" { at: inset_card, row_h / 2; anchor: left center; size: ts_body; color: ink_c }
+                            row { at: 286, 7; gap: space_6
+                                Seg("Small", 0, Settings.dock_size_i, Settings.dock_size_pick, 82, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                                Seg("Medium", 1, Settings.dock_size_i, Settings.dock_size_pick, 82, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                                Seg("Large", 2, Settings.dock_size_i, Settings.dock_size_pick, 82, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                            }
+                        }
+                        StgCard(row_h) {
+                            text "Dock hide delay" { at: inset_card, row_h / 2; anchor: left center; size: ts_body; color: ink_c }
+                            row { at: 286, 7; gap: space_6
+                                Seg("Short", 0, Settings.dock_delay_i, Settings.dock_delay_pick, 82, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                                Seg("Normal", 1, Settings.dock_delay_i, Settings.dock_delay_pick, 82, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                                Seg("Long", 2, Settings.dock_delay_i, Settings.dock_delay_pick, 82, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                            }
+                        }
+                        StgActionRow("Dock order", "Choose a pin, then move it left or right", "Arrange…", Settings.pin_open)
+                        ToggleRow("Desktop widgets", "Clock, weather, system and more on the wallpaper", Settings.pref_widgets, Settings.toggle_widgets, ui_ink_c: ink_c, ui_ink_sub: ink_sub, ui_card_fill: card_fill, ui_card_stroke: card_stroke, ui_accent_c: accent_c, ui_on_accent: on_accent, ui_switch_off: switch_off)
+                        StgCard(64) {
+                            text "Arrange widgets" { at: 18, 22; anchor: left center; size: ts_body; weight: 600; color: ink_c }
+                            text "Drag, resize, add or remove them (Super + Shift + W)" { at: 18, 42; anchor: left center; size: ts_micro; color: ink_sub }
+                            row {
+                                at: 332, 18
+                                gap: space_8
+                                Btn("Edit", 90, Settings.widgets_edit, true, 0, 0, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                                Btn("Reset layout", 112, Settings.widgets_reset, false, 0, 0, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                            }
+                        }
+                    }
+                    group { move: 566, 0; show: not Settings.pin_edit; ScrollBar(tcol_4.scroll, tcol_4.content, 500, ui_ink_c: ink_c) }
+                    on change tcol_4.scroll { stg_sc4 = tcol_4.scroll }
+                on change Settings.setting_reveal while Settings.tab == 4 { tcol_4.scroll: clamp(Settings.setting_y - space_12, 0, max(0, tcol_4.content - 500)) }
+                    group {
+                        show: Settings.setting_target >= 12 and Settings.setting_target <= 31 and not Settings.pin_edit
+                        clip box { from: 0, 0; size: 560, 500 }
+                        box { from: 0, Settings.setting_y - tcol_4.scroll; size: 556, Settings.setting_h; corner: radius_card; stroke: 2; color: focus_c }
+                    }
+                    group {
+                        show: Settings.pin_edit
+                        Btn("Back", 82, Settings.pin_close, false, 0, 0, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                        text "↑ ↓ Select · ← → Move · Esc Back" { at: 110, 14; anchor: left center; size: font_secondary; color: ink_sub }
+                        column pin_list {
+                            at: 0, 44
+                            view: 556, 448
+                            step: 48
+                            gap: space_4
+                            for p in Settings.dock_pins { StgPinOrderRow(p) }
+                        }
+                        text "No available pinned apps" { at: 278, 120; anchor: center center; size: font_body; color: ink_sub; show: Settings.dock_pins.count == 0 }
+                        on change Settings.pin_sel { pin_list.scroll: clamp(Settings.pin_sel * 48 - 336, 0, max(0, pin_list.content - 448)) }
+                    }
+                }
+
+                // 5 ── Shortcuts ────────────────────────────────────────
+                group tab_5 {
+                    show: Settings.tab == 5 and not Settings.shortcut_open
+                    move: 254, 60
+                    CardBg(556, 34, radius_small, ui_card_fill: card_fill, ui_card_stroke: card_stroke)
+                    box { from: 0, 0; size: 556, 34; corner: radius_small; stroke: 1; color: sg_border; opacity: sg_border_op }
+                    Sym("󰍉", 18, 17, 13, ink_sub)
+                    text Settings.bind_count { at: 538, 17; anchor: right center; size: ts_micro; color: ink_sub }
+                    group { move: 0, 454; Btn("Edit owned shortcuts…", 224, Settings.shortcut_open, false, 0, 0, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill) }
+                    text Settings.shortcut_status { at: 0, 494; size: font_caption; color: ink_sub; width: 556; lines: 2 }
+                    zone box bind_wheel { from: 0, 44; size: 556, 410 }
+                    on scroll bind_wheel { emit Settings.bind_scroll(wheel) }
+                    column {
+                        at: 0, 44
+                        gap: space_4
+                        for b in Settings.binds { StgBindRow(b) }
+                    }
+                    text "No shortcuts match" { at: 278, 200; anchor: center center; size: ts_sub; color: ink_sub; show: Settings.binds.count < 1 }
+                }
+
+                group {
+                    show: Settings.tab == 5 and Settings.shortcut_open
+                    move: 254, 60
+                    text "Owned shortcuts" { at: 0, 8; size: font_title; weight: 600; color: ink_c }
+                    group { move: 456, 0; Btn("Back", 100, Settings.shortcut_close, false, 0, 0, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill) }
+                    text "Choose an action with Alt+← →, then type a niri key combination." { at: 0, 54; size: font_body; color: ink_sub; width: 556; lines: 2 }
+                    text Settings.shortcut_route { at: 0, 110; size: font_title; weight: 600; color: ink_c; width: 556; lines: 1 }
+                    row { at: 0, 146; gap: space_12
+                        Chip("Previous action", false, Settings.shortcut_route_next, -1, 168, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                        Chip("Next action", false, Settings.shortcut_route_next, 1, 144, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                    }
+                    box { from: 0, 198; size: 556, search_h; corner: control_r; color: field_bg }
+                    group { move: 0, 254
+                        Btn(if(Settings.shortcut_conflict, "Override existing binding", "Save shortcut"), 260, Settings.shortcut_save, false, 0, 0, enabled: Settings.shortcut_editable and not Settings.shortcut_busy, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                    }
+                    text Settings.shortcut_status { at: 0, 312; size: font_body; color: ink_sub; width: 556; lines: 5 }
+                }
+
+                // 6 ── General ──────────────────────────────────────────
+                group tab_6 {
+                    show: Settings.tab == 6
+                    move: 254, 60
+                    column tcol_6 {
+                        view: 560, 500
+                        step: 56
+                        gap: space_12
+                        StgCard(100) {
+                            body {
+                                gradient: 18, 18 to 78, 78, accent_c, focus_c
+                                box { from: 18, 18; size: 64, 64; corner: r_l }
+                            }
+                            text "B" { at: 50, 50; anchor: center center; size: 32; weight: 800; color: on_accent }
+                            column {
+                                at: 100, 22
+                                gap: space_4
+                                text "About This PC" { size: 20; weight: 700; color: ink_c }
+                                text Settings.about_os { size: ts_sub; color: ink_sub }
+                                text "Beskar shell · niri · Pleamar" { size: ts_sub; weight: 500; color: ink_c }
+                            }
+                        }
+                        StgCard(218) {
+                            text "Hardware Overview" { at: 18, 16; size: ts_body; weight: 600; color: ink_c }
+                            column {
+                                at: 18, 40
+                                gap: space_4
+                                StgSpecRow("Computer", Settings.about_host)
+                                StgSpecRow("Processor", Settings.about_cpu)
+                                StgSpecRow("Graphics", Settings.about_gpu)
+                                StgSpecRow("Memory", Settings.about_mem)
+                                StgSpecRow("Kernel", Settings.about_kernel)
+                                StgSpecRow("Storage", Settings.about_disk)
+                                StgSpecRow("Uptime", Settings.about_up)
+                            }
+                        }
+                        StgCard(64) {
+                            text "Session" { at: 18, 22; anchor: left center; size: ts_body; weight: 600; color: ink_c }
+                            text "Lock, restart or shut down this computer" { at: 18, 42; anchor: left center; size: ts_micro; color: ink_sub }
+                            row {
+                                at: 254, 18
+                                gap: space_8
+                                Btn("Lock", 76, Settings.session_lock, false, 0, 0, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                                Btn("Restart", 84, Settings.session_restart, false, 0, 0, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                                Btn("Shut Down", 104, Settings.session_off, false, 0, 0, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                            }
+                        }
+                        StgCard(64) {
+                            text "Lock when away" { at: 18, 22; anchor: left center; size: ts_body; weight: 600; color: ink_c }
+                            text "Locks after this long without using the computer, and always before sleep" { at: 18, 44; anchor: left center; size: ts_micro; color: ink_sub; width: 300; lines: 2 }
+                            row {
+                                at: 322, 18
+                                gap: space_4
+                                Seg("Never", 0, Settings.lock_i, Settings.lock_pick, 46, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                                Seg("3", 1, Settings.lock_i, Settings.lock_pick, 34, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                                Seg("5", 2, Settings.lock_i, Settings.lock_pick, 34, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                                Seg("10", 3, Settings.lock_i, Settings.lock_pick, 34, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                                Seg("15 min", 4, Settings.lock_i, Settings.lock_pick, 56, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                            }
+                        }
+                    }
+                    group { move: 566, 0; ScrollBar(tcol_6.scroll, tcol_6.content, 500, ui_ink_c: ink_c) }
+                }
+
+                // 8 ── Night Light & Power ─────────────────────────────
+                group tab_8 {
+                    show: Settings.tab == 8
+                    move: 254, 60
+                    column tcol_8 {
+                        view: 560, 500
+                        step: 56
+                        gap: space_12
+                        StgCard(130) {
+                            text "Night Light" { at: 18, 22; anchor: left center; size: ts_body; weight: 600; color: ink_c }
+                            text "Warms the screen so it is easier on the eyes in the evening" { at: 18, 42; anchor: left center; size: ts_micro; color: ink_sub; width: 520 }
+                            row {
+                                at: 18, 62
+                                gap: space_6
+                                Seg("Off", 0, Settings.nl_mode_i, Settings.nl_mode_pick, 90, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                                Seg("Always on", 1, Settings.nl_mode_i, Settings.nl_mode_pick, 110, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                                Seg("Sunset to sunrise", 2, Settings.nl_mode_i, Settings.nl_mode_pick, 150, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                            }
+                            text "Warmth" { at: 18, 108; anchor: left center; size: ts_cap; weight: 600; color: if(Settings.nl_mode_i > 0, ink_c, ink_sub) }
+                            row {
+                                at: 150, 94
+                                gap: space_6
+                                Seg("Warm", 0, Settings.nl_temp_i, Settings.nl_temp_pick, 80, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                                Seg("Warmer", 1, Settings.nl_temp_i, Settings.nl_temp_pick, 80, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                                Seg("Candle", 2, Settings.nl_temp_i, Settings.nl_temp_pick, 80, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                            }
+                        }
+                        StgCard(104) {
+                            text "Power mode" { at: 18, 22; anchor: left center; size: ts_body; weight: 600; color: ink_c }
+                            text pick(if(Settings.pp_ok, 0, 1), "Saver stretches the battery; Performance gives the processor more room", "No power-profiles-daemon here: install and start it to choose a mode") { at: 18, 42; anchor: left center; size: ts_micro; color: ink_sub; width: 520 }
+                            row {
+                                at: 18, 62
+                                gap: space_6
+                                Seg("Saver", 0, Settings.pp_i, Settings.pp_pick, 100, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                                Seg("Balanced", 1, Settings.pp_i, Settings.pp_pick, 110, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                                Seg("Performance", 2, Settings.pp_i, Settings.pp_pick, 130, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                            }
+                            text Settings.pp_note { at: 400, 76; anchor: left center; size: ts_micro; color: danger_c; width: 140 }
+                        }
+                    }
+                    group { move: 566, 0; ScrollBar(tcol_8.scroll, tcol_8.content, 500, ui_ink_c: ink_c) }
+                }
+
+                group {
+                    show: not Settings.preferences_loaded
+                    zone box loading_block { from: 0, 0; size: 840, 580 }
+                    on press right loading_block { }
+                }
+                group {
+                    show: Settings.reset_review
+                    zone box reset_block { from: 0, 0; size: 840, 580 }
+                    on press right reset_block { }
+                    group {
+                        move: 254, 390
+                        box { from: 0, 0; size: 556, 166; corner: radius_card; color: bg_color }
+                        CardBg(556, 166, radius_card, true, ui_card_fill: card_fill, ui_card_stroke: card_stroke)
+                        text "Restore Appearance defaults?" { at: inset_card, inset_card; size: font_title; weight: 600; color: ink_c }
+                        text "Dark, Liquid Glass, Blue, Tonal, no wallpaper/custom accent; standard text, full glass and system motion. Your wallpaper and app theming stay as chosen." { at: inset_card, 44; size: font_body; color: ink_sub; width: 524; lines: 3 }
+                        box { from: 314, 116; size: 100, control_h + space_4; corner: control_r_large; stroke: 2; color: focus_c; show: Settings.reset_sel == 0 }
+                        box { from: 422, 116; size: 116, control_h + space_4; corner: control_r_large; stroke: 2; color: focus_c; show: Settings.reset_sel == 1 }
+                        row {
+                            at: 316, 118
+                            gap: space_12
+                            Btn("Cancel", 96, Settings.reset_appearance_cancel, false, 0, 0, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                            Btn("Restore", 112, Settings.reset_appearance_apply, true, 0, 0, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill)
+                        }
+                    }
+                }
+
+                group {
+                    show: Settings.display_pending
+                    zone box display_block { from: 0, 0; size: 840, 580 }
+                    on press right display_block { }
+                    group {
+                        move: 254, 390
+                        box { from: 0, 0; size: 556, 166; corner: radius_card; color: bg_color }
+                        CardBg(556, 166, radius_card, true, ui_card_fill: card_fill, ui_card_stroke: card_stroke)
+                        text "Keep this display setting?" { at: inset_card, inset_card; size: font_title; weight: 600; color: ink_c }
+                        text Settings.display_status { at: inset_card, 50; size: font_body; color: ink_sub; width: 524; lines: 2 }
+                        box { from: 302, 116; size: 112, control_h + space_4; corner: control_r_large; stroke: 2; color: focus_c; show: Settings.display_sel == 0 }
+                        box { from: 422, 116; size: 116, control_h + space_4; corner: control_r_large; stroke: 2; color: focus_c; show: Settings.display_sel == 1 }
+                        row { at: 304, 118; gap: space_12
+                            Btn("Revert", 108, Settings.display_revert, false, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill, enabled: not Settings.display_busy)
+                            Btn("Keep", 112, Settings.display_keep, true, ui_accent_c: accent_c, ui_ink_c: ink_c, ui_on_accent: on_accent, ui_btn_fill: btn_fill, enabled: not Settings.display_busy)
+                        }
+                    }
+                }
+        }
+    }
+
+    // ── keys (the Keys scene forwards them as k_* / ku_* events) ──────────
+    on k_alt_left while stg_k and Settings.shortcut_open { emit Settings.shortcut_route_next(-1) }
+    on k_alt_right while stg_k and Settings.shortcut_open { emit Settings.shortcut_route_next(1) }
+    on k_escape while stg_k and Settings.shortcut_open { emit Settings.shortcut_close }
+    on sub_shortcut_key while screen.index == 0 { emit Settings.shortcut_save }
+    on k_ctrl_up while stg_k and Settings.quiet_edit { emit Settings.quiet_app_step(-1) }
+    on k_ctrl_down while stg_k and Settings.quiet_edit { emit Settings.quiet_app_step(1) }
+    on k_ctrl_right while stg_k and Settings.quiet_edit { emit Settings.quiet_app_cycle }
+    on k_ctrl_left while stg_k and Settings.quiet_edit { emit Settings.quiet_app_cycle }
+    on k_escape while stg_k and Settings.quiet_edit { emit Settings.quiet_close }
+    on sub_frame_output_edit while screen.index == 0 { emit Settings.frame_output_save }
+    on sub_quiet_from while screen.index == 0 { emit Settings.quiet_hours_save }
+    on sub_quiet_to while screen.index == 0 { emit Settings.quiet_hours_save }
+    on k_up while stg_k and Settings.look_open { emit Settings.look_step(-1) }
+    on k_down while stg_k and Settings.look_open { emit Settings.look_step(1) }
+    on k_escape while stg_k and Settings.look_open { emit Settings.look_close }
+    on sub_look_name while screen.index == 0 { emit Settings.look_save }
+    on sub_look_document while screen.index == 0 { emit Settings.look_preview }
+    on k_ctrl_return while stg_k and Settings.look_open and Settings.look_preview { emit Settings.look_apply }
+    on k_ctrl_kp_enter while stg_k and Settings.look_open and Settings.look_preview { emit Settings.look_apply }
+    on k_left while stg_k and Settings.display_pending { emit Settings.display_sel_flip }
+    on k_right while stg_k and Settings.display_pending { emit Settings.display_sel_flip }
+    on k_tab while stg_k and Settings.display_pending { emit Settings.display_sel_flip }
+    on k_shift_tab while stg_k and Settings.display_pending { emit Settings.display_sel_flip }
+    on ku_return while stg_k and Settings.display_pending { emit Settings.display_activate }
+    on ku_kp_enter while stg_k and Settings.display_pending { emit Settings.display_activate }
+    on k_escape while stg_k and Settings.display_pending { emit Settings.display_revert }
+    on k_up while stg_k and Settings.pin_edit { emit Settings.pin_step(-1) }
+    on k_down while stg_k and Settings.pin_edit { emit Settings.pin_step(1) }
+    on k_left while stg_k and Settings.pin_edit { emit Settings.pin_left(-1) }
+    on k_right while stg_k and Settings.pin_edit { emit Settings.pin_right(-1) }
+    on k_escape while stg_k and Settings.pin_edit { emit Settings.pin_close }
+    on k_left while stg_k and Settings.reset_review { emit Settings.reset_sel_flip }
+    on k_right while stg_k and Settings.reset_review { emit Settings.reset_sel_flip }
+    on k_tab while stg_k and Settings.reset_review { emit Settings.reset_sel_flip }
+    on k_shift_tab while stg_k and Settings.reset_review { emit Settings.reset_sel_flip }
+    on ku_return while stg_k and Settings.reset_review { emit Settings.reset_appearance_activate }
+    on ku_kp_enter while stg_k and Settings.reset_review { emit Settings.reset_appearance_activate }
+    on ku_space while stg_k and Settings.reset_review { emit Settings.reset_appearance_activate }
+    on k_escape while stg_k and Settings.reset_review { emit Settings.reset_appearance_cancel }
+    on k_down while stg_k and Settings.settings_search { emit Settings.settings_search_step(1) }
+    on k_up while stg_k and Settings.settings_search { emit Settings.settings_search_step(-1) }
+    on k_tab while stg_k and Settings.settings_search { emit Settings.settings_search_step(1); fld_req = 10; fld_seq = fld_seq + 1 }
+    on k_shift_tab while stg_k and Settings.settings_search { emit Settings.settings_search_step(-1); fld_req = 10; fld_seq = fld_seq + 1 }
+    on k_escape while stg_k and Settings.settings_search { emit Settings.settings_search_clear }
+    on k_escape while stg_k and stg_free { emit Panels.close }
+    //  Up / Down walk the sidebar (one tab at a time, stopping at the ends); the search field and every sub-flow keep their own keys
+    on k_down while stg_k and stg_free and Settings.tab < 7 { emit Settings.pick_cat(Settings.tab + 1) }
+    on k_up while stg_k and stg_free and Settings.tab > 0 { emit Settings.pick_cat(Settings.tab - 1) }
+    on sub_side_q while screen.index == 0 { emit Settings.settings_search_submit }
+    on sub_custom_accent_edit while screen.index == 0 { emit Settings.custom_accent_apply }
+
+    // ── which text field has the keyboard (Keys: 10 the search · 11 the shortcut key · 12 the look's name · 0 none) ──
+    on change Panels.cur while Panels.cur == 30 and screen.index == 0 { fld_req = 10; fld_seq = fld_seq + 1 }
+    on change Panels.open while Panels.open and Panels.cur == 30 and screen.index == 0 { fld_req = 10; fld_seq = fld_seq + 1 }
+    on change Settings.shortcut_open while Settings.shortcut_open and stg_k { fld_req = 11; fld_seq = fld_seq + 1 }
+    on change Settings.look_open while Settings.look_open and stg_k { fld_req = 12; fld_seq = fld_seq + 1 }
+    on change Settings.look_open while not Settings.look_open and stg_k { fld_req = 0; fld_seq = fld_seq + 1 }
+    on change Settings.reset_review while Settings.reset_review and stg_k { fld_req = 0; fld_seq = fld_seq + 1 }
+    on change Settings.quiet_edit while Settings.quiet_edit and stg_k { fld_req = 0; fld_seq = fld_seq + 1 }
+    on change Settings.display_pending while Settings.display_pending and stg_k { fld_req = 0; fld_seq = fld_seq + 1 }
+    on change Settings.pin_edit while Settings.pin_edit and stg_k { fld_req = 0; fld_seq = fld_seq + 1 }
+}

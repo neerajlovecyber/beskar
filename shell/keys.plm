@@ -31,12 +31,25 @@ scene Keys {
     text wb_name = ""
     text password = ""
     text wifi_pw = ""
+    //  the Settings window's fields (common/settings_panel.plm draws the boxes; the Settings scene reads and writes the texts)
+    text side_q = ""
+    text bind_q = ""
+    text look_name = ""
+    text look_document = ""
+    text quiet_from = "22:00"
+    text quiet_to = "07:00"
+    text shortcut_key = ""
+    text custom_accent_edit = ""
+    text frame_output_edit = ""
     event set_text ->           // { name, value } from the frame's logic
 
     prop fld_b = 0 ~calm
     follow fld_b = if(Panels.open and (Panels.cur == 4 or Panels.cur == 6 or (Panels.cur == 10 and Topbar.wb_page == 1)), 1, 0)
     prop fld_v = 0 ~calm
     follow fld_v = if(Panels.open and ((Panels.cur == 15 and Topbar.wx_view == 1) or Panels.cur == 25 or Panels.cur == 26 or Panels.cur == 12 or (Panels.cur == 1 and Topbar.asking)), 1, 0)
+
+    prop fld_g = 0 ~calm
+    follow fld_g = if(Panels.open and Panels.cur == 30, 1, 0)
 
     surface field {
         size: full, full
@@ -91,6 +104,43 @@ scene Keys {
             show: Panels.cur == 1 and Topbar.asking and fld_v > 0.5
             move: screen.width - 366, 40
             input wifi_pw { at: 46, 136; width: 270; size: font_body; color: ink_c; secret: true; placeholder: "Password"; selection: accent_c }
+        }
+
+        //  ── the Settings window (840 x 580, centred; common/settings_panel.plm). The window's origin: ──
+        group {
+            show: Panels.cur == 30 and fld_g > 0.5
+            move: screen.width / 2 - 420, screen.height / 2 - 290
+            //  the sidebar search
+            input side_q { at: 46, 114; width: 160; size: font_secondary; color: ink_c; placeholder: "Search"; selection: accent_c }
+            group {
+                show: Settings.tab == 5 and not Settings.shortcut_open
+                input bind_q { at: 288, 68; width: 440; size: font_body; color: ink_c; placeholder: "Search shortcuts"; selection: accent_c }
+            }
+            group {
+                show: Settings.tab == 5 and Settings.shortcut_open
+                input shortcut_key { at: 266, 268; width: 532; size: font_body; color: ink_c; selection: accent_c; placeholder: "For example Mod+Shift+K" }
+            }
+            group {
+                show: Settings.tab == 0 and Settings.look_open
+                input look_name { at: 266, 106; width: 276; size: font_secondary; color: ink_c; selection: accent_c; placeholder: "Name this appearance" }
+                input look_document { at: 266, 420; width: 532; size: font_secondary; color: ink_c; selection: accent_c; placeholder: "Paste an appearance document to review" }
+            }
+            group {
+                show: Settings.tab == 3 and Settings.quiet_edit
+                input quiet_from { at: 310, 242; width: 76; size: font_secondary; color: ink_c; selection: accent_c }
+                input quiet_to { at: 458, 242; width: 76; size: font_secondary; color: ink_c; selection: accent_c }
+            }
+            //  the two fields inside a scrolling list follow the list (`stg_sc0` / `stg_sc4`: y of the card in the list, from settings_catalog.luau, + the field's own offset)
+            group {
+                show: Settings.tab == 0 and not Settings.look_open
+                clip box { from: 254, 60; size: 560, 500 }
+                input custom_accent_edit { at: 282, 712 - Topbar.stg_sc0; width: 124; size: font_secondary; color: ink_c; selection: accent_c; placeholder: "#RRGGBB" }
+            }
+            group {
+                show: Settings.tab == 4 and not Settings.pin_edit
+                clip box { from: 254, 60; size: 560, 500 }
+                input frame_output_edit { at: 282, 920 - Topbar.stg_sc4; width: 276; size: font_secondary; color: ink_c; selection: accent_c; placeholder: "HDMI-A-1 · empty follows focus" }
+            }
         }
     }
 
@@ -161,6 +211,14 @@ scene Keys {
     on submit wb_name { emit Topbar.sub_wb_name }
     on submit password { emit Topbar.sub_password }
     on submit wifi_pw { emit Topbar.sub_wifi_pw }
+    on submit side_q { emit Topbar.sub_side_q }
+    on submit shortcut_key { emit Topbar.sub_shortcut_key }
+    on submit look_name { emit Topbar.sub_look_name }
+    on submit look_document { emit Topbar.sub_look_document }
+    on submit quiet_from { emit Topbar.sub_quiet_from }
+    on submit quiet_to { emit Topbar.sub_quiet_to }
+    on submit custom_accent_edit { emit Topbar.sub_custom_accent_edit }
+    on submit frame_output_edit { emit Topbar.sub_frame_output_edit }
     on change Topbar.fld_seq while Topbar.fld_req == 1 { focus wq }
     on change Topbar.fld_seq while Topbar.fld_req == 2 { focus pe_draft }
     on change Topbar.fld_seq while Topbar.fld_req == 3 { focus pe_new_task }
@@ -170,5 +228,8 @@ scene Keys {
     on change Topbar.fld_seq while Topbar.fld_req == 7 { focus wb_name }
     on change Topbar.fld_seq while Topbar.fld_req == 8 { focus password }
     on change Topbar.fld_seq while Topbar.fld_req == 9 { focus wifi_pw }
+    on change Topbar.fld_seq while Topbar.fld_req == 10 { focus side_q }
+    on change Topbar.fld_seq while Topbar.fld_req == 11 { focus shortcut_key }
+    on change Topbar.fld_seq while Topbar.fld_req == 12 { focus look_name }
     on change Topbar.fld_seq while Topbar.fld_req == 0 { blur }
 }

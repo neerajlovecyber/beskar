@@ -45,10 +45,10 @@ control("frame.outputs", 4, "Optional modules on", "bar output monitor all focus
 control("dock.outputs", 4, "Dock on", "dock output monitor all focused named", 704, 42)
 control("dock.reveal", 4, "Dock reveal delay", "dock show timing immediate", 758, 42)
 control("frame.output-name", 4, "Named output", "monitor connector HDMI output name", 812, 88)
-control("appearance.custom-accent", 0, "Custom accent", "hex rgb colour color contrast", 578, 112)
-control("appearance.text", 0, "Panel text size", "font typography small standard large", 702, 72)
-control("appearance.glass-strength", 0, "Glass strength", "opacity transparency legibility minimal soft full", 786, 72)
-control("appearance.motion", 0, "Reduce motion", "animation accessibility transitions system", 870, 56)
+control("appearance.custom-accent", 0, "Custom accent", "hex rgb colour color contrast", 606, 112)
+control("appearance.text", 0, "Panel text size", "font typography small standard large", 730, 72)
+control("appearance.glass-strength", 0, "Glass strength", "opacity transparency legibility minimal soft full", 814, 72)
+control("appearance.motion", 0, "Reduce motion", "animation accessibility transitions system", 898, 56)
 -- Validation metadata comes from the preference schema, so search and reset describe
 -- the same defaults and bounds without maintaining a second preference definition.
 local P = require("preferences")
